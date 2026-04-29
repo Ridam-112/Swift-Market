@@ -1,0 +1,32 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "JL2PSYJV_sA9WOMrH91B6"
+uri = "file://artifacts/swiftmart/src/assets/cat-groceries.png"
+type = "image"
+title = "groceries category signature image"
+
+[[generated]]
+id = "NuS_7-Nvvgz76ZNEfMAJI"
+uri = "file://artifacts/swiftmart/src/assets/cat-vegetables.png"
+type = "image"
+title = "vegetables category signature image"
+
+[[generated]]
+id = "wdoy52AqgIg30iqP8ew3L"
+uri = "file://artifacts/swiftmart/src/assets/cat-personal-care.png"
+type = "image"
+title = "personal care category signature image"
+
+[[generated]]
+id = "xqfk201BMnNhWuwhdnSgK"
+uri = "file://artifacts/swiftmart/src/assets/cat-books.png"
+type = "image"
+title = "books category signature image"
+
+[[generated]]
+id = "ge_I4CxV763Ielh23M9lG"
+uri = "file://artifacts/swiftmart/src/assets/cat-clothing.png"
+type = "image"
+title = "clothing category signature image"
