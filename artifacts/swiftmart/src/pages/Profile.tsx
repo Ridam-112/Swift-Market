@@ -9,7 +9,7 @@ import { AddressCard } from "@/components/AddressCard";
 import { AddressForm } from "@/components/AddressForm";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { LogOut, User as UserIcon, MapPin, Store } from "lucide-react";
+import { LogOut, MapPin, Store } from "lucide-react";
 
 export default function Profile() {
   const { user, logout, updateUser, addAddress, deleteAddress, setRole, role } = useAuth();
@@ -20,7 +20,6 @@ export default function Profile() {
   const [email, setEmail] = useState(user?.email || "");
 
   if (!user) {
-    setLocation("/auth");
     return null;
   }
 
@@ -103,7 +102,7 @@ export default function Profile() {
               <span className="font-bold">{user.vendorProfile?.gstin}</span>
             </div>
             <Button 
-              className="w-full mt-2 rounded-xl shadow-none neu-card bg-primary text-primary-foreground"
+              className="w-full mt-2 rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => setRole(role === 'vendor' ? 'customer' : 'vendor')}
             >
               Switch to {role === 'vendor' ? 'Customer' : 'Vendor'} Dashboard
@@ -156,7 +155,7 @@ export default function Profile() {
 
       <Button 
         variant="destructive" 
-        className="w-full rounded-2xl h-14 font-bold text-lg"
+        className="w-full rounded-2xl h-14 font-bold text-lg shadow-none neu-card"
         onClick={() => {
           logout();
           setLocation("/auth");

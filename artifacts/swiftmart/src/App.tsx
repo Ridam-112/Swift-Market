@@ -12,6 +12,7 @@ import { CartProvider } from "@/context/CartContext";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { RoleGuard } from "@/components/RoleGuard";
+import { AuthGuard } from "@/components/AuthGuard";
 
 // Pages
 import Home from "@/pages/Home";
@@ -53,53 +54,73 @@ function Categories() {
   );
 }
 
+function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthGuard>
+      <Header />
+      <main className="flex-1 w-full">{children}</main>
+      <BottomNav />
+    </AuthGuard>
+  );
+}
+
 function Router() {
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background font-sans selection:bg-primary selection:text-primary-foreground">
-      <Header />
-      <main className="flex-1 w-full">
-        <Switch>
-          {/* Public / Customer Routes */}
-          <Route path="/" component={Home} />
-          <Route path="/auth" component={Auth} />
-          <Route path="/categories" component={Categories} />
-          <Route path="/category/:slug" component={Category} />
-          <Route path="/product/:id" component={Product} />
-          
-          <Route path="/cart">
-            <RoleGuard requiredRole="customer"><Cart /></RoleGuard>
-          </Route>
-          <Route path="/checkout">
-            <RoleGuard requiredRole="customer"><Checkout /></RoleGuard>
-          </Route>
-          <Route path="/order/success/:id">
-            <RoleGuard requiredRole="customer"><OrderSuccess /></RoleGuard>
-          </Route>
-          <Route path="/orders">
-            <RoleGuard requiredRole="customer"><Orders /></RoleGuard>
-          </Route>
-          
-          {/* Shared Authenticated Routes */}
-          <Route path="/profile" component={Profile} />
+      <Switch>
+        {/* Unprotected Auth Route */}
+        <Route path="/auth" component={Auth} />
 
-          {/* Vendor Routes */}
-          <Route path="/vendor">
-            <RoleGuard requiredRole="vendor"><VendorDashboard /></RoleGuard>
-          </Route>
-          <Route path="/vendor/products">
-            <RoleGuard requiredRole="vendor"><VendorProducts /></RoleGuard>
-          </Route>
-          <Route path="/vendor/add-product">
-            <RoleGuard requiredRole="vendor"><AddProduct /></RoleGuard>
-          </Route>
-          <Route path="/vendor/orders">
-            <RoleGuard requiredRole="vendor"><VendorOrders /></RoleGuard>
-          </Route>
+        {/* All other routes protected by AuthGuard */}
+        <Route path="/">
+          <ProtectedLayout><Home /></ProtectedLayout>
+        </Route>
+        <Route path="/categories">
+          <ProtectedLayout><Categories /></ProtectedLayout>
+        </Route>
+        <Route path="/category/:slug">
+          <ProtectedLayout><Category /></ProtectedLayout>
+        </Route>
+        <Route path="/product/:id">
+          <ProtectedLayout><Product /></ProtectedLayout>
+        </Route>
+        
+        <Route path="/cart">
+          <ProtectedLayout><RoleGuard requiredRole="customer"><Cart /></RoleGuard></ProtectedLayout>
+        </Route>
+        <Route path="/checkout">
+          <ProtectedLayout><RoleGuard requiredRole="customer"><Checkout /></RoleGuard></ProtectedLayout>
+        </Route>
+        <Route path="/order/success/:id">
+          <ProtectedLayout><RoleGuard requiredRole="customer"><OrderSuccess /></RoleGuard></ProtectedLayout>
+        </Route>
+        <Route path="/orders">
+          <ProtectedLayout><RoleGuard requiredRole="customer"><Orders /></RoleGuard></ProtectedLayout>
+        </Route>
+        
+        {/* Shared Authenticated Routes */}
+        <Route path="/profile">
+          <ProtectedLayout><Profile /></ProtectedLayout>
+        </Route>
 
-          <Route component={NotFound} />
-        </Switch>
-      </main>
-      <BottomNav />
+        {/* Vendor Routes */}
+        <Route path="/vendor">
+          <ProtectedLayout><RoleGuard requiredRole="vendor"><VendorDashboard /></RoleGuard></ProtectedLayout>
+        </Route>
+        <Route path="/vendor/products">
+          <ProtectedLayout><RoleGuard requiredRole="vendor"><VendorProducts /></RoleGuard></ProtectedLayout>
+        </Route>
+        <Route path="/vendor/add-product">
+          <ProtectedLayout><RoleGuard requiredRole="vendor"><AddProduct /></RoleGuard></ProtectedLayout>
+        </Route>
+        <Route path="/vendor/orders">
+          <ProtectedLayout><RoleGuard requiredRole="vendor"><VendorOrders /></RoleGuard></ProtectedLayout>
+        </Route>
+
+        <Route>
+          <ProtectedLayout><NotFound /></ProtectedLayout>
+        </Route>
+      </Switch>
     </div>
   );
 }
