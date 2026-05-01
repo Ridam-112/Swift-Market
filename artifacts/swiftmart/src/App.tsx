@@ -54,6 +54,10 @@ function Categories() {
   );
 }
 
+import Shops from "@/pages/Shops";
+import ShopDetail from "@/pages/ShopDetail";
+import Search from "@/pages/Search";
+
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
@@ -77,6 +81,15 @@ function Router() {
         </Route>
         <Route path="/categories">
           <ProtectedLayout><Categories /></ProtectedLayout>
+        </Route>
+        <Route path="/shops">
+          <ProtectedLayout><Shops /></ProtectedLayout>
+        </Route>
+        <Route path="/shop/:vendorId">
+          <ProtectedLayout><ShopDetail /></ProtectedLayout>
+        </Route>
+        <Route path="/search">
+          <ProtectedLayout><Search /></ProtectedLayout>
         </Route>
         <Route path="/category/:slug">
           <ProtectedLayout><Category /></ProtectedLayout>

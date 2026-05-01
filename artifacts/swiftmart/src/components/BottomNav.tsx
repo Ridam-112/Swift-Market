@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Grid, ShoppingBag, Clock, User, LayoutDashboard, Package, PlusCircle, ClipboardList } from "lucide-react";
+import { Home, Store, ShoppingBag, Clock, User, LayoutDashboard, Package, PlusCircle, ClipboardList } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,7 @@ export function BottomNav() {
 
   const customerTabs = [
     { href: "/", icon: Home, label: "Home" },
-    { href: "/categories", icon: Grid, label: "Categories" },
+    { href: "/shops", icon: Store, label: "Shops" },
     { href: "/cart", icon: ShoppingBag, label: "Cart", badge: totalItems },
     { href: "/orders", icon: Clock, label: "Orders" },
     { href: "/profile", icon: User, label: "Profile" }
@@ -39,9 +39,9 @@ export function BottomNav() {
             <Link key={tab.href} href={tab.href} className="relative flex flex-col items-center p-2 w-16">
               <div className="relative z-10 flex flex-col items-center gap-1">
                 <div className="relative">
-                  <Icon className={cn("w-6 h-6 transition-colors duration-300", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
+                  <Icon className={cn("w-6 h-6 transition-colors duration-300", isActive ? "text-white" : "text-muted-foreground")} />
                   {tab.badge ? (
-                    <span className="absolute -top-1 -right-2 bg-destructive text-destructive-foreground text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    <span className="absolute -top-1 -right-2 bg-destructive text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                       {tab.badge}
                     </span>
                   ) : null}

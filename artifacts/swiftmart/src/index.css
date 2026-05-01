@@ -177,6 +177,7 @@
 @layer utilities {
   .neu-card {
     background: hsl(var(--card));
+    color: hsl(var(--foreground));
     box-shadow: 8px 8px 24px hsl(var(--neu-shadow-dark)/.4), -8px -8px 24px hsl(var(--neu-shadow-light)/.6);
     border-radius: var(--radius);
   }
@@ -185,6 +186,7 @@
   }
   .glass {
     background: hsl(var(--card) / 0.6);
+    color: hsl(var(--foreground));
     backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
     border: 1px solid hsl(var(--card) / 0.4);

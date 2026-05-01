@@ -57,3 +57,19 @@ export interface VendorSalesPoint {
   revenue: number;
   orders: number;
 }
+
+export interface Vendor {
+  id: string;
+  storeName: string;
+  ownerName: string;
+  category: string;
+  tagline: string;
+  rating: number;
+  totalOrders: number;
+  isOpen: boolean;
+  eta: string;
+  image: string;
+  pincode: string;
+  city: string;
+  phone: string;
+}

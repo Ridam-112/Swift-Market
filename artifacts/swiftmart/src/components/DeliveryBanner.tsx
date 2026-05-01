@@ -9,8 +9,8 @@ export function DeliveryBanner() {
           <Clock className="w-6 h-6" />
         </div>
         <div>
-          <h3 className="font-bold text-lg text-primary-foreground/90 dark:text-primary">Delivery in 10 mins</h3>
-          <p className="text-sm text-muted-foreground font-medium">To your selected location</p>
+          <h3 className="font-bold text-lg text-primary-foreground dark:text-primary">Delivery in 10 mins</h3>
+          <p className="text-sm text-primary-foreground/80 dark:text-muted-foreground font-medium">To your selected location</p>
         </div>
       </div>
     </div>

@@ -42,12 +42,12 @@ export const mockProducts: Product[] = [
   { id: "b8", name: "Think and Grow Rich", category: "books", price: 220, unit: "1 pc", image: "/assets/cat-books.png", description: "Financial advice.", stock: 50, rating: 4.6, vendorId: "v1" },
 
   // Clothing
-  { id: "c1", name: "Men's Cotton T-Shirt", category: "clothing", price: 499, unit: "1 pc", image: "/assets/cat-clothing.png", description: "Comfortable solid black t-shirt.", stock: 30, rating: 4.5, vendorId: "v1", trending: true },
-  { id: "c2", name: "Women's Kurti", category: "clothing", price: 799, unit: "1 pc", image: "/assets/cat-clothing.png", description: "Printed cotton kurti for daily wear.", stock: 20, rating: 4.6, vendorId: "v1" },
-  { id: "c3", name: "Unisex Gym Shorts", category: "clothing", price: 399, unit: "1 pc", image: "/assets/cat-clothing.png", description: "Breathable fabric shorts.", stock: 40, rating: 4.4, vendorId: "v1" },
-  { id: "c4", name: "Men's Formal Shirt", category: "clothing", price: 899, unit: "1 pc", image: "/assets/cat-clothing.png", description: "Slim fit formal shirt, blue.", stock: 15, rating: 4.7, vendorId: "v1" },
-  { id: "c5", name: "Women's Leggings", category: "clothing", price: 299, unit: "1 pc", image: "/assets/cat-clothing.png", description: "Stretchable ankle length leggings.", stock: 50, rating: 4.5, vendorId: "v1" },
-  { id: "c6", name: "Kids Pyjama Set", category: "clothing", price: 599, unit: "1 set", image: "/assets/cat-clothing.png", description: "Cute printed nightwear for kids.", stock: 25, rating: 4.8, vendorId: "v1" },
-  { id: "c7", name: "Cotton Socks Pack", category: "clothing", price: 199, unit: "3 pairs", image: "/assets/cat-clothing.png", description: "Ankle length socks.", stock: 100, rating: 4.9, vendorId: "v1" },
-  { id: "c8", name: "Winter Beanie Cap", category: "clothing", price: 250, unit: "1 pc", image: "/assets/cat-clothing.png", description: "Warm woolen cap.", stock: 10, rating: 4.6, vendorId: "v1" }
+  { id: "c1", name: "Men's Cotton T-Shirt", category: "clothing", price: 499, unit: "1 pc", image: "/assets/cat-clothing.png", description: "Comfortable solid black t-shirt.", stock: 30, rating: 4.5, vendorId: "v3", trending: true },
+  { id: "c2", name: "Women's Kurti", category: "clothing", price: 799, unit: "1 pc", image: "/assets/cat-clothing.png", description: "Printed cotton kurti for daily wear.", stock: 20, rating: 4.6, vendorId: "v3" },
+  { id: "c3", name: "Unisex Gym Shorts", category: "clothing", price: 399, unit: "1 pc", image: "/assets/cat-clothing.png", description: "Breathable fabric shorts.", stock: 40, rating: 4.4, vendorId: "v3" },
+  { id: "c4", name: "Men's Formal Shirt", category: "clothing", price: 899, unit: "1 pc", image: "/assets/cat-clothing.png", description: "Slim fit formal shirt, blue.", stock: 15, rating: 4.7, vendorId: "v3" },
+  { id: "c5", name: "Women's Leggings", category: "clothing", price: 299, unit: "1 pc", image: "/assets/cat-clothing.png", description: "Stretchable ankle length leggings.", stock: 50, rating: 4.5, vendorId: "v3" },
+  { id: "c6", name: "Kids Pyjama Set", category: "clothing", price: 599, unit: "1 set", image: "/assets/cat-clothing.png", description: "Cute printed nightwear for kids.", stock: 25, rating: 4.8, vendorId: "v3" },
+  { id: "c7", name: "Cotton Socks Pack", category: "clothing", price: 199, unit: "3 pairs", image: "/assets/cat-clothing.png", description: "Ankle length socks.", stock: 100, rating: 4.9, vendorId: "v3" },
+  { id: "c8", name: "Winter Beanie Cap", category: "clothing", price: 250, unit: "1 pc", image: "/assets/cat-clothing.png", description: "Warm woolen cap.", stock: 10, rating: 4.6, vendorId: "v3" }
 ];

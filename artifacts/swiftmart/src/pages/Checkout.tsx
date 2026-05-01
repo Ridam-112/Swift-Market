@@ -14,9 +14,9 @@ import { cn } from "@/lib/utils";
 export default function Checkout() {
   const [, setLocation] = useLocation();
   const { items, subtotal, clearCart } = useCart();
-  const { user, addAddress } = useAuth();
+  const { user, addAddress, selectedDeliveryAddress, setSelectedDeliveryAddress } = useAuth();
   
-  const [selectedAddress, setSelectedAddress] = useState<string | null>(user?.addresses[0]?.id || null);
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(selectedDeliveryAddress?.id || user?.addresses[0]?.id || null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [deliverySlot, setDeliverySlot] = useState<'instant' | 'schedule'>('instant');
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Card' | 'COD'>('UPI');
@@ -78,7 +78,10 @@ export default function Checkout() {
                   key={addr.id}
                   address={addr}
                   selected={selectedAddress === addr.id}
-                  onClick={() => setSelectedAddress(addr.id)}
+                  onClick={() => {
+                    setSelectedAddress(addr.id);
+                    setSelectedDeliveryAddress(addr);
+                  }}
                 />
               ))}
               {(!user?.addresses || user.addresses.length === 0) && (

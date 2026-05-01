@@ -48,7 +48,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         <div className="text-xs text-muted-foreground mb-1 font-medium bg-background/50 w-max px-2 py-0.5 rounded-md neu-inset">
           {product.unit}
         </div>
-        <Link href={`/product/${product.id}`} className="font-semibold text-sm line-clamp-2 leading-tight mb-2 hover:text-primary transition-colors cursor-pointer">
+        <Link href={`/product/${product.id}`} className="font-semibold text-sm text-foreground line-clamp-2 leading-tight mb-2 hover:text-primary transition-colors cursor-pointer">
           {product.name}
         </Link>
         <div className="mt-auto flex items-center justify-between">

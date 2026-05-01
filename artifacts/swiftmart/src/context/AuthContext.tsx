@@ -5,6 +5,8 @@ interface AuthContextType {
   user: User | null;
   role: 'customer' | 'vendor';
   isLoading: boolean;
+  selectedDeliveryAddress: Address | null;
+  setSelectedDeliveryAddress: (address: Address | null) => void;
   login: (phone: string, name: string) => void;
   logout: () => void;
   setRole: (role: 'customer' | 'vendor') => void;
@@ -28,13 +30,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [role, setRoleState] = useState<'customer' | 'vendor'>('customer');
+  const [selectedDeliveryAddress, setSelectedDeliveryAddress] = useState<Address | null>(null);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("swiftmart_user");
     const savedRole = localStorage.getItem("swiftmart_role");
     
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+      if (parsedUser?.addresses?.length > 0) {
+        setSelectedDeliveryAddress(parsedUser.addresses[0]);
+      }
     }
     if (savedRole) {
       setRoleState(savedRole as 'customer' | 'vendor');
@@ -73,11 +80,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     setUser(newUser);
     setRoleState('customer');
+    setSelectedDeliveryAddress(null);
   };
 
   const logout = () => {
     setUser(null);
     setRoleState('customer');
+    setSelectedDeliveryAddress(null);
     localStorage.removeItem("swiftmart_cart");
   };
 
@@ -131,11 +140,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isVendorRegistered: false
     };
     setUser(newUser);
+    setSelectedDeliveryAddress(address);
   };
 
   return (
     <AuthContext.Provider value={{ 
-      user, role, isLoading, login, logout, setRole, updateUser, addAddress, deleteAddress,
+      user, role, isLoading, selectedDeliveryAddress, setSelectedDeliveryAddress, login, logout, setRole, updateUser, addAddress, deleteAddress,
       loginWithPhone, verifyOtp, loginWithGoogle, completeOnboarding
     }}>
       {children}
