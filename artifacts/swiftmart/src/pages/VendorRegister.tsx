@@ -33,8 +33,8 @@ export default function VendorRegister() {
 
   const slideVariants = {
     initial: { x: 20, opacity: 0 },
-    animate: { x: 0, opacity: 1, transition: { duration: 0.3, ease: "easeOut" } },
-    exit: { x: -20, opacity: 0, transition: { duration: 0.2, ease: "easeIn" } }
+    animate: { x: 0, opacity: 1, transition: { duration: 0.3, ease: "easeOut" as const } },
+    exit: { x: -20, opacity: 0, transition: { duration: 0.2, ease: "easeIn" as const } }
   };
 
   const handleNext = () => {

@@ -45,6 +45,7 @@ export default function Auth() {
       const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [step, countdown]);
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
@@ -126,11 +127,11 @@ export default function Auth() {
 
   const handleOnboardingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return toast.error("Please enter your name");
-    if (!phone.trim() || phone.length !== 10) return toast.error("Please enter a valid phone number");
-    if (!addressLine1.trim()) return toast.error("Please enter your address");
-    if (!city.trim()) return toast.error("Please enter your city");
-    if (pincode.length !== 6) return toast.error("Please enter a 6-digit pincode");
+    if (!name.trim()) { toast.error("Please enter your name"); return; }
+    if (!phone.trim() || phone.length !== 10) { toast.error("Please enter a valid phone number"); return; }
+    if (!addressLine1.trim()) { toast.error("Please enter your address"); return; }
+    if (!city.trim()) { toast.error("Please enter your city"); return; }
+    if (pincode.length !== 6) { toast.error("Please enter a 6-digit pincode"); return; }
 
     completeOnboarding(name, phone, {
       id: `a_${Date.now()}`,
@@ -146,8 +147,8 @@ export default function Auth() {
 
   const slideVariants = {
     initial: { x: 20, opacity: 0 },
-    animate: { x: 0, opacity: 1, transition: { duration: 0.3, ease: "easeOut" } },
-    exit: { x: -20, opacity: 0, transition: { duration: 0.2, ease: "easeIn" } }
+    animate: { x: 0, opacity: 1, transition: { duration: 0.3, ease: "easeOut" as const } },
+    exit: { x: -20, opacity: 0, transition: { duration: 0.2, ease: "easeIn" as const } }
   };
 
   return (
@@ -233,7 +234,7 @@ export default function Auth() {
                   {otp.map((digit, i) => (
                     <Input
                       key={i}
-                      ref={el => inputRefs.current[i] = el}
+                      ref={el => { inputRefs.current[i] = el; }}
                       type="text"
                       inputMode="numeric"
                       maxLength={1}

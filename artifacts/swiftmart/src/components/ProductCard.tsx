@@ -24,7 +24,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.3 }}
-      className="bg-card rounded-2xl p-3 flex flex-col gap-3 neu-card relative overflow-hidden group"
+      className="bg-card rounded-2xl p-2.5 flex flex-col gap-2 neu-card relative overflow-hidden group w-full min-w-0"
     >
       <div 
         className="absolute inset-0 opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300"

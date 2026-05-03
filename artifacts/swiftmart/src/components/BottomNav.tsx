@@ -10,15 +10,17 @@ export function BottomNav() {
   const { role } = useAuth();
   const { totalItems } = useCart();
 
-  const customerTabs = [
+  type Tab = { href: string; icon: React.ComponentType<{ className?: string }>; label: string; badge?: number };
+
+  const customerTabs: Tab[] = [
     { href: "/", icon: Home, label: "Home" },
     { href: "/shops", icon: Store, label: "Shops" },
-    { href: "/cart", icon: ShoppingBag, label: "Cart", badge: totalItems },
+    { href: "/cart", icon: ShoppingBag, label: "Cart", badge: totalItems || undefined },
     { href: "/orders", icon: Clock, label: "Orders" },
     { href: "/profile", icon: User, label: "Profile" }
   ];
 
-  const vendorTabs = [
+  const vendorTabs: Tab[] = [
     { href: "/vendor", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/vendor/products", icon: Package, label: "Products" },
     { href: "/vendor/add-product", icon: PlusCircle, label: "Add" },

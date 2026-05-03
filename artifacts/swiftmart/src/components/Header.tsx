@@ -34,44 +34,45 @@ export function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 glass w-full px-4 py-3 md:px-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4 flex-shrink-0">
-            <Link href="/" className="font-bold text-2xl text-primary flex items-center gap-2">
-              <span className="bg-primary text-white rounded-xl w-8 h-8 flex items-center justify-center neu-card">S</span>
-              <span className="hidden sm:inline">SwiftMart</span>
-            </Link>
-            
-            {role === 'customer' && (
-              <button 
-                onClick={() => setIsLocationOpen(true)}
-                className="flex items-center gap-2 text-sm bg-background/50 rounded-full px-3 py-1.5 neu-inset hover:bg-background/80 transition-colors"
-              >
-                <MapPin className="w-4 h-4 text-primary shrink-0" />
-                <div className="flex flex-col items-start text-left">
-                  <span className="font-bold text-xs leading-none text-foreground">
-                    {selectedDeliveryAddress?.label || "Deliver to"}
-                  </span>
-                  <span className="text-muted-foreground text-[10px] truncate max-w-[100px] md:max-w-[150px] leading-none mt-0.5">
-                    {selectedDeliveryAddress?.city || "Select Location"}
-                  </span>
-                </div>
-              </button>
-            )}
-          </div>
+      <header className="sticky top-0 z-50 glass w-full px-3 py-2.5 md:px-6">
+        <div className="max-w-7xl mx-auto flex items-center gap-2 md:gap-4">
+          {/* Logo — always visible */}
+          <Link href="/" className="font-bold text-primary flex items-center gap-1.5 shrink-0">
+            <span className="bg-primary text-white rounded-xl w-8 h-8 flex items-center justify-center neu-card text-sm font-bold">S</span>
+            <span className="hidden sm:inline text-lg font-bold">SwiftMart</span>
+          </Link>
 
+          {/* Location pill — customer only, takes remaining space on mobile */}
           {role === 'customer' && (
-            <div className="flex-1 max-w-xl hidden md:flex gap-4">
-              <Link href="/shops" className="hidden md:flex items-center gap-2 font-medium hover:text-primary transition-colors text-foreground">
+            <button
+              onClick={() => setIsLocationOpen(true)}
+              className="flex-1 min-w-0 flex items-center gap-1.5 text-sm bg-background/50 rounded-full px-2.5 py-1.5 neu-inset hover:bg-background/80 transition-colors md:flex-none md:max-w-[200px]"
+            >
+              <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+              <div className="flex flex-col items-start text-left min-w-0">
+                <span className="font-bold text-[10px] leading-none text-foreground">
+                  {selectedDeliveryAddress?.label || "Deliver to"}
+                </span>
+                <span className="text-muted-foreground text-[10px] truncate w-full leading-none mt-0.5">
+                  {selectedDeliveryAddress?.city || "Select Location"}
+                </span>
+              </div>
+            </button>
+          )}
+
+          {/* Desktop search bar */}
+          {role === 'customer' && (
+            <div className="flex-1 max-w-xl hidden md:flex gap-3 items-center">
+              <Link href="/shops" className="flex items-center gap-1.5 font-medium hover:text-primary transition-colors text-foreground shrink-0 text-sm">
                 <Store className="w-4 h-4" /> Shops
               </Link>
               <div className="relative flex-1">
                 <button onClick={handleSearchClick} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   <Search className="w-4 h-4" />
                 </button>
-                <Input 
-                  className="w-full pl-9 bg-background/50 neu-inset border-none h-10 rounded-full focus-visible:ring-1 focus-visible:ring-primary/50 text-foreground" 
-                  placeholder="Search for groceries, vegetables, personal care..."
+                <Input
+                  className="w-full pl-9 bg-background/50 neu-inset border-none h-9 rounded-full focus-visible:ring-1 focus-visible:ring-primary/50 text-foreground text-sm"
+                  placeholder="Search groceries, vegetables..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleSearch}
@@ -80,18 +81,20 @@ export function Header() {
             </div>
           )}
 
-          <div className="flex items-center gap-3 md:gap-4 flex-shrink-0">
-            {user?.isVendorRegistered && <RoleSwitcher />}
-            
+          {/* Right icons — always shrink-0 */}
+          <div className="flex items-center gap-1.5 md:gap-3 shrink-0 ml-auto md:ml-0">
+            {/* Role switcher — compact on mobile */}
+            {user?.vendorStatus === 'approved' && <RoleSwitcher />}
+
             {role === 'customer' && (
               <>
-                <Link href="/search" className="md:hidden p-2 rounded-full hover-elevate transition-colors neu-card">
-                  <Search className="w-5 h-5 text-foreground" />
+                <Link href="/search" className="md:hidden p-2 rounded-full neu-card">
+                  <Search className="w-4 h-4 text-foreground" />
                 </Link>
-                <Link href="/cart" className="relative p-2 rounded-full hover-elevate transition-colors neu-card">
-                  <ShoppingBag className="w-5 h-5 text-foreground" />
+                <Link href="/cart" className="relative p-2 rounded-full neu-card">
+                  <ShoppingBag className="w-4 h-4 text-foreground" />
                   {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-destructive text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center neu-card">
+                    <span className="absolute -top-1 -right-1 bg-destructive text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                       {totalItems}
                     </span>
                   )}

@@ -23,12 +23,12 @@ export default function Home() {
   const recentProducts = products.slice(0, 4); // Just mocking recent
 
   return (
-    <div className="pb-24 pt-4 px-4 max-w-7xl mx-auto space-y-8">
+    <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto space-y-6 overflow-x-hidden">
       <DeliveryBanner />
 
       <section>
         <SectionHeader title="Shop by Category" />
-        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
           {categories.map((category) => (
             <div key={category.id} className="snap-start shrink-0">
               <CategoryBubble category={category} />
@@ -39,32 +39,25 @@ export default function Home() {
 
       <section>
         <SectionHeader title="Popular Shops" />
-        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
           {vendors.map((vendor) => (
-            <Link key={vendor.id} href={`/shop/${vendor.id}`} className="snap-start shrink-0 block w-[280px]">
-              <div className="bg-card rounded-2xl p-4 neu-card flex gap-4 items-center group hover:scale-[1.02] transition-transform">
-                <div className="w-16 h-16 rounded-xl overflow-hidden bg-background neu-inset flex-shrink-0">
-                  <img 
-                    src={vendor.image} 
-                    alt={vendor.storeName} 
-                    className="w-full h-full object-cover mix-blend-multiply"
+            <Link key={vendor.id} href={`/shop/${vendor.id}`} className="snap-start shrink-0 block w-[calc(75vw)] max-w-[260px] min-w-[200px]">
+              <div className="bg-card rounded-2xl p-3 neu-card flex gap-3 items-center h-full">
+                <div className="w-14 h-14 rounded-xl overflow-hidden bg-background neu-inset flex-shrink-0">
+                  <img
+                    src={vendor.image}
+                    alt={vendor.storeName}
+                    className="w-full h-full object-cover"
                   />
                 </div>
-                
                 <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start mb-1">
-                    <h3 className="font-bold text-sm truncate text-foreground">{vendor.storeName}</h3>
-                  </div>
-                  
-                  <div className="text-[10px] text-muted-foreground mb-1.5 truncate">
+                  <h3 className="font-bold text-sm truncate text-foreground">{vendor.storeName}</h3>
+                  <div className="text-[10px] text-muted-foreground mb-1 truncate">
                     {vendor.category}
                   </div>
-                  
-                  <div className="flex items-center gap-2 text-[10px] font-medium">
-                    <div className="flex items-center gap-1 text-yellow-600">
-                      <Star className="w-3 h-3 fill-current" />
-                      {vendor.rating}
-                    </div>
+                  <div className="flex items-center gap-1 text-[11px] font-medium text-yellow-600">
+                    <Star className="w-3 h-3 fill-current" />
+                    {vendor.rating}
                   </div>
                 </div>
               </div>

@@ -75,7 +75,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
 function Router() {
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-background font-sans selection:bg-primary selection:text-primary-foreground">
+    <div className="min-h-[100dvh] flex flex-col bg-background font-sans selection:bg-primary selection:text-primary-foreground overflow-x-hidden w-full">
       <Switch>
         {/* Unprotected Auth Route */}
         <Route path="/auth" component={Auth} />
