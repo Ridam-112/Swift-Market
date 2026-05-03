@@ -13,6 +13,7 @@ import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { RoleGuard } from "@/components/RoleGuard";
 import { AuthGuard } from "@/components/AuthGuard";
+import { AdminGuard } from "@/components/AdminGuard";
 
 // Pages
 import Home from "@/pages/Home";
@@ -31,6 +32,10 @@ import VendorDashboard from "@/pages/vendor/Dashboard";
 import VendorProducts from "@/pages/vendor/Products";
 import AddProduct from "@/pages/vendor/AddProduct";
 import VendorOrders from "@/pages/vendor/Orders";
+import VendorRegister from "@/pages/VendorRegister";
+import VendorStatus from "@/pages/VendorStatus";
+
+import Admin from "@/pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -116,6 +121,14 @@ function Router() {
           <ProtectedLayout><Profile /></ProtectedLayout>
         </Route>
 
+        {/* Vendor Application Routes */}
+        <Route path="/vendor-register">
+          <ProtectedLayout><VendorRegister /></ProtectedLayout>
+        </Route>
+        <Route path="/vendor-status">
+          <ProtectedLayout><VendorStatus /></ProtectedLayout>
+        </Route>
+
         {/* Vendor Routes */}
         <Route path="/vendor">
           <ProtectedLayout><RoleGuard requiredRole="vendor"><VendorDashboard /></RoleGuard></ProtectedLayout>
@@ -128,6 +141,10 @@ function Router() {
         </Route>
         <Route path="/vendor/orders">
           <ProtectedLayout><RoleGuard requiredRole="vendor"><VendorOrders /></RoleGuard></ProtectedLayout>
+        </Route>
+
+        <Route path="/admin">
+          <ProtectedLayout><AdminGuard><Admin /></AdminGuard></ProtectedLayout>
         </Route>
 
         <Route>

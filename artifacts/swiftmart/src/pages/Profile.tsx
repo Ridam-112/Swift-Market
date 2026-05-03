@@ -1,18 +1,17 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AddressCard } from "@/components/AddressCard";
 import { AddressForm } from "@/components/AddressForm";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { LogOut, MapPin, Store } from "lucide-react";
+import { LogOut, MapPin, Store, Clock, XCircle, Shield } from "lucide-react";
 
 export default function Profile() {
-  const { user, logout, updateUser, addAddress, deleteAddress, setRole, role } = useAuth();
+  const { user, logout, updateUser, addAddress, deleteAddress, setRole, role, isAdmin } = useAuth();
   const [, setLocation] = useLocation();
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -27,19 +26,6 @@ export default function Profile() {
     updateUser({ name, email });
     setIsEditing(false);
     toast.success("Profile updated");
-  };
-
-  const handleVendorToggle = (checked: boolean) => {
-    updateUser({ isVendorRegistered: checked });
-    if (checked) {
-      if (!user.vendorProfile) {
-        updateUser({ vendorProfile: { storeName: `${user.name}'s Store`, gstin: "Pending" } });
-      }
-      toast.success("Registered as Vendor successfully!");
-    } else {
-      setRole('customer');
-      toast.info("Unregistered from Vendor");
-    }
   };
 
   return (
@@ -78,35 +64,79 @@ export default function Profile() {
 
       {/* Vendor Settings */}
       <section className="bg-card p-5 rounded-3xl neu-card">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary neu-inset">
-              <Store className="w-5 h-5" />
+        {user.vendorStatus === 'none' && (
+          <div className="text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary neu-inset mx-auto mb-2">
+              <Store className="w-6 h-6" />
             </div>
-            <div>
-              <h3 className="font-bold">Register as Vendor</h3>
-              <p className="text-xs text-muted-foreground">Start selling on SwiftMart</p>
+            <h3 className="font-bold text-lg">Sell on SwiftMart</h3>
+            <p className="text-sm text-muted-foreground">Join 500+ sellers. Easy setup, fast payouts.</p>
+            <Link href="/vendor-register">
+              <Button className="w-full mt-2 rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90">
+                Start Selling
+              </Button>
+            </Link>
+          </div>
+        )}
+
+        {user.vendorStatus === 'pending' && (
+          <div className="text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 neu-inset mx-auto mb-2 dark:bg-amber-900/50 dark:text-amber-500">
+              <Clock className="w-6 h-6" />
+            </div>
+            <h3 className="font-bold text-lg text-amber-900 dark:text-amber-50">Application Under Review</h3>
+            <Link href="/vendor-status">
+              <Button variant="outline" className="w-full mt-2 rounded-xl border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900/30 neu-inset">
+                Check Status
+              </Button>
+            </Link>
+          </div>
+        )}
+
+        {user.vendorStatus === 'approved' && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-green-600 neu-inset dark:bg-green-900/50 dark:text-green-500">
+                <Store className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground">Your Store</h3>
+                <p className="text-xs text-green-600 dark:text-green-400 font-medium">Verified Seller</p>
+              </div>
+            </div>
+            <div className="p-4 bg-background rounded-2xl neu-inset space-y-3">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">Store Name</span>
+                <span className="font-bold text-foreground">{user.vendorProfile?.storeName}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">Category</span>
+                <span className="font-bold text-foreground capitalize">{user.vendorProfile?.storeCategory.replace('-', ' ')}</span>
+              </div>
+              <Button 
+                className="w-full mt-4 rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => {
+                  setRole(role === 'vendor' ? 'customer' : 'vendor');
+                  if (role !== 'vendor') setLocation("/vendor");
+                }}
+              >
+                Switch to {role === 'vendor' ? 'Customer' : 'Vendor'} Dashboard
+              </Button>
             </div>
           </div>
-          <Switch checked={user.isVendorRegistered} onCheckedChange={handleVendorToggle} />
-        </div>
+        )}
 
-        {user.isVendorRegistered && (
-          <div className="mt-6 p-4 bg-background rounded-2xl neu-inset space-y-3">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Store Name</span>
-              <span className="font-bold">{user.vendorProfile?.storeName}</span>
+        {user.vendorStatus === 'rejected' && (
+          <div className="text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center text-red-600 neu-inset mx-auto mb-2 dark:bg-red-900/50 dark:text-red-500">
+              <XCircle className="w-6 h-6" />
             </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">GSTIN</span>
-              <span className="font-bold">{user.vendorProfile?.gstin}</span>
-            </div>
-            <Button 
-              className="w-full mt-2 rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => setRole(role === 'vendor' ? 'customer' : 'vendor')}
-            >
-              Switch to {role === 'vendor' ? 'Customer' : 'Vendor'} Dashboard
-            </Button>
+            <h3 className="font-bold text-lg text-red-900 dark:text-red-50">Application Rejected</h3>
+            <Link href="/vendor-register">
+              <Button className="w-full mt-2 rounded-xl shadow-none neu-card bg-red-600 text-white hover:bg-red-700">
+                Re-apply
+              </Button>
+            </Link>
           </div>
         )}
       </section>
@@ -152,6 +182,16 @@ export default function Profile() {
           )}
         </div>
       </section>
+
+      {isAdmin && (
+        <section>
+          <Link href="/admin">
+            <Button variant="outline" className="w-full rounded-2xl h-14 font-bold text-lg shadow-none neu-inset bg-background text-foreground border-none">
+              <Shield className="w-5 h-5 mr-2 text-primary" /> Admin Panel
+            </Button>
+          </Link>
+        </section>
+      )}
 
       <Button 
         variant="destructive" 

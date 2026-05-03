@@ -1,9 +1,10 @@
 import React, { createContext, useState, useEffect } from "react";
-import { User, Address } from "@/types";
+import { User, Address, VendorApplication, VendorStatus } from "@/types";
 
 interface AuthContextType {
   user: User | null;
   role: 'customer' | 'vendor';
+  isAdmin: boolean;
   isLoading: boolean;
   selectedDeliveryAddress: Address | null;
   setSelectedDeliveryAddress: (address: Address | null) => void;
@@ -17,11 +18,17 @@ interface AuthContextType {
   verifyOtp: (otp: string, phone: string) => { isNewUser: boolean; user?: User };
   loginWithGoogle: () => { isNewUser: boolean; user?: User; mockEmail?: string; mockName?: string };
   completeOnboarding: (name: string, phone: string, address: Address, email?: string) => void;
+  
+  applications: VendorApplication[];
+  submitVendorApplication: (app: Omit<VendorApplication, 'id' | 'userId' | 'userName' | 'userPhone' | 'submittedAt' | 'status'>) => void;
+  approveApplication: (applicationId: string) => void;
+  rejectApplication: (applicationId: string, reason: string) => void;
 }
 
 const mockExistingUsers: User[] = [
-  { id: "u1", name: "Rahul Sharma", phone: "9876543210", email: "rahul@example.com", addresses: [], isVendorRegistered: false },
-  { id: "u2", name: "Priya Patel", phone: "9999999999", email: "priya@example.com", addresses: [], isVendorRegistered: false }
+  { id: "u1", name: "Rahul Sharma", phone: "9876543210", email: "rahul@example.com", addresses: [], isVendorRegistered: false, vendorStatus: 'none' },
+  { id: "u2", name: "Priya Patel", phone: "9999999999", email: "priya@example.com", addresses: [], isVendorRegistered: false, vendorStatus: 'none' },
+  { id: "admin1", name: "Admin", phone: "0000000000", email: "admin@swiftmart.com", addresses: [], isVendorRegistered: false, vendorStatus: 'none' }
 ];
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -31,10 +38,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRoleState] = useState<'customer' | 'vendor'>('customer');
   const [selectedDeliveryAddress, setSelectedDeliveryAddress] = useState<Address | null>(null);
+  const [applications, setApplications] = useState<VendorApplication[]>([]);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("swiftmart_user");
     const savedRole = localStorage.getItem("swiftmart_role");
+    const savedApps = localStorage.getItem("swiftmart_vendor_applications");
     
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
@@ -45,6 +54,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     if (savedRole) {
       setRoleState(savedRole as 'customer' | 'vendor');
+    }
+    if (savedApps) {
+      setApplications(JSON.parse(savedApps));
     }
     
     // Simulate hydration delay for skeleton
@@ -69,6 +81,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [role, isLoading]);
 
+  useEffect(() => {
+    if (!isLoading) {
+      localStorage.setItem("swiftmart_vendor_applications", JSON.stringify(applications));
+    }
+  }, [applications, isLoading]);
+
   const login = (phone: string, name: string) => {
     const newUser: User = {
       id: `u_${Date.now()}`,
@@ -76,7 +94,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       phone,
       email: "",
       addresses: [],
-      isVendorRegistered: false
+      isVendorRegistered: false,
+      vendorStatus: 'none'
     };
     setUser(newUser);
     setRoleState('customer');
@@ -91,7 +110,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const setRole = (newRole: 'customer' | 'vendor') => {
-    if (user?.isVendorRegistered || newRole === 'customer') {
+    if (newRole === 'customer') {
+      setRoleState(newRole);
+    } else if (user?.vendorStatus === 'approved') {
       setRoleState(newRole);
     }
   };
@@ -137,16 +158,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       phone,
       email: email || "",
       addresses: [address],
-      isVendorRegistered: false
+      isVendorRegistered: false,
+      vendorStatus: 'none'
     };
     setUser(newUser);
     setSelectedDeliveryAddress(address);
   };
 
+  const submitVendorApplication = (appData: Omit<VendorApplication, 'id' | 'userId' | 'userName' | 'userPhone' | 'submittedAt' | 'status'>) => {
+    if (!user) return;
+    
+    const newApp: VendorApplication = {
+      ...appData,
+      id: `va_${Date.now()}`,
+      userId: user.id,
+      userName: user.name,
+      userPhone: user.phone,
+      submittedAt: new Date().toISOString(),
+      status: 'pending'
+    };
+
+    setApplications(prev => [...prev, newApp]);
+    updateUser({ 
+      vendorStatus: 'pending',
+      vendorApplicationId: newApp.id,
+      isVendorRegistered: true
+    });
+  };
+
+  const approveApplication = (applicationId: string) => {
+    setApplications(prev => prev.map(app => 
+      app.id === applicationId ? { ...app, status: 'approved' } : app
+    ));
+
+    const app = applications.find(a => a.id === applicationId);
+    if (app && user && user.id === app.userId) {
+      updateUser({
+        vendorStatus: 'approved',
+        vendorProfile: {
+          storeName: app.storeName,
+          storeCategory: app.storeCategory,
+          storeDescription: app.storeDescription,
+          upiId: app.upiId,
+          bankAccountNumber: app.bankAccountNumber,
+          bankIfscCode: app.bankIfscCode,
+          panNumber: app.panNumber,
+          gstNumber: app.gstNumber,
+        }
+      });
+    }
+  };
+
+  const rejectApplication = (applicationId: string, reason: string) => {
+    setApplications(prev => prev.map(app => 
+      app.id === applicationId ? { ...app, status: 'rejected', rejectionReason: reason } : app
+    ));
+
+    const app = applications.find(a => a.id === applicationId);
+    if (app && user && user.id === app.userId) {
+      updateUser({ vendorStatus: 'rejected' });
+    }
+  };
+
+  const isAdmin = user?.phone === "0000000000";
+
   return (
     <AuthContext.Provider value={{ 
-      user, role, isLoading, selectedDeliveryAddress, setSelectedDeliveryAddress, login, logout, setRole, updateUser, addAddress, deleteAddress,
-      loginWithPhone, verifyOtp, loginWithGoogle, completeOnboarding
+      user, role, isAdmin, isLoading, selectedDeliveryAddress, setSelectedDeliveryAddress, login, logout, setRole, updateUser, addAddress, deleteAddress,
+      loginWithPhone, verifyOtp, loginWithGoogle, completeOnboarding,
+      applications, submitVendorApplication, approveApplication, rejectApplication
     }}>
       {children}
     </AuthContext.Provider>
