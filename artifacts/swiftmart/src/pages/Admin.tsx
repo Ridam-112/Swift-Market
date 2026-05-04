@@ -1,7 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Link } from "wouter";
-import { SectionHeader } from "@/components/SectionHeader";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,89 +9,168 @@ import { toast } from "sonner";
 import { formatINR } from "@/lib/currency";
 import { 
   LayoutDashboard, Store, Users, FileText, TrendingUp, Ban, CheckCircle, 
-  XCircle, Clock, Search, Shield, Star, ShoppingBag, Trash2, Eye, 
-  ChevronDown, ChevronUp, Award, Building2, CreditCardIcon, User, AlertCircle
+  XCircle, Clock, Search, Shield, Star, ShoppingBag, Trash2, Eye, EyeOff,
+  ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
+  Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw
 } from "lucide-react";
-import { VendorApplication, VendorStatus, Vendor } from "@/types";
+import { VendorApplication, VendorStatus, Vendor, AdminCustomer, PlatformOrder, Report, TransactionLog } from "@/types";
 import { vendors } from "@/data/vendors";
-import { platformRevenue } from "@/data/adminData";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { 
+  platformRevenue, 
+  analyticsDaily, 
+  analyticsWeekly, 
+  analyticsMonthly, 
+  topSellingProducts 
+} from "@/data/adminData";
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 
-type TabValue = 'overview' | 'requests' | 'shops' | 'customers';
+type AdminSection = 'overview' | 'requests' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions';
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState<TabValue>('overview');
+  const [activeSection, setActiveSection] = useState<AdminSection>('overview');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { logout } = useAuth();
+  const [, setLocation] = useLocation();
+
+  const handleLogout = () => {
+    logout();
+    setLocation("/");
+  };
 
   return (
-    <div className="pb-24 pt-4 px-4 max-w-6xl mx-auto space-y-6">
-      <div className="flex flex-col space-y-2 mb-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
-          <Badge className="bg-primary/10 text-primary hover:bg-primary/20 neu-inset border-none gap-1 py-1">
-            <Shield className="w-3 h-3" /> Admin
-          </Badge>
+    <div className="min-h-[100dvh] flex bg-background font-sans selection:bg-primary selection:text-primary-foreground">
+      {/* Mobile Top Bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-card border-b border-border z-50 flex items-center justify-between px-4">
+        <button onClick={() => setMobileMenuOpen(true)} className="p-2 -ml-2 text-foreground">
+          <Menu className="w-6 h-6" />
+        </button>
+        <div className="font-bold text-foreground capitalize">{activeSection}</div>
+        <div className="flex items-center gap-1 font-bold text-primary">
+          SwiftMart <Shield className="w-4 h-4 text-primary" />
         </div>
-        <p className="text-sm text-muted-foreground">SwiftMart Platform</p>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide md:border-b md:border-border md:pb-0">
-        <TabButton id="overview" active={activeTab} onClick={setActiveTab} icon={LayoutDashboard} label="Overview" />
-        <RequestsTabButton id="requests" active={activeTab} onClick={setActiveTab} />
-        <TabButton id="shops" active={activeTab} onClick={setActiveTab} icon={Store} label="Shops" />
-        <TabButton id="customers" active={activeTab} onClick={setActiveTab} icon={Users} label="Customers" />
+      {/* Sidebar Overlay (Mobile) */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="md:hidden fixed inset-0 bg-black/50 z-50"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <motion.div 
+              initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }} transition={{ type: "tween", bounce: 0, duration: 0.3 }}
+              className="md:hidden fixed top-0 left-0 bottom-0 w-64 bg-card z-50 flex flex-col"
+            >
+              <SidebarContent activeSection={activeSection} setActiveSection={(s) => { setActiveSection(s); setMobileMenuOpen(false); }} handleLogout={handleLogout} />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar */}
+      <div className="hidden md:flex w-64 h-screen shrink-0 bg-card neu-card rounded-none border-r border-border flex-col sticky top-0">
+        <SidebarContent activeSection={activeSection} setActiveSection={setActiveSection} handleLogout={handleLogout} />
       </div>
 
-      <div className="mt-6">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            {activeTab === 'overview' && <OverviewTab />}
-            {activeTab === 'requests' && <ShopRequestsTab />}
-            {activeTab === 'shops' && <ShopsTab />}
-            {activeTab === 'customers' && <CustomersTab />}
-          </motion.div>
-        </AnimatePresence>
+      {/* Main Content Area */}
+      <div className="flex-1 h-[100dvh] overflow-y-auto pt-14 md:pt-0 bg-background">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeSection}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeSection === 'overview' && <OverviewTab onNavigate={setActiveSection} />}
+              {activeSection === 'requests' && <ShopRequestsTab />}
+              {activeSection === 'users' && <UsersTab />}
+              {activeSection === 'orders' && <OrdersTab />}
+              {activeSection === 'reports' && <ReportsTab />}
+              {activeSection === 'analytics' && <AnalyticsTab />}
+              {activeSection === 'transactions' && <TransactionsTab />}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
 }
 
-function TabButton({ id, active, onClick, icon: Icon, label, badge }: any) {
-  const isActive = active === id;
+function SidebarContent({ activeSection, setActiveSection, handleLogout }: { activeSection: AdminSection, setActiveSection: (s: AdminSection) => void, handleLogout: () => void }) {
+  const { applications, platformOrders, reports } = useAuth();
+  
+  const pendingRequests = applications.filter(a => a.status === 'pending').length;
+  const pendingOrders = platformOrders.filter(o => o.status === 'placed' || o.status === 'packed').length;
+  const openReports = reports.filter(r => r.status === 'open').length;
+
+  const navItems: { id: AdminSection, label: string, icon: any, badge?: number }[] = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'requests', label: 'Shop Requests', icon: FileText, badge: pendingRequests },
+    { id: 'users', label: 'Users', icon: Users },
+    { id: 'orders', label: 'Orders', icon: ShoppingBag, badge: pendingOrders },
+    { id: 'reports', label: 'Reports', icon: Flag, badge: openReports },
+    { id: 'analytics', label: 'Analytics', icon: BarChart2 },
+    { id: 'transactions', label: 'Transactions', icon: CreditCard },
+  ];
+
   return (
-    <button
-      onClick={() => onClick(id)}
-      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl md:rounded-b-none md:rounded-t-xl text-sm font-medium whitespace-nowrap transition-all ${
-        isActive 
-          ? 'bg-primary text-primary-foreground neu-card md:neu-none md:bg-transparent md:border-b-2 md:border-primary md:text-primary md:shadow-none' 
-          : 'bg-background text-muted-foreground neu-inset md:neu-none md:bg-transparent md:hover:bg-muted/50'
-      }`}
-    >
-      <Icon className="w-4 h-4" />
-      {label}
-      {badge > 0 && (
-        <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${isActive ? 'bg-primary-foreground/20 text-primary-foreground md:bg-primary md:text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-          {badge}
-        </span>
-      )}
-    </button>
+    <>
+      <div className="p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xl font-bold text-primary tracking-tight">SwiftMart</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wider">
+          <Shield className="w-3.5 h-3.5" /> Admin Panel
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-3 space-y-1">
+        {navItems.map(item => (
+          <button
+            key={item.id}
+            onClick={() => setActiveSection(item.id)}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${
+              activeSection === item.id 
+                ? 'bg-primary/10 text-primary font-semibold border-l-4 border-primary' 
+                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground font-medium'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <item.icon className={`w-5 h-5 ${activeSection === item.id ? 'text-primary' : 'opacity-70'}`} />
+              <span>{item.label}</span>
+            </div>
+            {!!item.badge && item.badge > 0 && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center ${
+                activeSection === item.id ? 'bg-primary text-primary-foreground' : 'bg-primary text-primary-foreground'
+              }`}>
+                {item.badge}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+      <div className="p-4 border-t border-border mt-auto">
+        <div className="bg-muted/30 p-3 rounded-xl mb-4 flex items-center justify-center text-xs font-mono text-muted-foreground">
+          ID: ADMIN-0000000000
+        </div>
+        <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl">
+          <LogOut className="w-4 h-4 mr-2" /> Logout
+        </Button>
+      </div>
+    </>
   );
 }
 
-function RequestsTabButton({ id, active, onClick }: any) {
-  const { applications } = useAuth();
-  const pendingCount = applications.filter(a => a.status === 'pending').length;
-  return <TabButton id={id} active={active} onClick={onClick} icon={FileText} label="Shop Requests" badge={pendingCount} />;
-}
+// ============================================================================
+// OVERVIEW SECTION
+// ============================================================================
 
-function OverviewTab() {
-  const { applications, adminCustomers, bannedVendorIds } = useAuth();
+function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) {
+  const { applications, adminCustomers, bannedVendorIds, platformOrders, reports, transactions } = useAuth();
   
   const allShops = useMemo(() => {
     return [
@@ -111,7 +189,7 @@ function OverviewTab() {
         pincode: "N/A",
         city: "N/A",
         phone: a.userPhone,
-        status: 'active',
+        status: 'active' as const,
         joinedAt: a.submittedAt,
         revenue: 0,
         commission: 0
@@ -123,6 +201,7 @@ function OverviewTab() {
   
   const totalRevenue = activeShops.reduce((sum, v) => sum + (v.revenue || 0), 0);
   const platformComm = activeShops.reduce((sum, v) => sum + (v.commission || 0), 0);
+  const openReports = reports.filter(r => r.status === 'open').length;
 
   const topShops = [...activeShops].sort((a, b) => (b.revenue || 0) - (a.revenue || 0)).slice(0, 3);
 
@@ -132,12 +211,10 @@ function OverviewTab() {
   };
 
   const recentActivity = [
-    { id: 1, type: 'order', icon: ShoppingBag, title: "New order placed", desc: "ORD-1005 at Sharma Kirana", time: "10 mins ago", color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/20" },
+    { id: 1, type: 'order', icon: ShoppingBag, title: "New order placed", desc: "ORD-2012 at StyleZone", time: "10 mins ago", color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/20" },
     { id: 2, type: 'shop', icon: Store, title: "New shop approved", desc: "Fresh Mart", time: "2 hours ago", color: "text-green-500", bg: "bg-green-50 dark:bg-green-950/20" },
     { id: 3, type: 'customer', icon: Users, title: "New customer joined", desc: "Priya Singh", time: "5 hours ago", color: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-950/20" },
-    { id: 4, type: 'order', icon: ShoppingBag, title: "New order placed", desc: "ORD-1004 at StyleZone", time: "1 day ago", color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/20" },
-    { id: 5, type: 'ban', icon: Ban, title: "Shop banned", desc: "Super Store", time: "1 day ago", color: "text-red-500", bg: "bg-red-50 dark:bg-red-950/20" },
-    { id: 6, type: 'customer', icon: Users, title: "New customer joined", desc: "Amit Patel", time: "2 days ago", color: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-950/20" },
+    { id: 4, type: 'report', icon: Flag, title: "New report opened", desc: "Regarding Fresh Tomatoes", time: "1 day ago", color: "text-red-500", bg: "bg-red-50 dark:bg-red-950/20" },
   ];
 
   return (
@@ -147,6 +224,18 @@ function OverviewTab() {
         <StatCard title="Platform Commission" value={formatLargeValue(platformComm)} icon={Award} color="text-amber-600" />
         <StatCard title="Active Shops" value={activeShops.length} icon={Store} color="text-blue-600" />
         <StatCard title="Total Customers" value={adminCustomers.length} icon={Users} color="text-purple-600" />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard title="Total Orders" value={platformOrders.length} icon={ShoppingBag} color="text-indigo-600" />
+        <StatCard title="Open Reports" value={openReports} icon={Flag} color="text-red-600" />
+        <StatCard title="Total Transactions" value={transactions.length} icon={CreditCard} color="text-teal-600" />
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <Button onClick={() => onNavigate('requests')} variant="outline" className="rounded-full bg-card neu-inset border-none text-foreground"><FileText className="w-4 h-4 mr-2 text-primary" /> View Pending Requests</Button>
+        <Button onClick={() => onNavigate('reports')} variant="outline" className="rounded-full bg-card neu-inset border-none text-foreground"><Flag className="w-4 h-4 mr-2 text-red-500" /> View Open Reports</Button>
+        <Button onClick={() => onNavigate('orders')} variant="outline" className="rounded-full bg-card neu-inset border-none text-foreground"><ShoppingBag className="w-4 h-4 mr-2 text-blue-500" /> View Orders</Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -160,10 +249,6 @@ function OverviewTab() {
                     <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
                     <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                   </linearGradient>
-                  <linearGradient id="colorComm" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                  </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} dy={10} />
@@ -174,7 +259,6 @@ function OverviewTab() {
                   labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px' }}
                 />
                 <Area type="monotone" dataKey="revenue" name="Revenue" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
-                <Area type="monotone" dataKey="commission" name="Commission" stroke="#22c55e" strokeWidth={3} fillOpacity={1} fill="url(#colorComm)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -209,9 +293,9 @@ function OverviewTab() {
           <div className="bg-card p-6 rounded-3xl neu-card">
             <h3 className="text-lg font-bold text-foreground mb-4">Recent Activity</h3>
             <div className="space-y-4 relative before:absolute before:inset-0 before:ml-4 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent hidden-before">
-              {recentActivity.map((activity, i) => (
-                <div key={activity.id} className="flex gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 shrink-0 ${activity.bg} ${activity.color}`}>
+              {recentActivity.map((activity) => (
+                <div key={activity.id} className="flex gap-3 relative z-10">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activity.bg} ${activity.color}`}>
                     <activity.icon className="w-4 h-4" />
                   </div>
                   <div>
@@ -230,7 +314,7 @@ function OverviewTab() {
 
 function StatCard({ title, value, icon: Icon, color }: any) {
   return (
-    <div className="bg-card p-4 md:p-6 rounded-2xl neu-card flex flex-col gap-2">
+    <div className="bg-card p-4 md:p-6 rounded-2xl md:rounded-3xl neu-card flex flex-col gap-2">
       <div className="flex justify-between items-start">
         <p className="text-xs md:text-sm font-medium text-muted-foreground">{title}</p>
         <Icon className={`w-5 h-5 ${color} opacity-80`} />
@@ -239,6 +323,10 @@ function StatCard({ title, value, icon: Icon, color }: any) {
     </div>
   );
 }
+
+// ============================================================================
+// SHOP REQUESTS SECTION
+// ============================================================================
 
 function ShopRequestsTab() {
   const { applications, approveApplication, rejectApplication } = useAuth();
@@ -270,6 +358,10 @@ function ShopRequestsTab() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <h2 className="text-2xl font-bold text-foreground">Shop Requests</h2>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-card p-4 rounded-2xl neu-card text-center">
           <div className="text-2xl font-bold text-foreground">{applications.length}</div>
@@ -356,7 +448,7 @@ function ShopRequestsTab() {
                 
                 <div className="space-y-2">
                   <div className="text-sm font-semibold flex items-center gap-2 text-foreground">
-                    <CreditCardIcon className="w-4 h-4" /> Payment Details
+                    <CreditCard className="w-4 h-4" /> Payment Details
                   </div>
                   <div className="text-sm grid grid-cols-[80px_1fr] gap-1">
                     <span className="text-muted-foreground">UPI:</span>
@@ -378,10 +470,10 @@ function ShopRequestsTab() {
                         className="bg-background neu-inset border-red-200 dark:border-red-900 resize-none h-20"
                       />
                       <div className="flex gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => { setRejectingId(null); setRejectReason(""); }} className="flex-1">
+                        <Button size="sm" variant="ghost" onClick={() => { setRejectingId(null); setRejectReason(""); }} className="flex-1 rounded-xl">
                           Cancel
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleReject(app.id)} className="flex-1 bg-red-600 hover:bg-red-700 shadow-none neu-card text-white">
+                        <Button size="sm" variant="destructive" onClick={() => handleReject(app.id)} className="flex-1 bg-red-600 hover:bg-red-700 shadow-none neu-card text-white rounded-xl">
                           Confirm Rejection
                         </Button>
                       </div>
@@ -413,11 +505,200 @@ function ShopRequestsTab() {
   );
 }
 
-function ShopsTab() {
+// ============================================================================
+// USERS SECTION (COMBINED CUSTOMERS & VENDORS)
+// ============================================================================
+
+function UsersTab() {
+  const [subTab, setSubTab] = useState<'customers' | 'vendors'>('customers');
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-foreground">User Management</h2>
+      </div>
+
+      <div className="flex gap-2 p-1 bg-background neu-inset rounded-xl max-w-fit">
+        <button
+          onClick={() => setSubTab('customers')}
+          className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
+            subTab === 'customers' ? 'bg-primary text-primary-foreground neu-card' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Customers
+        </button>
+        <button
+          onClick={() => setSubTab('vendors')}
+          className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
+            subTab === 'vendors' ? 'bg-primary text-primary-foreground neu-card' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Vendors
+        </button>
+      </div>
+
+      {subTab === 'customers' ? <CustomersList /> : <VendorsList />}
+    </div>
+  );
+}
+
+function CustomersList() {
+  const { adminCustomers, banCustomer, unbanCustomer } = useAuth();
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<'all' | 'active' | 'banned'>('all');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const filtered = adminCustomers.filter(c => {
+    if (filter !== 'all' && c.status !== filter) return false;
+    if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.phone.includes(search)) return false;
+    return true;
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input 
+            placeholder="Search customers by name or phone..." 
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-11 h-12 bg-card neu-inset rounded-2xl border-none"
+          />
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide shrink-0">
+          {(['all', 'active', 'banned'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium capitalize whitespace-nowrap transition-all ${
+                filter === f ? 'bg-primary text-primary-foreground neu-card' : 'bg-background text-muted-foreground neu-inset'
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {filtered.length === 0 ? (
+          <div className="text-center p-12 bg-card rounded-3xl neu-inset text-muted-foreground">
+            <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
+            <p>No customers found</p>
+          </div>
+        ) : (
+          filtered.map(c => (
+            <div key={c.id} className="bg-card rounded-3xl neu-card overflow-hidden">
+              <div 
+                className="p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-muted/10 transition-colors"
+                onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg shrink-0 neu-inset">
+                    {c.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-foreground">{c.name}</h3>
+                    <p className="text-sm text-muted-foreground font-mono">{c.phone}</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 md:flex md:items-center gap-4 md:gap-8 flex-1 md:justify-end text-sm">
+                  <div className="text-left md:text-right">
+                    <p className="text-muted-foreground text-xs">Total Spent</p>
+                    <p className="font-bold text-foreground">{formatINR(c.totalSpent)}</p>
+                  </div>
+                  <div className="text-left md:text-right">
+                    <p className="text-muted-foreground text-xs">Orders</p>
+                    <p className="font-bold text-foreground">{c.totalOrders}</p>
+                  </div>
+                  <div className="text-left md:text-right">
+                    <p className="text-muted-foreground text-xs">Status</p>
+                    {c.status === 'active' 
+                      ? <Badge className="bg-green-100 text-green-800 border-none px-2 rounded-full font-medium">Active</Badge>
+                      : <Badge className="bg-red-100 text-red-800 border-none px-2 rounded-full font-medium">Banned</Badge>
+                    }
+                  </div>
+                  <div className="flex items-center justify-end">
+                    {expandedId === c.id ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+                  </div>
+                </div>
+              </div>
+
+              {expandedId === c.id && (
+                <div className="px-4 md:px-6 pb-6 pt-2 border-t border-border/50 bg-background/50">
+                  <div className="flex flex-col md:flex-row justify-between gap-4 mb-4 mt-2">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Joined: {new Date(c.joinedAt).toLocaleDateString()}</p>
+                      <p className="text-sm text-muted-foreground">Email: {c.email || 'N/A'}</p>
+                    </div>
+                    <div>
+                      {c.status === 'active' ? (
+                        <Button 
+                          onClick={(e) => { e.stopPropagation(); banCustomer(c.id); toast.success("Customer banned"); }}
+                          variant="outline" 
+                          className="text-red-600 border-red-200 hover:bg-red-50 rounded-xl neu-inset bg-background shadow-none h-9"
+                        >
+                          <Ban className="w-4 h-4 mr-2" /> Ban User
+                        </Button>
+                      ) : (
+                        <Button 
+                          onClick={(e) => { e.stopPropagation(); unbanCustomer(c.id); toast.success("Customer unbanned"); }}
+                          className="bg-green-600 hover:bg-green-700 text-white rounded-xl neu-card shadow-none h-9"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" /> Unban User
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {c.orders.length > 0 ? (
+                    <div className="space-y-3 mt-4">
+                      <h4 className="font-semibold text-sm text-foreground">Recent Orders</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-muted-foreground border-b border-border">
+                              <th className="pb-2 font-medium">Order ID</th>
+                              <th className="pb-2 font-medium">Date</th>
+                              <th className="pb-2 font-medium">Shop</th>
+                              <th className="pb-2 font-medium">Items</th>
+                              <th className="pb-2 font-medium text-right">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {c.orders.map(o => (
+                              <tr key={o.id} className="border-b border-border/30 last:border-0">
+                                <td className="py-2 font-mono text-xs">{o.id}</td>
+                                <td className="py-2">{new Date(o.placedAt).toLocaleDateString()}</td>
+                                <td className="py-2 truncate max-w-[150px]">{o.vendorName}</td>
+                                <td className="py-2 text-muted-foreground">{o.items.length} items</td>
+                                <td className="py-2 text-right font-medium">{formatINR(o.total)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground mt-4 italic">No orders yet.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function VendorsList() {
   const { applications, bannedVendorIds, banVendor, unbanVendor, removeVendor } = useAuth();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [banningId, setBanningId] = useState<string | null>(null);
-  
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<'all' | 'active' | 'banned'>('all');
+
   const allShops = useMemo(() => {
     return [
       ...vendors,
@@ -435,312 +716,757 @@ function ShopsTab() {
         pincode: "N/A",
         city: "N/A",
         phone: a.userPhone,
-        status: 'active',
+        status: bannedVendorIds.includes(a.id) ? 'banned' as const : 'active' as const,
         joinedAt: a.submittedAt,
         revenue: 0,
         commission: 0
       }))
-    ];
-  }, [applications]);
+    ].map(v => ({
+      ...v,
+      status: bannedVendorIds.includes(v.id) ? 'banned' as const : 'active' as const
+    }));
+  }, [applications, bannedVendorIds]);
 
-  const filteredShops = allShops.filter(shop => {
-    const isMatch = shop.storeName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                    shop.ownerName.toLowerCase().includes(searchQuery.toLowerCase());
-    return isMatch;
+  const filtered = allShops.filter(s => {
+    if (filter !== 'all' && s.status !== filter) return false;
+    if (search && !s.storeName.toLowerCase().includes(search.toLowerCase()) && !s.ownerName.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
   });
 
   const handleBan = (id: string) => {
     banVendor(id);
-    setBanningId(null);
-    toast.success("Shop has been banned");
+    toast.success("Shop banned");
   };
 
   const handleUnban = (id: string) => {
     unbanVendor(id);
-    toast.success("Shop has been unbanned");
+    toast.success("Shop unbanned");
   };
 
   const handleRemove = (id: string) => {
     if (confirm("Are you sure you want to permanently remove this shop?")) {
       removeVendor(id);
-      toast.success("Shop removed permanently");
+      toast.success("Shop removed");
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="relative">
-        <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input 
-          placeholder="Search shops by name or owner..." 
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          className="pl-11 h-12 bg-card neu-inset rounded-2xl border-none focus-visible:ring-1 focus-visible:ring-primary"
-        />
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input 
+            placeholder="Search shops by name or owner..." 
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-11 h-12 bg-card neu-inset rounded-2xl border-none"
+          />
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide shrink-0">
+          {(['all', 'active', 'banned'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium capitalize whitespace-nowrap transition-all ${
+                filter === f ? 'bg-primary text-primary-foreground neu-card' : 'bg-background text-muted-foreground neu-inset'
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="space-y-4">
-        {filteredShops.length === 0 ? (
-          <div className="text-center p-12 bg-card rounded-3xl neu-inset text-muted-foreground border border-dashed border-border/50">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {filtered.length === 0 ? (
+          <div className="col-span-full text-center p-12 bg-card rounded-3xl neu-inset text-muted-foreground">
             <Store className="w-12 h-12 mx-auto mb-4 opacity-20" />
-            <p>No shops found matching "{searchQuery}"</p>
+            <p>No shops found</p>
           </div>
         ) : (
-          filteredShops.map(shop => {
-            const isBanned = bannedVendorIds.includes(shop.id);
-            return (
-              <div key={shop.id} className="bg-card p-5 rounded-3xl neu-card flex flex-col md:flex-row md:items-center gap-4">
-                <div className="flex items-center gap-4 flex-1">
-                  <img src={shop.image} alt={shop.storeName} className="w-16 h-16 rounded-xl object-cover bg-muted" />
-                  <div>
-                    <h3 className="font-bold text-lg text-foreground">{shop.storeName}</h3>
-                    <p className="text-sm text-muted-foreground">{shop.ownerName}</p>
-                    <Badge variant="outline" className="mt-1 text-[10px]">{shop.category}</Badge>
+          filtered.map(shop => (
+            <div key={shop.id} className={`bg-card p-6 rounded-3xl neu-card space-y-4 ${shop.status === 'banned' ? 'opacity-75 grayscale-[50%]' : ''}`}>
+              <div className="flex items-start gap-4">
+                <img src={shop.image} alt={shop.storeName} className="w-16 h-16 rounded-2xl object-cover bg-muted neu-inset" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-bold text-foreground truncate">{shop.storeName}</h3>
+                    {shop.status === 'banned' && <Badge className="bg-red-100 text-red-800 border-none shrink-0">Banned</Badge>}
                   </div>
-                </div>
-
-                <div className="flex gap-4 md:gap-8 justify-between md:justify-center px-2 py-3 bg-background rounded-xl neu-inset md:neu-none md:bg-transparent md:p-0">
-                  <div className="text-center md:text-left">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Orders</p>
-                    <p className="font-bold text-foreground">{shop.totalOrders}</p>
-                  </div>
-                  <div className="text-center md:text-left">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Revenue</p>
-                    <p className="font-bold text-foreground">{formatINR(shop.revenue || 0)}</p>
-                  </div>
-                  <div className="text-center md:text-left">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Comm</p>
-                    <p className="font-bold text-green-600">{formatINR(shop.commission || 0)}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 justify-between md:justify-end flex-1 md:flex-none">
-                  <Badge className={`px-2 py-1 border-none ${isBanned ? 'bg-red-100 text-red-700 hover:bg-red-100' : 'bg-green-100 text-green-700 hover:bg-green-100'}`}>
-                    {isBanned ? 'Banned' : 'Active'}
-                  </Badge>
-                  
-                  <div className="flex gap-2">
-                    {isBanned ? (
-                      <>
-                        <Button size="sm" variant="outline" onClick={() => handleUnban(shop.id)} className="border-green-200 text-green-600 hover:bg-green-50 h-8 rounded-lg">
-                          Unban
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleRemove(shop.id)} className="h-8 rounded-lg">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </>
-                    ) : banningId === shop.id ? (
-                      <div className="flex gap-2 bg-background p-1 rounded-lg neu-inset">
-                        <Button size="sm" variant="ghost" onClick={() => setBanningId(null)} className="h-7 text-xs">Cancel</Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleBan(shop.id)} className="h-7 text-xs">Confirm Ban</Button>
-                      </div>
-                    ) : (
-                      <>
-                        <Link href={`/shop/${shop.id}`}>
-                          <Button size="sm" variant="ghost" className="h-8 rounded-lg text-primary hover:text-primary hover:bg-primary/10">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </Link>
-                        <Button size="sm" variant="outline" onClick={() => setBanningId(shop.id)} className="border-red-200 text-red-600 hover:bg-red-50 h-8 rounded-lg">
-                          Ban Shop
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1 truncate">
+                    <User className="w-3 h-3" /> {shop.ownerName}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Joined: {new Date(shop.joinedAt).toLocaleDateString()}</p>
                 </div>
               </div>
-            );
-          })
+
+              <div className="grid grid-cols-2 gap-2 bg-background p-3 rounded-2xl neu-inset">
+                <div>
+                  <p className="text-xs text-muted-foreground">Revenue</p>
+                  <p className="font-bold text-foreground">{formatINR(shop.revenue)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Orders</p>
+                  <p className="font-bold text-foreground">{shop.totalOrders}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                {shop.status === 'active' ? (
+                  <Button 
+                    onClick={() => handleBan(shop.id)} 
+                    variant="outline" 
+                    className="flex-1 text-red-600 border-red-200 hover:bg-red-50 rounded-xl neu-inset bg-background shadow-none"
+                  >
+                    <Ban className="w-4 h-4 mr-2" /> Ban
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={() => handleUnban(shop.id)} 
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl neu-card shadow-none"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" /> Unban
+                  </Button>
+                )}
+                <Button 
+                  onClick={() => handleRemove(shop.id)} 
+                  variant="outline" 
+                  className="flex-1 text-red-600 border-red-200 hover:bg-red-50 rounded-xl neu-inset bg-background shadow-none"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" /> Remove
+                </Button>
+              </div>
+            </div>
+          ))
         )}
       </div>
     </div>
   );
 }
 
-function CustomersTab() {
-  const { adminCustomers, banCustomer, unbanCustomer } = useAuth();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<'all'|'active'|'banned'>('all');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+// ============================================================================
+// ORDERS SECTION
+// ============================================================================
 
-  const filteredCustomers = adminCustomers.filter(c => {
-    if (filter !== 'all' && c.status !== filter) return false;
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return c.name.toLowerCase().includes(q) || c.phone.includes(q);
+function OrdersTab() {
+  const { platformOrders, updateOrderStatus, refundOrder } = useAuth();
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<PlatformOrder['status'] | 'all'>('all');
+  const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
+
+  const filtered = platformOrders.filter(o => {
+    if (filter !== 'all' && o.status !== filter) return false;
+    if (search && !o.id.toLowerCase().includes(search.toLowerCase()) && 
+        !o.customerName.toLowerCase().includes(search.toLowerCase()) && 
+        !o.vendorName.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
   });
 
-  const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').substring(0, 2);
-  const getColors = (name: string) => {
-    const colors = ['bg-blue-100 text-blue-700', 'bg-emerald-100 text-emerald-700', 'bg-purple-100 text-purple-700', 'bg-amber-100 text-amber-700', 'bg-rose-100 text-rose-700'];
-    const idx = name.length % colors.length;
-    return colors[idx];
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case 'placed': return 'bg-blue-100 text-blue-800';
+      case 'packed': return 'bg-amber-100 text-amber-800';
+      case 'out_for_delivery': return 'bg-purple-100 text-purple-800';
+      case 'delivered': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-slate-100 text-slate-800';
+    }
   };
 
-  const isNewCustomer = (joinedAt: string) => {
-    const joined = new Date(joinedAt).getTime();
-    const now = new Date().getTime();
-    return (now - joined) < 7 * 24 * 60 * 60 * 1000;
-  };
-
-  const highlightText = (text: string, highlight: string) => {
-    if (!highlight.trim()) return <>{text}</>;
-    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
-    return (
-      <>
-        {parts.map((part, i) => 
-          part.toLowerCase() === highlight.toLowerCase() 
-            ? <span key={i} className="bg-yellow-200 dark:bg-yellow-900/50 rounded-sm">{part}</span> 
-            : part
-        )}
-      </>
-    );
+  const getPaymentColor = (status: string) => {
+    switch(status) {
+      case 'success': return 'bg-green-100 text-green-800';
+      case 'pending': return 'bg-amber-100 text-amber-800';
+      case 'failed': return 'bg-red-100 text-red-800';
+      case 'refunded': return 'bg-slate-100 text-slate-800';
+      default: return 'bg-slate-100 text-slate-800';
+    }
   };
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <h2 className="text-2xl font-bold text-foreground">Order Management</h2>
+        <Badge className="bg-primary/10 text-primary neu-inset border-none">{platformOrders.length} total</Badge>
+      </div>
+
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input 
-            placeholder="Search customers by name or phone..." 
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="pl-11 h-12 bg-card neu-inset rounded-2xl border-none focus-visible:ring-1 focus-visible:ring-primary"
+            placeholder="Search by Order ID, Customer, or Shop..." 
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-11 h-12 bg-card neu-inset rounded-2xl border-none"
           />
         </div>
-        <div className="flex gap-2 bg-card p-1 rounded-2xl neu-inset">
-          {(['all', 'active', 'banned'] as const).map(f => (
+        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide shrink-0">
+          {(['all', 'placed', 'packed', 'out_for_delivery', 'delivered', 'cancelled'] as const).map(f => (
             <button
               key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                filter === f 
-                  ? 'bg-background text-foreground shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground'
+              onClick={() => setFilter(f as any)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium capitalize whitespace-nowrap transition-all ${
+                filter === f ? 'bg-primary text-primary-foreground neu-card' : 'bg-background text-muted-foreground neu-inset'
               }`}
             >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
+              {f.replace(/_/g, ' ')}
             </button>
           ))}
         </div>
       </div>
 
       <div className="space-y-4">
-        {filteredCustomers.length === 0 ? (
-          <div className="text-center p-12 bg-card rounded-3xl neu-inset text-muted-foreground border border-dashed border-border/50">
-            <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
-            <p>No customers found</p>
+        {filtered.length === 0 ? (
+          <div className="text-center p-12 bg-card rounded-3xl neu-inset text-muted-foreground">
+            <ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-20" />
+            <p>No orders found</p>
           </div>
         ) : (
-          filteredCustomers.map(customer => (
-            <div key={customer.id} className="bg-card rounded-3xl neu-card overflow-hidden transition-all">
-              <div className="p-5 flex flex-col md:flex-row md:items-center gap-4">
-                <div className="flex items-center gap-4 flex-1">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shrink-0 ${getColors(customer.name)}`}>
-                    {getInitials(customer.name)}
+          filtered.map(o => (
+            <div key={o.id} className="bg-card p-4 md:p-6 rounded-3xl neu-card flex flex-col md:flex-row gap-6">
+              <div className="flex-1 space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="font-mono font-bold text-lg text-foreground">{o.id}</span>
+                  <Badge className={`${getStatusColor(o.status)} border-none neu-inset px-2.5 py-0.5 capitalize`}>
+                    {o.status.replace(/_/g, ' ')}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">{new Date(o.placedAt).toLocaleString()}</span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-background p-3 rounded-2xl neu-inset">
+                    <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Customer</p>
+                    <p className="font-medium text-foreground">{o.customerName}</p>
+                    <p className="text-sm text-muted-foreground">{o.customerPhone}</p>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-foreground">{highlightText(customer.name, searchQuery)}</h3>
-                    <p className="text-sm text-muted-foreground">{highlightText(customer.phone, searchQuery)} · {customer.email}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Joined {new Date(customer.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</p>
+                  <div className="bg-background p-3 rounded-2xl neu-inset">
+                    <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Shop</p>
+                    <p className="font-medium text-foreground">{o.vendorName}</p>
                   </div>
                 </div>
 
-                <div className="flex gap-2 flex-wrap flex-1 md:justify-center">
-                  <Badge variant="outline" className="bg-background neu-inset border-none text-xs text-muted-foreground">
-                    {customer.totalOrders} orders
-                  </Badge>
-                  <Badge variant="outline" className="bg-background neu-inset border-none text-xs text-muted-foreground">
-                    {formatINR(customer.totalSpent)} spent
-                  </Badge>
-                  {customer.lastOrderAt && (
-                    <Badge variant="outline" className="bg-background neu-inset border-none text-xs text-muted-foreground">
-                      Last order: {Math.floor((new Date().getTime() - new Date(customer.lastOrderAt).getTime()) / (1000 * 3600 * 24))}d ago
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-3 justify-between md:justify-end flex-1 md:flex-none">
-                  <div className="flex gap-2">
-                    {customer.status === 'banned' && <Badge className="bg-red-100 text-red-800 border-none hover:bg-red-100">Banned</Badge>}
-                    {customer.status === 'active' && isNewCustomer(customer.joinedAt) && <Badge className="bg-blue-100 text-blue-800 border-none hover:bg-blue-100">New</Badge>}
-                    {customer.status === 'active' && customer.totalOrders === 0 && <Badge className="bg-gray-100 text-gray-800 border-none hover:bg-gray-100">No Orders</Badge>}
-                    {customer.status === 'active' && !isNewCustomer(customer.joinedAt) && customer.totalOrders > 0 && <Badge className="bg-green-100 text-green-800 border-none hover:bg-green-100">Active</Badge>}
-                  </div>
-                  
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => setExpandedId(expandedId === customer.id ? null : customer.id)}
-                    className="rounded-xl bg-background neu-inset"
-                  >
-                    View Details {expandedId === customer.id ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
-                  </Button>
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Items: {o.items[0]?.name} {o.items.length > 1 ? `& ${o.items.length - 1} more` : ''}
+                  </p>
                 </div>
               </div>
 
-              <AnimatePresence>
-                {expandedId === customer.id && (
-                  <motion.div 
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="border-t border-border/50 bg-background/50 overflow-hidden"
-                  >
-                    <div className="p-5 space-y-6">
-                      <div>
-                        <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                          <ShoppingBag className="w-4 h-4" /> Order History
-                        </h4>
-                        {customer.orders.length === 0 ? (
-                          <p className="text-sm text-muted-foreground italic">No orders placed yet.</p>
-                        ) : (
-                          <div className="space-y-3">
-                            {customer.orders.map(order => (
-                              <div key={order.id} className="bg-background p-3 rounded-2xl neu-inset text-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-                                <div>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-mono font-medium text-foreground">{order.id}</span>
-                                    <span className="text-muted-foreground text-xs">{new Date(order.placedAt).toLocaleDateString()}</span>
-                                  </div>
-                                  <p className="text-muted-foreground text-xs">
-                                    {order.items[0]?.name} {order.items.length > 1 ? `& ${order.items.length - 1} more` : ''}
-                                  </p>
-                                  <p className="text-xs font-medium text-primary mt-1">{order.vendorName}</p>
-                                </div>
-                                <div className="flex items-center gap-4 text-right">
-                                  <div>
-                                    <p className="font-bold text-foreground">{formatINR(order.total)}</p>
-                                    <p className="text-[10px] text-muted-foreground uppercase">{order.paymentMethod}</p>
-                                  </div>
-                                  <Badge variant="secondary" className="bg-muted text-muted-foreground border-none text-[10px] uppercase">
-                                    {order.status.replace('_', ' ')}
-                                  </Badge>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+              <div className="w-full md:w-64 flex flex-col gap-3 shrink-0">
+                <div className="bg-background p-4 rounded-2xl neu-inset text-center">
+                  <p className="text-sm text-muted-foreground mb-1">Order Total</p>
+                  <p className="text-2xl font-bold text-foreground">{formatINR(o.total)}</p>
+                  <div className="mt-2 flex items-center justify-center gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">{o.paymentMethod}</span>
+                    <Badge className={`${getPaymentColor(o.paymentStatus)} border-none text-[10px] px-1.5 py-0`}>
+                      {o.paymentStatus}
+                    </Badge>
+                  </div>
+                </div>
 
-                      <div className="flex justify-end pt-4 border-t border-border/50">
-                        {customer.status === 'banned' ? (
-                          <Button onClick={() => { unbanCustomer(customer.id); toast.success("Customer unbanned"); }} variant="outline" className="border-green-200 text-green-600 hover:bg-green-50 rounded-xl">
-                            Unban Customer
-                          </Button>
-                        ) : (
-                          <Button onClick={() => { banCustomer(customer.id); toast.success("Customer banned"); }} variant="destructive" className="bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-none neu-card">
-                            Ban Customer
-                          </Button>
-                        )}
-                      </div>
+                <div className="flex flex-col gap-2">
+                  {updatingOrder === o.id ? (
+                    <div className="bg-background p-2 rounded-xl neu-inset flex gap-2">
+                      <select 
+                        className="flex-1 bg-transparent text-sm font-medium outline-none text-foreground"
+                        defaultValue={o.status}
+                        onChange={(e) => {
+                          updateOrderStatus(o.id, e.target.value as any);
+                          setUpdatingOrder(null);
+                          toast.success("Order status updated");
+                        }}
+                      >
+                        <option value="placed">Placed</option>
+                        <option value="packed">Packed</option>
+                        <option value="out_for_delivery">Out for Delivery</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                      <Button size="sm" variant="ghost" onClick={() => setUpdatingOrder(null)} className="h-8 px-2 rounded-lg"><X className="w-4 h-4"/></Button>
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  ) : (
+                    <Button onClick={() => setUpdatingOrder(o.id)} variant="outline" className="w-full rounded-xl bg-card neu-inset border-none shadow-none text-primary hover:text-primary">
+                      Update Status
+                    </Button>
+                  )}
+
+                  {o.paymentStatus === 'success' && o.status !== 'cancelled' && (
+                    <Button 
+                      onClick={() => {
+                        if(confirm(`Refund ${formatINR(o.total)} to customer?`)) {
+                          refundOrder(o.id);
+                          toast.success(`Refund initiated for ${formatINR(o.total)}`);
+                        }
+                      }}
+                      className="w-full bg-slate-800 hover:bg-slate-900 text-white rounded-xl shadow-none neu-card"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" /> Refund
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
           ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// REPORTS SECTION
+// ============================================================================
+
+function ReportsTab() {
+  const { reports, resolveReport, ignoreReport } = useAuth();
+  const [filter, setFilter] = useState<Report['status'] | 'all'>('all');
+
+  const filtered = reports.filter(r => filter === 'all' || r.status === filter);
+
+  const openCount = reports.filter(r => r.status === 'open').length;
+  const resolvedCount = reports.filter(r => r.status === 'resolved').length;
+  const ignoredCount = reports.filter(r => r.status === 'ignored').length;
+
+  const getReasonColor = (reason: string) => {
+    switch(reason) {
+      case 'fraud': return 'bg-red-100 text-red-800';
+      case 'fake_product': return 'bg-orange-100 text-orange-800';
+      case 'rude_behavior': return 'bg-purple-100 text-purple-800';
+      case 'wrong_delivery': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-slate-100 text-slate-800';
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <h2 className="text-2xl font-bold text-foreground">Reports & Complaints</h2>
+        <div className="flex gap-2">
+          <Badge className="bg-red-100 text-red-800 border-none neu-inset">{openCount} Open</Badge>
+          <Badge className="bg-green-100 text-green-800 border-none neu-inset hidden md:inline-flex">{resolvedCount} Resolved</Badge>
+          <Badge className="bg-slate-100 text-slate-800 border-none neu-inset hidden md:inline-flex">{ignoredCount} Ignored</Badge>
+        </div>
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        {(['all', 'open', 'resolved', 'ignored'] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-4 py-2 rounded-xl text-sm font-medium capitalize whitespace-nowrap transition-all ${
+              filter === f ? 'bg-primary text-primary-foreground neu-card' : 'bg-background text-muted-foreground neu-inset'
+            }`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {filtered.length === 0 ? (
+          <div className="col-span-full text-center p-12 bg-card rounded-3xl neu-inset text-muted-foreground">
+            <Flag className="w-12 h-12 mx-auto mb-4 opacity-20" />
+            <p>No reports found</p>
+          </div>
+        ) : (
+          filtered.map(r => (
+            <div key={r.id} className="bg-card p-6 rounded-3xl neu-card space-y-4 flex flex-col">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-foreground">{r.id}</span>
+                    <Badge className={`${r.type === 'shop' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'} border-none neu-inset capitalize px-2 py-0.5`}>
+                      {r.type}
+                    </Badge>
+                    <Badge className={`${r.status === 'open' ? 'bg-red-100 text-red-800' : r.status === 'resolved' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'} border-none neu-inset capitalize px-2 py-0.5`}>
+                      {r.status}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{new Date(r.reportedAt).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="bg-background p-3 rounded-2xl neu-inset space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  {r.type === 'shop' ? <Store className="w-4 h-4 text-primary" /> : <Package className="w-4 h-4 text-primary" />}
+                  Reported: {r.targetName}
+                </div>
+                <div className="text-xs text-muted-foreground border-t border-border pt-2">
+                  By: <span className="font-medium text-foreground">{r.reportedBy}</span> · {r.reporterPhone}
+                </div>
+              </div>
+
+              <div>
+                <Badge className={`${getReasonColor(r.reason)} border-none mb-2 px-2 py-0.5 capitalize`}>
+                  {r.reason.replace('_', ' ')}
+                </Badge>
+                <p className="text-sm italic text-muted-foreground line-clamp-3">"{r.description}"</p>
+              </div>
+
+              <div className="mt-auto pt-4 flex gap-2">
+                {r.status === 'open' ? (
+                  <>
+                    <Button 
+                      onClick={() => { resolveReport(r.id); toast.success("Report marked as resolved"); }} 
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl neu-card shadow-none"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" /> Resolve
+                    </Button>
+                    <Button 
+                      onClick={() => { ignoreReport(r.id); toast.success("Report ignored"); }} 
+                      variant="outline" 
+                      className="flex-1 text-slate-600 border-slate-200 hover:bg-slate-50 rounded-xl neu-inset bg-background shadow-none"
+                    >
+                      <EyeOff className="w-4 h-4 mr-2" /> Ignore
+                    </Button>
+                  </>
+                ) : (
+                  <div className="w-full text-center p-2 bg-background neu-inset rounded-xl text-sm font-medium text-muted-foreground capitalize">
+                    {r.status}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// ANALYTICS SECTION
+// ============================================================================
+
+function AnalyticsTab() {
+  const [period, setPeriod] = useState<'Daily' | 'Weekly' | 'Monthly'>('Daily');
+  
+  const data = period === 'Daily' ? analyticsDaily : period === 'Weekly' ? analyticsWeekly : analyticsMonthly;
+  
+  const totalRev = data.reduce((sum, d) => sum + d.revenue, 0);
+  const totalOrd = data.reduce((sum, d) => sum + d.orders, 0);
+  const totalNewUsers = data.reduce((sum, d) => sum + d.newUsers, 0);
+  const totalComm = data.reduce((sum, d) => sum + d.commission, 0);
+
+  const maxUnits = topSellingProducts.length > 0 ? topSellingProducts[0].unitsSold : 1;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h2 className="text-2xl font-bold text-foreground">Platform Analytics</h2>
+        <div className="flex gap-1 p-1 bg-background neu-inset rounded-xl max-w-fit">
+          {(['Daily', 'Weekly', 'Monthly'] as const).map(p => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                period === p ? 'bg-primary text-primary-foreground neu-card' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard title="Total Revenue" value={formatINR(totalRev)} icon={TrendingUp} color="text-green-600" />
+        <StatCard title="Total Orders" value={totalOrd} icon={ShoppingBag} color="text-blue-600" />
+        <StatCard title="New Users" value={totalNewUsers} icon={Users} color="text-purple-600" />
+        <StatCard title="Commission" value={formatINR(totalComm)} icon={Award} color="text-amber-600" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-card p-6 rounded-3xl neu-card">
+          <h3 className="text-lg font-bold text-foreground mb-4">Revenue & Orders ({period})</h3>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRev2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorOrd2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} dy={10} />
+                <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} tickFormatter={(v) => `₹${v/1000}k`} />
+                <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '12px', border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  itemStyle={{ color: 'hsl(var(--foreground))' }}
+                  labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px' }}
+                />
+                <Area yAxisId="left" type="monotone" dataKey="revenue" name="Revenue" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorRev2)" />
+                <Area yAxisId="right" type="monotone" dataKey="orders" name="Orders" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorOrd2)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-card p-6 rounded-3xl neu-card">
+          <h3 className="text-lg font-bold text-foreground mb-4">New Users ({period})</h3>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={32}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '12px', border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  itemStyle={{ color: 'hsl(var(--foreground))' }}
+                  cursor={{ fill: 'hsl(var(--muted)/0.3)' }}
+                />
+                <Bar dataKey="newUsers" name="New Users" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-card p-6 rounded-3xl neu-card space-y-6">
+          <div>
+            <h3 className="text-lg font-bold text-foreground">Top Selling Products</h3>
+            <p className="text-sm text-muted-foreground">By units sold this period</p>
+          </div>
+          
+          <div className="space-y-5">
+            {topSellingProducts.map((p, i) => (
+              <div key={p.id} className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                    i === 0 ? 'bg-amber-400 text-white' : i === 1 ? 'bg-slate-400 text-white' : i === 2 ? 'bg-amber-700 text-white' : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {i + 1}
+                  </div>
+                  <img src={p.image} alt={p.name} className="w-10 h-10 rounded-xl object-cover bg-muted neu-inset shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{p.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 border-none bg-background neu-inset capitalize">
+                        {p.category.replace('-', ' ')}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground truncate">{p.vendorName}</span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold text-foreground">{p.unitsSold} units</p>
+                    <p className="text-[10px] text-muted-foreground">{formatINR(p.revenue)}</p>
+                  </div>
+                </div>
+                <div className="h-1.5 w-full bg-background neu-inset rounded-full overflow-hidden ml-9">
+                  <div 
+                    className="h-full bg-primary rounded-full" 
+                    style={{ width: `${(p.unitsSold / maxUnits) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-card p-6 rounded-3xl neu-card space-y-6">
+          <div>
+            <h3 className="text-lg font-bold text-foreground">Top Shops</h3>
+            <p className="text-sm text-muted-foreground">By total revenue</p>
+          </div>
+          
+          <div className="space-y-4">
+            {vendors.sort((a, b) => b.revenue - a.revenue).map((shop, i) => (
+              <div key={shop.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-background neu-inset rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <img src={shop.image} alt={shop.storeName} className="w-12 h-12 rounded-full object-cover bg-muted" />
+                    <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5">
+                      <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">{shop.storeName}</p>
+                    <p className="text-xs text-muted-foreground">{shop.totalOrders} total orders</p>
+                  </div>
+                </div>
+                <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 border-t sm:border-t-0 border-border/50 pt-2 sm:pt-0">
+                  <p className="font-bold text-foreground">{formatINR(shop.revenue)}</p>
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-none">
+                    Comm: {formatINR(shop.commission)}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// TRANSACTIONS SECTION
+// ============================================================================
+
+function TransactionsTab() {
+  const { transactions } = useAuth();
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<TransactionLog['status'] | 'all'>('all');
+  const [dateFilter, setDateFilter] = useState<'7' | '30' | 'all'>('all');
+
+  const filtered = transactions.filter(t => {
+    if (filter !== 'all' && t.status !== filter) return false;
+    if (search && !t.id.toLowerCase().includes(search.toLowerCase()) && 
+        !t.orderId.toLowerCase().includes(search.toLowerCase()) &&
+        !t.customerName.toLowerCase().includes(search.toLowerCase())) return false;
+    
+    if (dateFilter !== 'all') {
+      const days = parseInt(dateFilter);
+      const cutoff = new Date(Date.now() - 86400000 * days);
+      if (new Date(t.createdAt) < cutoff) return false;
+    }
+    
+    return true;
+  });
+
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case 'success': return 'bg-green-100 text-green-800';
+      case 'pending': return 'bg-amber-100 text-amber-800';
+      case 'failed': return 'bg-red-100 text-red-800';
+      case 'refunded': return 'bg-slate-200 text-slate-800';
+      default: return 'bg-slate-100 text-slate-800';
+    }
+  };
+
+  const totalAmount = filtered.reduce((sum, t) => sum + t.amount, 0);
+  const successCount = filtered.filter(t => t.status === 'success').length;
+  const failedCount = filtered.filter(t => t.status === 'failed').length;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <h2 className="text-2xl font-bold text-foreground">Transaction Logs</h2>
+        <Badge className="bg-primary/10 text-primary neu-inset border-none">{transactions.length} total</Badge>
+      </div>
+
+      <div className="flex flex-col gap-4 bg-card p-4 rounded-3xl neu-card">
+        <div className="relative flex-1">
+          <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input 
+            placeholder="Search by TXN ID, Order ID, or Customer..." 
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-11 h-12 bg-background neu-inset rounded-2xl border-none"
+          />
+        </div>
+        
+        <div className="flex flex-col md:flex-row justify-between gap-4">
+          <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+            {(['all', 'success', 'pending', 'failed', 'refunded'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f as any)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium capitalize whitespace-nowrap transition-all ${
+                  filter === f ? 'bg-primary text-primary-foreground neu-card' : 'bg-background text-muted-foreground neu-inset'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide bg-background neu-inset p-1 rounded-2xl">
+            <button onClick={() => setDateFilter('7')} className={`px-4 py-1.5 rounded-xl text-sm font-medium whitespace-nowrap ${dateFilter === '7' ? 'bg-card neu-card text-foreground' : 'text-muted-foreground'}`}>Last 7 days</button>
+            <button onClick={() => setDateFilter('30')} className={`px-4 py-1.5 rounded-xl text-sm font-medium whitespace-nowrap ${dateFilter === '30' ? 'bg-card neu-card text-foreground' : 'text-muted-foreground'}`}>Last 30 days</button>
+            <button onClick={() => setDateFilter('all')} className={`px-4 py-1.5 rounded-xl text-sm font-medium whitespace-nowrap ${dateFilter === 'all' ? 'bg-card neu-card text-foreground' : 'text-muted-foreground'}`}>All time</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-card rounded-3xl neu-card overflow-hidden">
+        {filtered.length === 0 ? (
+          <div className="text-center p-12 text-muted-foreground">
+            <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-20" />
+            <p>No transactions found</p>
+          </div>
+        ) : (
+          <>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-background/50 text-muted-foreground text-xs uppercase tracking-wider font-semibold border-b border-border/50">
+                  <tr>
+                    <th className="p-4">TXN ID</th>
+                    <th className="p-4">Order ID</th>
+                    <th className="p-4">Customer</th>
+                    <th className="p-4">Vendor</th>
+                    <th className="p-4">Amount</th>
+                    <th className="p-4">Method</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm divide-y divide-border/50">
+                  {filtered.map(t => (
+                    <tr key={t.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="p-4 font-mono font-medium text-foreground">{t.id}</td>
+                      <td className="p-4 font-mono text-muted-foreground">{t.orderId}</td>
+                      <td className="p-4">{t.customerName}</td>
+                      <td className="p-4 text-muted-foreground truncate max-w-[150px]">{t.vendorName}</td>
+                      <td className="p-4 font-bold text-foreground">{formatINR(t.amount)}</td>
+                      <td className="p-4"><span className="px-2 py-1 bg-background neu-inset rounded-lg text-xs font-medium">{t.method}</span></td>
+                      <td className="p-4">
+                        <Badge className={`${getStatusColor(t.status)} border-none px-2 py-0.5 capitalize`}>{t.status}</Badge>
+                      </td>
+                      <td className="p-4 text-muted-foreground text-xs">{new Date(t.createdAt).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile View */}
+            <div className="md:hidden divide-y divide-border/50">
+              {filtered.map(t => (
+                <div key={t.id} className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-foreground">{t.id}</span>
+                    <Badge className={`${getStatusColor(t.status)} border-none px-2 py-0.5 capitalize`}>{t.status}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center bg-background neu-inset p-3 rounded-2xl">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Order</p>
+                      <p className="font-mono text-sm">{t.orderId}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">{t.method}</p>
+                      <p className="font-bold text-lg">{formatINR(t.amount)}</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <div>
+                      <p className="text-foreground font-medium">{t.customerName}</p>
+                      <p className="text-xs text-muted-foreground truncate max-w-[150px]">{t.vendorName}</p>
+                    </div>
+                    <div className="text-right text-xs text-muted-foreground pt-1">
+                      {new Date(t.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="bg-background/80 border-t border-border/50 p-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+              <div>Showing <span className="font-bold text-foreground">{filtered.length}</span> transactions</div>
+              <div className="flex gap-4">
+                <span>Success: <span className="text-green-600 font-bold">{successCount}</span></span>
+                <span>Failed: <span className="text-red-600 font-bold">{failedCount}</span></span>
+                <span className="bg-card neu-inset px-3 py-1 rounded-xl text-foreground font-bold border border-border">Total: {formatINR(totalAmount)}</span>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

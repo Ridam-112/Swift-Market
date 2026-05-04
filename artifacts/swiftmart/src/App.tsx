@@ -73,6 +73,14 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthGuard>
+      {children}
+    </AuthGuard>
+  );
+}
+
 function Router() {
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background font-sans selection:bg-primary selection:text-primary-foreground overflow-x-hidden w-full">

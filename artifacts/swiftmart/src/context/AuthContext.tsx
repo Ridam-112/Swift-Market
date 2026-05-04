@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect } from "react";
-import { User, Address, VendorApplication, VendorStatus, AdminCustomer } from "@/types";
-import { mockAdminCustomers } from "@/data/adminData";
+import { User, Address, VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog } from "@/types";
+import { mockAdminCustomers, mockPlatformOrders, mockReports, mockTransactions } from "@/data/adminData";
 
 interface AuthContextType {
   user: User | null;
@@ -32,6 +32,14 @@ interface AuthContextType {
   banVendor: (vendorId: string) => void;
   unbanVendor: (vendorId: string) => void;
   removeVendor: (vendorId: string) => void;
+
+  platformOrders: PlatformOrder[];
+  updateOrderStatus: (orderId: string, status: PlatformOrder['status']) => void;
+  refundOrder: (orderId: string) => void;
+  reports: Report[];
+  resolveReport: (reportId: string) => void;
+  ignoreReport: (reportId: string) => void;
+  transactions: TransactionLog[];
 }
 
 const mockExistingUsers: User[] = [
@@ -50,6 +58,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [applications, setApplications] = useState<VendorApplication[]>([]);
   const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>(mockAdminCustomers);
   const [bannedVendorIds, setBannedVendorIds] = useState<string[]>([]);
+  const [platformOrders, setPlatformOrders] = useState<PlatformOrder[]>(mockPlatformOrders);
+  const [reports, setReports] = useState<Report[]>(mockReports);
+  const [transactions, setTransactions] = useState<TransactionLog[]>(mockTransactions);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("swiftmart_user");
@@ -280,6 +291,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Since vendors array is static right now, we can also add it to banned to hide it, but the spec says "set application status to 'rejected' with reason 'Removed by admin'". We'll handle this in the UI.
   };
 
+  const updateOrderStatus = (orderId: string, status: PlatformOrder['status']) => {
+    setPlatformOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        const updates: Partial<PlatformOrder> = { status, updatedAt: new Date().toISOString() };
+        if (status === 'cancelled') {
+          updates.paymentStatus = 'pending'; // refund pending
+        }
+        return { ...o, ...updates };
+      }
+      return o;
+    }));
+  };
+
+  const refundOrder = (orderId: string) => {
+    setPlatformOrders(prev => prev.map(o => 
+      o.id === orderId 
+        ? { ...o, paymentStatus: 'refunded', refundedAt: new Date().toISOString(), status: 'cancelled', updatedAt: new Date().toISOString() }
+        : o
+    ));
+  };
+
+  const resolveReport = (reportId: string) => {
+    setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'resolved' } : r));
+  };
+
+  const ignoreReport = (reportId: string) => {
+    setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'ignored' } : r));
+  };
+
   const isAdmin = user?.phone === "0000000000";
 
   return (
@@ -287,7 +327,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user, role, isAdmin, isLoading, selectedDeliveryAddress, setSelectedDeliveryAddress, login, logout, setRole, updateUser, addAddress, deleteAddress,
       loginWithPhone, verifyOtp, loginWithGoogle, completeOnboarding,
       applications, submitVendorApplication, approveApplication, rejectApplication,
-      adminCustomers, banCustomer, unbanCustomer, bannedVendorIds, banVendor, unbanVendor, removeVendor
+      adminCustomers, banCustomer, unbanCustomer, bannedVendorIds, banVendor, unbanVendor, removeVendor,
+      platformOrders, updateOrderStatus, refundOrder, reports, resolveReport, ignoreReport, transactions
     }}>
       {children}
     </AuthContext.Provider>

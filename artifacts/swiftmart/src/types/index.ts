@@ -137,3 +137,52 @@ export interface PlatformRevenuePoint {
   orders: number;
   commission: number;
 }
+
+export interface PlatformOrder {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  vendorId: string;
+  vendorName: string;
+  items: { name: string; qty: number; price: number; category: string }[];
+  total: number;
+  status: 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  paymentMethod: 'UPI' | 'Card' | 'COD';
+  paymentStatus: 'success' | 'failed' | 'pending' | 'refunded';
+  placedAt: string;
+  updatedAt: string;
+  refundedAt?: string;
+}
+
+export interface Report {
+  id: string;
+  type: 'shop' | 'product';
+  targetId: string;
+  targetName: string;
+  reportedBy: string;
+  reporterPhone: string;
+  reason: 'fraud' | 'fake_product' | 'rude_behavior' | 'wrong_delivery' | 'other';
+  description: string;
+  reportedAt: string;
+  status: 'open' | 'resolved' | 'ignored';
+}
+
+export interface TransactionLog {
+  id: string;
+  orderId: string;
+  customerName: string;
+  vendorName: string;
+  amount: number;
+  method: 'UPI' | 'Card' | 'COD';
+  status: 'success' | 'failed' | 'pending' | 'refunded';
+  createdAt: string;
+}
+
+export interface AnalyticsPoint {
+  label: string;
+  revenue: number;
+  orders: number;
+  newUsers: number;
+  commission: number;
+}
