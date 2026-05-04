@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect } from "react";
-import { User, Address, VendorApplication, VendorStatus } from "@/types";
+import { User, Address, VendorApplication, VendorStatus, AdminCustomer } from "@/types";
+import { mockAdminCustomers } from "@/data/adminData";
 
 interface AuthContextType {
   user: User | null;
@@ -23,6 +24,14 @@ interface AuthContextType {
   submitVendorApplication: (app: Omit<VendorApplication, 'id' | 'userId' | 'userName' | 'userPhone' | 'submittedAt' | 'status'>) => void;
   approveApplication: (applicationId: string) => void;
   rejectApplication: (applicationId: string, reason: string) => void;
+  
+  adminCustomers: AdminCustomer[];
+  banCustomer: (customerId: string) => void;
+  unbanCustomer: (customerId: string) => void;
+  bannedVendorIds: string[];
+  banVendor: (vendorId: string) => void;
+  unbanVendor: (vendorId: string) => void;
+  removeVendor: (vendorId: string) => void;
 }
 
 const mockExistingUsers: User[] = [
@@ -39,11 +48,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRoleState] = useState<'customer' | 'vendor'>('customer');
   const [selectedDeliveryAddress, setSelectedDeliveryAddress] = useState<Address | null>(null);
   const [applications, setApplications] = useState<VendorApplication[]>([]);
+  const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>(mockAdminCustomers);
+  const [bannedVendorIds, setBannedVendorIds] = useState<string[]>([]);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("swiftmart_user");
     const savedRole = localStorage.getItem("swiftmart_role");
     const savedApps = localStorage.getItem("swiftmart_vendor_applications");
+    const savedCustomers = localStorage.getItem("swiftmart_admin_customers");
+    const savedBannedVendors = localStorage.getItem("swiftmart_banned_vendors");
     
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
@@ -57,6 +70,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     if (savedApps) {
       setApplications(JSON.parse(savedApps));
+    }
+    if (savedCustomers) {
+      setAdminCustomers(JSON.parse(savedCustomers));
+    }
+    if (savedBannedVendors) {
+      setBannedVendorIds(JSON.parse(savedBannedVendors));
     }
     
     // Simulate hydration delay for skeleton
@@ -86,6 +105,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("swiftmart_vendor_applications", JSON.stringify(applications));
     }
   }, [applications, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      localStorage.setItem("swiftmart_admin_customers", JSON.stringify(adminCustomers));
+    }
+  }, [adminCustomers, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      localStorage.setItem("swiftmart_banned_vendors", JSON.stringify(bannedVendorIds));
+    }
+  }, [bannedVendorIds, isLoading]);
 
   const login = (phone: string, name: string) => {
     const newUser: User = {
@@ -220,13 +251,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const banCustomer = (customerId: string) => {
+    setAdminCustomers(prev => prev.map(c => 
+      c.id === customerId ? { ...c, status: 'banned' } : c
+    ));
+  };
+
+  const unbanCustomer = (customerId: string) => {
+    setAdminCustomers(prev => prev.map(c => 
+      c.id === customerId ? { ...c, status: 'active' } : c
+    ));
+  };
+
+  const banVendor = (vendorId: string) => {
+    setBannedVendorIds(prev => [...new Set([...prev, vendorId])]);
+  };
+
+  const unbanVendor = (vendorId: string) => {
+    setBannedVendorIds(prev => prev.filter(id => id !== vendorId));
+  };
+
+  const removeVendor = (vendorId: string) => {
+    setApplications(prev => prev.map(app => 
+      app.id === vendorId || app.userId === vendorId || app.storeName === vendorId 
+        ? { ...app, status: 'rejected', rejectionReason: "Removed by admin" } 
+        : app
+    ));
+    // Since vendors array is static right now, we can also add it to banned to hide it, but the spec says "set application status to 'rejected' with reason 'Removed by admin'". We'll handle this in the UI.
+  };
+
   const isAdmin = user?.phone === "0000000000";
 
   return (
     <AuthContext.Provider value={{ 
       user, role, isAdmin, isLoading, selectedDeliveryAddress, setSelectedDeliveryAddress, login, logout, setRole, updateUser, addAddress, deleteAddress,
       loginWithPhone, verifyOtp, loginWithGoogle, completeOnboarding,
-      applications, submitVendorApplication, approveApplication, rejectApplication
+      applications, submitVendorApplication, approveApplication, rejectApplication,
+      adminCustomers, banCustomer, unbanCustomer, bannedVendorIds, banVendor, unbanVendor, removeVendor
     }}>
       {children}
     </AuthContext.Provider>

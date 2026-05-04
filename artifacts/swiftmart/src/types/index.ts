@@ -101,4 +101,39 @@ export interface Vendor {
   pincode: string;
   city: string;
   phone: string;
+  status: 'active' | 'banned';
+  joinedAt: string;
+  revenue: number;
+  commission: number;
+}
+
+export interface AdminOrder {
+  id: string;
+  items: { name: string; qty: number; price: number; category: string }[];
+  total: number;
+  status: 'placed' | 'packed' | 'out_for_delivery' | 'delivered';
+  paymentMethod: 'UPI' | 'Card' | 'COD';
+  placedAt: string;
+  vendorId: string;
+  vendorName: string;
+}
+
+export interface AdminCustomer {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  joinedAt: string;
+  totalOrders: number;
+  totalSpent: number;
+  status: 'active' | 'banned';
+  lastOrderAt?: string;
+  orders: AdminOrder[];
+}
+
+export interface PlatformRevenuePoint {
+  date: string;
+  revenue: number;
+  orders: number;
+  commission: number;
 }

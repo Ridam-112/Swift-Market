@@ -14,7 +14,11 @@ export const vendors: Vendor[] = [
     image: "/assets/cat-groceries.png",
     pincode: "110001",
     city: "New Delhi",
-    phone: "9876543210"
+    phone: "9876543210",
+    status: 'active',
+    joinedAt: '2024-01-15T10:00:00.000Z',
+    revenue: 487200,
+    commission: 24360
   },
   {
     id: "v2",
@@ -29,7 +33,11 @@ export const vendors: Vendor[] = [
     image: "/assets/cat-vegetables.png",
     pincode: "110001",
     city: "New Delhi",
-    phone: "9876543211"
+    phone: "9876543211",
+    status: 'active',
+    joinedAt: '2024-02-20T10:00:00.000Z',
+    revenue: 213400,
+    commission: 10670
   },
   {
     id: "v3",
@@ -44,6 +52,10 @@ export const vendors: Vendor[] = [
     image: "/assets/cat-clothing.png",
     pincode: "110001",
     city: "New Delhi",
-    phone: "9876543212"
+    phone: "9876543212",
+    status: 'active',
+    joinedAt: '2024-03-10T10:00:00.000Z',
+    revenue: 98700,
+    commission: 4935
   }
 ];
