@@ -37,3 +37,10 @@ externalPort = 80
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+SUPER_ADMIN_PHONES = "6296118949,7602584238"
+NODE_ENV = "development"
+OTP_DEMO_CODE = "123456"

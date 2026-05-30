@@ -1,0 +1,489 @@
+Build the backend and admin system for Swift Mart and prepare it for production use. Do not keep it as a demo-only application.
+
+1. ADMIN LOGIN & SECURITY
+
+Remove unsafe demo login methods such as entering 0000000000.
+
+Implement role-based authentication and authorization.
+
+Roles:
+
+customer
+vendor
+delivery_partner
+admin
+super_admin
+
+Default Super Admin Accounts:
+
+6296118949
+7602584238
+
+Requirements:
+
+Admin access must be verified from backend/database.
+Admin routes must be protected.
+Vendor routes must be protected.
+Delivery routes must be protected.
+Use JWT authentication.
+Add middleware for role checking.
+Add login session management.
+Add logout functionality.
+2. ADMIN MANAGEMENT SYSTEM
+
+Create Admin Management page.
+
+Super Admin can:
+
+Add new admin phone numbers
+Remove admin access
+Promote admin to super admin
+Demote admin
+Suspend admin accounts
+View admin activity logs
+
+Store admin data in database.
+
+Admin Model:
+
+id
+phone
+name
+role
+status
+createdAt
+updatedAt
+3. SHOP TYPE SYSTEM
+
+Create dynamic shop type management.
+
+Default shop types:
+
+Grocery
+Restaurant
+Cloud Kitchen
+Pharmacy
+Bakery
+Sweet Shop
+Fast Food
+Fruits & Vegetables
+Meat Shop
+Fish Shop
+Dairy
+Stationery
+Electronics
+Mobile Shop
+Computer Shop
+Fashion
+Clothing
+Footwear
+Beauty
+Cosmetics
+Salon
+Hardware
+Furniture
+Gift Shop
+Book Store
+Pet Shop
+Toy Shop
+Flower Shop
+Laundry
+Repair Service
+Home Services
+Automobile
+Sports Store
+Jewellery
+General Store
+Local Store
+Other
+
+Requirements:
+
+Autocomplete suggestions while typing
+Add shop type
+Edit shop type
+Delete shop type
+Activate/Deactivate shop type
+Store all shop types in database
+4. CATEGORY SYSTEM
+
+Create category management.
+
+Admin can:
+
+Add category
+Edit category
+Delete category
+Assign category to shop types
+Enable/Disable category
+
+Examples:
+
+Grocery
+Vegetables
+Fruits
+Snacks
+Drinks
+Electronics
+Fashion
+Medicine
+Bakery
+Others
+5. PRODUCT MANAGEMENT
+
+Admin can:
+
+Add product
+Edit product
+Delete product
+Bulk import products
+Manage inventory
+Change pricing
+Assign category
+Assign shop
+Add product images
+
+Product fields:
+
+name
+description
+price
+discountedPrice
+category
+shop
+images
+stock
+SKU
+status
+6. SHOP MANAGEMENT
+
+Admin can:
+
+Add shop
+Edit shop
+Delete shop
+Approve shop
+Reject shop
+Ban shop
+Unban shop
+View earnings
+View orders
+
+Shop fields:
+
+shopName
+ownerName
+phone
+address
+shopType
+commissionRate
+status
+rating
+7. COMMISSION SYSTEM
+
+Create advanced commission engine.
+
+Admin can set commission for:
+
+A. Global commission
+B. Shop type commission
+C. Category commission
+D. Vendor commission
+E. Product commission
+
+Priority:
+
+Product Commission
+↓
+Vendor Commission
+↓
+Category Commission
+↓
+Shop Type Commission
+↓
+Global Commission
+
+Examples:
+
+Restaurant = 15%
+Cloud Kitchen = 18%
+Medicine = 8%
+Electronics = 5%
+
+Admin can:
+
+Create commission rules
+Edit commission rules
+Delete commission rules
+Enable/Disable commission rules
+
+Order calculation:
+
+Subtotal
+
+Delivery Charge
+Coupon Discount
+= Net Amount
+
+Commission calculated on Net Amount.
+
+Store:
+
+commissionAmount
+vendorPayable
+platformRevenue
+
+inside order record.
+
+8. COUPON SYSTEM
+
+Create complete coupon management.
+
+Admin can:
+
+Create coupon
+Edit coupon
+Delete coupon
+Disable coupon
+
+Coupon types:
+
+Percentage discount
+Fixed discount
+Free delivery
+
+Coupon settings:
+
+code
+type
+value
+minimum order
+maximum discount
+expiry date
+usage limit
+per-user limit
+active status
+
+Coupon can apply to:
+
+Entire app
+Specific shop
+Specific category
+Specific product
+Specific users
+
+Backend validates coupon before applying.
+
+Save coupon usage history.
+
+9. DELIVERY PARTNER SYSTEM
+
+Create delivery partner management.
+
+Admin can:
+
+Add delivery partner
+Edit delivery partner
+Remove delivery partner
+Suspend delivery partner
+
+Fields:
+
+name
+phone
+vehicle
+availability
+earnings
+ordersDelivered
+10. ORDER MANAGEMENT
+
+Admin can:
+
+View all orders
+Search orders
+Filter orders
+Cancel orders
+Refund orders
+
+Order statuses:
+
+Pending
+Accepted
+Preparing
+Packed
+Out For Delivery
+Delivered
+Cancelled
+Refunded
+11. PAYMENT SYSTEM
+
+Prepare payment architecture.
+
+Support:
+
+COD
+UPI
+Razorpay
+Wallet
+
+Payment record:
+
+paymentId
+orderId
+amount
+method
+status
+12. PAYOUT SYSTEM
+
+Create payout management.
+
+Admin can:
+
+View pending payouts
+Mark payout paid
+Generate payout reports
+
+Payout statuses:
+
+pending
+processing
+paid
+failed
+13. DATABASE DESIGN
+
+Create database collections/models:
+
+Users
+Admins
+Shops
+ShopTypes
+Categories
+Products
+Carts
+CartItems
+Orders
+OrderItems
+Payments
+Coupons
+CouponUsage
+CommissionRules
+Payouts
+DeliveryPartners
+DeliveryAssignments
+Notifications
+Reviews
+Ratings
+Addresses
+Banners
+Settings
+
+14. NOTIFICATION SYSTEM
+
+Create notification architecture.
+
+Notifications:
+
+Order updates
+Shop approval
+Delivery updates
+Coupon alerts
+Promotional notifications
+15. DASHBOARD ANALYTICS
+
+Admin Dashboard should show:
+
+Total Revenue
+Total Commission Earned
+Total Shops
+Total Products
+Total Customers
+Total Orders
+Pending Orders
+Pending Payouts
+Active Delivery Partners
+16. API STRUCTURE
+
+Create backend routes:
+
+/api/auth
+/api/admin
+/api/users
+/api/shops
+/api/shop-types
+/api/categories
+/api/products
+/api/cart
+/api/orders
+/api/payments
+/api/coupons
+/api/commissions
+/api/payouts
+/api/delivery
+/api/notifications
+
+17. BACKEND REQUIREMENTS
+
+Use:
+
+Node.js
+Express.js
+MongoDB
+Mongoose
+JWT
+bcrypt
+dotenv
+cors
+
+Add:
+
+validation
+error handling
+protected routes
+role middleware
+logging
+scalable folder structure
+18. FRONTEND INTEGRATION PREPARATION
+
+Create service files:
+
+authService
+adminService
+shopService
+productService
+categoryService
+couponService
+commissionService
+orderService
+paymentService
+deliveryService
+
+Do NOT break the current frontend.
+
+19. PROJECT TODO SYSTEM
+
+Create a TODO tracker that automatically lists:
+
+Completed Features
+In Progress Features
+Pending Features
+Next Backend Tasks
+Next Frontend Tasks
+
+20. FUTURE READY FEATURES
+
+Prepare database structure for:
+
+Subscription plans
+Vendor advertisements
+Wallet system
+Loyalty points
+Referral system
+Membership system
+GST support
+Multi-city support
+Multi-language support
+Inventory management
+Franchise management
+AI recommendations
+
+Build everything with clean code, scalable architecture, proper database relationships, and production-ready backend structure while keeping compatibility with the current React frontend.

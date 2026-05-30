@@ -1,0 +1,34 @@
+import { Router } from "express";
+import authRouter from "./auth.js";
+import adminRouter from "./admin.js";
+import usersRouter from "./users.js";
+import shopsRouter from "./shops.js";
+import shopTypesRouter from "./shopTypes.js";
+import categoriesRouter from "./categories.js";
+import productsRouter from "./products.js";
+import ordersRouter from "./orders.js";
+import couponsRouter from "./coupons.js";
+import commissionsRouter from "./commissions.js";
+import deliveryRouter from "./delivery.js";
+import payoutsRouter from "./payouts.js";
+import reportsRouter from "./reports.js";
+import notificationsRouter from "./notifications.js";
+
+const router = Router();
+
+router.use("/auth", authRouter);
+router.use("/admin", adminRouter);
+router.use("/users", usersRouter);
+router.use("/shops", shopsRouter);
+router.use("/shop-types", shopTypesRouter);
+router.use("/categories", categoriesRouter);
+router.use("/products", productsRouter);
+router.use("/orders", ordersRouter);
+router.use("/coupons", couponsRouter);
+router.use("/commissions", commissionsRouter);
+router.use("/delivery", deliveryRouter);
+router.use("/payouts", payoutsRouter);
+router.use("/reports", reportsRouter);
+router.use("/notifications", notificationsRouter);
+
+export default router;
