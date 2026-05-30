@@ -436,11 +436,11 @@ function ShopRequestsTab() {
                   </div>
                   <div className="text-sm grid grid-cols-[80px_1fr] gap-1">
                     <span className="text-muted-foreground">PAN:</span>
-                    <span className="font-mono text-foreground">{app.panNumber.substring(0,2)}***{app.panNumber.substring(5,6)}***{app.panNumber.substring(9)}</span>
+                    <span className="font-mono text-foreground">{app.panNumber}</span>
                     {app.gstNumber && (
                       <>
                         <span className="text-muted-foreground">GST:</span>
-                        <span className="font-mono text-foreground">{app.gstNumber.substring(0,2)}***{app.gstNumber.substring(12)}</span>
+                        <span className="font-mono text-foreground">{app.gstNumber}</span>
                       </>
                     )}
                   </div>
@@ -454,7 +454,7 @@ function ShopRequestsTab() {
                     <span className="text-muted-foreground">UPI:</span>
                     <span className="text-foreground">{app.upiId}</span>
                     <span className="text-muted-foreground">Bank:</span>
-                    <span className="font-mono text-foreground">****{app.bankAccountNumber.slice(-4)}</span>
+                    <span className="font-mono text-foreground">{app.bankAccountNumber}</span>
                   </div>
                 </div>
               </div>

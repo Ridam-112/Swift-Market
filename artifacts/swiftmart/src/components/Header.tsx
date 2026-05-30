@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, MapPin, ShoppingBag, Store } from "lucide-react";
+import { Search, MapPin, ShoppingBag, Store, Clock, User, Shield, LayoutDashboard, Package, ClipboardList, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { RoleSwitcher } from "./RoleSwitcher";
@@ -10,10 +10,10 @@ import { Button } from "./ui/button";
 import { AddressForm } from "./AddressForm";
 import { AddressCard } from "./AddressCard";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function Header() {
-  const { user, role, selectedDeliveryAddress, setSelectedDeliveryAddress, addAddress } = useAuth();
+  const { user, role, isAdmin, selectedDeliveryAddress, setSelectedDeliveryAddress, addAddress } = useAuth();
   const { totalItems } = useCart();
   const [location, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,11 +81,95 @@ export function Header() {
             </div>
           )}
 
-          {/* Right icons — always shrink-0 */}
-          <div className="flex items-center gap-1.5 md:gap-3 shrink-0 ml-auto md:ml-0">
-            {/* Role switcher — compact on mobile */}
+          {/* Right side — icons + desktop nav */}
+          <div className="flex items-center gap-1.5 md:gap-2 shrink-0 ml-auto md:ml-0">
             {user?.vendorStatus === 'approved' && <RoleSwitcher />}
 
+            {/* Desktop nav links */}
+            {role === 'customer' && (
+              <nav className="hidden md:flex items-center gap-1">
+                {[
+                  { href: "/", icon: Store, label: "Home" },
+                  { href: "/orders", icon: Clock, label: "Orders" },
+                  { href: "/profile", icon: User, label: "Profile" },
+                ].map(({ href, icon: Icon, label }) => {
+                  const isActive = href === "/" ? location === "/" : location.startsWith(href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-all",
+                        isActive
+                          ? "bg-primary/10 text-primary neu-inset"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      )}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </Link>
+                  );
+                })}
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-all",
+                      location.startsWith("/admin")
+                        ? "bg-primary/10 text-primary neu-inset"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <Shield className="w-4 h-4" />
+                    Admin
+                  </Link>
+                )}
+              </nav>
+            )}
+
+            {role === 'vendor' && (
+              <nav className="hidden md:flex items-center gap-1">
+                {[
+                  { href: "/vendor", icon: LayoutDashboard, label: "Dashboard" },
+                  { href: "/vendor/products", icon: Package, label: "Products" },
+                  { href: "/vendor/orders", icon: ClipboardList, label: "Orders" },
+                  { href: "/profile", icon: User, label: "Profile" },
+                ].map(({ href, icon: Icon, label }) => {
+                  const isActive = href === "/vendor" ? location === "/vendor" : location.startsWith(href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-all",
+                        isActive
+                          ? "bg-primary/10 text-primary neu-inset"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      )}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </Link>
+                  );
+                })}
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-all",
+                      location.startsWith("/admin")
+                        ? "bg-primary/10 text-primary neu-inset"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <Shield className="w-4 h-4" />
+                    Admin
+                  </Link>
+                )}
+              </nav>
+            )}
+
+            {/* Mobile search + cart icons */}
             {role === 'customer' && (
               <>
                 <Link href="/search" className="md:hidden p-2 rounded-full neu-card">
