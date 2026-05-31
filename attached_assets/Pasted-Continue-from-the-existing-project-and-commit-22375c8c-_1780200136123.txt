@@ -1,0 +1,137 @@
+Continue from the existing project and commit 22375c8c.
+
+IMPORTANT:
+
+* Do NOT rebuild backend.
+* Do NOT recreate models.
+* Do NOT recreate routes.
+* Do NOT redesign UI.
+* Use the existing backend and existing React UI.
+
+Goal:
+Connect the existing frontend to the existing backend APIs.
+
+Phase 1 – Database & Backend Verification
+
+1. Verify MongoDB Atlas connection.
+2. Verify all models load correctly.
+3. Verify seed data exists.
+4. Verify JWT authentication works.
+5. Verify super admin accounts:
+
+   * 6296118949
+   * 7602584238
+
+Generate a short health report.
+
+Phase 2 – Authentication Integration
+
+1. Replace all mock login logic.
+2. Connect AuthContext.tsx to:
+
+   * POST /api/auth/send-otp
+   * POST /api/auth/verify-otp
+3. Store JWT access token and refresh token.
+4. Load current user from API.
+5. Remove hardcoded admin phone checks.
+6. Use role-based authentication:
+
+   * customer
+   * vendor
+   * admin
+   * super_admin
+
+Phase 3 – Admin Integration
+Connect:
+
+* Admin Dashboard
+* Admin Stats
+* Shop Requests
+* User Management
+* Product Management
+* Vendor Management
+
+Use:
+
+* GET /api/admin/stats
+* GET /api/users
+* GET /api/shops?status=pending
+* Approve/Reject Shop APIs
+
+Replace all mock data.
+
+Phase 4 – Products Integration
+
+1. Connect Products page.
+2. Connect Categories page.
+3. Connect Shop Types page.
+4. Load data from MongoDB.
+5. Remove local mock products.
+
+Use:
+
+* GET /api/products
+* GET /api/categories
+* GET /api/shop-types
+
+Phase 5 – Orders Integration
+
+1. Connect Orders page.
+2. Connect Customer Orders.
+3. Connect Vendor Orders.
+4. Connect Order Status Updates.
+
+Use:
+
+* GET /api/orders
+* GET /api/orders/:id
+* PATCH /api/orders/:id/status
+
+Phase 6 – Vendor Dashboard Integration
+
+1. Vendor Products
+2. Vendor Orders
+3. Vendor Earnings
+4. Vendor Profile
+
+Replace all mock data.
+
+Phase 7 – API Client
+Create:
+
+* src/lib/api.ts
+
+Features:
+
+* Base URL
+* JWT token injection
+* Refresh token handling
+* Error handling
+* Protected requests
+
+Phase 8 – Cleanup
+Remove:
+
+* mock login logic
+* hardcoded admin checks
+* unused mock data
+* fake localStorage-based auth
+
+Keep:
+
+* existing UI design
+* existing page layout
+* existing styling
+
+Final Output Required:
+
+1. Connected Pages List
+2. Remaining Unconnected Pages
+3. API Usage Report
+4. Authentication Status
+5. MongoDB Status
+6. Production Readiness Percentage
+7. Remaining Tasks Before Launch
+
+Do not stop after planning.
+Implement the changes and provide the final report after completion.

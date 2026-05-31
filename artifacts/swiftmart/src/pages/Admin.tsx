@@ -24,6 +24,56 @@ import {
 } from "@/data/adminData";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
+import { api } from "@/lib/api";
+
+interface ApiShop {
+  _id: string;
+  shopName: string;
+  ownerName: string;
+  phone: string;
+  shopType: string;
+  description?: string;
+  panNumber: string;
+  gstNumber?: string;
+  bankAccountNumber: string;
+  bankIfscCode: string;
+  upiId: string;
+  status: 'pending' | 'approved' | 'rejected' | 'banned';
+  rejectionReason?: string;
+  createdAt: string;
+  totalOrders: number;
+  totalRevenue: number;
+  rating: number;
+  address?: { line1?: string; city?: string; pincode?: string };
+  isOpen?: boolean;
+}
+
+interface ApiUser {
+  _id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  role: string;
+  status: string;
+  createdAt: string;
+}
+
+interface ApiOrder {
+  _id: string;
+  customerId: string;
+  customerName?: string;
+  customerPhone?: string;
+  shopId?: string;
+  shopName?: string;
+  items: { name: string; qty: number; price: number }[];
+  netAmount?: number;
+  subtotal?: number;
+  status: string;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
 
 type AdminSection = 'overview' | 'requests' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions';
 
@@ -102,11 +152,18 @@ export default function Admin() {
 }
 
 function SidebarContent({ activeSection, setActiveSection, handleLogout }: { activeSection: AdminSection, setActiveSection: (s: AdminSection) => void, handleLogout: () => void }) {
-  const { applications, platformOrders, reports } = useAuth();
-  
-  const pendingRequests = applications.filter(a => a.status === 'pending').length;
-  const pendingOrders = platformOrders.filter(o => o.status === 'placed' || o.status === 'packed').length;
-  const openReports = reports.filter(r => r.status === 'open').length;
+  const [pendingRequests, setPendingRequests] = useState(0);
+  const [pendingOrders, setPendingOrders] = useState(0);
+  const openReports = 0;
+
+  useEffect(() => {
+    api.get<{ success: boolean; stats: { pendingShops: number; pendingOrders: number } }>('/admin/stats')
+      .then(d => {
+        setPendingRequests(d.stats.pendingShops);
+        setPendingOrders(d.stats.pendingOrders);
+      })
+      .catch(() => {});
+  }, []);
 
   const navItems: { id: AdminSection, label: string, icon: any, badge?: number }[] = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -329,32 +386,77 @@ function StatCard({ title, value, icon: Icon, color }: any) {
 // ============================================================================
 
 function ShopRequestsTab() {
-  const { applications, approveApplication, rejectApplication } = useAuth();
-  const [filter, setFilter] = useState<VendorStatus | 'all'>('all');
+  const [shops, setShops] = useState<ApiShop[]>([]);
+  const [loadingShops, setLoadingShops] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
-  const filteredApplications = applications.filter(app => filter === 'all' || app.status === filter);
+  const fetchShops = () => {
+    setLoadingShops(true);
+    api.get<{ success: boolean; shops: ApiShop[] }>('/shops?limit=100')
+      .then(d => setShops(d.shops))
+      .catch(() => setShops([]))
+      .finally(() => setLoadingShops(false));
+  };
 
+  useEffect(() => { fetchShops(); }, []);
+
+  const applications = shops.map(s => ({
+    id: s._id,
+    userId: s._id,
+    userName: s.ownerName,
+    userPhone: s.phone,
+    storeName: s.shopName,
+    storeCategory: s.shopType as VendorApplication['storeCategory'],
+    storeDescription: s.description ?? "",
+    ownerName: s.ownerName,
+    panNumber: s.panNumber,
+    gstNumber: s.gstNumber ?? "",
+    bankAccountNumber: s.bankAccountNumber,
+    bankIfscCode: s.bankIfscCode,
+    upiId: s.upiId,
+    submittedAt: s.createdAt,
+    status: (s.status === 'banned' ? 'rejected' : s.status) as VendorApplication['status'],
+    rejectionReason: s.rejectionReason,
+  }));
+
+  const filteredApplications = applications.filter(app => filter === 'all' || app.status === filter);
   const pendingCount = applications.filter(a => a.status === 'pending').length;
   const approvedCount = applications.filter(a => a.status === 'approved').length;
   const rejectedCount = applications.filter(a => a.status === 'rejected').length;
 
-  const handleApprove = (id: string) => {
-    approveApplication(id);
-    toast.success("Application approved");
+  const handleApprove = async (id: string) => {
+    try {
+      await api.post(`/shops/${id}/approve`);
+      toast.success("Application approved");
+      fetchShops();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to approve");
+    }
   };
 
-  const handleReject = (id: string) => {
-    if (!rejectReason.trim()) {
-      toast.error("Please provide a reason for rejection");
-      return;
+  const handleReject = async (id: string) => {
+    if (!rejectReason.trim()) { toast.error("Please provide a reason for rejection"); return; }
+    try {
+      await api.post(`/shops/${id}/reject`, { reason: rejectReason });
+      setRejectingId(null);
+      setRejectReason("");
+      toast.success("Application rejected");
+      fetchShops();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to reject");
     }
-    rejectApplication(id, rejectReason);
-    setRejectingId(null);
-    setRejectReason("");
-    toast.success("Application rejected");
   };
+
+  if (loadingShops) {
+    return (
+      <div className="space-y-4">
+        <div className="h-8 w-48 bg-muted rounded-xl animate-pulse" />
+        {[1,2,3].map(i => <div key={i} className="h-40 bg-muted rounded-3xl animate-pulse" />)}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -543,16 +645,53 @@ function UsersTab() {
 }
 
 function CustomersList() {
-  const { adminCustomers, banCustomer, unbanCustomer } = useAuth();
+  const [customers, setCustomers] = useState<AdminCustomer[]>([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<'all' | 'active' | 'banned'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const filtered = adminCustomers.filter(c => {
+  const fetchCustomers = () => {
+    setLoadingCustomers(true);
+    api.get<{ success: boolean; users: ApiUser[] }>('/users?role=customer&limit=100')
+      .then(d => {
+        setCustomers(d.users.map(u => ({
+          id: u._id,
+          name: u.name,
+          phone: u.phone,
+          email: u.email ?? "",
+          joinedAt: u.createdAt,
+          totalOrders: 0,
+          totalSpent: 0,
+          status: (u.status === 'banned' ? 'banned' : 'active') as 'active' | 'banned',
+          orders: [],
+        })));
+      })
+      .catch(() => setCustomers([]))
+      .finally(() => setLoadingCustomers(false));
+  };
+
+  useEffect(() => { fetchCustomers(); }, []);
+
+  const banCustomer = async (customerId: string) => {
+    await api.patch(`/users/${customerId}/ban`).catch(() => {});
+    setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, status: 'banned' as const } : c));
+  };
+
+  const unbanCustomer = async (customerId: string) => {
+    await api.patch(`/users/${customerId}/unban`).catch(() => {});
+    setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, status: 'active' as const } : c));
+  };
+
+  const filtered = customers.filter(c => {
     if (filter !== 'all' && c.status !== filter) return false;
     if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.phone.includes(search)) return false;
     return true;
   });
+
+  if (loadingCustomers) {
+    return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-muted rounded-3xl animate-pulse" />)}</div>;
+  }
 
   return (
     <div className="space-y-4">
@@ -695,37 +834,42 @@ function CustomersList() {
 }
 
 function VendorsList() {
-  const { applications, bannedVendorIds, banVendor, unbanVendor, removeVendor } = useAuth();
+  const [apiShops, setApiShops] = useState<ApiShop[]>([]);
+  const [loadingVendors, setLoadingVendors] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<'all' | 'active' | 'banned'>('all');
 
-  const allShops = useMemo(() => {
-    return [
-      ...vendors,
-      ...applications.filter(a => a.status === 'approved').map(a => ({
-        id: a.id,
-        storeName: a.storeName,
-        ownerName: a.ownerName,
-        category: a.storeCategory,
-        tagline: a.storeDescription,
-        rating: 0,
-        totalOrders: 0,
-        isOpen: false,
-        eta: "N/A",
-        image: `/assets/cat-${a.storeCategory}.png`,
-        pincode: "N/A",
-        city: "N/A",
-        phone: a.userPhone,
-        status: bannedVendorIds.includes(a.id) ? 'banned' as const : 'active' as const,
-        joinedAt: a.submittedAt,
-        revenue: 0,
-        commission: 0
-      }))
-    ].map(v => ({
-      ...v,
-      status: bannedVendorIds.includes(v.id) ? 'banned' as const : 'active' as const
+  const fetchVendors = () => {
+    setLoadingVendors(true);
+    api.get<{ success: boolean; shops: ApiShop[] }>('/shops?status=approved&limit=100')
+      .then(d => setApiShops(d.shops))
+      .catch(() => setApiShops([]))
+      .finally(() => setLoadingVendors(false));
+  };
+
+  useEffect(() => { fetchVendors(); }, []);
+
+  const allShops = useMemo<Vendor[]>(() => {
+    return apiShops.map(s => ({
+      id: s._id,
+      storeName: s.shopName,
+      ownerName: s.ownerName,
+      category: s.shopType,
+      tagline: s.description ?? "",
+      rating: s.rating ?? 0,
+      totalOrders: s.totalOrders ?? 0,
+      isOpen: s.isOpen ?? true,
+      eta: "10-15 min",
+      image: "",
+      pincode: s.address?.pincode ?? "N/A",
+      city: s.address?.city ?? "N/A",
+      phone: s.phone,
+      status: (s.status === 'banned' ? 'banned' : 'active') as 'active' | 'banned',
+      joinedAt: s.createdAt,
+      revenue: s.totalRevenue ?? 0,
+      commission: Math.round((s.totalRevenue ?? 0) * 0.1),
     }));
-  }, [applications, bannedVendorIds]);
+  }, [apiShops]);
 
   const filtered = allShops.filter(s => {
     if (filter !== 'all' && s.status !== filter) return false;
@@ -733,22 +877,29 @@ function VendorsList() {
     return true;
   });
 
-  const handleBan = (id: string) => {
-    banVendor(id);
+  const handleBan = async (id: string) => {
+    await api.patch(`/shops/${id}/ban`).catch(() => {});
+    setApiShops(prev => prev.map(s => s._id === id ? { ...s, status: 'banned' as const } : s));
     toast.success("Shop banned");
   };
 
-  const handleUnban = (id: string) => {
-    unbanVendor(id);
+  const handleUnban = async (id: string) => {
+    await api.patch(`/shops/${id}/unban`).catch(() => {});
+    setApiShops(prev => prev.map(s => s._id === id ? { ...s, status: 'approved' as const } : s));
     toast.success("Shop unbanned");
   };
 
-  const handleRemove = (id: string) => {
+  const handleRemove = async (id: string) => {
     if (confirm("Are you sure you want to permanently remove this shop?")) {
-      removeVendor(id);
+      await api.delete(`/shops/${id}`).catch(() => {});
+      setApiShops(prev => prev.filter(s => s._id !== id));
       toast.success("Shop removed");
     }
   };
+
+  if (loadingVendors) {
+    return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-24 bg-muted rounded-3xl animate-pulse" />)}</div>;
+  }
 
   return (
     <div className="space-y-4">
@@ -849,10 +1000,45 @@ function VendorsList() {
 // ============================================================================
 
 function OrdersTab() {
-  const { platformOrders, updateOrderStatus, refundOrder } = useAuth();
+  const [platformOrders, setPlatformOrders] = useState<PlatformOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<PlatformOrder['status'] | 'all'>('all');
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoadingOrders(true);
+    api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=100')
+      .then(d => {
+        setPlatformOrders(d.orders.map(o => ({
+          id: o._id,
+          customerId: o.customerId,
+          customerName: o.customerName ?? "Customer",
+          customerPhone: o.customerPhone ?? "",
+          vendorId: o.shopId ?? "",
+          vendorName: o.shopName ?? "Shop",
+          items: o.items.map(i => ({ name: i.name, qty: i.qty, price: i.price, category: "" })),
+          total: o.netAmount ?? o.subtotal ?? o.items.reduce((s, i) => s + i.price * i.qty, 0),
+          status: o.status as PlatformOrder['status'],
+          paymentMethod: (o.paymentMethod ?? "cash") as PlatformOrder['paymentMethod'],
+          paymentStatus: (o.paymentStatus ?? "pending") as PlatformOrder['paymentStatus'],
+          placedAt: o.createdAt,
+          updatedAt: o.updatedAt ?? o.createdAt,
+        })));
+      })
+      .catch(() => setPlatformOrders([]))
+      .finally(() => setLoadingOrders(false));
+  }, []);
+
+  const updateOrderStatus = async (orderId: string, status: PlatformOrder['status']) => {
+    await api.patch(`/orders/${orderId}/status`, { status }).catch(() => {});
+    setPlatformOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+  };
+
+  const refundOrder = async (orderId: string) => {
+    await api.post(`/orders/${orderId}/refund`).catch(() => {});
+    setPlatformOrders(prev => prev.map(o => o.id === orderId ? { ...o, paymentStatus: 'refunded' as const } : o));
+  };
 
   const filtered = platformOrders.filter(o => {
     if (filter !== 'all' && o.status !== filter) return false;
@@ -861,6 +1047,10 @@ function OrdersTab() {
         !o.vendorName.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
+
+  if (loadingOrders) {
+    return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-28 bg-muted rounded-3xl animate-pulse" />)}</div>;
+  }
 
   const getStatusColor = (status: string) => {
     switch(status) {

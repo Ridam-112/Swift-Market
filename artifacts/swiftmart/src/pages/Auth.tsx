@@ -14,18 +14,17 @@ type Step = 'login' | 'otp' | 'onboarding';
 export default function Auth() {
   const [, setLocation] = useLocation();
   const { user, loginWithPhone, verifyOtp, loginWithGoogle, completeOnboarding } = useAuth();
-  
+
   const [step, setStep] = useState<Step>('login');
   const [phone, setPhone] = useState("");
   const [isSendingOtp, setIsSendingOtp] = useState(false);
-  
-  // OTP state
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [countdown, setCountdown] = useState(30);
   const [otpError, setOtpError] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Onboarding state
   const [authMethod, setAuthMethod] = useState<'phone' | 'google'>('phone');
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -33,11 +32,10 @@ export default function Auth() {
   const [addressLine1, setAddressLine1] = useState("");
   const [city, setCity] = useState("");
   const [pincode, setPincode] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      setLocation("/");
-    }
+    if (user) setLocation("/");
   }, [user, setLocation]);
 
   useEffect(() => {
@@ -54,46 +52,42 @@ export default function Auth() {
       toast.error("Please enter a valid 10-digit phone number");
       return;
     }
-    
     setIsSendingOtp(true);
-    await loginWithPhone(phone);
-    setIsSendingOtp(false);
-    setAuthMethod('phone');
-    setStep('otp');
-    setCountdown(30);
-    setOtp(["", "", "", "", "", ""]);
-    setTimeout(() => inputRefs.current[0]?.focus(), 100);
+    try {
+      await loginWithPhone(phone);
+      setAuthMethod('phone');
+      setStep('otp');
+      setCountdown(30);
+      setOtp(["", "", "", "", "", ""]);
+      setTimeout(() => inputRefs.current[0]?.focus(), 100);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to send OTP";
+      toast.error(msg);
+    } finally {
+      setIsSendingOtp(false);
+    }
   };
 
   const handleGoogleLogin = () => {
     const result = loginWithGoogle();
     setAuthMethod('google');
     if (result.isNewUser) {
-      setName(result.mockName || "");
-      setEmail(result.mockEmail || "");
+      setName(result.mockName ?? "");
+      setEmail(result.mockEmail ?? "");
       setStep('onboarding');
-    } else if (result.user) {
-      // It's technically setting user directly via mock in completeOnboarding if we wanted, 
-      // but in our mock loginWithGoogle always returns new user for simplicity unless we wire it otherwise.
+    } else {
       setLocation("/");
     }
   };
 
   const handleOtpChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
-    
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
     setOtpError(false);
-
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-    
-    if (newOtp.every(d => d !== "")) {
-      verifyOtpSubmit(newOtp.join(""));
-    }
+    if (value && index < 5) inputRefs.current[index + 1]?.focus();
+    if (newOtp.every(d => d !== "")) verifyOtpSubmit(newOtp.join(""));
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -102,30 +96,40 @@ export default function Auth() {
     }
   };
 
-  const verifyOtpSubmit = (otpString: string) => {
+  const verifyOtpSubmit = async (otpString: string) => {
+    if (isVerifyingOtp) return;
+    setIsVerifyingOtp(true);
     try {
-      const result = verifyOtp(otpString, phone);
+      const result = await verifyOtp(otpString, phone);
       if (result.isNewUser) {
         setStep('onboarding');
       } else {
         toast.success("Welcome back!");
         setLocation("/");
       }
-    } catch (e) {
+    } catch (err: unknown) {
       setOtpError(true);
-      toast.error("Invalid OTP. Try 123456.");
+      const msg = err instanceof Error ? err.message : "Invalid OTP";
+      toast.error(msg.includes("Invalid") ? "Invalid OTP. Use 123456 for demo." : msg);
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     if (countdown > 0) return;
-    setCountdown(30);
-    toast.success("OTP resent successfully!");
+    try {
+      await loginWithPhone(phone);
+      setCountdown(30);
+      toast.success("OTP resent successfully!");
+    } catch {
+      toast.error("Failed to resend OTP");
+    }
   };
 
-  const handleOnboardingSubmit = (e: React.FormEvent) => {
+  const handleOnboardingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { toast.error("Please enter your name"); return; }
     if (!phone.trim() || phone.length !== 10) { toast.error("Please enter a valid phone number"); return; }
@@ -133,28 +137,34 @@ export default function Auth() {
     if (!city.trim()) { toast.error("Please enter your city"); return; }
     if (pincode.length !== 6) { toast.error("Please enter a 6-digit pincode"); return; }
 
-    completeOnboarding(name, phone, {
-      id: `a_${Date.now()}`,
-      label: addressLabel,
-      line1: addressLine1,
-      city,
-      pincode
-    }, email);
-    
-    toast.success("Welcome to SwiftMart!");
-    setLocation("/");
+    setIsSavingProfile(true);
+    try {
+      await completeOnboarding(name, phone, {
+        id: `a_${Date.now()}`,
+        label: addressLabel,
+        line1: addressLine1,
+        city,
+        pincode,
+      }, email);
+      toast.success("Welcome to SwiftMart!");
+      setLocation("/");
+    } catch {
+      toast.error("Failed to save profile. Please try again.");
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const slideVariants = {
     initial: { x: 20, opacity: 0 },
     animate: { x: 0, opacity: 1, transition: { duration: 0.3, ease: "easeOut" as const } },
-    exit: { x: -20, opacity: 0, transition: { duration: 0.2, ease: "easeIn" as const } }
+    exit: { x: -20, opacity: 0, transition: { duration: 0.2, ease: "easeIn" as const } },
   };
 
   return (
     <div className="min-h-[100dvh] flex flex-col justify-center px-4 py-12 max-w-md mx-auto relative overflow-hidden bg-background">
       <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
-      
+
       <div className="text-center mb-10 relative z-10">
         <div className="w-20 h-20 bg-primary mx-auto rounded-3xl neu-card flex items-center justify-center text-white font-bold text-4xl mb-6 shadow-xl">
           S
@@ -167,7 +177,7 @@ export default function Auth() {
         <AnimatePresence mode="wait">
           {step === 'login' && (
             <motion.div key="login" variants={slideVariants} initial="initial" animate="animate" exit="exit" className="bg-card p-6 md:p-8 rounded-[2rem] neu-card space-y-6">
-              <Button 
+              <Button
                 onClick={handleGoogleLogin}
                 variant="outline"
                 className="w-full rounded-2xl h-14 text-lg font-bold bg-white text-black border border-gray-200 shadow-sm hover:bg-gray-50 flex items-center gap-3"
@@ -193,11 +203,11 @@ export default function Auth() {
                     <div className="bg-background neu-inset flex items-center justify-center px-4 rounded-xl font-medium text-muted-foreground border-none">
                       +91
                     </div>
-                    <Input 
+                    <Input
                       id="phone"
                       type="tel"
                       maxLength={10}
-                      placeholder="Enter mobile number" 
+                      placeholder="Enter mobile number"
                       value={phone}
                       onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
                       className="bg-background neu-inset border-none h-14 rounded-xl text-lg flex-1 font-medium"
@@ -205,8 +215,8 @@ export default function Auth() {
                   </div>
                 </div>
 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isSendingOtp || phone.length !== 10}
                   className="w-full rounded-2xl h-14 text-lg font-bold shadow-none neu-card"
                 >
@@ -226,7 +236,7 @@ export default function Auth() {
               </div>
 
               <div className="space-y-4">
-                <motion.div 
+                <motion.div
                   className="flex justify-between gap-2"
                   animate={otpError ? { x: [-10, 10, -10, 10, 0] } : {}}
                   transition={{ duration: 0.4 }}
@@ -239,6 +249,7 @@ export default function Auth() {
                       inputMode="numeric"
                       maxLength={1}
                       value={digit}
+                      disabled={isVerifyingOtp}
                       onChange={e => handleOtpChange(i, e.target.value)}
                       onKeyDown={e => handleOtpKeyDown(i, e)}
                       className={cn(
@@ -248,15 +259,21 @@ export default function Auth() {
                     />
                   ))}
                 </motion.div>
-                
+
+                {isVerifyingOtp && (
+                  <div className="flex justify-center">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                  </div>
+                )}
+
                 <p className="text-xs text-muted-foreground text-center">
                   Use <strong className="text-foreground">123456</strong> for demo
                 </p>
               </div>
 
               <div className="text-center">
-                <Button 
-                  variant="link" 
+                <Button
+                  variant="link"
                   onClick={handleResendOtp}
                   disabled={countdown > 0}
                   className="text-primary font-medium"
@@ -264,8 +281,8 @@ export default function Auth() {
                   {countdown > 0 ? `Resend OTP in ${countdown}s` : "Resend OTP"}
                 </Button>
               </div>
-              
-              <Button 
+
+              <Button
                 onClick={() => setStep('login')}
                 variant="ghost"
                 className="w-full text-muted-foreground"
@@ -285,17 +302,17 @@ export default function Auth() {
               <form onSubmit={handleOnboardingSubmit} className="space-y-5">
                 <div className="space-y-2">
                   <Label>Full Name</Label>
-                  <Input 
+                  <Input
                     value={name}
                     onChange={e => setName(e.target.value)}
                     placeholder="John Doe"
                     className="bg-background neu-inset border-none h-12 rounded-xl"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label>Phone Number</Label>
-                  <Input 
+                  <Input
                     value={phone}
                     onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
                     disabled={authMethod === 'phone'}
@@ -307,10 +324,10 @@ export default function Auth() {
 
                 <div className="pt-2 border-t border-border space-y-4">
                   <Label className="text-lg font-bold">First Delivery Address</Label>
-                  
+
                   <div className="flex gap-2">
                     {(['Home', 'Work', 'Other'] as const).map(label => (
-                      <div 
+                      <div
                         key={label}
                         onClick={() => setAddressLabel(label)}
                         className={cn(
@@ -323,21 +340,21 @@ export default function Auth() {
                     ))}
                   </div>
 
-                  <Input 
+                  <Input
                     placeholder="House/Flat No., Building Name, Street"
                     value={addressLine1}
                     onChange={e => setAddressLine1(e.target.value)}
                     className="bg-background neu-inset border-none h-12 rounded-xl"
                   />
-                  
+
                   <div className="grid grid-cols-2 gap-3">
-                    <Input 
+                    <Input
                       placeholder="City"
                       value={city}
                       onChange={e => setCity(e.target.value)}
                       className="bg-background neu-inset border-none h-12 rounded-xl"
                     />
-                    <Input 
+                    <Input
                       placeholder="Pincode"
                       value={pincode}
                       onChange={e => setPincode(e.target.value.replace(/\D/g, ''))}
@@ -347,8 +364,15 @@ export default function Auth() {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full rounded-2xl h-14 text-lg font-bold shadow-none neu-card mt-2">
-                  Start Shopping <ArrowRight className="w-5 h-5 ml-2" />
+                <Button
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="w-full rounded-2xl h-14 text-lg font-bold shadow-none neu-card mt-2"
+                >
+                  {isSavingProfile
+                    ? <Loader2 className="w-5 h-5 animate-spin" />
+                    : <><span>Start Shopping</span> <ArrowRight className="w-5 h-5 ml-2" /></>
+                  }
                 </Button>
               </form>
             </motion.div>

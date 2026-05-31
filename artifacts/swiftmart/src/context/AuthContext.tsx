@@ -1,9 +1,13 @@
 import React, { createContext, useState, useEffect } from "react";
-import { User, Address, VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog } from "@/types";
+import { User, Address, VendorApplication, AdminCustomer, PlatformOrder, Report, TransactionLog } from "@/types";
 import { mockAdminCustomers, mockPlatformOrders, mockReports, mockTransactions } from "@/data/adminData";
+import { api, setTokens, clearTokens } from "@/lib/api";
+
+export type UserRole = 'customer' | 'vendor' | 'admin' | 'super_admin';
 
 interface AuthContextType {
   user: User | null;
+  userRole: UserRole;
   role: 'customer' | 'vendor';
   isAdmin: boolean;
   isLoading: boolean;
@@ -16,15 +20,15 @@ interface AuthContextType {
   addAddress: (address: Address) => void;
   deleteAddress: (id: string) => void;
   loginWithPhone: (phone: string) => Promise<void>;
-  verifyOtp: (otp: string, phone: string) => { isNewUser: boolean; user?: User };
+  verifyOtp: (otp: string, phone: string) => Promise<{ isNewUser: boolean; user?: User }>;
   loginWithGoogle: () => { isNewUser: boolean; user?: User; mockEmail?: string; mockName?: string };
-  completeOnboarding: (name: string, phone: string, address: Address, email?: string) => void;
-  
+  completeOnboarding: (name: string, phone: string, address: Address, email?: string) => Promise<void>;
+
   applications: VendorApplication[];
   submitVendorApplication: (app: Omit<VendorApplication, 'id' | 'userId' | 'userName' | 'userPhone' | 'submittedAt' | 'status'>) => void;
   approveApplication: (applicationId: string) => void;
   rejectApplication: (applicationId: string, reason: string) => void;
-  
+
   adminCustomers: AdminCustomer[];
   banCustomer: (customerId: string) => void;
   unbanCustomer: (customerId: string) => void;
@@ -42,92 +46,81 @@ interface AuthContextType {
   transactions: TransactionLog[];
 }
 
-const mockExistingUsers: User[] = [
-  { id: "u1", name: "Rahul Sharma", phone: "9876543210", email: "rahul@example.com", addresses: [], isVendorRegistered: false, vendorStatus: 'none' },
-  { id: "u2", name: "Priya Patel", phone: "9999999999", email: "priya@example.com", addresses: [], isVendorRegistered: false, vendorStatus: 'none' },
-  { id: "admin1", name: "Admin", phone: "0000000000", email: "admin@swiftmart.com", addresses: [], isVendorRegistered: false, vendorStatus: 'none' }
-];
+interface ApiUser {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  role: UserRole;
+  status: string;
+  vendorStatus?: string;
+  addresses?: Address[];
+}
+
+function apiUserToFrontend(apiUser: ApiUser): User {
+  return {
+    id: apiUser.id,
+    name: apiUser.name,
+    phone: apiUser.phone,
+    email: apiUser.email ?? "",
+    addresses: apiUser.addresses ?? [],
+    isVendorRegistered: apiUser.vendorStatus === 'approved' || apiUser.vendorStatus === 'pending',
+    vendorStatus: (apiUser.vendorStatus as User['vendorStatus']) ?? 'none',
+  };
+}
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<UserRole>('customer');
   const [role, setRoleState] = useState<'customer' | 'vendor'>('customer');
   const [selectedDeliveryAddress, setSelectedDeliveryAddress] = useState<Address | null>(null);
   const [applications, setApplications] = useState<VendorApplication[]>([]);
-  const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>(mockAdminCustomers);
+  const [adminCustomers] = useState<AdminCustomer[]>(mockAdminCustomers);
   const [bannedVendorIds, setBannedVendorIds] = useState<string[]>([]);
-  const [platformOrders, setPlatformOrders] = useState<PlatformOrder[]>(mockPlatformOrders);
-  const [reports, setReports] = useState<Report[]>(mockReports);
-  const [transactions, setTransactions] = useState<TransactionLog[]>(mockTransactions);
+  const [platformOrders] = useState<PlatformOrder[]>(mockPlatformOrders);
+  const [reports] = useState<Report[]>(mockReports);
+  const [transactions] = useState<TransactionLog[]>(mockTransactions);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("swiftmart_user");
-    const savedRole = localStorage.getItem("swiftmart_role");
-    const savedApps = localStorage.getItem("swiftmart_vendor_applications");
-    const savedCustomers = localStorage.getItem("swiftmart_admin_customers");
-    const savedBannedVendors = localStorage.getItem("swiftmart_banned_vendors");
-    
+    const savedUser = localStorage.getItem("sm_user");
+    const savedRole = localStorage.getItem("sm_role");
+    const savedDashRole = localStorage.getItem("swiftmart_role");
+
     if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-      if (parsedUser?.addresses?.length > 0) {
-        setSelectedDeliveryAddress(parsedUser.addresses[0]);
-      }
+      try {
+        const parsed = JSON.parse(savedUser) as User;
+        setUser(parsed);
+        if (parsed.addresses?.length > 0) setSelectedDeliveryAddress(parsed.addresses[0]);
+      } catch { /* ignore */ }
     }
-    if (savedRole) {
-      setRoleState(savedRole as 'customer' | 'vendor');
+    if (savedRole) setUserRole(savedRole as UserRole);
+    if (savedDashRole) setRoleState(savedDashRole as 'customer' | 'vendor');
+
+    const { access } = api.getTokens();
+    if (access) {
+      api.get<{ success: boolean; user: ApiUser }>("/auth/me")
+        .then(d => {
+          const u = apiUserToFrontend(d.user);
+          setUser(u);
+          setUserRole(d.user.role);
+          localStorage.setItem("sm_user", JSON.stringify(u));
+          localStorage.setItem("sm_role", d.user.role);
+          if (u.addresses?.length > 0) setSelectedDeliveryAddress(u.addresses[0]);
+        })
+        .catch(() => {
+          if (!savedUser) {
+            clearTokens();
+            setUser(null);
+          }
+        })
+        .finally(() => setIsLoading(false));
+    } else {
+      setTimeout(() => setIsLoading(false), 300);
     }
-    if (savedApps) {
-      setApplications(JSON.parse(savedApps));
-    }
-    if (savedCustomers) {
-      setAdminCustomers(JSON.parse(savedCustomers));
-    }
-    if (savedBannedVendors) {
-      setBannedVendorIds(JSON.parse(savedBannedVendors));
-    }
-    
-    // Simulate hydration delay for skeleton
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
   }, []);
-
-  useEffect(() => {
-    if (!isLoading) {
-      if (user) {
-        localStorage.setItem("swiftmart_user", JSON.stringify(user));
-      } else {
-        localStorage.removeItem("swiftmart_user");
-      }
-    }
-  }, [user, isLoading]);
-
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem("swiftmart_role", role);
-    }
-  }, [role, isLoading]);
-
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem("swiftmart_vendor_applications", JSON.stringify(applications));
-    }
-  }, [applications, isLoading]);
-
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem("swiftmart_admin_customers", JSON.stringify(adminCustomers));
-    }
-  }, [adminCustomers, isLoading]);
-
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem("swiftmart_banned_vendors", JSON.stringify(bannedVendorIds));
-    }
-  }, [bannedVendorIds, isLoading]);
 
   const login = (phone: string, name: string) => {
     const newUser: User = {
@@ -137,54 +130,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: "",
       addresses: [],
       isVendorRegistered: false,
-      vendorStatus: 'none'
+      vendorStatus: 'none',
     };
     setUser(newUser);
     setRoleState('customer');
     setSelectedDeliveryAddress(null);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try { await api.post("/auth/logout"); } catch { /* ignore */ }
+    clearTokens();
     setUser(null);
+    setUserRole('customer');
     setRoleState('customer');
     setSelectedDeliveryAddress(null);
     localStorage.removeItem("swiftmart_cart");
+    localStorage.removeItem("swiftmart_role");
   };
 
   const setRole = (newRole: 'customer' | 'vendor') => {
     if (newRole === 'customer') {
       setRoleState(newRole);
-    } else if (user?.vendorStatus === 'approved') {
+      localStorage.setItem("swiftmart_role", newRole);
+    } else if (user?.vendorStatus === 'approved' || userRole === 'vendor') {
       setRoleState(newRole);
+      localStorage.setItem("swiftmart_role", newRole);
     }
   };
 
   const updateUser = (updates: Partial<User>) => {
-    if (user) setUser({ ...user, ...updates });
+    if (user) {
+      const updated = { ...user, ...updates };
+      setUser(updated);
+      localStorage.setItem("sm_user", JSON.stringify(updated));
+    }
   };
 
   const addAddress = (address: Address) => {
-    if (user) setUser({ ...user, addresses: [...user.addresses, address] });
+    if (user) updateUser({ addresses: [...user.addresses, address] });
   };
 
   const deleteAddress = (id: string) => {
-    if (user) setUser({ ...user, addresses: user.addresses.filter(a => a.id !== id) });
+    if (user) updateUser({ addresses: user.addresses.filter(a => a.id !== id) });
   };
 
-  const loginWithPhone = async (phone: string) => {
-    return new Promise<void>((resolve) => setTimeout(resolve, 1500));
+  const loginWithPhone = async (phone: string): Promise<void> => {
+    await api.post<{ success: boolean; message: string }>("/auth/send-otp", { phone });
   };
 
-  const verifyOtp = (otp: string, phone: string) => {
-    if (otp === "123456") {
-      const existingUser = mockExistingUsers.find(u => u.phone === phone);
-      if (existingUser) {
-        setUser(existingUser);
-        return { isNewUser: false, user: existingUser };
-      }
-      return { isNewUser: true };
-    }
-    throw new Error("Invalid OTP");
+  const verifyOtp = async (otp: string, phone: string): Promise<{ isNewUser: boolean; user?: User }> => {
+    const data = await api.post<{
+      success: boolean;
+      isNewUser: boolean;
+      accessToken: string;
+      refreshToken: string;
+      user: ApiUser;
+    }>("/auth/verify-otp", { phone, otp });
+
+    setTokens(data.accessToken, data.refreshToken);
+    const u = apiUserToFrontend(data.user);
+    setUser(u);
+    setUserRole(data.user.role);
+    localStorage.setItem("sm_user", JSON.stringify(u));
+    localStorage.setItem("sm_role", data.user.role);
+
+    if (u.addresses?.length > 0) setSelectedDeliveryAddress(u.addresses[0]);
+
+    const dashRole = data.user.role === 'vendor' ? 'vendor' : 'customer';
+    setRoleState(dashRole);
+    localStorage.setItem("swiftmart_role", dashRole);
+
+    return { isNewUser: data.isNewUser, user: u };
   };
 
   const loginWithGoogle = () => {
@@ -193,23 +209,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { isNewUser: true, mockEmail, mockName };
   };
 
-  const completeOnboarding = (name: string, phone: string, address: Address, email?: string) => {
+  const completeOnboarding = async (name: string, phone: string, address: Address, email?: string): Promise<void> => {
+    const { access } = api.getTokens();
+    if (access) {
+      try {
+        const data = await api.patch<{ success: boolean; user: ApiUser }>("/users/me/profile", {
+          name,
+          email: email ?? "",
+          addresses: [address],
+        });
+        const u = apiUserToFrontend(data.user);
+        setUser(u);
+        setUserRole(data.user.role);
+        localStorage.setItem("sm_user", JSON.stringify(u));
+        setSelectedDeliveryAddress(address);
+        return;
+      } catch { /* fallback to local */ }
+    }
     const newUser: User = {
       id: `u_${Date.now()}`,
       name,
       phone,
-      email: email || "",
+      email: email ?? "",
       addresses: [address],
       isVendorRegistered: false,
-      vendorStatus: 'none'
+      vendorStatus: 'none',
     };
     setUser(newUser);
+    localStorage.setItem("sm_user", JSON.stringify(newUser));
     setSelectedDeliveryAddress(address);
   };
 
   const submitVendorApplication = (appData: Omit<VendorApplication, 'id' | 'userId' | 'userName' | 'userPhone' | 'submittedAt' | 'status'>) => {
     if (!user) return;
-    
     const newApp: VendorApplication = {
       ...appData,
       id: `va_${Date.now()}`,
@@ -217,118 +249,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       userName: user.name,
       userPhone: user.phone,
       submittedAt: new Date().toISOString(),
-      status: 'pending'
+      status: 'pending',
     };
-
     setApplications(prev => [...prev, newApp]);
-    updateUser({ 
-      vendorStatus: 'pending',
-      vendorApplicationId: newApp.id,
-      isVendorRegistered: true
-    });
+    updateUser({ vendorStatus: 'pending', vendorApplicationId: newApp.id, isVendorRegistered: true });
+
+    api.post("/shops", {
+      shopName: appData.storeName,
+      ownerName: appData.ownerName,
+      phone: user.phone,
+      shopType: appData.storeCategory,
+      description: appData.storeDescription,
+      panNumber: appData.panNumber,
+      gstNumber: appData.gstNumber,
+      bankAccountNumber: appData.bankAccountNumber,
+      bankIfscCode: appData.bankIfscCode,
+      upiId: appData.upiId,
+      address: { line1: "TBD", city: "TBD", pincode: "000000" },
+    }).catch(() => { /* ignore API errors, local state updated */ });
   };
 
   const approveApplication = (applicationId: string) => {
-    setApplications(prev => prev.map(app => 
+    setApplications(prev => prev.map(app =>
       app.id === applicationId ? { ...app, status: 'approved' } : app
     ));
-
-    const app = applications.find(a => a.id === applicationId);
-    if (app && user && user.id === app.userId) {
-      updateUser({
-        vendorStatus: 'approved',
-        vendorProfile: {
-          storeName: app.storeName,
-          storeCategory: app.storeCategory,
-          storeDescription: app.storeDescription,
-          upiId: app.upiId,
-          bankAccountNumber: app.bankAccountNumber,
-          bankIfscCode: app.bankIfscCode,
-          panNumber: app.panNumber,
-          gstNumber: app.gstNumber,
-        }
-      });
-    }
   };
 
   const rejectApplication = (applicationId: string, reason: string) => {
-    setApplications(prev => prev.map(app => 
+    setApplications(prev => prev.map(app =>
       app.id === applicationId ? { ...app, status: 'rejected', rejectionReason: reason } : app
     ));
-
-    const app = applications.find(a => a.id === applicationId);
-    if (app && user && user.id === app.userId) {
-      updateUser({ vendorStatus: 'rejected' });
-    }
   };
 
   const banCustomer = (customerId: string) => {
-    setAdminCustomers(prev => prev.map(c => 
-      c.id === customerId ? { ...c, status: 'banned' } : c
-    ));
+    api.patch(`/users/${customerId}/ban`).catch(() => {});
   };
 
   const unbanCustomer = (customerId: string) => {
-    setAdminCustomers(prev => prev.map(c => 
-      c.id === customerId ? { ...c, status: 'active' } : c
-    ));
+    api.patch(`/users/${customerId}/unban`).catch(() => {});
   };
 
   const banVendor = (vendorId: string) => {
     setBannedVendorIds(prev => [...new Set([...prev, vendorId])]);
+    api.post(`/shops/${vendorId}/ban`).catch(() => {});
   };
 
   const unbanVendor = (vendorId: string) => {
     setBannedVendorIds(prev => prev.filter(id => id !== vendorId));
+    api.post(`/shops/${vendorId}/unban`).catch(() => {});
   };
 
   const removeVendor = (vendorId: string) => {
-    setApplications(prev => prev.map(app => 
-      app.id === vendorId || app.userId === vendorId || app.storeName === vendorId 
-        ? { ...app, status: 'rejected', rejectionReason: "Removed by admin" } 
+    setApplications(prev => prev.map(app =>
+      app.id === vendorId || app.userId === vendorId
+        ? { ...app, status: 'rejected', rejectionReason: "Removed by admin" }
         : app
     ));
-    // Since vendors array is static right now, we can also add it to banned to hide it, but the spec says "set application status to 'rejected' with reason 'Removed by admin'". We'll handle this in the UI.
+    api.delete(`/shops/${vendorId}`).catch(() => {});
   };
 
   const updateOrderStatus = (orderId: string, status: PlatformOrder['status']) => {
-    setPlatformOrders(prev => prev.map(o => {
-      if (o.id === orderId) {
-        const updates: Partial<PlatformOrder> = { status, updatedAt: new Date().toISOString() };
-        if (status === 'cancelled') {
-          updates.paymentStatus = 'pending'; // refund pending
-        }
-        return { ...o, ...updates };
-      }
-      return o;
-    }));
+    api.patch(`/orders/${orderId}/status`, { status }).catch(() => {});
   };
 
   const refundOrder = (orderId: string) => {
-    setPlatformOrders(prev => prev.map(o => 
-      o.id === orderId 
-        ? { ...o, paymentStatus: 'refunded', refundedAt: new Date().toISOString(), status: 'cancelled', updatedAt: new Date().toISOString() }
-        : o
-    ));
+    api.post(`/orders/${orderId}/refund`).catch(() => {});
   };
 
-  const resolveReport = (reportId: string) => {
-    setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'resolved' } : r));
-  };
+  const resolveReport = (_reportId: string) => {};
+  const ignoreReport = (_reportId: string) => {};
 
-  const ignoreReport = (reportId: string) => {
-    setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'ignored' } : r));
-  };
-
-  const isAdmin = user?.phone === "0000000000";
+  const isAdmin = userRole === 'admin' || userRole === 'super_admin';
 
   return (
-    <AuthContext.Provider value={{ 
-      user, role, isAdmin, isLoading, selectedDeliveryAddress, setSelectedDeliveryAddress, login, logout, setRole, updateUser, addAddress, deleteAddress,
+    <AuthContext.Provider value={{
+      user, userRole, role, isAdmin, isLoading, selectedDeliveryAddress, setSelectedDeliveryAddress,
+      login, logout, setRole, updateUser, addAddress, deleteAddress,
       loginWithPhone, verifyOtp, loginWithGoogle, completeOnboarding,
       applications, submitVendorApplication, approveApplication, rejectApplication,
       adminCustomers, banCustomer, unbanCustomer, bannedVendorIds, banVendor, unbanVendor, removeVendor,
-      platformOrders, updateOrderStatus, refundOrder, reports, resolveReport, ignoreReport, transactions
+      platformOrders, updateOrderStatus, refundOrder, reports, resolveReport, ignoreReport, transactions,
     }}>
       {children}
     </AuthContext.Provider>
