@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [adminCustomers] = useState<AdminCustomer[]>(mockAdminCustomers);
   const [bannedVendorIds, setBannedVendorIds] = useState<string[]>([]);
   const [platformOrders] = useState<PlatformOrder[]>(mockPlatformOrders);
-  const [reports] = useState<Report[]>(mockReports);
+  const [reports, setReports] = useState<Report[]>(mockReports);
   const [transactions] = useState<TransactionLog[]>(mockTransactions);
 
   useEffect(() => {
@@ -316,8 +316,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     api.post(`/orders/${orderId}/refund`).catch(() => {});
   };
 
-  const resolveReport = (_reportId: string) => {};
-  const ignoreReport = (_reportId: string) => {};
+  const resolveReport = (reportId: string) => setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'resolved' as const } : r));
+  const ignoreReport = (reportId: string) => setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'ignored' as const } : r));
 
   const isAdmin = userRole === 'admin' || userRole === 'super_admin';
 

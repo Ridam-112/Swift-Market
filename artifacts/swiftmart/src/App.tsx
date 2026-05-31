@@ -153,7 +153,7 @@ function Router() {
         </Route>
 
         <Route path="/admin">
-          <ProtectedLayout><AdminGuard><Admin /></AdminGuard></ProtectedLayout>
+          <AdminLayout><AdminGuard><Admin /></AdminGuard></AdminLayout>
         </Route>
 
         <Route>

@@ -15,13 +15,6 @@ import {
 } from "lucide-react";
 import { VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog } from "@/types";
 import { useShops } from "@/hooks/useShops";
-import { 
-  platformRevenue, 
-  analyticsDaily, 
-  analyticsWeekly, 
-  analyticsMonthly, 
-  topSellingProducts 
-} from "@/data/adminData";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/lib/api";
@@ -73,6 +66,73 @@ interface ApiOrder {
   paymentStatus?: string;
   createdAt: string;
   updatedAt?: string;
+}
+
+interface AdminStats {
+  totalUsers: number;
+  totalShops: number;
+  pendingShops: number;
+  totalOrders: number;
+  pendingOrders: number;
+  totalRevenue: number;
+  totalCommission: number;
+}
+
+interface AnalyticsPoint { label: string; revenue: number; orders: number; newUsers: number; commission: number }
+
+function buildDaySeries(orders: ApiOrder[]) {
+  const now = new Date();
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - (6 - i));
+    const label = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const startMs = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const endMs = startMs + 86400000 - 1;
+    const dayOrders = orders.filter(o => { const t = new Date(o.createdAt).getTime(); return t >= startMs && t <= endMs; });
+    const revenue = dayOrders.reduce((s, o) => s + (o.netAmount ?? o.subtotal ?? 0), 0);
+    return { date: label, revenue, orders: dayOrders.length, commission: Math.round(revenue * 0.05) };
+  });
+}
+
+function buildAnalyticsSeries(orders: ApiOrder[], period: 'Daily' | 'Weekly' | 'Monthly'): AnalyticsPoint[] {
+  const now = new Date();
+  if (period === 'Daily') {
+    return buildDaySeries(orders).map(d => ({ label: d.date, revenue: d.revenue, orders: d.orders, newUsers: 0, commission: d.commission }));
+  }
+  if (period === 'Weekly') {
+    return Array.from({ length: 4 }, (_, i) => {
+      const wEnd = new Date(now); wEnd.setDate(wEnd.getDate() - i * 7);
+      const wStart = new Date(wEnd); wStart.setDate(wEnd.getDate() - 6);
+      const wo = orders.filter(o => { const t = new Date(o.createdAt).getTime(); return t >= wStart.getTime() && t <= wEnd.getTime(); });
+      const revenue = wo.reduce((s, o) => s + (o.netAmount ?? o.subtotal ?? 0), 0);
+      return { label: `Week ${4 - i}`, revenue, orders: wo.length, newUsers: 0, commission: Math.round(revenue * 0.05) };
+    }).reverse();
+  }
+  return Array.from({ length: 6 }, (_, i) => {
+    const month = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    const next = new Date(now.getFullYear(), now.getMonth() - (5 - i) + 1, 1);
+    const mo = orders.filter(o => { const t = new Date(o.createdAt).getTime(); return t >= month.getTime() && t < next.getTime(); });
+    const revenue = mo.reduce((s, o) => s + (o.netAmount ?? o.subtotal ?? 0), 0);
+    return { label: month.toLocaleDateString('en-US', { month: 'short' }), revenue, orders: mo.length, newUsers: 0, commission: Math.round(revenue * 0.05) };
+  });
+}
+
+function buildTopProducts(orders: ApiOrder[]) {
+  const map = new Map<string, { name: string; category: string; unitsSold: number; revenue: number; vendorName: string }>();
+  for (const order of orders) {
+    for (const item of order.items) {
+      const name = (item as { productName?: string; name?: string }).productName ?? (item as { name?: string }).name ?? 'Unknown';
+      const key = name.toLowerCase();
+      const qty = (item as { qty?: number }).qty ?? 1;
+      const price = (item as { price?: number }).price ?? 0;
+      const cat = (item as { category?: string }).category ?? 'other';
+      const ex = map.get(key);
+      if (ex) { ex.unitsSold += qty; ex.revenue += qty * price; }
+      else map.set(key, { name, category: cat, unitsSold: qty, revenue: qty * price, vendorName: order.shopName ?? 'Unknown' });
+    }
+  }
+  return [...map.entries()].map(([, v], i) => ({ id: `tp-${i}`, ...v, image: '' }))
+    .sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 5);
 }
 
 type AdminSection = 'overview' | 'requests' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions';
@@ -227,16 +287,25 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
 // ============================================================================
 
 function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) {
-  const { adminCustomers, bannedVendorIds, platformOrders, reports, transactions } = useAuth();
+  const { reports } = useAuth();
   const { shops } = useShops();
+  const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
+  const [recentOrders, setRecentOrders] = useState<ApiOrder[]>([]);
 
-  const activeShops = useMemo(() => shops.filter(v => !bannedVendorIds.includes(v.id)), [shops, bannedVendorIds]);
+  useEffect(() => {
+    api.get<{ success: boolean; stats: AdminStats }>('/admin/stats').then(d => setAdminStats(d.stats)).catch(() => {});
+    api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=200').then(d => setRecentOrders(d.orders)).catch(() => {});
+  }, []);
 
-  const totalRevenue = activeShops.reduce((sum, v) => sum + (v.totalRevenue || 0), 0);
-  const platformComm = activeShops.reduce((sum, v) => sum + Math.round((v.totalRevenue || 0) * (v.commissionRate || 5) / 100), 0);
+  const weekRevData = useMemo(() => buildDaySeries(recentOrders), [recentOrders]);
+  const totalRevenue = adminStats?.totalRevenue ?? 0;
+  const platformComm = adminStats?.totalCommission ?? 0;
+  const activeShopsCount = adminStats?.totalShops ?? shops.length;
+  const totalUsers = adminStats?.totalUsers ?? 0;
+  const totalOrdersCount = adminStats?.totalOrders ?? 0;
   const openReports = reports.filter(r => r.status === 'open').length;
 
-  const topShops = [...activeShops].sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0)).slice(0, 3);
+  const topShops = useMemo(() => [...shops].sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0)).slice(0, 3), [shops]);
 
   const formatLargeValue = (val: number) => {
     if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
@@ -255,14 +324,14 @@ function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard title="Total Revenue" value={formatLargeValue(totalRevenue)} icon={TrendingUp} color="text-green-600" />
         <StatCard title="Platform Commission" value={formatLargeValue(platformComm)} icon={Award} color="text-amber-600" />
-        <StatCard title="Active Shops" value={activeShops.length} icon={Store} color="text-blue-600" />
-        <StatCard title="Total Customers" value={adminCustomers.length} icon={Users} color="text-purple-600" />
+        <StatCard title="Active Shops" value={activeShopsCount} icon={Store} color="text-blue-600" />
+        <StatCard title="Total Customers" value={totalUsers} icon={Users} color="text-purple-600" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard title="Total Orders" value={platformOrders.length} icon={ShoppingBag} color="text-indigo-600" />
+        <StatCard title="Total Orders" value={totalOrdersCount} icon={ShoppingBag} color="text-indigo-600" />
         <StatCard title="Open Reports" value={openReports} icon={Flag} color="text-red-600" />
-        <StatCard title="Total Transactions" value={transactions.length} icon={CreditCard} color="text-teal-600" />
+        <StatCard title="Pending Orders" value={adminStats?.pendingOrders ?? 0} icon={CreditCard} color="text-teal-600" />
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -276,7 +345,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) 
           <h3 className="text-lg font-bold text-foreground mb-4">Revenue This Week</h3>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={platformRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={weekRevData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
@@ -1307,15 +1376,22 @@ function ReportsTab() {
 function AnalyticsTab() {
   const [period, setPeriod] = useState<'Daily' | 'Weekly' | 'Monthly'>('Daily');
   const { shops } = useShops();
-  
-  const data = period === 'Daily' ? analyticsDaily : period === 'Weekly' ? analyticsWeekly : analyticsMonthly;
-  
+  const [allOrders, setAllOrders] = useState<ApiOrder[]>([]);
+
+  useEffect(() => {
+    api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=500')
+      .then(d => setAllOrders(d.orders)).catch(() => {});
+  }, []);
+
+  const data = useMemo(() => buildAnalyticsSeries(allOrders, period), [allOrders, period]);
+  const computedTopProducts = useMemo(() => buildTopProducts(allOrders), [allOrders]);
+
   const totalRev = data.reduce((sum, d) => sum + d.revenue, 0);
   const totalOrd = data.reduce((sum, d) => sum + d.orders, 0);
   const totalNewUsers = data.reduce((sum, d) => sum + d.newUsers, 0);
   const totalComm = data.reduce((sum, d) => sum + d.commission, 0);
 
-  const maxUnits = topSellingProducts.length > 0 ? topSellingProducts[0].unitsSold : 1;
+  const maxUnits = computedTopProducts.length > 0 ? computedTopProducts[0].unitsSold : 1;
 
   return (
     <div className="space-y-6">
@@ -1403,7 +1479,12 @@ function AnalyticsTab() {
           </div>
           
           <div className="space-y-5">
-            {topSellingProducts.map((p, i) => (
+            {computedTopProducts.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                No order data yet — top products will appear here once orders are placed.
+              </div>
+            ) : computedTopProducts.map((p, i) => (
               <div key={p.id} className="space-y-2">
                 <div className="flex items-center gap-3">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
@@ -1411,7 +1492,9 @@ function AnalyticsTab() {
                   }`}>
                     {i + 1}
                   </div>
-                  <img src={p.image} alt={p.name} className="w-10 h-10 rounded-xl object-cover bg-muted neu-inset shrink-0" />
+                  <div className="w-10 h-10 rounded-xl bg-muted neu-inset flex items-center justify-center shrink-0">
+                    <Package className="w-5 h-5 text-muted-foreground" />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate">{p.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -1427,8 +1510,8 @@ function AnalyticsTab() {
                   </div>
                 </div>
                 <div className="h-1.5 w-full bg-background neu-inset rounded-full overflow-hidden ml-9">
-                  <div 
-                    className="h-full bg-primary rounded-full" 
+                  <div
+                    className="h-full bg-primary rounded-full"
                     style={{ width: `${(p.unitsSold / maxUnits) * 100}%` }}
                   />
                 </div>
