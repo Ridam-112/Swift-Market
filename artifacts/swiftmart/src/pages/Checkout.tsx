@@ -2,42 +2,101 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
+import { useShops } from "@/hooks/useShops";
 import { AddressCard } from "@/components/AddressCard";
 import { AddressForm } from "@/components/AddressForm";
 import { CartSummary } from "@/components/CartSummary";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
-import { Plus, Wallet, CreditCard, Banknote } from "lucide-react";
+import { Plus, Wallet, CreditCard, Banknote, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+
+interface ApiOrderResponse {
+  success: boolean;
+  order: { _id: string };
+}
 
 export default function Checkout() {
   const [, setLocation] = useLocation();
   const { items, subtotal, clearCart } = useCart();
   const { user, addAddress, selectedDeliveryAddress, setSelectedDeliveryAddress } = useAuth();
-  
-  const [selectedAddress, setSelectedAddress] = useState<string | null>(selectedDeliveryAddress?.id || user?.addresses[0]?.id || null);
+  const { shops } = useShops();
+
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(
+    selectedDeliveryAddress?.id || user?.addresses[0]?.id || null
+  );
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [deliverySlot, setDeliverySlot] = useState<'instant' | 'schedule'>('instant');
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Card' | 'COD'>('UPI');
+  const [placing, setPlacing] = useState(false);
 
   if (items.length === 0) {
     setLocation("/cart");
     return null;
   }
 
-  const handlePlaceOrder = () => {
-    if (!selectedAddress) {
+  const deliveryFee = deliverySlot === 'instant' ? 25 : 0;
+  const address = user?.addresses.find(a => a.id === selectedAddress);
+
+  const handlePlaceOrder = async () => {
+    if (!selectedAddress || !address) {
       toast.error("Please select a delivery address");
       return;
     }
-    
-    // In a real app, this would call an API
-    const orderId = `ORD-${Math.floor(Math.random() * 10000)}`;
-    
-    toast.success("Order placed successfully!");
-    clearCart();
-    setLocation(`/order/success/${orderId}`);
+
+    if (!user) {
+      toast.error("Please sign in to place an order");
+      return;
+    }
+
+    const shopId = items[0]?.product.vendorId;
+    if (!shopId) {
+      toast.error("Could not determine shop for this order");
+      return;
+    }
+
+    const shop = shops.find(s => s.id === shopId);
+    const shopName = shop?.storeName ?? "Unknown Shop";
+
+    const paymentMethodApi = paymentMethod === 'Card' ? 'card' : paymentMethod;
+
+    setPlacing(true);
+    try {
+      const data = await api.post<ApiOrderResponse>("/orders", {
+        shopId,
+        shopName,
+        customerName: user.name,
+        customerPhone: user.phone,
+        items: items.map(item => ({
+          productId: item.product.id,
+          productName: item.product.name,
+          qty: item.qty,
+          price: item.product.price,
+          category: item.product.category,
+        })),
+        subtotal,
+        deliveryCharge: deliveryFee,
+        couponDiscount: 0,
+        paymentMethod: paymentMethodApi,
+        address: {
+          label: address.label,
+          line1: address.line1,
+          city: address.city,
+          pincode: address.pincode,
+        },
+      });
+
+      toast.success("Order placed successfully!");
+      clearCart();
+      setLocation(`/order/success/${data.order._id}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to place order";
+      toast.error(msg.includes("buffering") ? "Database connecting — please retry" : msg);
+    } finally {
+      setPlacing(false);
+    }
   };
 
   const paymentOptions = [
@@ -60,9 +119,9 @@ export default function Checkout() {
               </Button>
             )}
           </div>
-          
+
           {showAddressForm ? (
-            <AddressForm 
+            <AddressForm
               onSubmit={(addr) => {
                 addAddress(addr);
                 setSelectedAddress(addr.id);
@@ -74,7 +133,7 @@ export default function Checkout() {
           ) : (
             <div className="grid gap-3">
               {user?.addresses.map(addr => (
-                <AddressCard 
+                <AddressCard
                   key={addr.id}
                   address={addr}
                   selected={selectedAddress === addr.id}
@@ -96,7 +155,7 @@ export default function Checkout() {
         <section>
           <h3 className="font-bold text-lg mb-4">Delivery Slot</h3>
           <div className="grid grid-cols-2 gap-3">
-            <div 
+            <div
               onClick={() => setDeliverySlot('instant')}
               className={cn(
                 "p-4 rounded-2xl cursor-pointer text-center border-2 transition-all",
@@ -106,7 +165,7 @@ export default function Checkout() {
               <div className="font-bold">Instant 10 min</div>
               <div className="text-xs text-muted-foreground mt-1">Extra ₹25</div>
             </div>
-            <div 
+            <div
               onClick={() => setDeliverySlot('schedule')}
               className={cn(
                 "p-4 rounded-2xl cursor-pointer text-center border-2 transition-all",
@@ -123,7 +182,7 @@ export default function Checkout() {
           <h3 className="font-bold text-lg mb-4">Payment Method</h3>
           <div className="space-y-3">
             {paymentOptions.map(option => (
-              <div 
+              <div
                 key={option.id}
                 onClick={() => setPaymentMethod(option.id)}
                 className={cn(
@@ -144,13 +203,21 @@ export default function Checkout() {
         </section>
 
         <section className="pt-4 border-t border-border">
-          <CartSummary subtotal={subtotal} deliveryFee={deliverySlot === 'instant' ? 25 : 0} />
-          
-          <Button 
+          <CartSummary subtotal={subtotal} deliveryFee={deliveryFee} />
+
+          <Button
             className="w-full mt-6 rounded-full h-14 text-lg font-bold shadow-none neu-card"
             onClick={handlePlaceOrder}
+            disabled={placing}
           >
-            Place Order
+            {placing ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Placing Order…
+              </>
+            ) : (
+              "Place Order"
+            )}
           </Button>
         </section>
       </div>

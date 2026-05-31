@@ -1,33 +1,60 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { formatINR } from "@/lib/currency";
 import { SectionHeader } from "@/components/SectionHeader";
 import { EmptyState } from "@/components/EmptyState";
-import { PackageX, Package, Truck, CheckCircle2, Clock, Loader2, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  PackageX, Package, Truck, CheckCircle2, Clock, Loader2,
+  AlertCircle, RefreshCw, XCircle, Ban
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+
+interface ApiOrderItem {
+  productId?: string;
+  productName: string;
+  name?: string;
+  qty: number;
+  price: number;
+  image?: string;
+}
 
 interface ApiOrder {
   _id: string;
   shopName?: string;
-  items: { name: string; qty: number; price: number; image?: string }[];
+  items: ApiOrderItem[];
   netAmount?: number;
   subtotal?: number;
+  deliveryCharge?: number;
   status: string;
   paymentMethod?: string;
+  address?: { label: string; line1: string; city: string; pincode: string };
   createdAt: string;
 }
 
 function getStatusDisplay(status: string) {
   switch (status) {
-    case 'placed': return { label: 'Placed', icon: Clock, color: 'text-blue-500', bg: 'bg-blue-500/10' };
+    case 'placed':
+      return { label: 'Placed', icon: Clock, color: 'text-blue-500', bg: 'bg-blue-500/10' };
     case 'accepted':
+      return { label: 'Accepted', icon: CheckCircle2, color: 'text-amber-500', bg: 'bg-amber-500/10' };
     case 'preparing':
-    case 'packed': return { label: 'Packed', icon: Package, color: 'text-amber-500', bg: 'bg-amber-500/10' };
-    case 'out_for_delivery': return { label: 'Out for Delivery', icon: Truck, color: 'text-indigo-500', bg: 'bg-indigo-500/10' };
-    case 'delivered': return { label: 'Delivered', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' };
-    default: return { label: status, icon: Clock, color: 'text-muted-foreground', bg: 'bg-background' };
+      return { label: 'Preparing', icon: Package, color: 'text-orange-500', bg: 'bg-orange-500/10' };
+    case 'packed':
+      return { label: 'Packed', icon: Package, color: 'text-indigo-500', bg: 'bg-indigo-500/10' };
+    case 'out_for_delivery':
+      return { label: 'Out for Delivery', icon: Truck, color: 'text-indigo-500', bg: 'bg-indigo-500/10' };
+    case 'delivered':
+      return { label: 'Delivered', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' };
+    case 'cancelled':
+      return { label: 'Cancelled', icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/10' };
+    case 'refunded':
+      return { label: 'Refunded', icon: Ban, color: 'text-slate-500', bg: 'bg-slate-500/10' };
+    default:
+      return { label: status, icon: Clock, color: 'text-muted-foreground', bg: 'bg-background' };
   }
 }
 
@@ -36,11 +63,14 @@ export default function Orders() {
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchOrders = useCallback(() => {
     if (!user) { setLoading(false); return; }
+    setLoading(true);
+    setError(null);
     api.get<{ success: boolean; orders: ApiOrder[] }>("/orders")
-      .then(d => { setOrders(d.orders); setError(null); })
+      .then(d => { setOrders(d.orders); })
       .catch(err => {
         const msg = err instanceof Error ? err.message : "Failed to load orders";
         setError(msg.includes("buffering") || msg.includes("ECONNREFUSED")
@@ -49,6 +79,21 @@ export default function Orders() {
       })
       .finally(() => setLoading(false));
   }, [user]);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  const cancelOrder = async (orderId: string) => {
+    setCancellingId(orderId);
+    try {
+      await api.patch(`/orders/${orderId}/status`, { status: 'cancelled', cancelReason: 'Cancelled by customer' });
+      setOrders(prev => prev.map(o => o._id === orderId ? { ...o, status: 'cancelled' } : o));
+      toast.success("Order cancelled");
+    } catch {
+      toast.error("Could not cancel order");
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -67,7 +112,7 @@ export default function Orders() {
           <AlertCircle className="w-10 h-10 text-amber-500" />
           <p className="text-muted-foreground text-sm">{error}</p>
           <button
-            onClick={() => { setLoading(true); setError(null); api.get<{ success: boolean; orders: ApiOrder[] }>("/orders").then(d => setOrders(d.orders)).catch(e => setError(e.message)).finally(() => setLoading(false)); }}
+            onClick={fetchOrders}
             className="text-primary text-sm font-medium flex items-center gap-1"
           >
             <Loader2 className="w-4 h-4" /> Retry
@@ -99,13 +144,20 @@ export default function Orders() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-3xl mx-auto space-y-6">
-      <SectionHeader title="Your Orders" />
+      <div className="flex items-center justify-between">
+        <SectionHeader title="Your Orders" />
+        <Button variant="ghost" size="sm" onClick={fetchOrders} className="text-muted-foreground">
+          <RefreshCw className="w-4 h-4 mr-1" /> Refresh
+        </Button>
+      </div>
 
       <div className="space-y-4">
         {orders.map(order => {
-          const status = getStatusDisplay(order.status);
-          const StatusIcon = status.icon;
+          const statusInfo = getStatusDisplay(order.status);
+          const StatusIcon = statusInfo.icon;
           const total = order.netAmount ?? order.subtotal ?? order.items.reduce((s, i) => s + i.price * i.qty, 0);
+          const canCancel = order.status === 'placed';
+          const isCancelling = cancellingId === order._id;
 
           return (
             <div key={order._id} className="bg-card p-4 rounded-2xl neu-card space-y-4">
@@ -122,45 +174,111 @@ export default function Orders() {
                     })}
                   </div>
                 </div>
-                <div className={cn("px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5", status.bg, status.color)}>
+                <div className={cn("px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5", statusInfo.bg, statusInfo.color)}>
                   <StatusIcon className="w-3.5 h-3.5" />
-                  {status.label}
+                  {statusInfo.label}
                 </div>
               </div>
 
+              {/* Tracking bar for active orders */}
+              {!['delivered', 'cancelled', 'refunded'].includes(order.status) && (
+                <TrackingBar status={order.status} />
+              )}
+
               <div className="space-y-3">
-                {order.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-sm">
-                    <div className="flex items-center gap-3">
-                      {item.image ? (
-                        <div className="w-10 h-10 rounded-xl bg-background neu-inset p-1.5 flex-shrink-0">
-                          <img src={item.image} alt={item.name} className="w-full h-full object-contain" />
-                        </div>
-                      ) : (
+                {order.items.map((item, idx) => {
+                  const name = item.productName ?? (item as ApiOrderItem & { name?: string }).name ?? 'Product';
+                  return (
+                    <div key={idx} className="flex justify-between items-center text-sm">
+                      <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-background neu-inset flex items-center justify-center flex-shrink-0">
                           <Package className="w-4 h-4 text-muted-foreground" />
                         </div>
-                      )}
-                      <div>
-                        <div className="font-medium line-clamp-1">{item.name}</div>
-                        <div className="text-xs text-muted-foreground">Qty: {item.qty}</div>
+                        <div>
+                          <div className="font-medium line-clamp-1">{name}</div>
+                          <div className="text-xs text-muted-foreground">Qty: {item.qty}</div>
+                        </div>
                       </div>
+                      <div className="font-bold">{formatINR(item.price * item.qty)}</div>
                     </div>
-                    <div className="font-bold">{formatINR(item.price * item.qty)}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
-              <div className="pt-4 border-t border-border flex justify-between items-center">
+              {order.address && (
+                <div className="text-xs bg-background neu-inset p-2 rounded-xl text-muted-foreground">
+                  📍 {order.address.line1}, {order.address.city} - {order.address.pincode}
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-border flex justify-between items-center">
                 <div className="text-sm text-muted-foreground">
-                  Total Amount {order.paymentMethod && <span className="ml-1 text-xs">· {order.paymentMethod}</span>}
+                  Total {order.paymentMethod && <span className="ml-1 text-xs">· {order.paymentMethod}</span>}
                 </div>
                 <div className="font-bold text-lg">{formatINR(total)}</div>
               </div>
+
+              {canCancel && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl border border-red-200"
+                  onClick={() => cancelOrder(order._id)}
+                  disabled={isCancelling}
+                >
+                  {isCancelling ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
+                  Cancel Order
+                </Button>
+              )}
             </div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+const TRACK_STEPS = [
+  { key: 'placed',           label: 'Placed' },
+  { key: 'accepted',         label: 'Accepted' },
+  { key: 'preparing',        label: 'Preparing' },
+  { key: 'packed',           label: 'Packed' },
+  { key: 'out_for_delivery', label: 'On the way' },
+  { key: 'delivered',        label: 'Delivered' },
+];
+
+function TrackingBar({ status }: { status: string }) {
+  const currentIdx = TRACK_STEPS.findIndex(s => s.key === status);
+  if (currentIdx < 0) return null;
+
+  return (
+    <div className="flex items-center gap-0">
+      {TRACK_STEPS.map((step, idx) => {
+        const done = idx <= currentIdx;
+        const isLast = idx === TRACK_STEPS.length - 1;
+        return (
+          <div key={step.key} className="flex items-center flex-1">
+            <div className="flex flex-col items-center">
+              <div className={cn(
+                "w-2.5 h-2.5 rounded-full transition-colors",
+                done ? "bg-primary" : "bg-muted"
+              )} />
+              <span className={cn(
+                "text-[9px] mt-1 text-center leading-tight whitespace-nowrap",
+                idx === currentIdx ? "text-primary font-bold" : done ? "text-muted-foreground" : "text-muted"
+              )}>
+                {step.label}
+              </span>
+            </div>
+            {!isLast && (
+              <div className={cn(
+                "flex-1 h-0.5 mb-3 transition-colors",
+                idx < currentIdx ? "bg-primary" : "bg-muted"
+              )} />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
