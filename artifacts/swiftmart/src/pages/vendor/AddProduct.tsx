@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useProducts } from "@/hooks/useProducts";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,12 +11,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Upload, X } from "lucide-react";
+import { api } from "@/lib/api";
 
 export default function AddProduct() {
   const [, setLocation] = useLocation();
   const { addProduct } = useProducts();
   const { user } = useAuth();
-  
+  const [shopId, setShopId] = useState<string>("");
+
+  useEffect(() => {
+    if (!user) return;
+    api.get<{ success: boolean; shops: { _id: string }[] }>(`/shops?ownerId=${user.id}`)
+      .then(d => { if (d.shops[0]) setShopId(d.shops[0]._id); })
+      .catch(() => {});
+  }, [user]);
+
   const [name, setName] = useState("");
   const [category, setCategory] = useState<CategoryId | "">("");
   const [price, setPrice] = useState("");
@@ -50,7 +59,7 @@ export default function AddProduct() {
       description,
       image,
       rating: 0,
-      vendorId: user?.id || 'v1'
+      vendorId: shopId,
     };
 
     addProduct(newProduct);

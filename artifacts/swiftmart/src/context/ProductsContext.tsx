@@ -79,6 +79,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       image: product.image,
       description: product.description,
       stock: product.stock,
+      shopId: product.vendorId,
     }).then(() => fetchProducts()).catch(() => {});
   };
 

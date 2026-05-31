@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { Product } from "../../models/Product.js";
+import { Shop } from "../../models/Shop.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 
 const router = Router();
@@ -31,7 +32,9 @@ router.get("/:id", async (req: Request, res: Response): Promise<void> => {
 
 // POST /api/products
 router.post("/", authenticate, V, async (req: AuthRequest, res: Response): Promise<void> => {
-  const product = await Product.create(req.body as Record<string, unknown>);
+  const shop = await Shop.findOne({ ownerId: req.user!.userId });
+  if (!shop) { res.status(400).json({ success: false, message: "No approved shop found for this vendor" }); return; }
+  const product = await Product.create({ ...(req.body as Record<string, unknown>), shopId: shop._id.toString() });
   res.status(201).json({ success: true, product });
 });
 
