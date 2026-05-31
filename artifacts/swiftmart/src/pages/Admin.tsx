@@ -13,8 +13,8 @@ import {
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw
 } from "lucide-react";
-import { VendorApplication, VendorStatus, Vendor, AdminCustomer, PlatformOrder, Report, TransactionLog } from "@/types";
-import { vendors } from "@/data/vendors";
+import { VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog } from "@/types";
+import { useShops } from "@/hooks/useShops";
 import { 
   platformRevenue, 
   analyticsDaily, 
@@ -227,40 +227,16 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
 // ============================================================================
 
 function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) {
-  const { applications, adminCustomers, bannedVendorIds, platformOrders, reports, transactions } = useAuth();
-  
-  const allShops = useMemo(() => {
-    return [
-      ...vendors,
-      ...applications.filter(a => a.status === 'approved').map(a => ({
-        id: a.id,
-        storeName: a.storeName,
-        ownerName: a.ownerName,
-        category: a.storeCategory,
-        tagline: a.storeDescription,
-        rating: 0,
-        totalOrders: 0,
-        isOpen: false,
-        eta: "N/A",
-        image: `/assets/cat-${a.storeCategory}.png`,
-        pincode: "N/A",
-        city: "N/A",
-        phone: a.userPhone,
-        status: 'active' as const,
-        joinedAt: a.submittedAt,
-        revenue: 0,
-        commission: 0
-      }))
-    ];
-  }, [applications]);
+  const { adminCustomers, bannedVendorIds, platformOrders, reports, transactions } = useAuth();
+  const { shops } = useShops();
 
-  const activeShops = allShops.filter(v => !bannedVendorIds.includes(v.id));
-  
-  const totalRevenue = activeShops.reduce((sum, v) => sum + (v.revenue || 0), 0);
-  const platformComm = activeShops.reduce((sum, v) => sum + (v.commission || 0), 0);
+  const activeShops = useMemo(() => shops.filter(v => !bannedVendorIds.includes(v.id)), [shops, bannedVendorIds]);
+
+  const totalRevenue = activeShops.reduce((sum, v) => sum + (v.totalRevenue || 0), 0);
+  const platformComm = activeShops.reduce((sum, v) => sum + Math.round((v.totalRevenue || 0) * (v.commissionRate || 5) / 100), 0);
   const openReports = reports.filter(r => r.status === 'open').length;
 
-  const topShops = [...activeShops].sort((a, b) => (b.revenue || 0) - (a.revenue || 0)).slice(0, 3);
+  const topShops = [...activeShops].sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0)).slice(0, 3);
 
   const formatLargeValue = (val: number) => {
     if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
@@ -340,7 +316,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) 
                     <p className="text-xs text-muted-foreground truncate">{shop.category}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-foreground">{formatLargeValue(shop.revenue || 0)}</p>
+                    <p className="text-sm font-bold text-foreground">{formatLargeValue(shop.totalRevenue || 0)}</p>
                   </div>
                 </div>
               ))}
@@ -1330,6 +1306,7 @@ function ReportsTab() {
 
 function AnalyticsTab() {
   const [period, setPeriod] = useState<'Daily' | 'Weekly' | 'Monthly'>('Daily');
+  const { shops } = useShops();
   
   const data = period === 'Daily' ? analyticsDaily : period === 'Weekly' ? analyticsWeekly : analyticsMonthly;
   
@@ -1467,7 +1444,7 @@ function AnalyticsTab() {
           </div>
           
           <div className="space-y-4">
-            {vendors.sort((a, b) => b.revenue - a.revenue).map((shop, i) => (
+            {[...shops].sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0)).slice(0, 5).map((shop) => (
               <div key={shop.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-background neu-inset rounded-2xl">
                 <div className="flex items-center gap-3">
                   <div className="relative">
@@ -1482,9 +1459,9 @@ function AnalyticsTab() {
                   </div>
                 </div>
                 <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 border-t sm:border-t-0 border-border/50 pt-2 sm:pt-0">
-                  <p className="font-bold text-foreground">{formatINR(shop.revenue)}</p>
+                  <p className="font-bold text-foreground">{formatINR(shop.totalRevenue || 0)}</p>
                   <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-none">
-                    Comm: {formatINR(shop.commission)}
+                    Comm: {formatINR(Math.round((shop.totalRevenue || 0) * (shop.commissionRate || 5) / 100))}
                   </Badge>
                 </div>
               </div>

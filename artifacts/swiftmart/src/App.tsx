@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 // Context Providers
 import { AuthProvider } from "@/context/AuthContext";
 import { ProductsProvider } from "@/context/ProductsContext";
+import { ShopsProvider } from "@/context/ShopsContext";
 import { CartProvider } from "@/context/CartContext";
 
 // Layout Components
@@ -169,12 +170,14 @@ function App() {
       <TooltipProvider>
         <AuthProvider>
           <ProductsProvider>
+            <ShopsProvider>
             <CartProvider>
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                 <Router />
               </WouterRouter>
               <Toaster />
             </CartProvider>
+            </ShopsProvider>
           </ProductsProvider>
         </AuthProvider>
       </TooltipProvider>
