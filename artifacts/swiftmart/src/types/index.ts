@@ -1,4 +1,4 @@
-export type CategoryId = 'groceries' | 'vegetables' | 'personal-care' | 'books' | 'clothing';
+export type CategoryId = string;
 
 export type VendorStatus = 'none' | 'pending' | 'approved' | 'rejected';
 
@@ -9,14 +9,15 @@ export interface VendorApplication {
   userPhone: string;
   storeName: string;
   storeCategory: CategoryId;
+  storeSubcategory?: string;
   storeDescription: string;
   ownerName: string;
-  panNumber: string;        // e.g. "ABCDE1234F"
-  gstNumber: string;        // optional, e.g. "27AADCS1234D1Z5"
+  panNumber: string;
+  gstNumber: string;
   bankAccountNumber: string;
   bankIfscCode: string;
   upiId: string;
-  submittedAt: string;      // ISO date string
+  submittedAt: string;
   status: VendorStatus;
   rejectionReason?: string;
 }
@@ -25,6 +26,7 @@ export interface Product {
   id: string;
   name: string;
   category: CategoryId;
+  subcategory?: string;
   price: number;
   unit: string;
   image: string;

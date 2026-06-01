@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useProducts } from "@/hooks/useProducts";
 import { useShops } from "@/hooks/useShops";
-import { DeliveryBanner } from "@/components/DeliveryBanner";
+import { HeroBannerSlider } from "@/components/HeroBannerSlider";
 import { CategoryBubble } from "@/components/CategoryBubble";
 import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -26,7 +26,7 @@ export default function Home() {
 
   return (
     <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto space-y-6 overflow-x-hidden">
-      <DeliveryBanner />
+      <HeroBannerSlider />
 
       <section>
         <SectionHeader title="Shop by Category" />

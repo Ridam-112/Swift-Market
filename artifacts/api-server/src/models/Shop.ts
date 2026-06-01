@@ -45,6 +45,7 @@ const ShopSchema = new Schema<IShop>(
     },
     shopType: { type: String, required: true },
     category: String,
+    subcategory: String,
     description: String,
     image: String,
     commissionRate: { type: Number, min: 0, max: 100 },

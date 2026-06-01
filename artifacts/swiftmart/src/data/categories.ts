@@ -1,47 +1,207 @@
-import { CategoryId } from "@/types";
-
 export interface Category {
-  id: CategoryId;
+  id: string;
   name: string;
-  image: string;
+  emoji: string;
+  image?: string;
   color: string;
   icon: string;
+  subcategories: string[];
 }
 
 export const categories: Category[] = [
   {
     id: "groceries",
-    name: "Groceries",
+    name: "Grocery & Daily Needs",
+    emoji: "🛒",
     image: "/assets/cat-groceries.png",
     color: "hsl(35, 90%, 55%)",
-    icon: "shopping-basket"
+    icon: "shopping-basket",
+    subcategories: ["Rice", "Atta", "Dal", "Oil", "Spices", "Biscuits", "Snacks", "Cold Drinks", "Dairy Products", "Eggs", "Packaged Foods"],
+  },
+  {
+    id: "medicine",
+    name: "Medicine & Healthcare",
+    emoji: "💊",
+    color: "hsl(210, 80%, 55%)",
+    icon: "pill",
+    subcategories: ["Medicines", "Health Supplements", "First Aid", "Baby Care", "Medical Devices", "Sanitary Products"],
+  },
+  {
+    id: "food-restaurant",
+    name: "Food & Restaurant",
+    emoji: "🍕",
+    color: "hsl(20, 90%, 55%)",
+    icon: "utensils",
+    subcategories: ["Restaurants", "Fast Food", "Biryani", "Pizza", "Burgers", "Chinese", "Sweets", "Beverages"],
+  },
+  {
+    id: "cloud-kitchen",
+    name: "Cloud Kitchen & Home Food",
+    emoji: "🏠",
+    color: "hsl(45, 90%, 50%)",
+    icon: "chef-hat",
+    subcategories: ["Home-made Food", "Tiffin Service", "Home Bakers", "Cakes", "Snacks"],
   },
   {
     id: "vegetables",
-    name: "Vegetables",
+    name: "Fruits & Vegetables",
+    emoji: "🥦",
     image: "/assets/cat-vegetables.png",
     color: "hsl(140, 60%, 45%)",
-    icon: "leaf"
+    icon: "leaf",
+    subcategories: ["Fresh Vegetables", "Fruits", "Organic Products"],
+  },
+  {
+    id: "meat-fish",
+    name: "Meat & Fish",
+    emoji: "🐟",
+    color: "hsl(0, 65%, 50%)",
+    icon: "fish",
+    subcategories: ["Fish", "Chicken", "Mutton", "Eggs"],
   },
   {
     id: "personal-care",
-    name: "Personal Care",
+    name: "Beauty & Personal Care",
+    emoji: "💄",
     image: "/assets/cat-personal-care.png",
-    color: "hsl(280, 60%, 65%)",
-    icon: "sparkles"
-  },
-  {
-    id: "books",
-    name: "Books",
-    image: "/assets/cat-books.png",
-    color: "hsl(200, 80%, 55%)",
-    icon: "book-open"
+    color: "hsl(330, 70%, 60%)",
+    icon: "sparkles",
+    subcategories: ["Cosmetics", "Skincare", "Haircare", "Perfumes", "Grooming Products"],
   },
   {
     id: "clothing",
-    name: "Clothing",
+    name: "Fashion & Clothing",
+    emoji: "👗",
     image: "/assets/cat-clothing.png",
-    color: "hsl(340, 70%, 60%)",
-    icon: "shirt"
-  }
+    color: "hsl(280, 60%, 60%)",
+    icon: "shirt",
+    subcategories: ["Men's Wear", "Women's Wear", "Kids Wear", "Footwear", "Bags", "Accessories"],
+  },
+  {
+    id: "handmade",
+    name: "Handmade & Artisan Products",
+    emoji: "🎨",
+    color: "hsl(170, 60%, 45%)",
+    icon: "palette",
+    subcategories: ["Handmade Jewelry", "Crochet Products", "Handicrafts", "Resin Art", "Candles", "Paintings", "Decorative Items"],
+  },
+  {
+    id: "custom-designer",
+    name: "Custom & Designer Products",
+    emoji: "✂️",
+    color: "hsl(260, 55%, 55%)",
+    icon: "scissors",
+    subcategories: ["Custom Punjabi", "Embroidery", "Tailoring", "Boutique Products", "Custom Gifts"],
+  },
+  {
+    id: "books",
+    name: "Stationery & Books",
+    emoji: "📚",
+    image: "/assets/cat-books.png",
+    color: "hsl(200, 80%, 50%)",
+    icon: "book-open",
+    subcategories: ["School Supplies", "Office Supplies", "Books", "Art Materials"],
+  },
+  {
+    id: "gifts-toys",
+    name: "Gift & Toy Shop",
+    emoji: "🎁",
+    color: "hsl(350, 80%, 60%)",
+    icon: "gift",
+    subcategories: ["Gifts", "Toys", "Greeting Cards", "Decorative Items"],
+  },
+  {
+    id: "sports-fitness",
+    name: "Sports & Fitness",
+    emoji: "🏏",
+    color: "hsl(160, 60%, 40%)",
+    icon: "dumbbell",
+    subcategories: ["Cricket", "Football", "Badminton", "Gym Equipment", "Sports Accessories"],
+  },
+  {
+    id: "electronics",
+    name: "Electronics & Mobile",
+    emoji: "📱",
+    color: "hsl(230, 60%, 55%)",
+    icon: "smartphone",
+    subcategories: ["Mobile Phones", "Accessories", "Earphones", "Chargers", "Gadgets"],
+  },
+  {
+    id: "computer-gaming",
+    name: "Computer & Gaming",
+    emoji: "💻",
+    color: "hsl(250, 55%, 55%)",
+    icon: "monitor",
+    subcategories: ["Computer Parts", "Keyboards", "Mouse", "Gaming Accessories"],
+  },
+  {
+    id: "furniture-decor",
+    name: "Furniture & Home Decor",
+    emoji: "🛋️",
+    color: "hsl(30, 60%, 50%)",
+    icon: "sofa",
+    subcategories: ["Furniture", "Home Decor", "Lighting", "Curtains", "Storage Items"],
+  },
+  {
+    id: "pet-supplies",
+    name: "Pet Supplies",
+    emoji: "🐾",
+    color: "hsl(20, 70%, 55%)",
+    icon: "paw-print",
+    subcategories: ["Pet Food", "Pet Accessories", "Pet Care Products"],
+  },
+  {
+    id: "gardening",
+    name: "Gardening",
+    emoji: "🌱",
+    color: "hsl(130, 55%, 45%)",
+    icon: "sprout",
+    subcategories: ["Plants", "Pots", "Seeds", "Gardening Tools"],
+  },
+  {
+    id: "automobile",
+    name: "Automobile Accessories",
+    emoji: "🏍️",
+    color: "hsl(220, 30%, 50%)",
+    icon: "car",
+    subcategories: ["Bike Accessories", "Car Accessories", "Helmets", "Lubricants"],
+  },
+  {
+    id: "local-services",
+    name: "Local Services",
+    emoji: "🔧",
+    color: "hsl(190, 65%, 45%)",
+    icon: "wrench",
+    subcategories: ["Tailor", "Electrician", "Plumber", "Home Cleaning", "Repair Services"],
+  },
+  {
+    id: "local-brands",
+    name: "Local Brands & Own Products",
+    emoji: "🏷️",
+    color: "hsl(15, 75%, 52%)",
+    icon: "tag",
+    subcategories: ["Homemade Pickles", "Homemade Snacks", "Local Food Brands", "Local FMCG", "Handmade Products", "Boutique Brands", "Local Manufacturers"],
+  },
+  {
+    id: "hardware",
+    name: "Hardware & Construction",
+    emoji: "🔨",
+    color: "hsl(25, 40%, 45%)",
+    icon: "hammer",
+    subcategories: ["Hardware Shop", "Paint Shop", "Electrical Goods", "Plumbing Materials", "Building Materials"],
+  },
+  {
+    id: "baby-kids",
+    name: "Baby & Kids",
+    emoji: "🍼",
+    color: "hsl(345, 65%, 65%)",
+    icon: "baby",
+    subcategories: ["Baby Food", "Toys", "Baby Care", "School Products"],
+  },
 ];
+
+export const getCategoryById = (id: string): Category | undefined =>
+  categories.find(c => c.id === id);
+
+export const getAllSubcategories = (): string[] =>
+  categories.flatMap(c => c.subcategories);

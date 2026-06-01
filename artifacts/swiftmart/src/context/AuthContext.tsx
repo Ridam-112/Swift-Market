@@ -312,6 +312,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ownerName: appData.ownerName,
       phone: user.phone,
       shopType: appData.storeCategory,
+      category: appData.storeCategory,
+      subcategory: appData.storeSubcategory,
       description: appData.storeDescription,
       panNumber: appData.panNumber,
       gstNumber: appData.gstNumber,

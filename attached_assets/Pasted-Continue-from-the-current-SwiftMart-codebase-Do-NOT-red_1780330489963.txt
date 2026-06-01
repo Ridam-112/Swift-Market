@@ -1,0 +1,121 @@
+Continue from the current SwiftMart codebase.
+
+Do NOT redesign the entire UI.
+Do NOT rebuild backend.
+Do NOT break existing Customer, Vendor, Admin, Product, Order, Notification, Pincode, or Auth flows.
+
+Implement only:
+
+1. Home Page Hero Banner Slider
+- Replace current “10 Minute Delivery” section with a modern hero banner slider.
+- Auto-slide every 5 seconds.
+- Add manual next/previous controls.
+- Mobile responsive.
+- Use 5 slides:
+  1. Grocery Delivery
+  2. Medicine Delivery
+  3. Food Delivery
+  4. Fashion & Handmade Products
+  5. Local Shops & Services
+- Use attractive banner images/placeholders.
+- Keep existing home page layout and sections working.
+
+2. Expanded Product & Business Categories
+Add these main categories and subcategories:
+
+Grocery & Daily Needs:
+Rice, Atta, Dal, Oil, Spices, Biscuits, Snacks, Cold Drinks, Dairy Products, Eggs, Packaged Foods
+
+Medicine & Healthcare:
+Medicines, Health Supplements, First Aid, Baby Care, Medical Devices, Sanitary Products
+
+Food & Restaurant:
+Restaurants, Fast Food, Biryani, Pizza, Burgers, Chinese, Sweets, Beverages
+
+Cloud Kitchen & Home Food:
+Home-made Food, Tiffin Service, Home Bakers, Cakes, Snacks
+
+Fruits & Vegetables:
+Fresh Vegetables, Fruits, Organic Products
+
+Meat & Fish:
+Fish, Chicken, Mutton, Eggs
+
+Beauty & Personal Care:
+Cosmetics, Skincare, Haircare, Perfumes, Grooming Products
+
+Fashion & Clothing:
+Men's Wear, Women's Wear, Kids Wear, Footwear, Bags, Accessories
+
+Handmade & Artisan Products:
+Handmade Jewelry, Crochet Products, Handicrafts, Resin Art, Candles, Paintings, Decorative Items
+
+Custom & Designer Products:
+Custom Punjabi, Embroidery, Tailoring, Boutique Products, Custom Gifts
+
+Stationery & Books:
+School Supplies, Office Supplies, Books, Art Materials
+
+Gift & Toy Shop:
+Gifts, Toys, Greeting Cards, Decorative Items
+
+Sports & Fitness:
+Cricket, Football, Badminton, Gym Equipment, Sports Accessories
+
+Electronics & Mobile:
+Mobile Phones, Accessories, Earphones, Chargers, Gadgets
+
+Computer & Gaming:
+Computer Parts, Keyboards, Mouse, Gaming Accessories
+
+Furniture & Home Decor:
+Furniture, Home Decor, Lighting, Curtains, Storage Items
+
+Pet Supplies:
+Pet Food, Pet Accessories, Pet Care Products
+
+Gardening:
+Plants, Pots, Seeds, Gardening Tools
+
+Automobile Accessories:
+Bike Accessories, Car Accessories, Helmets, Lubricants
+
+Local Services:
+Tailor, Electrician, Plumber, Home Cleaning, Repair Services
+
+Local Brands & Own Products:
+Homemade Pickles, Homemade Snacks, Local Food Brands, Local FMCG, Handmade Products, Boutique Brands, Local Manufacturers
+
+Hardware & Construction:
+Hardware Shop, Paint Shop, Electrical Goods, Plumbing Materials, Building Materials
+
+Baby & Kids:
+Baby Food, Toys, Baby Care, School Products
+
+3. Vendor Signup Category Selection
+- During vendor registration, vendor must select Main Business Category.
+- Vendor can optionally select subcategory.
+- Save selected category/subcategory in MongoDB.
+- Use the expanded categories above.
+
+4. Product Upload Category Selection
+- Vendor product upload form should use the expanded categories.
+- Product must store main category and subcategory.
+- Customer category browsing/search should use these categories.
+
+Do NOT add:
+- Reviews & Ratings
+- Coupon System
+- Delivery Partner
+- Payment Gateway
+- Google Login
+- Real SMS OTP
+- Full UI redesign
+
+Generate final report:
+- Files changed
+- Categories added
+- Features completed
+- Remaining issues
+- Production readiness %
+- Launch readiness %

@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useProducts } from "@/hooks/useProducts";
 import { useAuth } from "@/hooks/useAuth";
-import { CategoryId } from "@/types";
 import { categories } from "@/data/categories";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Upload, X, Loader2, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 
 export default function AddProduct() {
@@ -27,13 +26,16 @@ export default function AddProduct() {
   }, [user]);
 
   const [name, setName] = useState("");
-  const [category, setCategory] = useState<CategoryId | "">("");
+  const [category, setCategory] = useState("");
+  const [subcategory, setSubcategory] = useState("");
   const [price, setPrice] = useState("");
   const [unit, setUnit] = useState("");
   const [stock, setStock] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  const selectedCat = categories.find(c => c.id === category);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -79,7 +81,8 @@ export default function AddProduct() {
     const newProduct = {
       id: `p_${Date.now()}`,
       name,
-      category: category as CategoryId,
+      category,
+      subcategory: subcategory || undefined,
       price: Number(price),
       unit,
       stock: Number(stock),
@@ -143,16 +146,21 @@ export default function AddProduct() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="category">Category*</Label>
-              <select
-                id="category"
-                value={category}
-                onChange={e => setCategory(e.target.value as CategoryId)}
-                className="w-full h-10 px-3 py-2 rounded-md bg-background neu-inset border-none text-sm focus:outline-none"
-                required
-              >
-                <option value="" disabled>Select category</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <div className="relative">
+                <select
+                  id="category"
+                  value={category}
+                  onChange={e => { setCategory(e.target.value); setSubcategory(""); }}
+                  className="w-full h-10 px-3 py-2 pr-9 rounded-md bg-background neu-inset border-none text-sm focus:outline-none appearance-none text-foreground"
+                  required
+                >
+                  <option value="" disabled>Select category</option>
+                  {categories.map(c => (
+                    <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="price">Price (₹)*</Label>
@@ -162,6 +170,31 @@ export default function AddProduct() {
               />
             </div>
           </div>
+
+          {selectedCat && selectedCat.subcategories.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="subcategory">Subcategory <span className="text-xs text-muted-foreground font-normal">(optional)</span></Label>
+              <div className="relative">
+                <select
+                  id="subcategory"
+                  value={subcategory}
+                  onChange={e => setSubcategory(e.target.value)}
+                  className="w-full h-10 px-3 py-2 pr-9 rounded-md bg-background neu-inset border-none text-sm focus:outline-none appearance-none text-foreground"
+                >
+                  <option value="">None / General</option>
+                  {selectedCat.subcategories.map(sub => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              </div>
+              {subcategory && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedCat.emoji} {selectedCat.name} › {subcategory}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

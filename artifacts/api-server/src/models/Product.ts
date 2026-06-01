@@ -26,6 +26,7 @@ const ProductSchema = new Schema<IProduct>(
     price: { type: Number, required: true, min: 0 },
     discountedPrice: { type: Number, min: 0 },
     category: { type: String, required: true },
+    subcategory: { type: String },
     shopId: { type: String, required: true },
     images: [String],
     stock: { type: Number, default: 0, min: 0 },
