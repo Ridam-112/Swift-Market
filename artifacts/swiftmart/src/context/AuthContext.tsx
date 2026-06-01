@@ -320,7 +320,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       bankAccountNumber: appData.bankAccountNumber,
       bankIfscCode: appData.bankIfscCode,
       upiId: appData.upiId,
-      address: { line1: "TBD", city: "TBD", pincode: "000000" },
+      address: {
+        line1: appData.storeAddress || "",
+        line2: appData.storeArea || "",
+        city: appData.storeCity || "",
+        pincode: appData.storePincode || "",
+        state: "West Bengal",
+      },
     }).catch(() => { /* ignore API errors, local state updated */ });
   };
 

@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Check, ChevronRight, ChevronDown } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, ChevronDown, CheckCircle2, XCircle } from "lucide-react";
 import { categories } from "@/data/categories";
+import { isServicePincode, getServiceAreaName } from "@/lib/serviceArea";
 
 export default function VendorRegister() {
   const [, setLocation] = useLocation();
@@ -21,6 +22,11 @@ export default function VendorRegister() {
   const [storeDescription, setStoreDescription] = useState("");
   const [ownerName, setOwnerName] = useState(user?.name || "");
 
+  const [storeAddress, setStoreAddress] = useState("");
+  const [storeArea, setStoreArea] = useState("");
+  const [storeCity, setStoreCity] = useState("");
+  const [storePincode, setStorePincode] = useState("");
+
   const [panNumber, setPanNumber] = useState("");
   const [gstNumber, setGstNumber] = useState("");
 
@@ -30,6 +36,14 @@ export default function VendorRegister() {
 
   const selectedCat = categories.find(c => c.id === storeCategory);
 
+  const pinValid = storePincode.length === 6 && isServicePincode(storePincode);
+  const pinOutOfArea = storePincode.length === 6 && !isServicePincode(storePincode);
+  const areaName = getServiceAreaName(storePincode);
+
+  const step1Valid =
+    !!storeName && !!storeCategory && !!storeDescription && !!ownerName &&
+    !!storeAddress && !!storeArea && !!storeCity && pinValid;
+
   const slideVariants = {
     initial: { x: 20, opacity: 0 },
     animate: { x: 0, opacity: 1, transition: { duration: 0.3, ease: "easeOut" as const } },
@@ -38,7 +52,7 @@ export default function VendorRegister() {
 
   const handleNext = () => {
     if (step === 1) {
-      if (!storeName || !storeCategory || !storeDescription || !ownerName) return;
+      if (!step1Valid) return;
       setStep(2);
     } else if (step === 2) {
       if (!panNumber || panNumber.length !== 10) return;
@@ -56,6 +70,10 @@ export default function VendorRegister() {
       storeSubcategory,
       storeDescription,
       ownerName,
+      storeAddress,
+      storeArea,
+      storeCity,
+      storePincode,
       panNumber,
       gstNumber,
       upiId,
@@ -152,7 +170,7 @@ export default function VendorRegister() {
                   <Textarea
                     value={storeDescription}
                     onChange={e => setStoreDescription(e.target.value.slice(0, 200))}
-                    className="bg-background neu-inset border-none rounded-xl min-h-[100px] resize-none"
+                    className="bg-background neu-inset border-none rounded-xl min-h-[80px] resize-none"
                     placeholder="Short tagline or description of what you sell..."
                   />
                 </div>
@@ -162,9 +180,63 @@ export default function VendorRegister() {
                   <Input value={ownerName} onChange={e => setOwnerName(e.target.value)} className="bg-background neu-inset border-none h-12 rounded-xl" />
                 </div>
 
+                <div className="pt-2 border-t border-border space-y-3">
+                  <Label className="text-base font-bold">Shop Address</Label>
+
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Shop Full Address (door no., street)"
+                      value={storeAddress}
+                      onChange={e => setStoreAddress(e.target.value)}
+                      className="bg-background neu-inset border-none h-12 rounded-xl"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Area / Locality / Mohalla"
+                      value={storeArea}
+                      onChange={e => setStoreArea(e.target.value)}
+                      className="bg-background neu-inset border-none h-12 rounded-xl"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      placeholder="City"
+                      value={storeCity}
+                      onChange={e => setStoreCity(e.target.value)}
+                      className="bg-background neu-inset border-none h-12 rounded-xl"
+                    />
+                    <div className="relative">
+                      <Input
+                        placeholder="Pincode"
+                        value={storePincode}
+                        onChange={e => setStorePincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        maxLength={6}
+                        className="bg-background neu-inset border-none h-12 rounded-xl pr-9"
+                      />
+                      {pinValid && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />}
+                      {pinOutOfArea && <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-destructive" />}
+                    </div>
+                  </div>
+
+                  {pinValid && (
+                    <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> {areaName} — SwiftMart vendor area
+                    </p>
+                  )}
+                  {pinOutOfArea && (
+                    <div className="bg-destructive/10 text-destructive rounded-xl p-3 text-sm">
+                      <p className="font-semibold">Outside service area</p>
+                      <p className="text-xs mt-0.5">SwiftMart vendor service is currently available only in 733101 and 733103.</p>
+                    </div>
+                  )}
+                </div>
+
                 <Button
                   onClick={handleNext}
-                  disabled={!storeName || !storeCategory || !storeDescription || !ownerName}
+                  disabled={!step1Valid}
                   className="w-full rounded-2xl h-14 text-lg font-bold shadow-none neu-card mt-4"
                 >
                   Continue <ChevronRight className="w-5 h-5 ml-2" />

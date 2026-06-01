@@ -12,6 +12,10 @@ export interface VendorApplication {
   storeSubcategory?: string;
   storeDescription: string;
   ownerName: string;
+  storeAddress?: string;
+  storeArea?: string;
+  storeCity?: string;
+  storePincode?: string;
   panNumber: string;
   gstNumber: string;
   bankAccountNumber: string;
