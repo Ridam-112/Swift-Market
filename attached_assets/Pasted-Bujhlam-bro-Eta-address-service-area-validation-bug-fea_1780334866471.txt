@@ -1,0 +1,82 @@
+Bujhlam bro. Eta **address + service area validation** bug/feature. Ei prompt dao:
+
+```txt
+Continue from current SwiftMart codebase.
+
+Do NOT redesign UI.
+Do NOT rebuild backend.
+Do NOT break existing working features.
+
+Fix only address, pincode, and service-area flow.
+
+1. New Customer Onboarding After OTP Login
+- If OTP login user does not already exist in database or profile is incomplete, ask for:
+  - Full name
+  - Full delivery address
+  - Pincode
+- Allowed service pincodes:
+  - 733101
+  - 733103
+- If pincode is 733101 or 733103, allow user to continue into app.
+- If pincode is outside 733101/733103, show message:
+  “Sorry, SwiftMart is not available in your area yet. You can buy from another available area.”
+- Do not show Balurghat/Gangarampur as fixed selected options. User must type/fill own address and pincode.
+
+2. Existing Customer Login
+- On login, check if user has name + address + pincode.
+- If missing, show onboarding form before home page.
+- If pincode is outside service area, block browsing with the same service unavailable message.
+
+3. Checkout Address Validation
+- If customer clicks Place Order / Continue Order without address:
+  - Show popup/modal/toast:
+    “Please add your delivery address before placing order.”
+- Do not create order until address is filled.
+- Address must include:
+  - name
+  - phone
+  - full address
+  - pincode
+- Pincode must be 733101 or 733103.
+
+4. Vendor/Seller Registration Address
+- During vendor registration, seller must enter:
+  - shop name
+  - owner name
+  - shop full address
+  - shop pincode
+  - area/locality
+- Shop pincode must be 733101 or 733103.
+- If outside service area, show:
+  “SwiftMart vendor service is currently available only in 733101 and 733103.”
+- Save shop address and pincode in MongoDB.
+
+5. Pincode Filtering
+- Customer sees only shops/products matching their saved pincode.
+- Admin can see all shops/products.
+- Vendor sees only own shop/products.
+
+6. UI Requirement
+- Remove fixed “Balurghat 733101 / Gangarampur 733103” selection UI if present.
+- Replace with address form:
+  - Full Address
+  - Area / Locality
+  - Pincode
+- Validate pincode after user enters it.
+
+Final Testing:
+- New user with 733101 can enter app
+- New user with 733103 can enter app
+- New user with other pincode sees service unavailable
+- Checkout without address is blocked
+- Vendor cannot register outside 733101/733103
+- Shops/products filter by customer pincode
+
+Generate final report:
+- Files changed
+- Bugs fixed
+- Remaining issues
+- Production readiness %
+```
+
+Eta current pincode system ke properly real address-based kore debe.

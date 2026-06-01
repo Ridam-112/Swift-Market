@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isServicePincode, getServiceAreaName } from "@/lib/serviceArea";
 
 type Step = 'login' | 'otp' | 'onboarding';
 
@@ -30,9 +31,14 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [addressLabel, setAddressLabel] = useState<'Home' | 'Work' | 'Other'>('Home');
   const [addressLine1, setAddressLine1] = useState("");
+  const [addressArea, setAddressArea] = useState("");
   const [city, setCity] = useState("");
   const [pincode, setPincode] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  const pincodeValid = pincode.length === 6 && isServicePincode(pincode);
+  const pincodeOutOfArea = pincode.length === 6 && !isServicePincode(pincode);
+  const areaName = getServiceAreaName(pincode);
 
   useEffect(() => {
     if (user) setLocation("/");
@@ -69,7 +75,7 @@ export default function Auth() {
   };
 
   const handleGoogleLogin = () => {
-    // Google OAuth not yet configured — button is disabled; this handler is unreachable.
+    // Google OAuth not yet configured
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -124,10 +130,15 @@ export default function Auth() {
   const handleOnboardingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { toast.error("Please enter your name"); return; }
-    if (!phone.trim() || phone.length !== 10) { toast.error("Please enter a valid phone number"); return; }
     if (!addressLine1.trim()) { toast.error("Please enter your address"); return; }
+    if (!addressArea.trim()) { toast.error("Please enter your area/locality"); return; }
     if (!city.trim()) { toast.error("Please enter your city"); return; }
     if (pincode.length !== 6) { toast.error("Please enter a 6-digit pincode"); return; }
+    if (pincodeOutOfArea) {
+      toast.error("SwiftMart is not available in your area yet.");
+      return;
+    }
+    if (!pincodeValid) { toast.error("Please enter a valid service-area pincode"); return; }
 
     setIsSavingProfile(true);
     try {
@@ -135,6 +146,7 @@ export default function Auth() {
         id: `a_${Date.now()}`,
         label: addressLabel,
         line1: addressLine1,
+        line2: addressArea,
         city,
         pincode,
       }, email);
@@ -299,7 +311,7 @@ export default function Auth() {
                   <Input
                     value={name}
                     onChange={e => setName(e.target.value)}
-                    placeholder="John Doe"
+                    placeholder="Your full name"
                     className="bg-background neu-inset border-none h-12 rounded-xl"
                   />
                 </div>
@@ -308,11 +320,11 @@ export default function Auth() {
                   <Label>Phone Number</Label>
                   <Input
                     value={phone}
-                    onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
                     disabled={authMethod === 'phone'}
                     placeholder="10-digit number"
                     maxLength={10}
                     className="bg-background neu-inset border-none h-12 rounded-xl disabled:opacity-50"
+                    onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
                   />
                 </div>
 
@@ -341,6 +353,13 @@ export default function Auth() {
                     className="bg-background neu-inset border-none h-12 rounded-xl"
                   />
 
+                  <Input
+                    placeholder="Area / Locality / Mohalla"
+                    value={addressArea}
+                    onChange={e => setAddressArea(e.target.value)}
+                    className="bg-background neu-inset border-none h-12 rounded-xl"
+                  />
+
                   <div className="grid grid-cols-2 gap-3">
                     <Input
                       placeholder="City"
@@ -348,19 +367,35 @@ export default function Auth() {
                       onChange={e => setCity(e.target.value)}
                       className="bg-background neu-inset border-none h-12 rounded-xl"
                     />
-                    <Input
-                      placeholder="Pincode"
-                      value={pincode}
-                      onChange={e => setPincode(e.target.value.replace(/\D/g, ''))}
-                      maxLength={6}
-                      className="bg-background neu-inset border-none h-12 rounded-xl"
-                    />
+                    <div className="relative">
+                      <Input
+                        placeholder="Pincode"
+                        value={pincode}
+                        onChange={e => setPincode(e.target.value.replace(/\D/g, ''))}
+                        maxLength={6}
+                        className="bg-background neu-inset border-none h-12 rounded-xl pr-9"
+                      />
+                      {pincodeValid && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />}
+                      {pincodeOutOfArea && <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-destructive" />}
+                    </div>
                   </div>
+
+                  {pincodeValid && (
+                    <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> SwiftMart delivers to {areaName}!
+                    </p>
+                  )}
+                  {pincodeOutOfArea && (
+                    <div className="bg-destructive/10 text-destructive rounded-xl p-3 text-sm">
+                      <p className="font-semibold">Sorry, SwiftMart is not available in your area yet.</p>
+                      <p className="text-xs mt-0.5">You can buy from another available area (733101 or 733103).</p>
+                    </div>
+                  )}
                 </div>
 
                 <Button
                   type="submit"
-                  disabled={isSavingProfile}
+                  disabled={isSavingProfile || pincodeOutOfArea}
                   className="w-full rounded-2xl h-14 text-lg font-bold shadow-none neu-card mt-2"
                 >
                   {isSavingProfile

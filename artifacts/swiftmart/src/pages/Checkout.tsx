@@ -8,10 +8,11 @@ import { AddressForm } from "@/components/AddressForm";
 import { CartSummary } from "@/components/CartSummary";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
-import { Plus, Wallet, CreditCard, Banknote, Loader2 } from "lucide-react";
+import { Plus, Wallet, CreditCard, Banknote, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { isServicePincode } from "@/lib/serviceArea";
 
 interface ApiOrderResponse {
   success: boolean;
@@ -39,10 +40,23 @@ export default function Checkout() {
 
   const deliveryFee = deliverySlot === 'instant' ? 25 : 0;
   const address = user?.addresses.find(a => a.id === selectedAddress);
+  const addressPincodeInvalid = address && !isServicePincode(address.pincode);
 
   const handlePlaceOrder = async () => {
     if (!selectedAddress || !address) {
-      toast.error("Please select a delivery address");
+      toast.error("Please add your delivery address before placing order.", {
+        description: "Tap 'Add New' to add your delivery address.",
+        duration: 4000,
+      });
+      setShowAddressForm(true);
+      return;
+    }
+
+    if (addressPincodeInvalid) {
+      toast.error("This address is outside our service area.", {
+        description: "SwiftMart delivers only to 733101 and 733103.",
+        duration: 4000,
+      });
       return;
     }
 
@@ -125,6 +139,7 @@ export default function Checkout() {
               onSubmit={(addr) => {
                 addAddress(addr);
                 setSelectedAddress(addr.id);
+                setSelectedDeliveryAddress(addr);
                 setShowAddressForm(false);
                 toast.success("Address added successfully");
               }}
@@ -144,10 +159,21 @@ export default function Checkout() {
                 />
               ))}
               {(!user?.addresses || user.addresses.length === 0) && (
-                <div className="text-center p-4 bg-card rounded-2xl neu-inset text-muted-foreground">
-                  No addresses saved. Please add one.
-                </div>
+                <button
+                  onClick={() => setShowAddressForm(true)}
+                  className="text-center p-6 bg-card rounded-2xl neu-inset text-muted-foreground hover:text-primary transition-colors w-full"
+                >
+                  <Plus className="w-6 h-6 mx-auto mb-2" />
+                  <span className="text-sm font-medium">Tap to add your delivery address</span>
+                </button>
               )}
+            </div>
+          )}
+
+          {addressPincodeInvalid && (
+            <div className="mt-3 flex items-start gap-2 bg-destructive/10 text-destructive rounded-xl p-3 text-sm">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <p>This address pincode is outside our service area. Please add an address with pincode 733101 or 733103.</p>
             </div>
           )}
         </section>
@@ -208,7 +234,7 @@ export default function Checkout() {
           <Button
             className="w-full mt-6 rounded-full h-14 text-lg font-bold shadow-none neu-card"
             onClick={handlePlaceOrder}
-            disabled={placing}
+            disabled={placing || !!addressPincodeInvalid}
           >
             {placing ? (
               <>

@@ -1,14 +1,12 @@
 import { useState } from "react";
-import { MapPin, CheckCircle2 } from "lucide-react";
+import { MapPin, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-
-const SUPPORTED_PINCODES = [
-  { code: "733101", city: "Balurghat", district: "South Dinajpur, West Bengal" },
-  { code: "733103", city: "Gangarampur", district: "South Dinajpur, West Bengal" },
-];
+import { isServicePincode, getServiceAreaName } from "@/lib/serviceArea";
 
 interface PincodeSelectorProps {
   onDone?: () => void;
@@ -16,16 +14,37 @@ interface PincodeSelectorProps {
 }
 
 export function PincodeSelector({ onDone, compact = false }: PincodeSelectorProps) {
-  const { updatePincode, user } = useAuth();
-  const [selected, setSelected] = useState(user?.pincode || "");
+  const { updatePincode, addAddress, user } = useAuth();
+  const [addressLine, setAddressLine] = useState("");
+  const [area, setArea] = useState("");
+  const [pincode, setPincode] = useState(user?.pincode || "");
   const [saving, setSaving] = useState(false);
 
+  const pincodeValid = pincode.length === 6 && isServicePincode(pincode);
+  const pincodeOutOfArea = pincode.length === 6 && !isServicePincode(pincode);
+  const areaName = getServiceAreaName(pincode);
+
   const handleSave = async () => {
-    if (!selected) { toast.error("Please select your area"); return; }
+    if (!pincodeValid) return;
+    if (compact && !pincode) { toast.error("Please enter your pincode"); return; }
+    if (!compact && (!addressLine.trim() || !area.trim())) {
+      toast.error("Please fill in your address details");
+      return;
+    }
     setSaving(true);
     try {
-      await updatePincode(selected);
-      toast.success("Location set successfully!");
+      await updatePincode(pincode);
+      if (!compact && addressLine.trim()) {
+        addAddress({
+          id: `a_${Date.now()}`,
+          label: "Home",
+          line1: addressLine.trim(),
+          line2: area.trim(),
+          city: areaName.split(",")[0] || "South Dinajpur",
+          pincode,
+        });
+      }
+      toast.success("Location saved!");
       onDone?.();
     } catch {
       toast.error("Failed to save location");
@@ -37,83 +56,114 @@ export function PincodeSelector({ onDone, compact = false }: PincodeSelectorProp
   if (compact) {
     return (
       <div className="space-y-3">
-        <div className="grid gap-2">
-          {SUPPORTED_PINCODES.map(p => (
-            <button
-              key={p.code}
-              onClick={() => setSelected(p.code)}
-              className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all text-left ${
-                selected === p.code
-                  ? "border-primary bg-primary/5 neu-inset"
-                  : "border-border bg-background hover:border-primary/40"
-              }`}
-            >
-              <div>
-                <div className="font-semibold text-foreground text-sm">{p.city}</div>
-                <div className="text-xs text-muted-foreground">{p.code} · {p.district}</div>
-              </div>
-              {selected === p.code && <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />}
-            </button>
-          ))}
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground">Pincode</Label>
+          <div className="relative">
+            <Input
+              value={pincode}
+              onChange={e => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="Enter 6-digit pincode"
+              className="bg-background neu-inset border-none h-11 rounded-xl pr-9"
+              maxLength={6}
+            />
+            {pincodeValid && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />}
+            {pincodeOutOfArea && <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-destructive" />}
+          </div>
+          {pincodeValid && (
+            <p className="text-xs text-green-600 font-medium">✓ SwiftMart delivers to {areaName}</p>
+          )}
+          {pincodeOutOfArea && (
+            <p className="text-xs text-destructive">SwiftMart is not available in this area yet. Try 733101 or 733103.</p>
+          )}
         </div>
-        <Button onClick={handleSave} disabled={saving || !selected} className="w-full rounded-xl shadow-none neu-card">
-          {saving ? "Saving..." : "Save Location"}
+        <Button
+          onClick={handleSave}
+          disabled={saving || !pincodeValid}
+          className="w-full rounded-xl shadow-none neu-card h-10 text-sm"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Location"}
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center p-6">
+    <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center p-6 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm space-y-6"
+        className="w-full max-w-sm space-y-6 py-8"
       >
         <div className="text-center space-y-2">
           <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center text-primary mx-auto neu-inset mb-4">
             <MapPin className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Select Your Area</h1>
+          <h1 className="text-2xl font-bold text-foreground">Set Your Delivery Area</h1>
           <p className="text-muted-foreground text-sm">
-            SwiftMart is available in select pincodes. Choose your area to see shops and products near you.
+            Enter your address so we can show shops near you.
           </p>
         </div>
 
-        <div className="grid gap-3">
-          {SUPPORTED_PINCODES.map(p => (
-            <button
-              key={p.code}
-              onClick={() => setSelected(p.code)}
-              className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left ${
-                selected === p.code
-                  ? "border-primary bg-primary/5 neu-inset"
-                  : "border-border bg-card hover:border-primary/40 neu-card"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                  selected === p.code ? "bg-primary text-white" : "bg-muted text-muted-foreground"
-                }`}>
-                  <MapPin className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="font-bold text-foreground">{p.city}</div>
-                  <div className="text-xs text-muted-foreground">{p.code} · {p.district}</div>
-                </div>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Full Address</Label>
+            <Input
+              value={addressLine}
+              onChange={e => setAddressLine(e.target.value)}
+              placeholder="House No., Building, Street"
+              className="bg-background neu-inset border-none h-12 rounded-xl"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Area / Locality</Label>
+            <Input
+              value={area}
+              onChange={e => setArea(e.target.value)}
+              placeholder="Mohalla, ward, locality name"
+              className="bg-background neu-inset border-none h-12 rounded-xl"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Pincode</Label>
+            <div className="relative">
+              <Input
+                value={pincode}
+                onChange={e => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="6-digit pincode"
+                className="bg-background neu-inset border-none h-12 rounded-xl pr-10"
+                maxLength={6}
+              />
+              {pincodeValid && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />}
+              {pincodeOutOfArea && <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-destructive" />}
+            </div>
+
+            {pincodeValid && (
+              <p className="text-sm text-green-600 font-medium flex items-center gap-1">
+                <CheckCircle2 className="w-4 h-4" /> SwiftMart delivers to {areaName}!
+              </p>
+            )}
+            {pincodeOutOfArea && (
+              <div className="bg-destructive/10 text-destructive rounded-xl p-3 text-sm">
+                <p className="font-semibold">Not available in your area yet</p>
+                <p className="text-xs mt-1">SwiftMart currently serves 733101 (Balurghat) and 733103 (Gangarampur).</p>
               </div>
-              {selected === p.code && <CheckCircle2 className="w-6 h-6 text-primary shrink-0" />}
-            </button>
-          ))}
+            )}
+          </div>
         </div>
 
         <Button
           onClick={handleSave}
-          disabled={saving || !selected}
+          disabled={saving || !pincodeValid || !addressLine.trim() || !area.trim()}
           className="w-full h-12 rounded-2xl text-base font-bold shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90"
         >
-          {saving ? "Setting Location..." : "Continue to SwiftMart"}
+          {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving…</> : "Continue to SwiftMart"}
         </Button>
+
+        <p className="text-xs text-center text-muted-foreground">
+          Available areas: Balurghat (733101) · Gangarampur (733103)
+        </p>
       </motion.div>
     </div>
   );
