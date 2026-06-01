@@ -9,6 +9,7 @@ import { AddressCard } from "@/components/AddressCard";
 import { AddressForm } from "@/components/AddressForm";
 import { toast } from "sonner";
 import { LogOut, MapPin, Store, Clock, XCircle, Shield } from "lucide-react";
+import { RoleSwitcher } from "@/components/RoleSwitcher";
 
 export default function Profile() {
   const { user, logout, updateUser, addAddress, deleteAddress, setRole, role, isAdmin } = useAuth();
@@ -113,15 +114,18 @@ export default function Profile() {
                 <span className="text-muted-foreground">Category</span>
                 <span className="font-bold text-foreground capitalize">{user.vendorProfile?.storeCategory.replace('-', ' ')}</span>
               </div>
-              <Button 
-                className="w-full mt-4 rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => {
-                  setRole(role === 'vendor' ? 'customer' : 'vendor');
-                  if (role !== 'vendor') setLocation("/vendor");
-                }}
-              >
-                Switch to {role === 'vendor' ? 'Customer' : 'Vendor'} Dashboard
-              </Button>
+              <div className="mt-4 space-y-3">
+                <p className="text-xs text-muted-foreground font-medium">Switch mode</p>
+                <RoleSwitcher />
+                {role === 'vendor' && (
+                  <Button
+                    className="w-full rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={() => setLocation("/vendor")}
+                  >
+                    Go to Vendor Dashboard
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}

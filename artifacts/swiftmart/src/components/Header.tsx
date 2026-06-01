@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import { Search, MapPin, ShoppingBag, Store, Clock, User, Shield, LayoutDashboard, Package, ClipboardList, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
-import { RoleSwitcher } from "./RoleSwitcher";
 import { Input } from "./ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
@@ -83,8 +82,6 @@ export function Header() {
 
           {/* Right side — icons + desktop nav */}
           <div className="flex items-center gap-1.5 md:gap-2 shrink-0 ml-auto md:ml-0">
-            {user?.vendorStatus === 'approved' && <RoleSwitcher />}
-
             {/* Desktop nav links */}
             {role === 'customer' && (
               <nav className="hidden md:flex items-center gap-1">
