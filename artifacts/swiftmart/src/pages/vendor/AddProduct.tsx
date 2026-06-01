@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Upload, X } from "lucide-react";
+import { Upload, X, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 
 export default function AddProduct() {
@@ -33,17 +33,44 @@ export default function AddProduct() {
   const [stock, setStock] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setImage(url);
+    if (!file) return;
+
+    const preview = URL.createObjectURL(file);
+    setImage(preview);
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const token = localStorage.getItem("sm_at");
+      const res = await fetch("/api/upload/product-image", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      const data = await res.json() as { success: boolean; imageUrl?: string; message?: string };
+      if (data.success && data.imageUrl) {
+        URL.revokeObjectURL(preview);
+        setImage(data.imageUrl);
+      } else {
+        toast.error(data.message ?? "Upload failed");
+        setImage(null);
+      }
+    } catch {
+      toast.error("Image upload failed. Please try again.");
+      setImage(null);
+    } finally {
+      setUploading(false);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (uploading) { toast.error("Please wait for image upload to finish"); return; }
     if (!name || !category || !price || !unit || !stock || !image) {
       toast.error("Please fill all required fields and upload an image");
       return;
@@ -72,26 +99,33 @@ export default function AddProduct() {
       <SectionHeader title="Add New Product" />
 
       <form onSubmit={handleSubmit} className="bg-card p-6 rounded-3xl neu-card space-y-6">
-        {/* Image Upload */}
         <div className="space-y-2">
           <Label>Product Image*</Label>
           <div className="relative h-40 rounded-2xl neu-inset bg-background flex items-center justify-center overflow-hidden border-2 border-dashed border-border">
             {image ? (
               <>
                 <img src={image} alt="Preview" className="h-full object-contain p-2" />
-                <button
-                  type="button"
-                  onClick={() => setImage(null)}
-                  className="absolute top-2 right-2 p-1.5 bg-background rounded-full neu-card text-destructive"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                {uploading && (
+                  <div className="absolute inset-0 bg-background/70 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                )}
+                {!uploading && (
+                  <button
+                    type="button"
+                    onClick={() => setImage(null)}
+                    className="absolute top-2 right-2 p-1.5 bg-background rounded-full neu-card text-destructive"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </>
             ) : (
               <label className="flex flex-col items-center justify-center cursor-pointer w-full h-full text-muted-foreground hover:text-primary transition-colors">
                 <Upload className="w-8 h-8 mb-2" />
                 <span className="text-sm font-medium">Click to upload image</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                <span className="text-xs mt-1 opacity-60">JPG, PNG, WEBP · Max 5MB</span>
+                <input type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={handleImageChange} />
               </label>
             )}
           </div>
@@ -100,16 +134,16 @@ export default function AddProduct() {
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Product Name*</Label>
-            <Input 
-              id="name" value={name} onChange={e => setName(e.target.value)} 
-              className="bg-background neu-inset border-none" placeholder="e.g. Fresh Tomatoes" required 
+            <Input
+              id="name" value={name} onChange={e => setName(e.target.value)}
+              className="bg-background neu-inset border-none" placeholder="e.g. Fresh Tomatoes" required
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="category">Category*</Label>
-              <select 
+              <select
                 id="category"
                 value={category}
                 onChange={e => setCategory(e.target.value as CategoryId)}
@@ -122,9 +156,9 @@ export default function AddProduct() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="price">Price (₹)*</Label>
-              <Input 
-                id="price" type="number" min="0" step="1" value={price} onChange={e => setPrice(e.target.value)} 
-                className="bg-background neu-inset border-none" placeholder="0.00" required 
+              <Input
+                id="price" type="number" min="0" step="1" value={price} onChange={e => setPrice(e.target.value)}
+                className="bg-background neu-inset border-none" placeholder="0.00" required
               />
             </div>
           </div>
@@ -132,25 +166,25 @@ export default function AddProduct() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="unit">Unit*</Label>
-              <Input 
-                id="unit" value={unit} onChange={e => setUnit(e.target.value)} 
-                className="bg-background neu-inset border-none" placeholder="e.g. 1 kg, 500 ml" required 
+              <Input
+                id="unit" value={unit} onChange={e => setUnit(e.target.value)}
+                className="bg-background neu-inset border-none" placeholder="e.g. 1 kg, 500 ml" required
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="stock">Stock Quantity*</Label>
-              <Input 
-                id="stock" type="number" min="0" step="1" value={stock} onChange={e => setStock(e.target.value)} 
-                className="bg-background neu-inset border-none" placeholder="0" required 
+              <Input
+                id="stock" type="number" min="0" step="1" value={stock} onChange={e => setStock(e.target.value)}
+                className="bg-background neu-inset border-none" placeholder="0" required
               />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Textarea 
-              id="description" value={description} onChange={e => setDescription(e.target.value)} 
-              className="bg-background neu-inset border-none min-h-[100px] resize-none" placeholder="Product details..." 
+            <Textarea
+              id="description" value={description} onChange={e => setDescription(e.target.value)}
+              className="bg-background neu-inset border-none min-h-[100px] resize-none" placeholder="Product details..."
             />
           </div>
         </div>
@@ -159,8 +193,8 @@ export default function AddProduct() {
           <Button type="button" variant="outline" className="flex-1 rounded-xl shadow-none" onClick={() => setLocation("/vendor/products")}>
             Cancel
           </Button>
-          <Button type="submit" className="flex-[2] rounded-xl shadow-none neu-card">
-            Save Product
+          <Button type="submit" className="flex-[2] rounded-xl shadow-none neu-card" disabled={uploading}>
+            {uploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading…</> : "Save Product"}
           </Button>
         </div>
       </form>

@@ -79,6 +79,15 @@ export default function VendorOrders() {
     }
   }, []);
 
+  const pollOrders = useCallback(async (sid: string) => {
+    try {
+      const d = await api.get<{ success: boolean; orders: ApiOrder[] }>(`/orders?shopId=${sid}`);
+      setOrders(d.orders);
+    } catch {
+      // silently ignore background poll errors
+    }
+  }, []);
+
   useEffect(() => {
     if (!user) { setLoading(false); return; }
     api.get<{ success: boolean; shops: ApiShop[] }>(`/shops?ownerId=${user.id}`)
@@ -97,6 +106,12 @@ export default function VendorOrders() {
         setLoading(false);
       });
   }, [user, fetchOrders]);
+
+  useEffect(() => {
+    if (!shopId) return;
+    const id = setInterval(() => pollOrders(shopId), 5000);
+    return () => clearInterval(id);
+  }, [shopId, pollOrders]);
 
   const updateStatus = async (orderId: string, newStatus: string) => {
     setUpdatingId(orderId);
