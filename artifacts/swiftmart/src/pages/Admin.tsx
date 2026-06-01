@@ -11,7 +11,7 @@ import {
   LayoutDashboard, Store, Users, FileText, TrendingUp, Ban, CheckCircle, 
   XCircle, Clock, Search, Shield, Star, ShoppingBag, Trash2, Eye, EyeOff,
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
-  Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw
+  Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, Send
 } from "lucide-react";
 import { VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog } from "@/types";
 import { useShops } from "@/hooks/useShops";
@@ -135,7 +135,7 @@ function buildTopProducts(orders: ApiOrder[]) {
     .sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 5);
 }
 
-type AdminSection = 'overview' | 'requests' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions';
+type AdminSection = 'overview' | 'requests' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications';
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -203,6 +203,7 @@ export default function Admin() {
               {activeSection === 'reports' && <ReportsTab />}
               {activeSection === 'analytics' && <AnalyticsTab />}
               {activeSection === 'transactions' && <TransactionsTab />}
+              {activeSection === 'notifications' && <AdminNotificationsTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -233,6 +234,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'reports', label: 'Reports', icon: Flag, badge: openReports },
     { id: 'analytics', label: 'Analytics', icon: BarChart2 },
     { id: 'transactions', label: 'Transactions', icon: CreditCard },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
   ];
 
   return (
@@ -1717,6 +1719,199 @@ function TransactionsTab() {
               </div>
             </div>
           </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// ADMIN NOTIFICATIONS SECTION
+// ============================================================================
+
+interface BroadcastRecord {
+  _id: string;
+  title: string;
+  message: string;
+  targetAudience: string;
+  sentCount: number;
+  createdAt: string;
+}
+
+function AdminNotificationsTab() {
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [targetAudience, setTargetAudience] = useState<"all" | "customers" | "vendors" | "specific">("all");
+  const [targetUserId, setTargetUserId] = useState("");
+  const [sending, setSending] = useState(false);
+  const [history, setHistory] = useState<BroadcastRecord[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+
+  const fetchHistory = () => {
+    setLoadingHistory(true);
+    api.get<{ success: boolean; broadcasts: BroadcastRecord[] }>("/notifications/broadcasts")
+      .then(d => setHistory(d.broadcasts))
+      .catch(() => setHistory([]))
+      .finally(() => setLoadingHistory(false));
+  };
+
+  useEffect(() => { fetchHistory(); }, []);
+
+  const handleSend = async () => {
+    if (!title.trim() || !message.trim()) { toast.error("Title and message are required"); return; }
+    if (targetAudience === "specific" && !targetUserId.trim()) { toast.error("Please enter a User ID"); return; }
+    setSending(true);
+    try {
+      const res = await api.post<{ success: boolean; sentCount: number }>("/notifications/broadcast", {
+        title, message, targetAudience, targetUserId: targetAudience === "specific" ? targetUserId : undefined,
+      });
+      toast.success(`Notification sent to ${res.sentCount} user${res.sentCount !== 1 ? "s" : ""}`);
+      setTitle(""); setMessage(""); setTargetUserId("");
+      fetchHistory();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to send notification");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const audienceLabels: Record<string, string> = {
+    all: "All Users",
+    customers: "Customers Only",
+    vendors: "Vendors Only",
+    specific: "Specific User",
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Compose */}
+      <div className="bg-card p-6 rounded-3xl neu-card space-y-4">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <Bell className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="font-bold text-lg text-foreground">Send Notification</h2>
+            <p className="text-xs text-muted-foreground">Broadcast a message to users on the platform</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-1">Audience</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {(["all", "customers", "vendors", "specific"] as const).map(a => (
+                <button
+                  key={a}
+                  onClick={() => setTargetAudience(a)}
+                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                    targetAudience === a
+                      ? "bg-primary text-primary-foreground neu-card"
+                      : "bg-background neu-inset text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {audienceLabels[a]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {targetAudience === "specific" && (
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1">User ID</label>
+              <Input
+                value={targetUserId}
+                onChange={e => setTargetUserId(e.target.value)}
+                placeholder="Paste MongoDB user _id"
+                className="bg-background neu-inset border-none font-mono text-sm"
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-1">Title</label>
+            <Input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Notification title"
+              className="bg-background neu-inset border-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-1">Message</label>
+            <Textarea
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              placeholder="Write your notification message..."
+              rows={3}
+              className="bg-background neu-inset border-none resize-none"
+            />
+          </div>
+
+          <Button
+            onClick={handleSend}
+            disabled={sending}
+            className="w-full md:w-auto rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {sending ? (
+              <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Sending...</>
+            ) : (
+              <><Send className="w-4 h-4 mr-2" /> Send Notification</>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* History */}
+      <div className="bg-card rounded-3xl neu-card overflow-hidden">
+        <div className="p-6 border-b border-border">
+          <h3 className="font-bold text-lg text-foreground">Broadcast History</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">All notifications sent by admins</p>
+        </div>
+
+        {loadingHistory ? (
+          <div className="p-6 space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-16 bg-muted rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        ) : history.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground">
+            <Bell className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="font-medium">No notifications sent yet</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border/50">
+            {history.map(b => (
+              <div key={b._id} className="p-4 flex items-start gap-4">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0 mt-0.5">
+                  <Bell className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">{b.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{b.message}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <Badge className="bg-primary/10 text-primary border-none text-xs capitalize">
+                        {audienceLabels[b.targetAudience] ?? b.targetAudience}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 mt-2">
+                    <span className="text-[11px] text-muted-foreground">
+                      {new Date(b.createdAt).toLocaleString()}
+                    </span>
+                    <span className="text-[11px] text-green-600 font-medium">
+                      ✓ Sent to {b.sentCount} user{b.sentCount !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

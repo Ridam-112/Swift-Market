@@ -1,0 +1,1 @@
+- [Pincode & Notifications implementation](pincode-notifications.md) — Two-feature implementation: pincode-based shop/product filtering + full notification system
