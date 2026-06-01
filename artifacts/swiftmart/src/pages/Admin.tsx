@@ -13,7 +13,7 @@ import {
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, Send
 } from "lucide-react";
-import { VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog } from "@/types";
+import { VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog, Vendor } from "@/types";
 import { useShops } from "@/hooks/useShops";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -215,7 +215,8 @@ export default function Admin() {
 function SidebarContent({ activeSection, setActiveSection, handleLogout }: { activeSection: AdminSection, setActiveSection: (s: AdminSection) => void, handleLogout: () => void }) {
   const [pendingRequests, setPendingRequests] = useState(0);
   const [pendingOrders, setPendingOrders] = useState(0);
-  const openReports = 0;
+  const { reports } = useAuth();
+  const openReports = reports.filter(r => r.status === 'open').length;
 
   useEffect(() => {
     api.get<{ success: boolean; stats: { pendingShops: number; pendingOrders: number } }>('/admin/stats')
@@ -314,12 +315,27 @@ function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) 
     return formatINR(val);
   };
 
-  const recentActivity = [
-    { id: 1, type: 'order', icon: ShoppingBag, title: "New order placed", desc: "ORD-2012 at StyleZone", time: "10 mins ago", color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/20" },
-    { id: 2, type: 'shop', icon: Store, title: "New shop approved", desc: "Fresh Mart", time: "2 hours ago", color: "text-green-500", bg: "bg-green-50 dark:bg-green-950/20" },
-    { id: 3, type: 'customer', icon: Users, title: "New customer joined", desc: "Priya Singh", time: "5 hours ago", color: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-950/20" },
-    { id: 4, type: 'report', icon: Flag, title: "New report opened", desc: "Regarding Fresh Tomatoes", time: "1 day ago", color: "text-red-500", bg: "bg-red-50 dark:bg-red-950/20" },
-  ];
+  const recentActivity = useMemo(() => {
+    const activities: { id: string; type: string; icon: any; title: string; desc: string; time: string; color: string; bg: string }[] = [];
+    const timeAgo = (dateStr: string) => {
+      const ms = Date.now() - new Date(dateStr).getTime();
+      const mins = Math.floor(ms / 60000);
+      if (mins < 60) return `${mins}m ago`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `${hrs}h ago`;
+      return `${Math.floor(hrs / 24)}d ago`;
+    };
+    [...recentOrders].slice(0, 2).forEach((o, i) => {
+      activities.push({ id: `ord-${i}`, type: 'order', icon: ShoppingBag, title: 'New order placed', desc: `#${o._id.slice(-6).toUpperCase()} at ${o.shopName ?? 'shop'}`, time: timeAgo(o.createdAt), color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/20' });
+    });
+    reports.filter(r => r.status === 'open').slice(0, 1).forEach((r, i) => {
+      activities.push({ id: `rep-${i}`, type: 'report', icon: Flag, title: 'New report opened', desc: `Regarding ${r.targetName}`, time: timeAgo(r.reportedAt), color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-950/20' });
+    });
+    [...shops].filter(s => s.status === 'active').slice(0, 1).forEach((s, i) => {
+      activities.push({ id: `shop-${i}`, type: 'shop', icon: Store, title: 'Shop active', desc: s.storeName, time: '', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-950/20' });
+    });
+    return activities.slice(0, 5);
+  }, [recentOrders, reports, shops]);
 
   return (
     <div className="space-y-6">
@@ -396,19 +412,26 @@ function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) 
 
           <div className="bg-card p-6 rounded-3xl neu-card">
             <h3 className="text-lg font-bold text-foreground mb-4">Recent Activity</h3>
-            <div className="space-y-4 relative before:absolute before:inset-0 before:ml-4 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent hidden-before">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex gap-3 relative z-10">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activity.bg} ${activity.color}`}>
-                    <activity.icon className="w-4 h-4" />
+            {recentActivity.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground text-sm">
+                <RefreshCw className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                <p>No recent activity yet</p>
+              </div>
+            ) : (
+              <div className="space-y-4 relative before:absolute before:inset-0 before:ml-4 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent hidden-before">
+                {recentActivity.map((activity) => (
+                  <div key={activity.id} className="flex gap-3 relative z-10">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activity.bg} ${activity.color}`}>
+                      <activity.icon className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{activity.title}</p>
+                      <p className="text-xs text-muted-foreground">{activity.desc}{activity.time ? ` · ${activity.time}` : ''}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{activity.title}</p>
-                    <p className="text-xs text-muted-foreground">{activity.desc} · {activity.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1563,10 +1586,41 @@ function AnalyticsTab() {
 // ============================================================================
 
 function TransactionsTab() {
-  const { transactions } = useAuth();
+  const [transactions, setTransactions] = useState<TransactionLog[]>([]);
+  const [txLoading, setTxLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<TransactionLog['status'] | 'all'>('all');
   const [dateFilter, setDateFilter] = useState<'7' | '30' | 'all'>('all');
+
+  useEffect(() => {
+    setTxLoading(true);
+    const methodMap: Record<string, TransactionLog['method']> = { COD: 'COD', UPI: 'UPI', card: 'Card', wallet: 'UPI' };
+    api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=500')
+      .then(d => {
+        const txns: TransactionLog[] = d.orders.map(o => ({
+          id: `TXN-${o._id.slice(-8).toUpperCase()}`,
+          orderId: o._id,
+          customerName: o.customerName ?? 'Customer',
+          vendorName: o.shopName ?? 'Vendor',
+          amount: o.netAmount ?? o.subtotal ?? 0,
+          method: methodMap[o.paymentMethod ?? 'COD'] ?? 'COD',
+          status: (o.paymentStatus ?? 'pending') as TransactionLog['status'],
+          createdAt: o.createdAt,
+        }));
+        setTransactions(txns);
+      })
+      .catch(() => setTransactions([]))
+      .finally(() => setTxLoading(false));
+  }, []);
+
+  if (txLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-8 w-48 bg-muted rounded-xl animate-pulse" />
+        {[1,2,3,4,5].map(i => <div key={i} className="h-16 bg-muted rounded-2xl animate-pulse" />)}
+      </div>
+    );
+  }
 
   const filtered = transactions.filter(t => {
     if (filter !== 'all' && t.status !== filter) return false;

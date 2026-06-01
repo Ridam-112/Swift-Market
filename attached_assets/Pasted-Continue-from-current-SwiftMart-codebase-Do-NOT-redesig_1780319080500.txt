@@ -1,0 +1,76 @@
+Continue from current SwiftMart codebase.
+
+Do NOT redesign UI.
+Do NOT rebuild backend.
+Do NOT break existing working flow.
+Do NOT add Google login, payment gateway, delivery partner, or real SMS OTP now.
+
+Fix only the remaining unfinished old items + product image loading bug.
+
+1. Product Image Upload/Display Bug
+Problem:
+- Vendor uploads product image.
+- Upload succeeds, but image does not load/show properly after product creation or page reload.
+
+Fix:
+- Verify POST /api/upload/product-image returns a valid imageUrl.
+- Ensure uploaded images are served correctly from /api/uploads.
+- Ensure product create/update saves imageUrl into MongoDB.
+- Ensure frontend reads the correct image field.
+- Support both image and images[0] if needed.
+- Product image must show on:
+  - Vendor Products page
+  - Customer Products page
+  - Home page product cards
+  - ShopDetail page
+  - Cart
+  - Orders if product image exists
+- If no image exists, show placeholder.
+- Remove blob URL usage completely.
+
+2. Admin Reports
+- Remove all mock reports.
+- Connect Admin Reports page to real /api/reports backend.
+- Reports must persist in MongoDB.
+- Admin can resolve report.
+- Admin can ignore report.
+- Page refresh should not reset report status.
+
+3. Admin Transactions
+- Remove mock transactions.
+- Generate real transactions from orders.
+- Show real transaction list in Admin panel.
+- Include:
+  - orderId
+  - customer
+  - shop/vendor
+  - amount
+  - payment method
+  - commission
+  - status
+  - date
+
+4. Admin Overview Cleanup
+- Open Reports count must come from real reports API.
+- Recent Activity must use real data from orders, shops, reports, notifications.
+- If no real data exists, show empty state instead of fake data.
+
+5. Final Testing
+Verify:
+- Product image uploads and displays after page reload
+- Customer order still works
+- Vendor accepts/rejects order
+- Admin sees order
+- Admin reports persist after refresh
+- Admin transactions show real order data
+- Pincode filtering still works
+- Notifications still work
+
+Generate final report:
+- Files changed
+- Bugs fixed
+- Remaining issues
+- Production readiness %
+- Launch readiness %
+
+Implement directly and stop after report.

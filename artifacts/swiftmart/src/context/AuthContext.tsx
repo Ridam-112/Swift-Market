@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect } from "react";
-import { User, Address, VendorApplication, AdminCustomer, PlatformOrder, Report, TransactionLog } from "@/types";
-import { mockAdminCustomers, mockPlatformOrders, mockReports, mockTransactions } from "@/data/adminData";
+import { User, Address, VendorApplication, AdminCustomer, PlatformOrder, Report } from "@/types";
+import { mockAdminCustomers, mockPlatformOrders } from "@/data/adminData";
 import { api, setTokens, clearTokens } from "@/lib/api";
 
 export type UserRole = 'customer' | 'vendor' | 'admin' | 'super_admin';
@@ -44,7 +44,6 @@ interface AuthContextType {
   reports: Report[];
   resolveReport: (reportId: string) => void;
   ignoreReport: (reportId: string) => void;
-  transactions: TransactionLog[];
 }
 
 interface ApiUser {
@@ -57,6 +56,34 @@ interface ApiUser {
   vendorStatus?: string;
   pincode?: string;
   addresses?: Address[];
+}
+
+interface ApiReport {
+  _id: string;
+  type: 'shop' | 'product';
+  targetId: string;
+  targetName: string;
+  reportedBy: string;
+  reporterPhone: string;
+  reason: Report['reason'];
+  description: string;
+  status: 'open' | 'resolved' | 'ignored';
+  createdAt: string;
+}
+
+function mapApiReport(r: ApiReport): Report {
+  return {
+    id: r._id,
+    type: r.type,
+    targetId: r.targetId,
+    targetName: r.targetName,
+    reportedBy: r.reporterPhone || 'Customer',
+    reporterPhone: r.reporterPhone || '',
+    reason: r.reason,
+    description: r.description,
+    reportedAt: r.createdAt,
+    status: r.status,
+  };
 }
 
 function apiUserToFrontend(apiUser: ApiUser): User {
@@ -85,8 +112,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [adminCustomers] = useState<AdminCustomer[]>(mockAdminCustomers);
   const [bannedVendorIds, setBannedVendorIds] = useState<string[]>([]);
   const [platformOrders] = useState<PlatformOrder[]>(mockPlatformOrders);
-  const [reports, setReports] = useState<Report[]>(mockReports);
-  const [transactions] = useState<TransactionLog[]>(mockTransactions);
+  const [reports, setReports] = useState<Report[]>([]);
+
+  const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+
+  const fetchReports = () => {
+    api.get<{ success: boolean; reports: ApiReport[] }>("/reports")
+      .then(d => setReports(d.reports.map(mapApiReport)))
+      .catch(() => {});
+  };
 
   useEffect(() => {
     const savedUser = localStorage.getItem("sm_user");
@@ -126,6 +160,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (!isAdmin || isLoading) return;
+    fetchReports();
+  }, [isAdmin, isLoading]);
+
   const login = (phone: string, name: string) => {
     const newUser: User = {
       id: `u_${Date.now()}`,
@@ -149,6 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserRole('customer');
     setRoleState('customer');
     setSelectedDeliveryAddress(null);
+    setReports([]);
     localStorage.removeItem("swiftmart_cart");
     localStorage.removeItem("swiftmart_role");
   };
@@ -329,10 +369,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     api.post(`/orders/${orderId}/refund`).catch(() => {});
   };
 
-  const resolveReport = (reportId: string) => setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'resolved' as const } : r));
-  const ignoreReport = (reportId: string) => setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'ignored' as const } : r));
+  const resolveReport = (reportId: string) => {
+    api.patch(`/reports/${reportId}/resolve`)
+      .then(() => setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'resolved' as const } : r)))
+      .catch(() => {});
+  };
 
-  const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+  const ignoreReport = (reportId: string) => {
+    api.patch(`/reports/${reportId}/ignore`)
+      .then(() => setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'ignored' as const } : r)))
+      .catch(() => {});
+  };
 
   return (
     <AuthContext.Provider value={{
@@ -341,7 +388,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loginWithPhone, verifyOtp, loginWithGoogle, completeOnboarding,
       applications, submitVendorApplication, approveApplication, rejectApplication,
       adminCustomers, banCustomer, unbanCustomer, bannedVendorIds, banVendor, unbanVendor, removeVendor,
-      platformOrders, updateOrderStatus, refundOrder, reports, resolveReport, ignoreReport, transactions,
+      platformOrders, updateOrderStatus, refundOrder, reports, resolveReport, ignoreReport,
     }}>
       {children}
     </AuthContext.Provider>

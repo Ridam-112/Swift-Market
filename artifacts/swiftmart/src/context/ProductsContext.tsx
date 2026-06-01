@@ -20,6 +20,7 @@ interface ApiProduct {
   price: number;
   unit?: string;
   image?: string;
+  images?: string[];
   description?: string;
   stock?: number;
   rating?: number;
@@ -35,7 +36,7 @@ function mapApiProduct(p: ApiProduct): Product {
     category: p.category as Product['category'],
     price: p.price,
     unit: p.unit ?? "1 unit",
-    image: p.image ?? "/assets/product-placeholder.png",
+    image: p.images?.[0] ?? p.image ?? "/assets/product-placeholder.png",
     description: p.description ?? "",
     stock: p.stock ?? 0,
     rating: p.rating ?? 0,
@@ -84,7 +85,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       category: product.category,
       price: product.price,
       unit: product.unit,
-      image: product.image,
+      images: product.image ? [product.image] : [],
       description: product.description,
       stock: product.stock,
       shopId: product.vendorId,
@@ -93,7 +94,12 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
 
   const updateProduct = (id: string, updates: Partial<Product>) => {
     setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
-    api.patch(`/products/${id}`, updates).catch(() => {});
+    const apiUpdates: Record<string, unknown> = { ...updates };
+    if (updates.image !== undefined) {
+      apiUpdates['images'] = [updates.image];
+      delete apiUpdates['image'];
+    }
+    api.patch(`/products/${id}`, apiUpdates).catch(() => {});
   };
 
   const deleteProduct = (id: string) => {
