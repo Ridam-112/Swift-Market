@@ -35,12 +35,11 @@ export function QuantityStepper({ qty, onChange, size = "md" }: QuantityStepperP
       <Button 
         variant="ghost" 
         size="icon"
-        className={cn("hover:bg-primary-foreground/20 text-primary-foreground rounded-none", isSm ? "w-8 h-8" : "w-10 h-10")}
+        className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover-elevate active-elevate-2 border border-transparent hover:bg-primary-foreground/20 rounded-none w-8 h-8 text-[#000000]"
         onClick={handleDecrease}
       >
         {qty === 1 ? <Trash2 className={isSm ? "w-3.5 h-3.5" : "w-4 h-4"} /> : <Minus className={isSm ? "w-3.5 h-3.5" : "w-4 h-4"} />}
       </Button>
-      
       <div className={cn("font-bold text-center flex-1 overflow-hidden relative", isSm ? "text-xs" : "text-sm")}>
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.span
@@ -56,11 +55,10 @@ export function QuantityStepper({ qty, onChange, size = "md" }: QuantityStepperP
         </AnimatePresence>
         <span className="invisible">{qty}</span>
       </div>
-
       <Button 
         variant="ghost" 
         size="icon"
-        className={cn("hover:bg-primary-foreground/20 text-primary-foreground rounded-none", isSm ? "w-8 h-8" : "w-10 h-10")}
+        className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover-elevate active-elevate-2 border border-transparent hover:bg-primary-foreground/20 rounded-none w-8 h-8 text-[#000000]"
         onClick={() => onChange(qty + 1)}
       >
         <Plus className={isSm ? "w-3.5 h-3.5" : "w-4 h-4"} />
