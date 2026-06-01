@@ -73,6 +73,7 @@ router.post("/:id/reject", authenticate, A, async (req: AuthRequest, res: Respon
 router.post("/:id/ban", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const shop = await Shop.findByIdAndUpdate(req.params["id"], { status: "banned", isOpen: false }, { new: true });
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+  await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "rejected", role: "customer" });
   res.json({ success: true, shop });
 });
 
@@ -80,12 +81,17 @@ router.post("/:id/ban", authenticate, A, async (req: AuthRequest, res: Response)
 router.post("/:id/unban", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const shop = await Shop.findByIdAndUpdate(req.params["id"], { status: "approved", isOpen: true }, { new: true });
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+  await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "approved", role: "vendor" });
   res.json({ success: true, shop });
 });
 
 // DELETE /api/shops/:id
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  await Shop.findByIdAndDelete(req.params["id"]);
+  const shop = await Shop.findById(req.params["id"]);
+  if (shop) {
+    await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "none", role: "customer" });
+    await shop.deleteOne();
+  }
   res.json({ success: true, message: "Shop deleted" });
 });
 

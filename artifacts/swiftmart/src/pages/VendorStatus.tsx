@@ -62,8 +62,8 @@ export default function VendorStatus() {
             <XCircle className="w-10 h-10" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-red-900 dark:text-red-50 mb-2">Application Rejected</h1>
-            <p className="text-red-700/80 dark:text-red-200/70">Unfortunately, we could not approve your application at this time.</p>
+            <h1 className="text-2xl font-bold text-red-900 dark:text-red-50 mb-2">Your vendor access is no longer active.</h1>
+            <p className="text-red-700/80 dark:text-red-200/70">Please register your shop again to continue selling on SwiftMart.</p>
           </div>
           <div className="pt-4 flex gap-3">
             <Link href="/" className="flex-1">
@@ -73,7 +73,7 @@ export default function VendorStatus() {
             </Link>
             <Link href="/vendor-register" className="flex-1">
               <Button className="w-full rounded-2xl h-14 font-bold shadow-none neu-card bg-red-600 hover:bg-red-700 text-white">
-                Re-apply
+                Register Again
               </Button>
             </Link>
           </div>
