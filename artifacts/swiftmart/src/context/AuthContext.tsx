@@ -58,8 +58,9 @@ interface ApiUser {
 }
 
 function apiUserToFrontend(apiUser: ApiUser): User {
+  const id = apiUser.id || (apiUser as ApiUser & { _id?: string })._id || "";
   return {
-    id: apiUser.id,
+    id,
     name: apiUser.name,
     phone: apiUser.phone,
     email: apiUser.email ?? "",

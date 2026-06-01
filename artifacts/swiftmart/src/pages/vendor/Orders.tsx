@@ -57,7 +57,7 @@ function statusColor(s: string) {
 }
 
 export default function VendorOrders() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
   const [shopId, setShopId] = useState<string | null>(null);
   const [orders, setOrders] = useState<ApiOrder[]>([]);
@@ -89,7 +89,10 @@ export default function VendorOrders() {
   }, []);
 
   useEffect(() => {
-    if (!user) { setLoading(false); return; }
+    if (authLoading) return;
+    if (!user?.id) { setLoading(false); return; }
+    setLoading(true);
+    setError(null);
     api.get<{ success: boolean; shops: ApiShop[] }>(`/shops?ownerId=${user.id}`)
       .then(d => {
         const shop = d.shops[0];
@@ -105,7 +108,7 @@ export default function VendorOrders() {
         setError("Could not load your shop. Please try again.");
         setLoading(false);
       });
-  }, [user, fetchOrders]);
+  }, [user, authLoading, fetchOrders]);
 
   useEffect(() => {
     if (!shopId) return;

@@ -44,14 +44,14 @@ function buildSeries(orders: VendorOrder[]): { date: string; revenue: number; or
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { products } = useProducts();
   const [orders, setOrders] = useState<VendorOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [shopId, setShopId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!user) { setLoading(false); return; }
+    if (!user?.id) { setLoading(false); return; }
     setLoading(true);
     try {
       const shopData = await api.get<{ success: boolean; shops: ApiShop[] }>(`/shops?ownerId=${user.id}`);
@@ -68,7 +68,10 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    if (authLoading) return;
+    fetchData();
+  }, [fetchData, authLoading]);
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);

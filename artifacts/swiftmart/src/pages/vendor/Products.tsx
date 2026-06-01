@@ -22,7 +22,7 @@ interface ApiProduct {
 }
 
 export default function VendorProducts() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [shopId, setShopId] = useState<string | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +41,10 @@ export default function VendorProducts() {
   }, []);
 
   useEffect(() => {
-    if (!user) { setLoading(false); return; }
+    if (authLoading) return;
+    if (!user?.id) { setLoading(false); return; }
+    setLoading(true);
+    setError(null);
     api.get<{ success: boolean; shops: { _id: string }[] }>(`/shops?ownerId=${user.id}`)
       .then(d => {
         const shop = d.shops[0];
@@ -57,7 +60,7 @@ export default function VendorProducts() {
         setError("Could not load your shop.");
         setLoading(false);
       });
-  }, [user, fetchProducts]);
+  }, [user, authLoading, fetchProducts]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this product?")) return;

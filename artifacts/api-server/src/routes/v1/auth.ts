@@ -95,7 +95,19 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response): Promise
     res.status(404).json({ success: false, message: "User not found" });
     return;
   }
-  res.json({ success: true, user });
+  res.json({
+    success: true,
+    user: {
+      id: String(user._id),
+      name: user.name,
+      phone: user.phone,
+      email: user.email ?? "",
+      role: user.role,
+      status: user.status,
+      vendorStatus: user.vendorStatus,
+      addresses: user.addresses,
+    },
+  });
 });
 
 // POST /api/auth/logout
