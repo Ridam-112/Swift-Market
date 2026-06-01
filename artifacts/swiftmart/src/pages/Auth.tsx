@@ -41,8 +41,8 @@ export default function Auth() {
   const areaName = getServiceAreaName(pincode);
 
   useEffect(() => {
-    if (user) setLocation("/");
-  }, [user, setLocation]);
+    if (user && step !== 'onboarding') setLocation("/");
+  }, [user, step, setLocation]);
 
   useEffect(() => {
     if (step === 'otp' && countdown > 0) {
@@ -395,7 +395,15 @@ export default function Auth() {
 
                 <Button
                   type="submit"
-                  disabled={isSavingProfile || pincodeOutOfArea}
+                  disabled={
+                    isSavingProfile ||
+                    pincodeOutOfArea ||
+                    !name.trim() ||
+                    !addressLine1.trim() ||
+                    !addressArea.trim() ||
+                    !city.trim() ||
+                    !pincodeValid
+                  }
                   className="w-full rounded-2xl h-14 text-lg font-bold shadow-none neu-card mt-2"
                 >
                   {isSavingProfile

@@ -24,7 +24,7 @@ export function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!line1 || !city || !pincode) return;
+    if (!line1 || !line2 || !city || !pincode) return;
     if (!pincodeValid) return;
 
     onSubmit({
@@ -69,13 +69,14 @@ export function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="line2">Area / Locality</Label>
+        <Label htmlFor="line2">Area / Locality*</Label>
         <Input
           id="line2"
           value={line2}
           onChange={e => setLine2(e.target.value)}
           placeholder="Mohalla, ward, locality name"
           className="bg-background neu-inset border-none"
+          required
         />
       </div>
 
@@ -126,7 +127,7 @@ export function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
         </Button>
         <Button
           type="submit"
-          disabled={!line1 || !city || !pincodeValid}
+          disabled={!line1 || !line2 || !city || !pincodeValid}
           className="flex-1 rounded-xl shadow-none neu-card"
         >
           Save Address

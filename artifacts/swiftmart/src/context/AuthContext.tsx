@@ -262,34 +262,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const completeOnboarding = async (name: string, phone: string, address: Address, email?: string): Promise<void> => {
-    const { access } = api.getTokens();
-    if (access) {
-      try {
-        const data = await api.patch<{ success: boolean; user: ApiUser }>("/users/me/profile", {
-          name,
-          email: email ?? "",
-          addresses: [address],
-        });
-        const u = apiUserToFrontend(data.user);
-        setUser(u);
-        setUserRole(data.user.role);
-        localStorage.setItem("sm_user", JSON.stringify(u));
-        setSelectedDeliveryAddress(address);
-        return;
-      } catch { /* fallback to local */ }
-    }
-    const newUser: User = {
-      id: `u_${Date.now()}`,
+    const data = await api.patch<{ success: boolean; user: ApiUser }>("/users/me/profile", {
       name,
-      phone,
       email: email ?? "",
-      pincode: "",
+      pincode: address.pincode,
       addresses: [address],
-      isVendorRegistered: false,
-      vendorStatus: 'none',
-    };
-    setUser(newUser);
-    localStorage.setItem("sm_user", JSON.stringify(newUser));
+    });
+    const u = apiUserToFrontend(data.user);
+    setUser(u);
+    setUserRole(data.user.role);
+    localStorage.setItem("sm_user", JSON.stringify(u));
+    localStorage.setItem("sm_role", data.user.role);
     setSelectedDeliveryAddress(address);
   };
 
@@ -328,6 +311,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         state: "West Bengal",
       },
     }).catch(() => { /* ignore API errors, local state updated */ });
+
+    if (appData.storePincode) {
+      api.patch<{ success: boolean; user: ApiUser }>("/users/me/profile", { pincode: appData.storePincode })
+        .then(d => {
+          const u = apiUserToFrontend(d.user);
+          setUser(u);
+          localStorage.setItem("sm_user", JSON.stringify(u));
+        })
+        .catch(() => {
+          updateUser({ pincode: appData.storePincode });
+        });
+    }
   };
 
   const approveApplication = (applicationId: string) => {
