@@ -37,4 +37,13 @@ router.post("/product-image", authenticate, upload.single("image"), (req: Reques
   res.json({ success: true, imageUrl });
 });
 
+router.post("/banner-image", authenticate, upload.single("image"), (req: Request, res: Response): void => {
+  if (!req.file) {
+    res.status(400).json({ success: false, message: "No file uploaded" });
+    return;
+  }
+  const imageUrl = `/api/uploads/${req.file.filename}`;
+  res.json({ success: true, imageUrl });
+});
+
 export default router;

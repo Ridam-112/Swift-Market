@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,10 @@ import {
   LayoutDashboard, Store, Users, FileText, TrendingUp, Ban, CheckCircle, 
   XCircle, Clock, Search, Shield, Star, ShoppingBag, Trash2, Eye, EyeOff,
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
-  Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, Send
+  Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, Send,
+  ImageIcon, Plus, Edit2
 } from "lucide-react";
+import { categories } from "@/data/categories";
 import { VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog, Vendor } from "@/types";
 import { useShops } from "@/hooks/useShops";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -135,7 +137,7 @@ function buildTopProducts(orders: ApiOrder[]) {
     .sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 5);
 }
 
-type AdminSection = 'overview' | 'requests' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications';
+type AdminSection = 'overview' | 'requests' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners';
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -204,6 +206,7 @@ export default function Admin() {
               {activeSection === 'analytics' && <AnalyticsTab />}
               {activeSection === 'transactions' && <TransactionsTab />}
               {activeSection === 'notifications' && <AdminNotificationsTab />}
+              {activeSection === 'hero-banners' && <HeroBannersTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -236,6 +239,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'analytics', label: 'Analytics', icon: BarChart2 },
     { id: 'transactions', label: 'Transactions', icon: CreditCard },
     { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'hero-banners', label: 'Hero Banners', icon: ImageIcon },
   ];
 
   return (
@@ -1968,6 +1972,414 @@ function AdminNotificationsTab() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+interface ApiBanner {
+  _id: string;
+  imageUrl: string;
+  title?: string;
+  subtitle?: string;
+  buttonText?: string;
+  redirectType: "category" | "shop" | "product" | "internal" | "external";
+  redirectValue: string;
+  isActive: boolean;
+  displayOrder: number;
+  views: number;
+  clicks: number;
+  createdAt: string;
+}
+
+interface BannerForm {
+  imageUrl: string;
+  title: string;
+  subtitle: string;
+  buttonText: string;
+  redirectType: "category" | "shop" | "product" | "internal" | "external";
+  redirectValue: string;
+  isActive: boolean;
+  displayOrder: number;
+}
+
+const defaultBannerForm: BannerForm = {
+  imageUrl: "", title: "", subtitle: "", buttonText: "",
+  redirectType: "internal", redirectValue: "", isActive: true, displayOrder: 0,
+};
+
+const redirectTypeLabels: Record<string, string> = {
+  category: "Category",
+  shop: "Shop",
+  product: "Product",
+  internal: "Internal Page",
+  external: "External URL",
+};
+
+const redirectValuePlaceholders: Record<string, string> = {
+  shop: "Shop ID (e.g. from /shop/...)",
+  product: "Product ID (e.g. from /product/...)",
+  internal: "/offers, /shops, /categories",
+  external: "https://instagram.com/yourpage",
+};
+
+function HeroBannersTab() {
+  const [banners, setBanners] = useState<ApiBanner[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<BannerForm>(defaultBannerForm);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const fetchBanners = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api.get<{ success: boolean; banners: ApiBanner[] }>("/hero-banners/admin");
+      setBanners(data.banners);
+    } catch { /* empty */ } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchBanners(); }, [fetchBanners]);
+
+  const handleImageUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const { access } = api.getTokens();
+      const res = await fetch("/api/upload/banner-image", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${access ?? ""}` },
+        body: fd,
+      });
+      const data = await res.json() as { success: boolean; imageUrl: string };
+      if (data.success) setForm(f => ({ ...f, imageUrl: data.imageUrl }));
+      else toast.error("Upload failed");
+    } catch { toast.error("Upload failed"); } finally {
+      setUploading(false);
+    }
+  };
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(defaultBannerForm);
+    setShowForm(true);
+  };
+
+  const openEdit = (b: ApiBanner) => {
+    setEditingId(b._id);
+    setForm({
+      imageUrl: b.imageUrl,
+      title: b.title ?? "",
+      subtitle: b.subtitle ?? "",
+      buttonText: b.buttonText ?? "",
+      redirectType: b.redirectType,
+      redirectValue: b.redirectValue,
+      isActive: b.isActive,
+      displayOrder: b.displayOrder,
+    });
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.imageUrl) { toast.error("Please upload a banner image"); return; }
+    if (!form.redirectValue.trim()) { toast.error("Redirect target is required"); return; }
+    setSaving(true);
+    try {
+      if (editingId) {
+        await api.patch(`/hero-banners/${editingId}`, form);
+        toast.success("Banner updated");
+      } else {
+        await api.post("/hero-banners", form);
+        toast.success("Banner created");
+      }
+      setShowForm(false);
+      setEditingId(null);
+      setForm(defaultBannerForm);
+      fetchBanners();
+    } catch (e) {
+      toast.error((e as Error).message ?? "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Delete this banner? This cannot be undone.")) return;
+    try {
+      await api.delete(`/hero-banners/${id}`);
+      toast.success("Banner deleted");
+      fetchBanners();
+    } catch { toast.error("Delete failed"); }
+  };
+
+  const handleToggleActive = async (b: ApiBanner) => {
+    try {
+      await api.patch(`/hero-banners/${b._id}`, { isActive: !b.isActive });
+      fetchBanners();
+    } catch { toast.error("Update failed"); }
+  };
+
+  const totalViews = banners.reduce((s, b) => s + b.views, 0);
+  const totalClicks = banners.reduce((s, b) => s + b.clicks, 0);
+  const overallCtr = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(1) : "0.0";
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-foreground">Hero Banners</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage homepage banners with click &amp; view analytics</p>
+        </div>
+        <Button
+          onClick={openCreate}
+          className="rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          <Plus className="w-4 h-4 mr-2" /> Add Banner
+        </Button>
+      </div>
+
+      {/* Analytics summary */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: "Total Views", value: totalViews.toLocaleString(), color: "text-blue-600", bg: "bg-blue-500/10" },
+          { label: "Total Clicks", value: totalClicks.toLocaleString(), color: "text-emerald-600", bg: "bg-emerald-500/10" },
+          { label: "Overall CTR", value: `${overallCtr}%`, color: "text-primary", bg: "bg-primary/10" },
+        ].map(({ label, value, color, bg }) => (
+          <div key={label} className={`rounded-2xl p-4 neu-card ${bg}`}>
+            <div className={`text-2xl font-bold ${color}`}>{value}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Create / Edit form */}
+      {showForm && (
+        <div className="bg-card rounded-3xl neu-card p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-lg">{editingId ? "Edit Banner" : "New Banner"}</h3>
+            <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Image upload */}
+          <div>
+            <label className="text-sm font-semibold block mb-2">Banner Image <span className="text-destructive">*</span></label>
+            {form.imageUrl ? (
+              <div className="relative rounded-xl overflow-hidden">
+                <img src={form.imageUrl} alt="Preview" className="w-full h-44 object-cover" />
+                <button
+                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition-colors"
+                  onClick={() => setForm(f => ({ ...f, imageUrl: "" }))}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-border rounded-xl p-10 cursor-pointer hover:border-primary/60 transition-colors text-center">
+                {uploading ? (
+                  <>
+                    <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+                    <span className="text-sm text-muted-foreground">Uploading…</span>
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="w-9 h-9 text-muted-foreground/50" />
+                    <span className="text-sm font-medium text-muted-foreground">Click to upload banner image</span>
+                    <span className="text-xs text-muted-foreground">JPG, PNG, WebP — max 5 MB</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
+                  disabled={uploading}
+                />
+              </label>
+            )}
+          </div>
+
+          {/* Title / Subtitle / Button Text */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { key: "title" as const, label: "Title", placeholder: "Bold headline text" },
+              { key: "subtitle" as const, label: "Subtitle", placeholder: "Supporting description" },
+              { key: "buttonText" as const, label: "Button Text", placeholder: "Shop Now" },
+            ].map(({ key, label, placeholder }) => (
+              <div key={key}>
+                <label className="text-sm font-medium block mb-1">{label}</label>
+                <Input
+                  value={form[key]}
+                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  placeholder={placeholder}
+                  className="bg-background neu-inset border-none"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Redirect Type + Value */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium block mb-1">Redirect Type <span className="text-destructive">*</span></label>
+              <select
+                value={form.redirectType}
+                onChange={e => setForm(f => ({ ...f, redirectType: e.target.value as BannerForm["redirectType"], redirectValue: "" }))}
+                className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer"
+              >
+                {(["category", "shop", "product", "internal", "external"] as const).map(t => (
+                  <option key={t} value={t}>{redirectTypeLabels[t]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1">
+                {redirectTypeLabels[form.redirectType]} <span className="text-destructive">*</span>
+              </label>
+              {form.redirectType === "category" ? (
+                <select
+                  value={form.redirectValue}
+                  onChange={e => setForm(f => ({ ...f, redirectValue: e.target.value }))}
+                  className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer"
+                >
+                  <option value="">Select a category…</option>
+                  {categories.map(c => (
+                    <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  value={form.redirectValue}
+                  onChange={e => setForm(f => ({ ...f, redirectValue: e.target.value }))}
+                  placeholder={redirectValuePlaceholders[form.redirectType]}
+                  className="bg-background neu-inset border-none"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Display Order + Active */}
+          <div className="flex flex-wrap items-end gap-5">
+            <div className="w-36">
+              <label className="text-sm font-medium block mb-1">Display Order</label>
+              <Input
+                type="number"
+                min={0}
+                value={form.displayOrder}
+                onChange={e => setForm(f => ({ ...f, displayOrder: Number(e.target.value) }))}
+                className="bg-background neu-inset border-none"
+              />
+            </div>
+            <div className="flex items-center gap-3 pb-1">
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, isActive: !f.isActive }))}
+                className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${form.isActive ? "bg-primary" : "bg-muted"}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${form.isActive ? "translate-x-5" : "translate-x-0"}`} />
+              </button>
+              <span className="text-sm text-muted-foreground">{form.isActive ? "Active — visible to users" : "Inactive — hidden"}</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-1">
+            <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-xl">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={saving || uploading}
+              className="rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {saving ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Saving…</> : editingId ? "Update Banner" : "Create Banner"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Banner list */}
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => <div key={i} className="h-24 bg-muted rounded-2xl animate-pulse" />)}
+        </div>
+      ) : banners.length === 0 ? (
+        <div className="bg-card rounded-3xl neu-card p-16 text-center">
+          <ImageIcon className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-25" />
+          <p className="font-semibold text-muted-foreground">No hero banners yet</p>
+          <p className="text-sm text-muted-foreground mt-1">Create your first banner to display on the homepage.</p>
+        </div>
+      ) : (
+        <div className="bg-card rounded-3xl neu-card overflow-hidden">
+          <div className="p-5 border-b border-border flex items-center justify-between">
+            <h3 className="font-bold text-foreground">All Banners ({banners.length})</h3>
+            <span className="text-xs text-muted-foreground">Sorted by display order</span>
+          </div>
+          <div className="divide-y divide-border/50">
+            {banners.map(b => {
+              const ctr = b.views > 0 ? ((b.clicks / b.views) * 100).toFixed(1) : "0.0";
+              return (
+                <div key={b._id} className="p-4 flex items-center gap-4">
+                  <div className="w-20 h-14 rounded-xl overflow-hidden bg-muted flex-shrink-0 border border-border/50">
+                    <img src={b.imageUrl} alt={b.title ?? "Banner"} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="font-semibold text-sm text-foreground truncate">
+                        {b.title || <span className="text-muted-foreground italic">(No title)</span>}
+                      </p>
+                      <Badge className={`text-[10px] border-none shrink-0 px-2 py-0 ${b.isActive ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
+                        {b.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {redirectTypeLabels[b.redirectType]} → {b.redirectValue}
+                      {b.buttonText && <span className="ml-2 text-primary/70">· "{b.buttonText}"</span>}
+                    </p>
+                    <div className="flex items-center gap-4 mt-1.5">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Eye className="w-3 h-3" /> {b.views.toLocaleString()} views
+                      </span>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <BarChart2 className="w-3 h-3" /> {b.clicks.toLocaleString()} clicks
+                      </span>
+                      <span className="text-xs font-semibold text-primary">CTR {ctr}%</span>
+                      <span className="text-xs text-muted-foreground">Order #{b.displayOrder}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => handleToggleActive(b)}
+                      title={b.isActive ? "Deactivate" : "Activate"}
+                      className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${b.isActive ? "bg-primary" : "bg-muted"}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${b.isActive ? "translate-x-4" : "translate-x-0"}`} />
+                    </button>
+                    <button
+                      onClick={() => openEdit(b)}
+                      className="p-2 rounded-xl hover:bg-muted text-muted-foreground transition-colors"
+                      title="Edit"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(b._id)}
+                      className="p-2 rounded-xl hover:bg-destructive/10 text-destructive transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import payoutsRouter from "./payouts.js";
 import reportsRouter from "./reports.js";
 import notificationsRouter from "./notifications.js";
 import uploadRouter from "./upload.js";
+import heroBannersRouter from "./hero-banners.js";
 
 const router = Router();
 
@@ -32,5 +33,6 @@ router.use("/payouts", payoutsRouter);
 router.use("/reports", reportsRouter);
 router.use("/notifications", notificationsRouter);
 router.use("/upload", uploadRouter);
+router.use("/hero-banners", heroBannersRouter);
 
 export default router;
