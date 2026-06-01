@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 import { api } from "@/lib/api";
 import { useProducts } from "@/hooks/useProducts";
 import { StatCard } from "@/components/StatCard";
@@ -7,7 +8,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { IndianRupee, ShoppingBag, Package, AlertCircle, RefreshCw } from "lucide-react";
+import { IndianRupee, ShoppingBag, Package, AlertCircle, RefreshCw, Store } from "lucide-react";
 import { formatINR } from "@/lib/currency";
 
 interface VendorOrder {
@@ -45,14 +46,17 @@ function buildSeries(orders: VendorOrder[]): { date: string; revenue: number; or
 
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const { products } = useProducts();
   const [orders, setOrders] = useState<VendorOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [shopId, setShopId] = useState<string | null>(null);
+  const [shopNotFound, setShopNotFound] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!user?.id) { setLoading(false); return; }
     setLoading(true);
+    setShopNotFound(false);
     try {
       const shopData = await api.get<{ success: boolean; shops: ApiShop[] }>(`/shops?ownerId=${user.id}`);
       const shop = shopData.shops[0];
@@ -60,6 +64,8 @@ export default function Dashboard() {
         setShopId(shop._id);
         const ordersData = await api.get<{ success: boolean; orders: VendorOrder[] }>(`/orders?shopId=${shop._id}&limit=200`);
         setOrders(ordersData.orders);
+      } else {
+        setShopNotFound(true);
       }
     } catch {
       // silently fail — show zeros
@@ -89,6 +95,26 @@ export default function Dashboard() {
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)}
         </div>
         <Skeleton className="h-[300px] w-full rounded-3xl" />
+      </div>
+    );
+  }
+
+  if (shopNotFound) {
+    return (
+      <div className="pb-24 pt-4 px-4 max-w-md mx-auto min-h-[60dvh] flex flex-col items-center justify-center text-center gap-6">
+        <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto">
+          <Store className="w-10 h-10 text-muted-foreground" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold mb-2">You do not have an active shop.</h2>
+          <p className="text-muted-foreground text-sm">Your shop may have been removed or is no longer active. Register a new shop to start selling again.</p>
+        </div>
+        <Button
+          className="rounded-2xl h-14 px-8 text-lg font-bold shadow-none neu-card"
+          onClick={() => setLocation("/vendor-register")}
+        >
+          Register Again
+        </Button>
       </div>
     );
   }

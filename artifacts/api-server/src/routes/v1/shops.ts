@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { Shop } from "../../models/Shop.js";
 import { User } from "../../models/User.js";
+import { Notification } from "../../models/Notification.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 
 const router = Router();
@@ -74,6 +75,12 @@ router.post("/:id/ban", authenticate, A, async (req: AuthRequest, res: Response)
   const shop = await Shop.findByIdAndUpdate(req.params["id"], { status: "banned", isOpen: false }, { new: true });
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
   await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "rejected", role: "customer" });
+  await Notification.create({
+    userId: shop.ownerId,
+    type: "system",
+    title: "Vendor Access Removed",
+    message: "Your vendor access is no longer active. Please contact admin or register again.",
+  });
   res.json({ success: true, shop });
 });
 
@@ -90,6 +97,12 @@ router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): 
   const shop = await Shop.findById(req.params["id"]);
   if (shop) {
     await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "none", role: "customer" });
+    await Notification.create({
+      userId: shop.ownerId,
+      type: "system",
+      title: "Shop Removed",
+      message: "Your shop has been removed by admin. Please register again to continue selling.",
+    });
     await shop.deleteOne();
   }
   res.json({ success: true, message: "Shop deleted" });

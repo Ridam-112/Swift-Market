@@ -1,0 +1,62 @@
+Fix vendor removed-shop UX and notification bug only.
+
+Do NOT add new features.
+Do NOT redesign UI.
+Do NOT rebuild backend.
+
+Problem:
+When admin removes/deletes a vendor shop:
+- The shop is removed from customer side.
+- Vendor product upload stops.
+- But vendor panel still opens and shows “Your shop is not available / shop not found”.
+- Vendor does not receive notification that admin removed the shop.
+- “Start Selling / Register Again” option is not shown properly.
+
+Expected behavior:
+1. When admin deletes/removes a shop:
+   - Update related user:
+     role = "customer"
+     vendorStatus = "none"
+   - Create notification for that user:
+     title: "Shop Removed"
+     message: "Your shop has been removed by admin. Please register again to continue selling."
+     type: "warning"
+
+2. When admin bans/rejects shop:
+   - Update related user:
+     vendorStatus = "rejected"
+     role = "customer"
+   - Create notification:
+     title: "Vendor Access Removed"
+     message: "Your vendor access is no longer active. Please contact admin or register again."
+
+3. Frontend vendor route handling:
+   - If no shop is found for logged-in user:
+     Do NOT show blank “shop not found” vendor dashboard.
+     Instead show a clean empty state:
+       “You do not have an active shop.”
+       Button: “Start Selling” / “Register Again”
+   - Button should navigate to /vendor-register.
+
+4. Role/session restore:
+   - After shop delete/ban, /api/auth/me must return updated role/vendorStatus.
+   - VendorGuard must block vendor dashboard if vendorStatus !== "approved".
+   - If user is no longer approved vendor, redirect to VendorStatus or vendor-register.
+
+5. Notification center:
+   - Removed vendor should see the admin removal notification in notifications page.
+   - Header notification badge should update.
+
+6. Test:
+   - Admin deletes shop.
+   - Vendor refreshes.
+   - Vendor cannot access dashboard.
+   - Vendor sees Start Selling/Register Again.
+   - Vendor receives notification.
+   - Vendor can register a new shop.
+
+Generate report:
+- Root cause
+- Files changed
+- Bugs fixed
+- Test steps
