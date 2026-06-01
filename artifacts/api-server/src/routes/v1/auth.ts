@@ -59,6 +59,7 @@ router.post("/verify-otp", async (req: Request, res: Response): Promise<void> =>
       role: user.role,
       status: user.status,
       vendorStatus: user.vendorStatus,
+      pincode: user.pincode ?? "",
     },
   });
 });
@@ -105,6 +106,7 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response): Promise
       role: user.role,
       status: user.status,
       vendorStatus: user.vendorStatus,
+      pincode: user.pincode ?? "",
       addresses: user.addresses,
     },
   });

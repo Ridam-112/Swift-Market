@@ -19,6 +19,7 @@ interface AuthContextType {
   updateUser: (user: Partial<User>) => void;
   addAddress: (address: Address) => void;
   deleteAddress: (id: string) => void;
+  updatePincode: (pincode: string) => Promise<void>;
   loginWithPhone: (phone: string) => Promise<void>;
   verifyOtp: (otp: string, phone: string) => Promise<{ isNewUser: boolean; user?: User }>;
   loginWithGoogle: () => { isNewUser: boolean; user?: User; mockEmail?: string; mockName?: string };
@@ -54,6 +55,7 @@ interface ApiUser {
   role: UserRole;
   status: string;
   vendorStatus?: string;
+  pincode?: string;
   addresses?: Address[];
 }
 
@@ -64,6 +66,7 @@ function apiUserToFrontend(apiUser: ApiUser): User {
     name: apiUser.name,
     phone: apiUser.phone,
     email: apiUser.email ?? "",
+    pincode: apiUser.pincode ?? "",
     addresses: apiUser.addresses ?? [],
     isVendorRegistered: apiUser.vendorStatus === 'approved' || apiUser.vendorStatus === 'pending',
     vendorStatus: (apiUser.vendorStatus as User['vendorStatus']) ?? 'none',
@@ -129,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name,
       phone,
       email: "",
+      pincode: "",
       addresses: [],
       isVendorRegistered: false,
       vendorStatus: 'none',
@@ -173,6 +177,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAddress = (id: string) => {
     if (user) updateUser({ addresses: user.addresses.filter(a => a.id !== id) });
+  };
+
+  const updatePincode = async (pincode: string): Promise<void> => {
+    try {
+      await api.patch<{ success: boolean; user: ApiUser }>("/users/me/profile", { pincode });
+    } catch { /* ignore, still update locally */ }
+    updateUser({ pincode });
   };
 
   const loginWithPhone = async (phone: string): Promise<void> => {
@@ -232,6 +243,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name,
       phone,
       email: email ?? "",
+      pincode: "",
       addresses: [address],
       isVendorRegistered: false,
       vendorStatus: 'none',
@@ -325,7 +337,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, userRole, role, isAdmin, isLoading, selectedDeliveryAddress, setSelectedDeliveryAddress,
-      login, logout, setRole, updateUser, addAddress, deleteAddress,
+      login, logout, setRole, updateUser, addAddress, deleteAddress, updatePincode,
       loginWithPhone, verifyOtp, loginWithGoogle, completeOnboarding,
       applications, submitVendorApplication, approveApplication, rejectApplication,
       adminCustomers, banCustomer, unbanCustomer, bannedVendorIds, banVendor, unbanVendor, removeVendor,

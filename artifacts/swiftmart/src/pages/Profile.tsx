@@ -7,9 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AddressCard } from "@/components/AddressCard";
 import { AddressForm } from "@/components/AddressForm";
+import { PincodeSelector } from "@/components/PincodeSelector";
 import { toast } from "sonner";
 import { LogOut, MapPin, Store, Clock, XCircle, Shield } from "lucide-react";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
+
+const SUPPORTED_PINCODES = [
+  { code: "733101", city: "Balurghat" },
+  { code: "733103", city: "Gangarampur" },
+];
 
 export default function Profile() {
   const { user, logout, updateUser, addAddress, deleteAddress, setRole, role, isAdmin } = useAuth();
@@ -18,6 +24,7 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
+  const [showPincodeSelector, setShowPincodeSelector] = useState(false);
 
   if (!user) {
     return null;
@@ -28,6 +35,8 @@ export default function Profile() {
     setIsEditing(false);
     toast.success("Profile updated");
   };
+
+  const currentPincodeInfo = SUPPORTED_PINCODES.find(p => p.code === user.pincode);
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-2xl mx-auto space-y-8">
@@ -62,6 +71,44 @@ export default function Profile() {
           </div>
         )}
       </section>
+
+      {/* Area / Pincode */}
+      {role === 'customer' && (
+        <section className="bg-card p-5 rounded-3xl neu-card space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-lg flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-primary" /> Your Area
+            </h3>
+            <Button variant="ghost" size="sm" onClick={() => setShowPincodeSelector(!showPincodeSelector)} className="text-primary hover:bg-primary/10">
+              {showPincodeSelector ? "Cancel" : (user.pincode ? "Change" : "Set")}
+            </Button>
+          </div>
+
+          {!showPincodeSelector && (
+            user.pincode ? (
+              <div className="flex items-center gap-3 p-3 bg-background rounded-2xl neu-inset">
+                <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="font-semibold text-foreground text-sm">
+                    {currentPincodeInfo?.city ?? "Unknown Area"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{user.pincode} · South Dinajpur, West Bengal</div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center p-4 bg-background rounded-2xl neu-inset text-muted-foreground text-sm">
+                No area selected. Set your area to see local shops and products.
+              </div>
+            )
+          )}
+
+          {showPincodeSelector && (
+            <PincodeSelector compact onDone={() => setShowPincodeSelector(false)} />
+          )}
+        </section>
+      )}
 
       {/* Vendor Settings */}
       <section className="bg-card p-5 rounded-3xl neu-card">

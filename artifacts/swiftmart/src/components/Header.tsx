@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, MapPin, ShoppingBag, Store, Clock, User, Shield, LayoutDashboard, Package, ClipboardList, Plus } from "lucide-react";
+import { Search, MapPin, ShoppingBag, Store, Clock, User, Shield, LayoutDashboard, Package, ClipboardList, Plus, Bell } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { Input } from "./ui/input";
@@ -10,6 +10,7 @@ import { AddressForm } from "./AddressForm";
 import { AddressCard } from "./AddressCard";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 export function Header() {
   const { user, role, isAdmin, selectedDeliveryAddress, setSelectedDeliveryAddress, addAddress } = useAuth();
@@ -18,6 +19,19 @@ export function Header() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLocationOpen, setIsLocationOpen] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchUnread = () => {
+      api.get<{ success: boolean; unreadCount: number }>("/notifications")
+        .then(d => setUnreadCount(d.unreadCount ?? 0))
+        .catch(() => {});
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && searchQuery.trim()) {
@@ -164,6 +178,18 @@ export function Header() {
                   </Link>
                 )}
               </nav>
+            )}
+
+            {/* Notification bell — for customer and vendor */}
+            {user && (role === 'customer' || role === 'vendor') && (
+              <Link href="/notifications" className="relative p-2 rounded-full neu-card">
+                <Bell className={cn("w-4 h-4", location.startsWith("/notifications") ? "text-primary" : "text-foreground")} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </Link>
             )}
 
             {/* Mobile search + cart icons */}

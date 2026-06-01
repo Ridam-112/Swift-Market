@@ -1,6 +1,7 @@
-import React, { createContext, useState, useEffect } from "react";
+import React, { createContext, useState, useEffect, useContext } from "react";
 import { Product } from "@/types";
 import { api } from "@/lib/api";
+import { AuthContext } from "@/context/AuthContext";
 
 interface ProductsContextType {
   products: Product[];
@@ -46,14 +47,20 @@ function mapApiProduct(p: ApiProduct): Product {
 export const ProductsContext = createContext<ProductsContextType | null>(null);
 
 export function ProductsProvider({ children }: { children: React.ReactNode }) {
+  const auth = useContext(AuthContext);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProducts = () => {
+  const userPincode = auth?.user?.pincode;
+  const isAdmin = auth?.isAdmin;
+  const authLoading = auth?.isLoading ?? true;
+
+  const fetchProducts = (pincode?: string) => {
     setIsLoading(true);
     setError(null);
-    api.get<{ success: boolean; products: ApiProduct[] }>("/products?limit=100")
+    const pincodeParam = pincode && !isAdmin ? `&pincode=${encodeURIComponent(pincode)}` : "";
+    api.get<{ success: boolean; products: ApiProduct[] }>(`/products?limit=200${pincodeParam}`)
       .then(d => {
         setProducts(d.products.map(mapApiProduct));
       })
@@ -66,8 +73,9 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    if (authLoading) return;
+    fetchProducts(userPincode || undefined);
+  }, [authLoading, userPincode, isAdmin]);
 
   const addProduct = (product: Product) => {
     setProducts(prev => [product, ...prev]);
@@ -80,7 +88,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       description: product.description,
       stock: product.stock,
       shopId: product.vendorId,
-    }).then(() => fetchProducts()).catch(() => {});
+    }).then(() => fetchProducts(userPincode || undefined)).catch(() => {});
   };
 
   const updateProduct = (id: string, updates: Partial<Product>) => {
@@ -94,7 +102,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ProductsContext.Provider value={{ products, isLoading, error, addProduct, updateProduct, deleteProduct, refetch: fetchProducts }}>
+    <ProductsContext.Provider value={{ products, isLoading, error, addProduct, updateProduct, deleteProduct, refetch: () => fetchProducts(userPincode || undefined) }}>
       {children}
     </ProductsContext.Provider>
   );

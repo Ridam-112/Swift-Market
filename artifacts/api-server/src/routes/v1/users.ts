@@ -48,7 +48,7 @@ router.get("/me/profile", authenticate, async (req: AuthRequest, res: Response):
 
 // PATCH /api/users/me/profile
 router.patch("/me/profile", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const allowed = ["name", "email", "addresses"];
+  const allowed = ["name", "email", "addresses", "pincode"];
   const updates: Record<string, unknown> = {};
   for (const key of allowed) {
     if ((req.body as Record<string, unknown>)[key] !== undefined) {
@@ -56,7 +56,8 @@ router.patch("/me/profile", authenticate, async (req: AuthRequest, res: Response
     }
   }
   const user = await User.findByIdAndUpdate(req.user!.userId, updates, { new: true }).select("-__v");
-  res.json({ success: true, user });
+  if (!user) { res.status(404).json({ success: false, message: "Not found" }); return; }
+  res.json({ success: true, user: { ...user.toObject(), id: String(user._id) } });
 });
 
 export default router;

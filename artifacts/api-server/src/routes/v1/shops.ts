@@ -8,12 +8,13 @@ const A = requireRole("admin", "super_admin");
 
 // GET /api/shops
 router.get("/", async (req: Request, res: Response): Promise<void> => {
-  const { status, shopType, city, ownerId, page = "1", limit = "20" } = req.query as Record<string, string>;
+  const { status, shopType, city, ownerId, pincode, page = "1", limit = "20" } = req.query as Record<string, string>;
   const filter: Record<string, unknown> = {};
   if (status) filter["status"] = status;
   if (shopType) filter["shopType"] = shopType;
   if (city) filter["address.city"] = { $regex: city, $options: "i" };
   if (ownerId) filter["ownerId"] = ownerId;
+  if (pincode) filter["address.pincode"] = pincode;
   const skip = (parseInt(page) - 1) * parseInt(limit);
   const [shops, total] = await Promise.all([
     Shop.find(filter).skip(skip).limit(parseInt(limit)).sort({ createdAt: -1 }),

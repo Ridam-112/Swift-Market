@@ -7,6 +7,7 @@ export interface IUser extends Document {
   role: "customer" | "vendor" | "delivery_partner" | "admin" | "super_admin";
   status: "active" | "banned" | "suspended";
   vendorStatus: "none" | "pending" | "approved" | "rejected";
+  pincode?: string;
   addresses: Array<{
     label: string;
     line1: string;
@@ -31,6 +32,7 @@ const UserSchema = new Schema<IUser>(
     },
     status: { type: String, enum: ["active", "banned", "suspended"], default: "active" },
     vendorStatus: { type: String, enum: ["none", "pending", "approved", "rejected"], default: "none" },
+    pincode: { type: String, trim: true },
     addresses: [
       {
         label: { type: String, default: "Home" },

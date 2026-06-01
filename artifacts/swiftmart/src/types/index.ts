@@ -65,6 +65,7 @@ export interface User {
   name: string;
   phone: string;
   email: string;
+  pincode?: string;
   addresses: Address[];
   isVendorRegistered: boolean;
   vendorStatus: VendorStatus;

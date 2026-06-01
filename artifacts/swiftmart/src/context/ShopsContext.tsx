@@ -1,5 +1,6 @@
-import React, { createContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useState, useEffect, useCallback, useContext } from "react";
 import { api } from "@/lib/api";
+import { AuthContext } from "@/context/AuthContext";
 
 export interface ShopListing {
   id: string;
@@ -57,6 +58,7 @@ export function mapApiShop(s: ApiShopItem): ShopListing {
 
 interface ShopsContextType {
   shops: ShopListing[];
+  allShops: ShopListing[];
   isLoading: boolean;
   error: string | null;
   refetch: () => void;
@@ -66,21 +68,22 @@ interface ShopsContextType {
 export const ShopsContext = createContext<ShopsContextType | null>(null);
 
 export function ShopsProvider({ children }: { children: React.ReactNode }) {
-  const [shops, setShops] = useState<ShopListing[]>([]);
+  const auth = useContext(AuthContext);
+  const [allShops, setAllShops] = useState<ShopListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchShops = useCallback(() => {
     setIsLoading(true);
     setError(null);
-    api.get<{ success: boolean; shops: ApiShopItem[] }>("/shops?status=approved&limit=50")
+    api.get<{ success: boolean; shops: ApiShopItem[] }>("/shops?status=approved&limit=100")
       .then(d => {
-        setShops(d.shops.map(mapApiShop));
+        setAllShops(d.shops.map(mapApiShop));
       })
       .catch(err => {
         const msg = err instanceof Error ? err.message : "Failed to load shops";
         setError(msg.includes("buffering") ? "Database connecting…" : msg);
-        setShops([]);
+        setAllShops([]);
       })
       .finally(() => setIsLoading(false));
   }, []);
@@ -89,10 +92,17 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
     fetchShops();
   }, [fetchShops]);
 
-  const getShopById = (id: string) => shops.find(s => s.id === id);
+  const userPincode = auth?.user?.pincode;
+  const isAdmin = auth?.isAdmin;
+
+  const shops = (isAdmin || !userPincode)
+    ? allShops
+    : allShops.filter(s => !s.pincode || s.pincode === userPincode);
+
+  const getShopById = (id: string) => allShops.find(s => s.id === id);
 
   return (
-    <ShopsContext.Provider value={{ shops, isLoading, error, refetch: fetchShops, getShopById }}>
+    <ShopsContext.Provider value={{ shops, allShops, isLoading, error, refetch: fetchShops, getShopById }}>
       {children}
     </ShopsContext.Provider>
   );

@@ -15,6 +15,8 @@ import { BottomNav } from "@/components/BottomNav";
 import { RoleGuard } from "@/components/RoleGuard";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AdminGuard } from "@/components/AdminGuard";
+import { PincodeSelector } from "@/components/PincodeSelector";
+import { useAuth } from "@/hooks/useAuth";
 
 // Pages
 import Home from "@/pages/Home";
@@ -27,6 +29,7 @@ import Orders from "@/pages/Orders";
 import Profile from "@/pages/Profile";
 import Auth from "@/pages/Auth";
 import NotFound from "@/pages/not-found";
+import Notifications from "@/pages/Notifications";
 
 // Vendor Pages
 import VendorDashboard from "@/pages/vendor/Dashboard";
@@ -64,12 +67,23 @@ import Shops from "@/pages/Shops";
 import ShopDetail from "@/pages/ShopDetail";
 import Search from "@/pages/Search";
 
+function PincodeGuard({ children }: { children: React.ReactNode }) {
+  const { user, role, isAdmin, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (user && role === 'customer' && !isAdmin && !user.pincode) {
+    return <PincodeSelector />;
+  }
+  return <>{children}</>;
+}
+
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
-      <Header />
-      <main className="flex-1 w-full">{children}</main>
-      <BottomNav />
+      <PincodeGuard>
+        <Header />
+        <main className="flex-1 w-full">{children}</main>
+        <BottomNav />
+      </PincodeGuard>
     </AuthGuard>
   );
 }
@@ -128,6 +142,9 @@ function Router() {
         {/* Shared Authenticated Routes */}
         <Route path="/profile">
           <ProtectedLayout><Profile /></ProtectedLayout>
+        </Route>
+        <Route path="/notifications">
+          <ProtectedLayout><Notifications /></ProtectedLayout>
         </Route>
 
         {/* Vendor Application Routes */}

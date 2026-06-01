@@ -9,12 +9,19 @@ const V = requireRole("vendor", "admin", "super_admin");
 
 // GET /api/products
 router.get("/", async (req: Request, res: Response): Promise<void> => {
-  const { shopId, category, status = "active", search, page = "1", limit = "20" } =
+  const { shopId, category, status = "active", search, page = "1", limit = "20", pincode } =
     req.query as Record<string, string>;
   const filter: Record<string, unknown> = { status };
   if (shopId) filter["shopId"] = shopId;
   if (category) filter["category"] = category;
   if (search) filter["name"] = { $regex: search, $options: "i" };
+
+  if (pincode) {
+    const pincodeShops = await Shop.find({ "address.pincode": pincode, status: "approved" }).select("_id");
+    const shopIds = pincodeShops.map(s => String(s._id));
+    filter["shopId"] = { $in: shopIds };
+  }
+
   const skip = (parseInt(page) - 1) * parseInt(limit);
   const [products, total] = await Promise.all([
     Product.find(filter).skip(skip).limit(parseInt(limit)).sort({ createdAt: -1 }),
