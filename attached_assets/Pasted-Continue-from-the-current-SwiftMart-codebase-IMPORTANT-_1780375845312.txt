@@ -1,0 +1,172 @@
+Continue from the current SwiftMart codebase.
+
+IMPORTANT:
+
+* Do NOT redesign UI.
+* Do NOT rebuild backend.
+* Do NOT break existing Customer, Vendor, Admin, Product, Order, Notification, Hero Banner, Cloudinary, or Authentication flows.
+
+Implement:
+
+==================================================
+ADMIN SHOP MANAGEMENT SYSTEM
+============================
+
+Goal:
+
+Admin should be able to create and manage shops directly without waiting for vendor registration.
+
+==================================================
+
+1. ADMIN CREATE SHOP
+   ==================================================
+
+Admin Panel → Shops
+
+Add:
+
+"Create Shop" button
+
+Admin can enter:
+
+Shop Information:
+
+* Shop Name
+* Owner Name
+* Owner Phone
+* Owner Email (optional)
+* Shop Address
+* Area / Locality
+* City
+* Pincode
+* Shop Category
+* Shop Description
+* Shop Logo / Image
+
+Account Information:
+
+* Create new owner account automatically if phone number does not exist.
+* If phone already exists:
+
+  * Link shop to existing user.
+
+Vendor Status:
+
+* approved
+
+Role:
+
+* vendor
+
+Save everything in MongoDB.
+
+==================================================
+2. ADMIN MANAGE SHOP PRODUCTS
+=============================
+
+Admin should be able to:
+
+* View all products of a shop
+* Add new product to any shop
+* Edit product
+* Delete product
+* Update stock
+* Update price
+* Upload product images
+
+Use existing Cloudinary image system.
+
+==================================================
+3. ADMIN SHOP DETAILS PAGE
+==========================
+
+Clicking a shop from Admin panel should open:
+
+Shop Details
+
+Show:
+
+* Shop Info
+* Owner Info
+* Total Products
+* Total Orders
+* Revenue (if available)
+* Shop Status
+
+Tabs:
+
+* Products
+* Orders
+* Analytics
+
+==================================================
+4. ADMIN SHOP STATUS
+====================
+
+Admin can:
+
+* Approve Shop
+* Reject Shop
+* Ban Shop
+* Unban Shop
+* Delete Shop
+
+Existing functionality must continue working.
+
+==================================================
+5. AUTO NOTIFICATIONS
+=====================
+
+When Admin creates shop:
+
+Send notification:
+
+Title:
+"Vendor Account Created"
+
+Message:
+"Your shop has been created and approved by SwiftMart Admin."
+
+When Admin deletes shop:
+
+Existing notification flow should remain.
+
+==================================================
+6. PRODUCT SAFETY
+=================
+
+When Admin deletes shop:
+
+* Delete shop
+* Delete all products
+* Delete related Cloudinary images
+* Keep order history unchanged
+
+==================================================
+7. SEARCH
+=========
+
+Admin should be able to search shops by:
+
+* Shop Name
+* Owner Name
+* Phone Number
+* Category
+* Pincode
+
+==================================================
+FINAL REPORT
+============
+
+Generate:
+
+1. Files changed
+2. APIs added
+3. MongoDB changes
+4. Features completed
+5. Bugs fixed
+6. Remaining issues
+7. Production readiness %
+8. Launch readiness %
+
+Stop after report.

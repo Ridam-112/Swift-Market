@@ -2,7 +2,9 @@ import { Router, type Request, type Response } from "express";
 import { Shop } from "../../models/Shop.js";
 import { User } from "../../models/User.js";
 import { Product } from "../../models/Product.js";
+import { Order } from "../../models/Order.js";
 import { Notification } from "../../models/Notification.js";
+import { deleteFromCloudinary } from "../../lib/cloudinary.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 
 const router = Router();
@@ -10,13 +12,22 @@ const A = requireRole("admin", "super_admin");
 
 // GET /api/shops
 router.get("/", async (req: Request, res: Response): Promise<void> => {
-  const { status, shopType, city, ownerId, pincode, page = "1", limit = "20" } = req.query as Record<string, string>;
+  const { status, shopType, city, ownerId, pincode, page = "1", limit = "20", search, category } =
+    req.query as Record<string, string>;
   const filter: Record<string, unknown> = {};
   if (status) filter["status"] = status;
   if (shopType) filter["shopType"] = shopType;
+  if (category) filter["category"] = { $regex: category, $options: "i" };
   if (city) filter["address.city"] = { $regex: city, $options: "i" };
   if (ownerId) filter["ownerId"] = ownerId;
   if (pincode) filter["address.pincode"] = pincode;
+  if (search) {
+    filter["$or"] = [
+      { shopName: { $regex: search, $options: "i" } },
+      { ownerName: { $regex: search, $options: "i" } },
+      { phone: { $regex: search, $options: "i" } },
+    ];
+  }
   const skip = (parseInt(page) - 1) * parseInt(limit);
   const [shops, total] = await Promise.all([
     Shop.find(filter).skip(skip).limit(parseInt(limit)).sort({ createdAt: -1 }),
@@ -25,11 +36,81 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
   res.json({ success: true, shops, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
 });
 
+// GET /api/shops/:id/details — admin: shop + products + recent orders + owner
+// MUST be registered before GET /:id to avoid "details" being treated as an id
+router.get("/:id/details", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const shop = await Shop.findById(req.params["id"]);
+  if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+  const shopIdStr = String(shop._id);
+  const [products, orders, owner] = await Promise.all([
+    Product.find({ shopId: shopIdStr }).lean(),
+    Order.find({ shopId: shopIdStr }).sort({ createdAt: -1 }).limit(50).lean(),
+    User.findById(shop.ownerId).select("name phone email role vendorStatus status createdAt").lean(),
+  ]);
+  const revenue = orders.reduce((sum, o) => sum + (o.netAmount ?? o.subtotal ?? 0), 0);
+  res.json({
+    success: true, shop, products, orders, owner,
+    totalProducts: products.length,
+    totalOrders: orders.length,
+    revenue,
+  });
+});
+
 // GET /api/shops/:id
 router.get("/:id", async (req: Request, res: Response): Promise<void> => {
   const shop = await Shop.findById(req.params["id"]);
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
   res.json({ success: true, shop });
+});
+
+// POST /api/shops/admin-create — admin creates shop + auto-creates/links owner account
+// MUST be registered before POST /:id/... patterns for clarity (no conflict since different paths)
+router.post("/admin-create", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const body = req.body as Record<string, unknown>;
+  const phone = String(body.phone ?? "").trim();
+  if (!phone) { res.status(400).json({ success: false, message: "Owner phone is required" }); return; }
+  if (!body.shopName) { res.status(400).json({ success: false, message: "Shop name is required" }); return; }
+
+  let owner = await User.findOne({ phone });
+  if (!owner) {
+    owner = await User.create({
+      name: body.ownerName ?? body.shopName,
+      phone,
+      email: body.ownerEmail ?? undefined,
+      role: "vendor",
+      vendorStatus: "approved",
+      status: "active",
+    });
+  } else {
+    await User.findByIdAndUpdate(owner._id, { vendorStatus: "approved", role: "vendor" });
+  }
+
+  const shop = await Shop.create({
+    shopName: body.shopName,
+    ownerName: body.ownerName ?? (owner as { name: string }).name,
+    phone,
+    ownerId: String(owner._id),
+    address: body.address,
+    shopType: body.shopType ?? body.category,
+    category: body.category,
+    description: body.description,
+    image: body.image,
+    status: "approved",
+    isOpen: true,
+    panNumber: body.panNumber ?? "ADMIN000000A",
+    bankAccountNumber: body.bankAccountNumber ?? "0000000000",
+    bankIfscCode: body.bankIfscCode ?? "ADMIN0000000",
+    upiId: body.upiId ?? `${phone}@upi`,
+  });
+
+  await Notification.create({
+    userId: String(owner._id),
+    type: "system",
+    title: "Vendor Account Created",
+    message: "Your shop has been created and approved by SwiftMart Admin.",
+  });
+
+  res.status(201).json({ success: true, shop, owner });
 });
 
 // POST /api/shops — vendor applies
@@ -98,6 +179,9 @@ router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): 
   const shop = await Shop.findById(req.params["id"]);
   if (shop) {
     const shopIdStr = shop._id.toString();
+    const products = await Product.find({ shopId: shopIdStr }).select("images").lean();
+    const allImages = products.flatMap(p => p.images ?? []);
+    await Promise.all(allImages.map(url => deleteFromCloudinary(url)));
     await Promise.all([
       Product.deleteMany({ shopId: shopIdStr }),
       User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "none", role: "customer" }),
