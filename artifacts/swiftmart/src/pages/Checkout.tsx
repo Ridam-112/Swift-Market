@@ -8,7 +8,8 @@ import { AddressForm } from "@/components/AddressForm";
 import { CartSummary } from "@/components/CartSummary";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
-import { Plus, Wallet, CreditCard, Banknote, Loader2, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, Wallet, CreditCard, Banknote, Loader2, AlertCircle, Tag, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -17,6 +18,13 @@ import { isServicePincode } from "@/lib/serviceArea";
 interface ApiOrderResponse {
   success: boolean;
   order: { _id: string };
+}
+
+interface CouponValidateResponse {
+  success: boolean;
+  discount: number;
+  coupon: { code: string };
+  message?: string;
 }
 
 export default function Checkout() {
@@ -33,6 +41,11 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Card' | 'COD'>('UPI');
   const [placing, setPlacing] = useState(false);
 
+  const [couponInput, setCouponInput] = useState("");
+  const [couponApplied, setCouponApplied] = useState<{ code: string; discount: number } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
+
   if (items.length === 0) {
     setLocation("/cart");
     return null;
@@ -41,6 +54,34 @@ export default function Checkout() {
   const deliveryFee = deliverySlot === 'instant' ? 25 : 0;
   const address = user?.addresses.find(a => a.id === selectedAddress);
   const addressPincodeInvalid = address && !isServicePincode(address.pincode);
+  const orderTotalForCoupon = subtotal + deliveryFee;
+
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setCouponLoading(true);
+    setCouponError("");
+    try {
+      const data = await api.post<CouponValidateResponse>("/coupons/validate", {
+        code,
+        orderTotal: orderTotalForCoupon,
+      });
+      setCouponApplied({ code: data.coupon.code, discount: data.discount });
+      setCouponInput("");
+      toast.success(`Coupon applied! You save ₹${data.discount}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Invalid coupon";
+      setCouponError(msg);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponApplied(null);
+    setCouponError("");
+    setCouponInput("");
+  };
 
   const handlePlaceOrder = async () => {
     if (!selectedAddress || !address) {
@@ -83,6 +124,7 @@ export default function Checkout() {
     }
 
     const paymentMethodApi = paymentMethod === 'Card' ? 'card' : paymentMethod;
+    const couponDiscount = couponApplied?.discount ?? 0;
 
     setPlacing(true);
     try {
@@ -100,7 +142,8 @@ export default function Checkout() {
         })),
         subtotal,
         deliveryCharge: deliveryFee,
-        couponDiscount: 0,
+        couponDiscount,
+        ...(couponApplied ? { couponCode: couponApplied.code } : {}),
         paymentMethod: paymentMethodApi,
         address: {
           label: address.label,
@@ -190,7 +233,7 @@ export default function Checkout() {
           <h3 className="font-bold text-lg mb-4">Delivery Slot</h3>
           <div className="grid grid-cols-2 gap-3">
             <div
-              onClick={() => setDeliverySlot('instant')}
+              onClick={() => { setDeliverySlot('instant'); handleRemoveCoupon(); }}
               className={cn(
                 "p-4 rounded-2xl cursor-pointer text-center border-2 transition-all",
                 deliverySlot === 'instant' ? "neu-card border-primary/50 bg-primary/5" : "bg-card border-transparent neu-inset"
@@ -200,7 +243,7 @@ export default function Checkout() {
               <div className="text-xs text-muted-foreground mt-1">Extra ₹25</div>
             </div>
             <div
-              onClick={() => setDeliverySlot('schedule')}
+              onClick={() => { setDeliverySlot('schedule'); handleRemoveCoupon(); }}
               className={cn(
                 "p-4 rounded-2xl cursor-pointer text-center border-2 transition-all",
                 deliverySlot === 'schedule' ? "neu-card border-primary/50 bg-primary/5" : "bg-card border-transparent neu-inset"
@@ -210,6 +253,48 @@ export default function Checkout() {
               <div className="text-xs text-muted-foreground mt-1">Free delivery</div>
             </div>
           </div>
+        </section>
+
+        <section>
+          <h3 className="font-bold text-lg mb-4">Coupon</h3>
+          {couponApplied ? (
+            <div className="flex items-center justify-between bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl px-4 py-3">
+              <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                <Tag className="w-4 h-4 shrink-0" />
+                <span className="font-bold text-sm">{couponApplied.code}</span>
+                <span className="text-sm">— saving ₹{couponApplied.discount}</span>
+              </div>
+              <button onClick={handleRemoveCoupon} className="text-muted-foreground hover:text-destructive transition-colors ml-3">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  value={couponInput}
+                  onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError(""); }}
+                  onKeyDown={e => e.key === "Enter" && handleApplyCoupon()}
+                  placeholder="Enter coupon code"
+                  className="rounded-xl font-mono uppercase tracking-widest"
+                  disabled={couponLoading}
+                />
+                <Button
+                  onClick={handleApplyCoupon}
+                  disabled={!couponInput.trim() || couponLoading}
+                  className="rounded-xl shrink-0 neu-card shadow-none"
+                >
+                  {couponLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Apply"}
+                </Button>
+              </div>
+              {couponError && (
+                <p className="text-sm text-destructive flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {couponError}
+                </p>
+              )}
+            </div>
+          )}
         </section>
 
         <section>
@@ -237,7 +322,12 @@ export default function Checkout() {
         </section>
 
         <section className="pt-4 border-t border-border">
-          <CartSummary subtotal={subtotal} deliveryFee={deliveryFee} />
+          <CartSummary
+            subtotal={subtotal}
+            deliveryFee={deliveryFee}
+            couponDiscount={couponApplied?.discount ?? 0}
+            couponCode={couponApplied?.code}
+          />
 
           <Button
             className="w-full mt-6 rounded-full h-14 text-lg font-bold shadow-none neu-card"

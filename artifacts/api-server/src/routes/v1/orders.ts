@@ -1,5 +1,6 @@
 import { Router, type Response } from "express";
 import { Order } from "../../models/Order.js";
+import { Coupon } from "../../models/Coupon.js";
 import { Shop } from "../../models/Shop.js";
 import { User } from "../../models/User.js";
 import { Product } from "../../models/Product.js";
@@ -112,6 +113,12 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
     platformRevenue: commissionAmount,
     paymentStatus: body["paymentMethod"] === "COD" ? "pending" : "success",
   });
+
+  // Increment coupon usedCount AFTER order is created successfully
+  const couponCode = typeof body["couponCode"] === "string" ? body["couponCode"].trim().toUpperCase() : "";
+  if (couponCode) {
+    await Coupon.findOneAndUpdate({ code: couponCode }, { $inc: { usedCount: 1 } });
+  }
 
   // Notify customer
   await createNotificationLimited(req.user!.userId, {
