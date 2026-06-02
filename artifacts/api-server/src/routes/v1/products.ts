@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { Product } from "../../models/Product.js";
 import { Shop } from "../../models/Shop.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
+import { deleteFromCloudinary } from "../../lib/cloudinary.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -68,7 +69,10 @@ router.patch("/:id", authenticate, V, async (req: AuthRequest, res: Response): P
 
 // DELETE /api/products/:id
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  await Product.findByIdAndDelete(req.params["id"]);
+  const product = await Product.findByIdAndDelete(req.params["id"]);
+  if (product?.images?.length) {
+    await Promise.all(product.images.map(url => deleteFromCloudinary(url)));
+  }
   res.json({ success: true, message: "Deleted" });
 });
 

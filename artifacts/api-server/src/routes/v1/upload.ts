@@ -1,24 +1,13 @@
 import { Router, type Request, type Response } from "express";
 import multer from "multer";
 import path from "path";
-import fs from "fs";
 import { authenticate } from "../../middlewares/auth.js";
+import { uploadToCloudinary } from "../../lib/cloudinary.js";
 
 const router = Router();
 
-const uploadsDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = [".jpg", ".jpeg", ".png", ".webp"];
@@ -28,22 +17,32 @@ const upload = multer({
   },
 });
 
-router.post("/product-image", authenticate, upload.single("image"), (req: Request, res: Response): void => {
-  if (!req.file) {
-    res.status(400).json({ success: false, message: "No file uploaded" });
-    return;
-  }
-  const imageUrl = `/api/uploads/${req.file.filename}`;
-  res.json({ success: true, imageUrl });
-});
+router.post(
+  "/product-image",
+  authenticate,
+  upload.single("image"),
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.file) {
+      res.status(400).json({ success: false, message: "No file uploaded" });
+      return;
+    }
+    const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/products");
+    res.json({ success: true, imageUrl: url });
+  },
+);
 
-router.post("/banner-image", authenticate, upload.single("image"), (req: Request, res: Response): void => {
-  if (!req.file) {
-    res.status(400).json({ success: false, message: "No file uploaded" });
-    return;
-  }
-  const imageUrl = `/api/uploads/${req.file.filename}`;
-  res.json({ success: true, imageUrl });
-});
+router.post(
+  "/banner-image",
+  authenticate,
+  upload.single("image"),
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.file) {
+      res.status(400).json({ success: false, message: "No file uploaded" });
+      return;
+    }
+    const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/banners");
+    res.json({ success: true, imageUrl: url });
+  },
+);
 
 export default router;

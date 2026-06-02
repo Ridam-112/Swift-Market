@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { HeroBanner } from "../../models/HeroBanner.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
+import { deleteFromCloudinary } from "../../lib/cloudinary.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -55,7 +56,10 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
 
 // DELETE /api/hero-banners/:id — admin, delete banner
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  await HeroBanner.findByIdAndDelete(req.params["id"]);
+  const banner = await HeroBanner.findByIdAndDelete(req.params["id"]);
+  if (banner?.imageUrl) {
+    await deleteFromCloudinary(banner.imageUrl);
+  }
   res.json({ success: true, message: "Banner deleted" });
 });
 
