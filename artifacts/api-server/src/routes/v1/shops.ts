@@ -123,6 +123,19 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
   res.status(201).json({ success: true, shop });
 });
 
+// PATCH /api/shops/my/toggle-open — vendor toggles their own shop open/close
+router.patch("/my/toggle-open", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const shop = await Shop.findOne({ ownerId: req.user!.userId });
+  if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+  if (shop.status !== "approved") {
+    res.status(403).json({ success: false, message: "Only approved shops can change their open status" });
+    return;
+  }
+  shop.isOpen = !shop.isOpen;
+  await shop.save();
+  res.json({ success: true, isOpen: shop.isOpen, shop });
+});
+
 // PATCH /api/shops/:id
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const shop = await Shop.findByIdAndUpdate(req.params["id"], req.body as Record<string, unknown>, {

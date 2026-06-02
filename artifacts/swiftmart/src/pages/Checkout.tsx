@@ -74,6 +74,14 @@ export default function Checkout() {
     const shop = shops.find(s => s.id === shopId);
     const shopName = shop?.storeName ?? "Unknown Shop";
 
+    if (shop && !shop.isOpen) {
+      toast.error(`${shopName} is currently closed.`, {
+        description: "This shop has paused orders. Please try again later or choose another shop.",
+        duration: 5000,
+      });
+      return;
+    }
+
     const paymentMethodApi = paymentMethod === 'Card' ? 'card' : paymentMethod;
 
     setPlacing(true);

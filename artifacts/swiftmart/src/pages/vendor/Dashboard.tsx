@@ -8,7 +8,8 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { IndianRupee, ShoppingBag, Package, AlertCircle, RefreshCw, Store } from "lucide-react";
+import { IndianRupee, ShoppingBag, Package, AlertCircle, RefreshCw, Store, Power } from "lucide-react";
+import { toast } from "sonner";
 import { formatINR } from "@/lib/currency";
 
 interface VendorOrder {
@@ -25,6 +26,8 @@ interface ApiShop {
   ownerId: string;
   totalOrders: number;
   totalRevenue: number;
+  isOpen: boolean;
+  status: string;
 }
 
 function buildSeries(orders: VendorOrder[]): { date: string; revenue: number; orders: number }[] {
@@ -51,6 +54,9 @@ export default function Dashboard() {
   const [orders, setOrders] = useState<VendorOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [shopId, setShopId] = useState<string | null>(null);
+  const [shopIsOpen, setShopIsOpen] = useState<boolean | null>(null);
+  const [shopStatus, setShopStatus] = useState<string>("");
+  const [toggling, setToggling] = useState(false);
   const [shopNotFound, setShopNotFound] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -62,6 +68,8 @@ export default function Dashboard() {
       const shop = shopData.shops[0];
       if (shop) {
         setShopId(shop._id);
+        setShopIsOpen(shop.isOpen ?? false);
+        setShopStatus(shop.status ?? "");
         const ordersData = await api.get<{ success: boolean; orders: VendorOrder[] }>(`/orders?shopId=${shop._id}&limit=200`);
         setOrders(ordersData.orders);
       } else {
@@ -78,6 +86,21 @@ export default function Dashboard() {
     if (authLoading) return;
     fetchData();
   }, [fetchData, authLoading]);
+
+  const handleToggleOpen = async () => {
+    if (toggling) return;
+    setToggling(true);
+    try {
+      const res = await api.patch<{ success: boolean; isOpen: boolean }>("/shops/my/toggle-open");
+      setShopIsOpen(res.isOpen);
+      toast.success(res.isOpen ? "Shop is now Open — customers can place orders." : "Shop is now Closed — orders are paused.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to update shop status";
+      toast.error(msg);
+    } finally {
+      setToggling(false);
+    }
+  };
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -127,6 +150,31 @@ export default function Dashboard() {
           <RefreshCw className="w-4 h-4 mr-1" /> Refresh
         </Button>
       </div>
+
+      {shopStatus === "approved" && shopIsOpen !== null && (
+        <div className={`flex items-center justify-between p-4 rounded-2xl neu-card border-2 ${shopIsOpen ? "border-green-400/40 bg-green-500/5" : "border-red-400/30 bg-red-500/5"}`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${shopIsOpen ? "bg-green-500/15" : "bg-red-500/15"}`}>
+              <Power className={`w-5 h-5 ${shopIsOpen ? "text-green-600" : "text-red-500"}`} />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground font-medium">Shop Status</p>
+              <p className={`font-bold text-sm ${shopIsOpen ? "text-green-600" : "text-red-500"}`}>
+                {shopIsOpen ? "Open — Accepting Orders" : "Closed — Orders Paused"}
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={handleToggleOpen}
+            disabled={toggling}
+            className={`rounded-xl h-9 px-4 font-bold shadow-none ${shopIsOpen ? "bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-300/40" : "bg-green-500/10 text-green-700 hover:bg-green-500/20 border border-green-300/40"}`}
+            variant="ghost"
+          >
+            {toggling ? <RefreshCw className="w-4 h-4 animate-spin" /> : shopIsOpen ? "Close Shop" : "Open Shop"}
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
