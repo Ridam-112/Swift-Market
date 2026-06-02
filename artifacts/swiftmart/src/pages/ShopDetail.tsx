@@ -164,6 +164,16 @@ export default function ShopDetail() {
           </div>
         </div>
 
+        {!shop.isOpen && (
+          <div className="flex items-start gap-3 bg-red-500/10 border border-red-300/40 text-red-700 dark:text-red-400 rounded-2xl p-4">
+            <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-bold text-sm">Shop is currently closed</p>
+              <p className="text-xs mt-0.5 opacity-80">This shop has paused orders. You can still browse products but cannot place an order right now.</p>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-foreground">Our Products</h2>
           {vendorProducts.length > 0 ? (
