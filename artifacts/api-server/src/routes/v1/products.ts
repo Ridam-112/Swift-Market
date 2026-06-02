@@ -12,11 +12,15 @@ const V = requireRole("vendor", "admin", "super_admin");
 router.get("/", async (req: Request, res: Response): Promise<void> => {
   const { shopId, category, status = "active", search, page = "1", limit = "20", pincode } =
     req.query as Record<string, string>;
-  const filter: Record<string, unknown> = { status };
+  const filter: Record<string, unknown> = {};
 
-  // For customer-facing active product listings, also exclude zero-stock products
-  if (status === "active") {
-    filter["stock"] = { $gt: 0 };
+  // status=all skips the status filter entirely (used by admin product management)
+  if (status !== "all") {
+    filter["status"] = status;
+    // For customer-facing active product listings, also exclude zero-stock products
+    if (status === "active") {
+      filter["stock"] = { $gt: 0 };
+    }
   }
 
   if (category) filter["category"] = category;
@@ -57,9 +61,21 @@ router.get("/:id", async (req: Request, res: Response): Promise<void> => {
 
 // POST /api/products
 router.post("/", authenticate, V, async (req: AuthRequest, res: Response): Promise<void> => {
+  const body = req.body as Record<string, unknown>;
+  const isAdmin = req.user!.role === "admin" || req.user!.role === "super_admin";
+
+  // Admin can create a product for any shop by passing shopId directly
+  if (isAdmin && body["shopId"]) {
+    const shopExists = await Shop.findById(String(body["shopId"]));
+    if (!shopExists) { res.status(400).json({ success: false, message: "Shop not found" }); return; }
+    const product = await Product.create({ ...body, shopId: String(body["shopId"]) });
+    res.status(201).json({ success: true, product });
+    return;
+  }
+
   const shop = await Shop.findOne({ ownerId: req.user!.userId });
   if (!shop) { res.status(400).json({ success: false, message: "No approved shop found for this vendor" }); return; }
-  const product = await Product.create({ ...(req.body as Record<string, unknown>), shopId: shop._id.toString() });
+  const product = await Product.create({ ...body, shopId: shop._id.toString() });
   res.status(201).json({ success: true, product });
 });
 

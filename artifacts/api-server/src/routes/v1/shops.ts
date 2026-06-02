@@ -207,6 +207,50 @@ router.post("/:id/unban", authenticate, A, async (req: AuthRequest, res: Respons
   res.json({ success: true, shop });
 });
 
+// PATCH /api/shops/:id/toggle-open — admin opens or closes any shop
+router.patch("/:id/toggle-open", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const shop = await Shop.findById(req.params["id"]);
+  if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+  if (shop.status !== "approved") {
+    res.status(400).json({ success: false, message: "Only approved shops can change open status" });
+    return;
+  }
+  shop.isOpen = !shop.isOpen;
+  await shop.save();
+  res.json({ success: true, isOpen: shop.isOpen, shop });
+});
+
+// PATCH /api/shops/:id/owner — admin assigns/changes the owner of a shop
+router.patch("/:id/owner", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { phone, ownerName } = req.body as { phone: string; ownerName?: string };
+  if (!phone) { res.status(400).json({ success: false, message: "Phone is required" }); return; }
+
+  const shop = await Shop.findById(req.params["id"]);
+  if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+
+  let newOwner = await User.findOne({ phone });
+  if (!newOwner) {
+    newOwner = await User.create({
+      name: ownerName ?? "Vendor",
+      phone,
+      role: "vendor",
+      vendorStatus: "approved",
+      status: "active",
+    });
+  } else {
+    const updates: Record<string, unknown> = { vendorStatus: "approved" };
+    if (!ADMIN_ROLES.has(newOwner.role)) updates["role"] = "vendor";
+    await User.findByIdAndUpdate(newOwner._id, updates);
+  }
+
+  const updatedShop = await Shop.findByIdAndUpdate(
+    req.params["id"],
+    { ownerId: String(newOwner._id), phone, ownerName: ownerName ?? newOwner.name },
+    { new: true }
+  );
+  res.json({ success: true, shop: updatedShop, owner: newOwner });
+});
+
 // DELETE /api/shops/:id
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const shop = await Shop.findById(req.params["id"]);

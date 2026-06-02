@@ -137,7 +137,7 @@ function buildTopProducts(orders: ApiOrder[]) {
     .sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 5);
 }
 
-type AdminSection = 'overview' | 'requests' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons';
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -200,6 +200,7 @@ export default function Admin() {
             >
               {activeSection === 'overview' && <OverviewTab onNavigate={setActiveSection} />}
               {activeSection === 'requests' && <ShopRequestsTab />}
+              {activeSection === 'shops' && <ShopsManagementTab />}
               {activeSection === 'users' && <UsersTab />}
               {activeSection === 'orders' && <OrdersTab />}
               {activeSection === 'reports' && <ReportsTab />}
@@ -234,6 +235,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
   const navItems: { id: AdminSection, label: string, icon: any, badge?: number }[] = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'requests', label: 'Shop Requests', icon: FileText, badge: pendingRequests },
+    { id: 'shops', label: 'Shops', icon: Store },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'orders', label: 'Orders', icon: ShoppingBag, badge: pendingOrders },
     { id: 'reports', label: 'Reports', icon: Flag, badge: openReports },
@@ -2824,6 +2826,888 @@ function CouponsTab() {
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => setDeleteConfirm(null)} className="rounded-lg h-8">Cancel</Button>
                         <Button size="sm" onClick={() => handleDelete(c._id)} className="rounded-lg h-8 bg-destructive text-white hover:bg-destructive/90 shadow-none">Delete</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// SHOPS MANAGEMENT TAB
+// ============================================================================
+
+interface ApiShopFull {
+  _id: string;
+  shopName: string;
+  ownerName: string;
+  phone: string;
+  ownerId: string;
+  shopType: string;
+  category?: string;
+  description?: string;
+  image?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'banned';
+  isOpen: boolean;
+  rating: number;
+  totalOrders: number;
+  totalRevenue: number;
+  address?: { line1?: string; city?: string; pincode?: string; state?: string };
+  createdAt: string;
+}
+
+interface ApiProductFull {
+  _id: string;
+  name: string;
+  description?: string;
+  price: number;
+  discountedPrice?: number;
+  category: string;
+  shopId: string;
+  images: string[];
+  stock: number;
+  unit?: string;
+  status: 'active' | 'inactive' | 'out_of_stock';
+  trending: boolean;
+  createdAt: string;
+}
+
+type ShopForm = {
+  shopName: string;
+  ownerPhone: string;
+  ownerName: string;
+  addressLine1: string;
+  addressCity: string;
+  addressPincode: string;
+  shopType: string;
+  description: string;
+  isOpen: boolean;
+  image: string;
+};
+
+const emptyShopForm = (): ShopForm => ({
+  shopName: '', ownerPhone: '', ownerName: '', addressLine1: '',
+  addressCity: '', addressPincode: '', shopType: 'groceries',
+  description: '', isOpen: true, image: '',
+});
+
+type ProductForm = {
+  name: string;
+  description: string;
+  price: string;
+  discountedPrice: string;
+  category: string;
+  stock: string;
+  unit: string;
+  status: 'active' | 'inactive';
+  imageUrl: string;
+};
+
+const emptyProductForm = (): ProductForm => ({
+  name: '', description: '', price: '', discountedPrice: '',
+  category: 'groceries', stock: '0', unit: 'piece', status: 'active', imageUrl: '',
+});
+
+function ShopsManagementTab() {
+  const [subView, setSubView] = useState<'shops' | 'products'>('shops');
+  const [selectedShop, setSelectedShop] = useState<ApiShopFull | null>(null);
+
+  if (subView === 'products' && selectedShop) {
+    return (
+      <ShopProductsPanel
+        shop={selectedShop}
+        onBack={() => { setSubView('shops'); setSelectedShop(null); }}
+      />
+    );
+  }
+
+  return (
+    <ShopListPanel
+      onManageProducts={(shop) => { setSelectedShop(shop); setSubView('products'); }}
+    />
+  );
+}
+
+function ShopListPanel({ onManageProducts }: { onManageProducts: (shop: ApiShopFull) => void }) {
+  const [shops, setShops] = useState<ApiShopFull[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'rejected' | 'banned'>('all');
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<ShopForm>(emptyShopForm());
+  const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [changingOwnerId, setChangingOwnerId] = useState<string | null>(null);
+  const [ownerPhone, setOwnerPhone] = useState('');
+  const [ownerNameInput, setOwnerNameInput] = useState('');
+  const [ownerSaving, setOwnerSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api.get<{ success: boolean; shops: ApiShopFull[] }>('/shops?limit=200');
+      setShops(data.shops);
+    } catch {
+      toast.error('Failed to load shops');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filteredShops = useMemo(() => shops.filter(s => {
+    if (statusFilter !== 'all' && s.status !== statusFilter) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      return s.shopName.toLowerCase().includes(q) || s.ownerName.toLowerCase().includes(q) || s.phone.includes(q);
+    }
+    return true;
+  }), [shops, statusFilter, search]);
+
+  const setF = <K extends keyof ShopForm>(k: K, v: ShopForm[K]) => setForm(f => ({ ...f, [k]: v }));
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(emptyShopForm());
+    setShowForm(true);
+    setChangingOwnerId(null);
+  };
+
+  const openEdit = (s: ApiShopFull) => {
+    setEditingId(s._id);
+    setForm({
+      shopName: s.shopName,
+      ownerPhone: s.phone,
+      ownerName: s.ownerName,
+      addressLine1: s.address?.line1 ?? '',
+      addressCity: s.address?.city ?? '',
+      addressPincode: s.address?.pincode ?? '',
+      shopType: s.shopType,
+      description: s.description ?? '',
+      isOpen: s.isOpen,
+      image: s.image ?? '',
+    });
+    setShowForm(true);
+    setChangingOwnerId(null);
+  };
+
+  const handleLogoUpload = async (file: File) => {
+    setUploadingLogo(true);
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const { access } = api.getTokens();
+      const res = await fetch('/api/upload/product-image', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${access ?? ''}` },
+        body: fd,
+      });
+      const data = await res.json() as { success: boolean; imageUrl: string };
+      if (data.success) setF('image', data.imageUrl);
+      else toast.error('Upload failed');
+    } catch { toast.error('Upload failed'); }
+    finally { setUploadingLogo(false); }
+  };
+
+  const handleSave = async () => {
+    if (!form.shopName.trim()) { toast.error('Shop name is required'); return; }
+    if (!form.ownerPhone.trim()) { toast.error('Owner phone is required'); return; }
+    if (!form.ownerName.trim()) { toast.error('Owner name is required'); return; }
+    if (!form.addressLine1.trim() || !form.addressCity.trim() || !form.addressPincode.trim()) {
+      toast.error('Full address (line, city, pincode) is required'); return;
+    }
+    setSaving(true);
+    try {
+      if (editingId) {
+        await api.patch(`/shops/${editingId}`, {
+          shopName: form.shopName,
+          ownerName: form.ownerName,
+          phone: form.ownerPhone,
+          shopType: form.shopType,
+          category: form.shopType,
+          description: form.description,
+          isOpen: form.isOpen,
+          image: form.image || undefined,
+          address: { line1: form.addressLine1, city: form.addressCity, pincode: form.addressPincode },
+        });
+        toast.success('Shop updated');
+      } else {
+        await api.post('/shops/admin-create', {
+          shopName: form.shopName,
+          ownerName: form.ownerName,
+          phone: form.ownerPhone,
+          shopType: form.shopType,
+          category: form.shopType,
+          description: form.description,
+          image: form.image || undefined,
+          address: { line1: form.addressLine1, city: form.addressCity, pincode: form.addressPincode },
+        });
+        toast.success('Shop created and owner account set up');
+      }
+      setShowForm(false);
+      load();
+    } catch (e) {
+      toast.error((e as Error).message ?? 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleOpen = async (shop: ApiShopFull) => {
+    setTogglingId(shop._id);
+    try {
+      await api.patch(`/shops/${shop._id}/toggle-open`, {});
+      setShops(prev => prev.map(s => s._id === shop._id ? { ...s, isOpen: !s.isOpen } : s));
+      toast.success(shop.isOpen ? 'Shop closed' : 'Shop opened');
+    } catch (e) {
+      toast.error((e as Error).message ?? 'Failed to toggle');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.delete(`/shops/${id}`);
+      setShops(prev => prev.filter(s => s._id !== id));
+      setDeleteConfirm(null);
+      toast.success('Shop deleted');
+    } catch {
+      toast.error('Failed to delete shop');
+    }
+  };
+
+  const handleChangeOwner = async (shopId: string) => {
+    if (!ownerPhone.trim()) { toast.error('Phone is required'); return; }
+    setOwnerSaving(true);
+    try {
+      await api.patch(`/shops/${shopId}/owner`, {
+        phone: ownerPhone.trim(),
+        ownerName: ownerNameInput.trim() || undefined,
+      });
+      toast.success('Owner changed successfully');
+      setChangingOwnerId(null);
+      setOwnerPhone('');
+      setOwnerNameInput('');
+      load();
+    } catch (e) {
+      toast.error((e as Error).message ?? 'Failed to change owner');
+    } finally {
+      setOwnerSaving(false);
+    }
+  };
+
+  const statusColors: Record<string, string> = {
+    approved: 'bg-emerald-500/10 text-emerald-600',
+    pending: 'bg-amber-500/10 text-amber-600',
+    rejected: 'bg-red-500/10 text-red-600',
+    banned: 'bg-slate-500/10 text-slate-500',
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Shop Management</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Create, edit and manage all shops on the platform</p>
+        </div>
+        <Button
+          onClick={openCreate}
+          className="rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" /> New Shop
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name, owner or phone…"
+            className="pl-9 bg-background neu-inset border-none"
+          />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {(['all', 'approved', 'pending', 'rejected', 'banned'] as const).map(s => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${
+                statusFilter === s
+                  ? 'bg-primary text-primary-foreground neu-card'
+                  : 'bg-background neu-inset text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            className="bg-card rounded-3xl neu-card p-6 space-y-5"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-lg">{editingId ? 'Edit Shop' : 'Create New Shop'}</h3>
+              <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold block mb-2">Shop Logo</label>
+              {form.image ? (
+                <div className="relative w-24 h-24 rounded-2xl overflow-hidden border border-border/50">
+                  <img src={form.image} alt="Logo" className="w-full h-full object-cover" />
+                  <button
+                    className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
+                    onClick={() => setF('image', '')}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-2xl p-5 cursor-pointer hover:border-primary/60 transition-colors text-center w-24 h-24">
+                  {uploadingLogo ? (
+                    <RefreshCw className="w-5 h-5 text-primary animate-spin" />
+                  ) : (
+                    <>
+                      <ImageIcon className="w-6 h-6 text-muted-foreground/50" />
+                      <span className="text-[10px] text-muted-foreground leading-tight">Upload logo</span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={e => e.target.files?.[0] && handleLogoUpload(e.target.files[0])}
+                    disabled={uploadingLogo}
+                  />
+                </label>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium block mb-1">Shop Name <span className="text-destructive">*</span></label>
+                <Input value={form.shopName} onChange={e => setF('shopName', e.target.value)} placeholder="e.g. Fresh Mart" className="bg-background neu-inset border-none" />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Category / Type <span className="text-destructive">*</span></label>
+                <select
+                  value={form.shopType}
+                  onChange={e => setF('shopType', e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer"
+                >
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Owner Phone <span className="text-destructive">*</span></label>
+                <Input
+                  value={form.ownerPhone}
+                  onChange={e => setF('ownerPhone', e.target.value)}
+                  placeholder="10-digit mobile number"
+                  className="bg-background neu-inset border-none"
+                  disabled={!!editingId}
+                />
+                {editingId && <p className="text-xs text-muted-foreground mt-1">Use "Change Owner" in the list to reassign ownership.</p>}
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Owner Name <span className="text-destructive">*</span></label>
+                <Input value={form.ownerName} onChange={e => setF('ownerName', e.target.value)} placeholder="Owner full name" className="bg-background neu-inset border-none" />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Address Line 1 <span className="text-destructive">*</span></label>
+                <Input value={form.addressLine1} onChange={e => setF('addressLine1', e.target.value)} placeholder="Street / Area / Locality" className="bg-background neu-inset border-none" />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">City <span className="text-destructive">*</span></label>
+                <Input value={form.addressCity} onChange={e => setF('addressCity', e.target.value)} placeholder="City" className="bg-background neu-inset border-none" />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Pincode <span className="text-destructive">*</span></label>
+                <Input value={form.addressPincode} onChange={e => setF('addressPincode', e.target.value)} placeholder="e.g. 733101" className="bg-background neu-inset border-none" />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Description</label>
+                <Input value={form.description} onChange={e => setF('description', e.target.value)} placeholder="Short shop description" className="bg-background neu-inset border-none" />
+              </div>
+              <div className="flex items-center gap-3 self-end pb-1">
+                <button
+                  type="button"
+                  onClick={() => setF('isOpen', !form.isOpen)}
+                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${form.isOpen ? 'bg-primary' : 'bg-muted'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${form.isOpen ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+                <span className="text-sm text-muted-foreground">{form.isOpen ? 'Open for orders' : 'Closed'}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-1">
+              <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-xl">Cancel</Button>
+              <Button
+                onClick={handleSave}
+                disabled={saving || uploadingLogo}
+                className="rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {saving ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Saving…</> : editingId ? 'Update Shop' : 'Create Shop'}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {loading ? (
+        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 bg-muted rounded-2xl animate-pulse" />)}</div>
+      ) : filteredShops.length === 0 ? (
+        <div className="bg-card rounded-3xl neu-card p-16 text-center">
+          <Store className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-25" />
+          <p className="font-semibold text-muted-foreground">No shops found</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {search || statusFilter !== 'all' ? 'Try clearing your filters.' : 'Click "New Shop" to create the first shop.'}
+          </p>
+        </div>
+      ) : (
+        <div className="bg-card rounded-3xl neu-card overflow-hidden">
+          <div className="p-5 border-b border-border flex items-center justify-between">
+            <h3 className="font-bold text-foreground">All Shops ({filteredShops.length})</h3>
+            <button onClick={load} className="p-2 hover:bg-muted rounded-xl text-muted-foreground transition-colors" title="Refresh">
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="divide-y divide-border/50">
+            {filteredShops.map(shop => {
+              const isDeleting = deleteConfirm === shop._id;
+              const isChangingOwner = changingOwnerId === shop._id;
+              const isToggling = togglingId === shop._id;
+              return (
+                <div key={shop._id}>
+                  <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0 overflow-hidden border border-border/50">
+                        {shop.image
+                          ? <img src={shop.image} alt={shop.shopName} className="w-full h-full object-cover" />
+                          : <Store className="w-5 h-5 text-muted-foreground" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm text-foreground truncate">{shop.shopName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{shop.ownerName} · {shop.phone}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {[shop.address?.city, shop.address?.pincode].filter(Boolean).join(' · ')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap shrink-0">
+                      <Badge className={`text-[10px] border-none px-2 py-0 capitalize ${statusColors[shop.status] ?? 'bg-muted text-muted-foreground'}`}>
+                        {shop.status}
+                      </Badge>
+                      <Badge className={`text-[10px] border-none px-2 py-0 ${shop.isOpen ? 'bg-green-500/10 text-green-600' : 'bg-slate-500/10 text-slate-500'}`}>
+                        {shop.isOpen ? 'Open' : 'Closed'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground hidden sm:inline">{shop.totalOrders ?? 0} orders</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {shop.status === 'approved' && (
+                        <button
+                          onClick={() => handleToggleOpen(shop)}
+                          disabled={isToggling}
+                          title={shop.isOpen ? 'Close shop' : 'Open shop'}
+                          className={`p-2 rounded-xl transition-colors ${shop.isOpen ? 'hover:bg-red-50 dark:hover:bg-red-950/30 text-red-500' : 'hover:bg-green-50 dark:hover:bg-green-950/30 text-green-600'}`}
+                        >
+                          {isToggling ? <RefreshCw className="w-4 h-4 animate-spin" /> : shop.isOpen ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      )}
+                      <button onClick={() => onManageProducts(shop)} title="Manage products" className="p-2 rounded-xl hover:bg-muted text-muted-foreground transition-colors">
+                        <Package className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => { setChangingOwnerId(isChangingOwner ? null : shop._id); setOwnerPhone(''); setOwnerNameInput(''); }}
+                        title="Change owner"
+                        className={`p-2 rounded-xl hover:bg-muted transition-colors ${isChangingOwner ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+                      >
+                        <User className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => openEdit(shop)} title="Edit" className="p-2 rounded-xl hover:bg-muted text-muted-foreground transition-colors">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => setDeleteConfirm(shop._id)} title="Delete" className="p-2 rounded-xl hover:bg-destructive/10 text-destructive transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {isChangingOwner && (
+                    <div className="px-4 pb-4 bg-muted/30 border-t border-border/50">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide pt-3 mb-2">Assign New Owner</p>
+                      <div className="flex flex-wrap gap-2 items-end">
+                        <div className="flex-1 min-w-[160px]">
+                          <label className="text-xs font-medium block mb-1">New Owner Phone <span className="text-destructive">*</span></label>
+                          <Input value={ownerPhone} onChange={e => setOwnerPhone(e.target.value)} placeholder="10-digit phone" className="bg-background neu-inset border-none h-9 text-sm" />
+                        </div>
+                        <div className="flex-1 min-w-[160px]">
+                          <label className="text-xs font-medium block mb-1">Name <span className="text-muted-foreground font-normal">(optional)</span></label>
+                          <Input value={ownerNameInput} onChange={e => setOwnerNameInput(e.target.value)} placeholder="Auto-filled if account exists" className="bg-background neu-inset border-none h-9 text-sm" />
+                        </div>
+                        <Button size="sm" onClick={() => handleChangeOwner(shop._id)} disabled={ownerSaving} className="rounded-xl h-9 shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90">
+                          {ownerSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Assign'}
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setChangingOwnerId(null)} className="rounded-xl h-9">Cancel</Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">A new vendor account will be created automatically if the phone doesn't exist.</p>
+                    </div>
+                  )}
+
+                  {isDeleting && (
+                    <div className="px-4 py-3 bg-destructive/5 border-t border-destructive/20 flex items-center justify-between gap-3">
+                      <span className="text-sm text-destructive font-medium">Delete <span className="font-bold">{shop.shopName}</span>? All products will also be removed.</span>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setDeleteConfirm(null)} className="rounded-lg h-8">Cancel</Button>
+                        <Button size="sm" onClick={() => handleDelete(shop._id)} className="rounded-lg h-8 bg-destructive text-white hover:bg-destructive/90 shadow-none">Delete</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => void }) {
+  const [products, setProducts] = useState<ApiProductFull[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<ProductForm>(emptyProductForm());
+  const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [editingStockId, setEditingStockId] = useState<string | null>(null);
+  const [stockInput, setStockInput] = useState('');
+
+  const loadProducts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api.get<{ success: boolean; products: ApiProductFull[] }>(
+        `/products?shopId=${shop._id}&status=all&limit=200`
+      );
+      setProducts(data.products);
+    } catch {
+      toast.error('Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  }, [shop._id]);
+
+  useEffect(() => { loadProducts(); }, [loadProducts]);
+
+  const setF = <K extends keyof ProductForm>(k: K, v: ProductForm[K]) => setForm(f => ({ ...f, [k]: v }));
+
+  const openCreate = () => { setEditingId(null); setForm(emptyProductForm()); setShowForm(true); };
+
+  const openEdit = (p: ApiProductFull) => {
+    setEditingId(p._id);
+    setForm({
+      name: p.name,
+      description: p.description ?? '',
+      price: String(p.price),
+      discountedPrice: p.discountedPrice != null ? String(p.discountedPrice) : '',
+      category: p.category,
+      stock: String(p.stock),
+      unit: p.unit ?? 'piece',
+      status: p.status === 'inactive' ? 'inactive' : 'active',
+      imageUrl: p.images?.[0] ?? '',
+    });
+    setShowForm(true);
+  };
+
+  const handleImageUpload = async (file: File) => {
+    setUploadingImage(true);
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const { access } = api.getTokens();
+      const res = await fetch('/api/upload/product-image', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${access ?? ''}` },
+        body: fd,
+      });
+      const data = await res.json() as { success: boolean; imageUrl: string };
+      if (data.success) setF('imageUrl', data.imageUrl);
+      else toast.error('Upload failed');
+    } catch { toast.error('Upload failed'); }
+    finally { setUploadingImage(false); }
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { toast.error('Product name is required'); return; }
+    if (!form.price || Number(form.price) <= 0) { toast.error('Price must be a positive number'); return; }
+    setSaving(true);
+    const payload: Record<string, unknown> = {
+      name: form.name.trim(),
+      description: form.description.trim() || undefined,
+      price: Number(form.price),
+      discountedPrice: form.discountedPrice ? Number(form.discountedPrice) : undefined,
+      category: form.category,
+      stock: Number(form.stock) || 0,
+      unit: form.unit.trim() || 'piece',
+      status: form.status,
+      images: form.imageUrl ? [form.imageUrl] : [],
+      shopId: shop._id,
+    };
+    try {
+      if (editingId) {
+        await api.patch(`/products/${editingId}`, payload);
+        toast.success('Product updated');
+      } else {
+        await api.post('/products', payload);
+        toast.success('Product added');
+      }
+      setShowForm(false);
+      loadProducts();
+    } catch (e) {
+      toast.error((e as Error).message ?? 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.delete(`/products/${id}`);
+      setProducts(prev => prev.filter(p => p._id !== id));
+      setDeleteConfirm(null);
+      toast.success('Product deleted');
+    } catch {
+      toast.error('Failed to delete product');
+    }
+  };
+
+  const handleUpdateStock = async (productId: string) => {
+    const stock = parseInt(stockInput);
+    if (isNaN(stock) || stock < 0) { toast.error('Invalid stock value'); return; }
+    try {
+      await api.patch(`/products/${productId}`, { stock });
+      setProducts(prev => prev.map(p => p._id === productId ? { ...p, stock } : p));
+      setEditingStockId(null);
+      toast.success('Stock updated');
+    } catch {
+      toast.error('Failed to update stock');
+    }
+  };
+
+  const statusBadgeClass = (s: string) => {
+    if (s === 'active') return 'bg-emerald-500/10 text-emerald-600';
+    if (s === 'out_of_stock') return 'bg-amber-500/10 text-amber-600';
+    return 'bg-slate-500/10 text-slate-500';
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="p-2 rounded-xl hover:bg-muted text-muted-foreground transition-colors" title="Back to shops">
+            <ChevronDown className="w-5 h-5 rotate-90" />
+          </button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-foreground">{shop.shopName}</h2>
+              <Badge className={`text-[10px] border-none px-2 ${shop.isOpen ? 'bg-green-500/10 text-green-600' : 'bg-slate-500/10 text-slate-500'}`}>
+                {shop.isOpen ? 'Open' : 'Closed'}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">Product Management · {shop.ownerName}</p>
+          </div>
+        </div>
+        <Button onClick={openCreate} className="rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Add Product
+        </Button>
+      </div>
+
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            className="bg-card rounded-3xl neu-card p-6 space-y-5"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-lg">{editingId ? 'Edit Product' : 'Add Product'}</h3>
+              <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold block mb-2">Product Image</label>
+              {form.imageUrl ? (
+                <div className="relative w-28 h-28 rounded-2xl overflow-hidden border border-border/50">
+                  <img src={form.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                  <button className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors" onClick={() => setF('imageUrl', '')}>
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-2xl p-5 cursor-pointer hover:border-primary/60 transition-colors text-center w-28 h-28">
+                  {uploadingImage ? <RefreshCw className="w-6 h-6 text-primary animate-spin" /> : <><ImageIcon className="w-7 h-7 text-muted-foreground/50" /><span className="text-xs text-muted-foreground">Upload</span></>}
+                  <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp" onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0])} disabled={uploadingImage} />
+                </label>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium block mb-1">Product Name <span className="text-destructive">*</span></label>
+                <Input value={form.name} onChange={e => setF('name', e.target.value)} placeholder="e.g. Basmati Rice 1kg" className="bg-background neu-inset border-none" />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Category <span className="text-destructive">*</span></label>
+                <select value={form.category} onChange={e => setF('category', e.target.value)} className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer">
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Price (₹) <span className="text-destructive">*</span></label>
+                <Input type="number" min={0} value={form.price} onChange={e => setF('price', e.target.value)} placeholder="0" className="bg-background neu-inset border-none" />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Discounted Price (₹) <span className="text-muted-foreground font-normal text-xs">optional</span></label>
+                <Input type="number" min={0} value={form.discountedPrice} onChange={e => setF('discountedPrice', e.target.value)} placeholder="Leave blank for no discount" className="bg-background neu-inset border-none" />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Stock</label>
+                <Input type="number" min={0} value={form.stock} onChange={e => setF('stock', e.target.value)} placeholder="0" className="bg-background neu-inset border-none" />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Unit</label>
+                <Input value={form.unit} onChange={e => setF('unit', e.target.value)} placeholder="kg / piece / litre / pack" className="bg-background neu-inset border-none" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium block mb-1">Description</label>
+                <Input value={form.description} onChange={e => setF('description', e.target.value)} placeholder="Brief product description" className="bg-background neu-inset border-none" />
+              </div>
+              <div className="flex items-center gap-3 self-end pb-1">
+                <button
+                  type="button"
+                  onClick={() => setF('status', form.status === 'active' ? 'inactive' : 'active')}
+                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${form.status === 'active' ? 'bg-primary' : 'bg-muted'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${form.status === 'active' ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+                <span className="text-sm text-muted-foreground">{form.status === 'active' ? 'Active — visible to customers' : 'Inactive — hidden'}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-1">
+              <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-xl">Cancel</Button>
+              <Button onClick={handleSave} disabled={saving || uploadingImage} className="rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90">
+                {saving ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Saving…</> : editingId ? 'Update Product' : 'Add Product'}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {loading ? (
+        <div className="space-y-3">{[1, 2, 3, 4].map(i => <div key={i} className="h-16 bg-muted rounded-2xl animate-pulse" />)}</div>
+      ) : products.length === 0 ? (
+        <div className="bg-card rounded-3xl neu-card p-16 text-center">
+          <Package className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-25" />
+          <p className="font-semibold text-muted-foreground">No products yet</p>
+          <p className="text-sm text-muted-foreground mt-1">Click "Add Product" to list the first product for this shop.</p>
+        </div>
+      ) : (
+        <div className="bg-card rounded-3xl neu-card overflow-hidden">
+          <div className="p-5 border-b border-border flex items-center justify-between">
+            <h3 className="font-bold text-foreground">Products ({products.length})</h3>
+            <button onClick={loadProducts} className="p-2 hover:bg-muted rounded-xl text-muted-foreground transition-colors" title="Refresh">
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="divide-y divide-border/50">
+            {products.map(p => {
+              const isDeleting = deleteConfirm === p._id;
+              const isEditingStock = editingStockId === p._id;
+              const cat = categories.find(c => c.id === p.category);
+              return (
+                <div key={p._id}>
+                  <div className="p-4 flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/50 flex items-center justify-center">
+                      {p.images?.[0] ? <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" /> : <Package className="w-5 h-5 text-muted-foreground/40" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-foreground truncate">{p.name}</p>
+                      <p className="text-xs text-muted-foreground">{cat?.emoji ?? ''} {cat?.name ?? p.category} · {p.unit ?? 'piece'}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs font-semibold text-foreground">
+                          {p.discountedPrice ? (
+                            <>{formatINR(p.discountedPrice)} <span className="text-muted-foreground line-through font-normal">{formatINR(p.price)}</span></>
+                          ) : formatINR(p.price)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="shrink-0 hidden sm:block">
+                      {isEditingStock ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number" min={0} value={stockInput}
+                            onChange={e => setStockInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleUpdateStock(p._id); if (e.key === 'Escape') setEditingStockId(null); }}
+                            className="w-20 h-8 text-sm bg-background neu-inset border-none text-center"
+                            autoFocus
+                          />
+                          <button onClick={() => handleUpdateStock(p._id)} className="p-1.5 rounded-lg bg-primary text-primary-foreground">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => setEditingStockId(null)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setEditingStockId(p._id); setStockInput(String(p.stock)); }}
+                          className="text-sm font-semibold hover:text-primary transition-colors text-right"
+                          title="Click to edit stock"
+                        >
+                          {p.stock}<span className="text-xs font-normal text-muted-foreground ml-1">in stock</span>
+                        </button>
+                      )}
+                    </div>
+                    <Badge className={`text-[10px] border-none px-2 py-0 shrink-0 hidden md:flex ${statusBadgeClass(p.status)}`}>
+                      {p.status.replace('_', ' ')}
+                    </Badge>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => openEdit(p)} title="Edit" className="p-2 rounded-xl hover:bg-muted text-muted-foreground transition-colors"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => setDeleteConfirm(p._id)} title="Delete" className="p-2 rounded-xl hover:bg-destructive/10 text-destructive transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                  {isDeleting && (
+                    <div className="px-4 py-3 bg-destructive/5 border-t border-destructive/20 flex items-center justify-between gap-3">
+                      <span className="text-sm text-destructive font-medium">Delete <span className="font-bold">{p.name}</span>?</span>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setDeleteConfirm(null)} className="rounded-lg h-8">Cancel</Button>
+                        <Button size="sm" onClick={() => handleDelete(p._id)} className="rounded-lg h-8 bg-destructive text-white hover:bg-destructive/90 shadow-none">Delete</Button>
                       </div>
                     </div>
                   )}
