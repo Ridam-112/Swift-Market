@@ -3,12 +3,14 @@ import { Shop } from "../../models/Shop.js";
 import { User } from "../../models/User.js";
 import { Product } from "../../models/Product.js";
 import { Order } from "../../models/Order.js";
-import { Notification } from "../../models/Notification.js";
 import { deleteFromCloudinary } from "../../lib/cloudinary.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
+import { createNotificationLimited } from "../../utils/notification.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
+
+const ADMIN_ROLES = new Set(["admin", "super_admin"]);
 
 // GET /api/shops
 router.get("/", async (req: Request, res: Response): Promise<void> => {
@@ -37,7 +39,6 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
 });
 
 // GET /api/shops/:id/details — admin: shop + products + recent orders + owner
-// MUST be registered before GET /:id to avoid "details" being treated as an id
 router.get("/:id/details", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const shop = await Shop.findById(req.params["id"]);
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
@@ -63,8 +64,7 @@ router.get("/:id", async (req: Request, res: Response): Promise<void> => {
   res.json({ success: true, shop });
 });
 
-// POST /api/shops/admin-create — admin creates shop + auto-creates/links owner account
-// MUST be registered before POST /:id/... patterns for clarity (no conflict since different paths)
+// POST /api/shops/admin-create
 router.post("/admin-create", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body as Record<string, unknown>;
   const phone = String(body.phone ?? "").trim();
@@ -82,7 +82,10 @@ router.post("/admin-create", authenticate, A, async (req: AuthRequest, res: Resp
       status: "active",
     });
   } else {
-    await User.findByIdAndUpdate(owner._id, { vendorStatus: "approved", role: "vendor" });
+    // Only set role to vendor if not already admin/super_admin
+    const updates: Record<string, unknown> = { vendorStatus: "approved" };
+    if (!ADMIN_ROLES.has(owner.role)) updates["role"] = "vendor";
+    await User.findByIdAndUpdate(owner._id, updates);
   }
 
   const shop = await Shop.create({
@@ -103,8 +106,7 @@ router.post("/admin-create", authenticate, A, async (req: AuthRequest, res: Resp
     upiId: body.upiId ?? `${phone}@upi`,
   });
 
-  await Notification.create({
-    userId: String(owner._id),
+  await createNotificationLimited(String(owner._id), {
     type: "system",
     title: "Vendor Account Created",
     message: "Your shop has been created and approved by SwiftMart Admin.",
@@ -135,7 +137,13 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
 router.post("/:id/approve", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const shop = await Shop.findByIdAndUpdate(req.params["id"], { status: "approved", isOpen: true }, { new: true });
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
-  await User.findOneAndUpdate({ phone: shop.phone }, { vendorStatus: "approved", role: "vendor" });
+  // Only promote to vendor if not already admin/super_admin
+  const owner = await User.findOne({ phone: shop.phone }).select("role").lean();
+  if (owner && !ADMIN_ROLES.has(owner.role)) {
+    await User.findOneAndUpdate({ phone: shop.phone }, { vendorStatus: "approved", role: "vendor" });
+  } else {
+    await User.findOneAndUpdate({ phone: shop.phone }, { vendorStatus: "approved" });
+  }
   res.json({ success: true, shop });
 });
 
@@ -156,9 +164,16 @@ router.post("/:id/reject", authenticate, A, async (req: AuthRequest, res: Respon
 router.post("/:id/ban", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const shop = await Shop.findByIdAndUpdate(req.params["id"], { status: "banned", isOpen: false }, { new: true });
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
-  await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "rejected", role: "customer" });
-  await Notification.create({
-    userId: shop.ownerId,
+
+  // Never downgrade admin/super_admin role
+  const owner = await User.findById(shop.ownerId).select("role").lean();
+  if (owner && !ADMIN_ROLES.has(owner.role)) {
+    await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "rejected", role: "customer" });
+  } else {
+    await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "rejected" });
+  }
+
+  await createNotificationLimited(shop.ownerId, {
     type: "system",
     title: "Vendor Access Removed",
     message: "Your vendor access is no longer active. Please contact admin or register again.",
@@ -170,7 +185,12 @@ router.post("/:id/ban", authenticate, A, async (req: AuthRequest, res: Response)
 router.post("/:id/unban", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const shop = await Shop.findByIdAndUpdate(req.params["id"], { status: "approved", isOpen: true }, { new: true });
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
-  await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "approved", role: "vendor" });
+  const owner = await User.findById(shop.ownerId).select("role").lean();
+  if (owner && !ADMIN_ROLES.has(owner.role)) {
+    await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "approved", role: "vendor" });
+  } else {
+    await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "approved" });
+  }
   res.json({ success: true, shop });
 });
 
@@ -182,11 +202,17 @@ router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): 
     const products = await Product.find({ shopId: shopIdStr }).select("images").lean();
     const allImages = products.flatMap(p => p.images ?? []);
     await Promise.all(allImages.map(url => deleteFromCloudinary(url)));
+
+    // Never downgrade admin/super_admin role
+    const owner = await User.findById(shop.ownerId).select("role").lean();
+    const roleUpdate = owner && ADMIN_ROLES.has(owner.role)
+      ? { vendorStatus: "none" }
+      : { vendorStatus: "none", role: "customer" };
+
     await Promise.all([
       Product.deleteMany({ shopId: shopIdStr }),
-      User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "none", role: "customer" }),
-      Notification.create({
-        userId: shop.ownerId,
+      User.findByIdAndUpdate(shop.ownerId, roleUpdate),
+      createNotificationLimited(shop.ownerId, {
         type: "system",
         title: "Shop Removed",
         message: "Your shop has been removed by admin. Please register again to continue selling.",

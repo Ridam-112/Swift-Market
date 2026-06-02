@@ -3,15 +3,16 @@ import { Notification } from "../../models/Notification.js";
 import { AdminBroadcast } from "../../models/AdminBroadcast.js";
 import { User } from "../../models/User.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
+import { createNotificationLimited } from "../../utils/notification.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
-// GET /api/notifications — current user's notifications
+// GET /api/notifications — current user's notifications (latest 10)
 router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const notifications = await Notification.find({ userId: req.user!.userId })
     .sort({ createdAt: -1 })
-    .limit(50);
+    .limit(10);
   const unreadCount = await Notification.countDocuments({ userId: req.user!.userId, isRead: false });
   res.json({ success: true, notifications, unreadCount });
 });
@@ -52,27 +53,25 @@ router.post("/broadcast", authenticate, A, async (req: AuthRequest, res: Respons
   }
 
   const users = await User.find(userFilter).select("_id").lean();
-  const notifications = users.map(u => ({
-    userId: String(u._id),
-    type: "system" as const,
-    title,
-    message,
-    isRead: false,
-  }));
 
-  if (notifications.length > 0) {
-    await Notification.insertMany(notifications);
-  }
+  // Use createNotificationLimited for each user to enforce the 10-notification cap
+  await Promise.all(users.map(u =>
+    createNotificationLimited(String(u._id), {
+      type: "system",
+      title,
+      message,
+    })
+  ));
 
   await AdminBroadcast.create({
     title,
     message,
     targetAudience,
     targetUserId,
-    sentCount: notifications.length,
+    sentCount: users.length,
   });
 
-  res.json({ success: true, sentCount: notifications.length });
+  res.json({ success: true, sentCount: users.length });
 });
 
 // GET /api/notifications/broadcasts — admin history

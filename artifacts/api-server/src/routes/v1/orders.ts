@@ -2,9 +2,10 @@ import { Router, type Response } from "express";
 import { Order } from "../../models/Order.js";
 import { Shop } from "../../models/Shop.js";
 import { User } from "../../models/User.js";
-import { Notification } from "../../models/Notification.js";
+import { Product } from "../../models/Product.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { resolveCommissionRate } from "../../utils/commission.js";
+import { createNotificationLimited } from "../../utils/notification.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -18,6 +19,9 @@ const STATUS_MESSAGES: Record<string, { title: string; message: string }> = {
   cancelled:        { title: "Order Cancelled", message: "Your order has been cancelled." },
   refunded:         { title: "Refund Processed", message: "Your refund has been processed." },
 };
+
+// Statuses that should restore stock
+const STOCK_RESTORE_STATUSES = new Set(["cancelled", "refunded"]);
 
 // GET /api/orders
 router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
@@ -54,6 +58,41 @@ router.get("/:id", authenticate, async (req: AuthRequest, res: Response): Promis
 // POST /api/orders
 router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body as Record<string, unknown>;
+
+  // Validate and atomically reduce stock for each item
+  type OrderItemInput = { productId: string; productName: string; qty: number; price: number; category: string };
+  const items = (body["items"] as OrderItemInput[]) ?? [];
+  const reducedProducts: Array<{ productId: string; qty: number }> = [];
+
+  for (const item of items) {
+    const updated = await Product.findOneAndUpdate(
+      { _id: item.productId, stock: { $gte: item.qty }, status: { $ne: "inactive" } },
+      { $inc: { stock: -item.qty } },
+      { new: true }
+    );
+
+    if (!updated) {
+      // Rollback previously reduced items
+      if (reducedProducts.length > 0) {
+        await Promise.all(reducedProducts.map(r =>
+          Product.findByIdAndUpdate(r.productId, { $inc: { stock: r.qty } })
+        ));
+      }
+      res.status(400).json({
+        success: false,
+        message: `"${item.productName}" is out of stock or unavailable.`,
+      });
+      return;
+    }
+
+    reducedProducts.push({ productId: item.productId, qty: item.qty });
+
+    // Mark product as out_of_stock if stock hits 0
+    if (updated.stock === 0) {
+      await Product.findByIdAndUpdate(item.productId, { status: "out_of_stock" });
+    }
+  }
+
   const subtotal = Number(body["subtotal"] ?? 0);
   const deliveryCharge = Number(body["deliveryCharge"] ?? 0);
   const couponDiscount = Number(body["couponDiscount"] ?? 0);
@@ -75,8 +114,7 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
   });
 
   // Notify customer
-  await Notification.create({
-    userId: req.user!.userId,
+  await createNotificationLimited(req.user!.userId, {
     type: "order_update",
     title: "Order Placed Successfully",
     message: `Your order #${String(order._id).slice(-6).toUpperCase()} has been placed. We'll keep you updated!`,
@@ -91,8 +129,7 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
       if (shop?.ownerId) {
         const vendor = await User.findById(shop.ownerId);
         if (vendor) {
-          await Notification.create({
-            userId: String(vendor._id),
+          await createNotificationLimited(String(vendor._id), {
             type: "order_update",
             title: "New Order Received",
             message: `You have a new order #${String(order._id).slice(-6).toUpperCase()} worth ₹${netAmount}.`,
@@ -114,12 +151,26 @@ router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response
   const order = await Order.findByIdAndUpdate(req.params["id"], update, { new: true });
   if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
+  // Restore stock when order is cancelled or refunded
+  if (STOCK_RESTORE_STATUSES.has(status) && order.items?.length) {
+    await Promise.all(order.items.map(async item => {
+      const product = await Product.findByIdAndUpdate(
+        item.productId,
+        { $inc: { stock: item.qty } },
+        { new: true }
+      );
+      // Re-activate product if it was out_of_stock and now has stock
+      if (product && product.stock > 0 && product.status === "out_of_stock") {
+        await Product.findByIdAndUpdate(item.productId, { status: "active" });
+      }
+    }));
+  }
+
   // Notify customer about status change
   try {
     const msg = STATUS_MESSAGES[status];
     if (msg && order.customerId) {
-      await Notification.create({
-        userId: order.customerId,
+      await createNotificationLimited(order.customerId, {
         type: "order_update",
         title: msg.title,
         message: msg.message,
@@ -140,10 +191,23 @@ router.post("/:id/refund", authenticate, A, async (req: AuthRequest, res: Respon
   );
   if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
+  // Restore stock on refund
+  if (order.items?.length) {
+    await Promise.all(order.items.map(async item => {
+      const product = await Product.findByIdAndUpdate(
+        item.productId,
+        { $inc: { stock: item.qty } },
+        { new: true }
+      );
+      if (product && product.stock > 0 && product.status === "out_of_stock") {
+        await Product.findByIdAndUpdate(item.productId, { status: "active" });
+      }
+    }));
+  }
+
   try {
     if (order.customerId) {
-      await Notification.create({
-        userId: order.customerId,
+      await createNotificationLimited(order.customerId, {
         type: "order_update",
         title: "Refund Processed",
         message: `Your refund for order #${String(order._id).slice(-6).toUpperCase()} has been processed.`,

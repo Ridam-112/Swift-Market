@@ -1,0 +1,98 @@
+Fix only these current SwiftMart bugs.
+
+Do NOT add new features.
+Do NOT redesign UI.
+Do NOT rebuild backend.
+
+BUG 1 — Admin + Vendor role conflict
+
+Problem:
+Phone number 6296118949 is super_admin, but the same account may also be vendor/customer. It should be able to access Admin Panel always.
+
+Expected:
+
+* If phone is in SUPER_ADMIN_PHONES or user.role is super_admin/admin, Admin Panel access must always work.
+* Vendor status/shop status should never block Admin Panel access.
+* AdminGuard should check admin/super_admin role first.
+* Role switcher can still allow customer/vendor mode, but /admin must remain accessible for admin/super_admin.
+
+Fix:
+
+* Verify /auth/me returns role correctly for 6296118949.
+* Ensure vendor removal or shop deletion never downgrades super_admin/admin users to customer.
+* If shop delete/ban updates owner role, skip role downgrade if owner is admin or super_admin.
+* Admin panel must work for 6296118949 after login.
+
+BUG 2 — Stock not reducing / product still visible after sold out
+
+Problem:
+Vendor uploads product with stock = 1.
+Customer buys it.
+Order accepted/delivered.
+Product still appears to customers even though stock should be 0.
+
+Expected:
+
+* When order is placed or accepted, reduce product stock by ordered quantity.
+* Prevent ordering if stock is insufficient.
+* If stock becomes 0, product should either:
+
+  * hide from customer listings, OR
+  * show as Out of Stock and disable Add to Cart.
+* Vendor should see stock = 0.
+* Admin should see stock = 0.
+* If order is cancelled/rejected before fulfillment, restore stock.
+
+Fix:
+
+* Add backend stock validation during order creation.
+* Reduce stock atomically.
+* Restore stock if order status becomes cancelled/rejected/refunded where appropriate.
+* Product APIs for customer should not return active products with stock <= 0, or frontend must show out-of-stock state and block ordering.
+* Add clear error: "This product is out of stock."
+
+BUG 3 — Notification limit
+
+Problem:
+Notifications keep growing.
+
+Expected:
+
+* Each user should store maximum 10 notifications.
+* When a new notification is created and user already has 10 notifications:
+
+  * Delete the oldest notification for that user.
+  * Keep only latest 10.
+* Applies to:
+
+  * order notifications
+  * admin broadcast notifications
+  * vendor removal notifications
+  * system notifications
+
+Fix:
+
+* Create helper function createNotificationLimited(userId, payload)
+* Replace direct Notification.create calls with limited helper wherever possible.
+* Enforce limit at backend level.
+* GET /notifications should still return latest 10 sorted newest first.
+
+Testing:
+
+1. Login as 6296118949 and open Admin Panel.
+2. Remove/ban shop owned by admin account and confirm admin access still works.
+3. Add product with stock 1.
+4. Customer places order.
+5. Confirm stock reduces to 0.
+6. Confirm customer cannot order it again.
+7. Cancel/reject order and confirm stock restores if applicable.
+8. Create 12 notifications for same user.
+9. Confirm only latest 10 remain.
+
+Generate final report:
+
+* Root cause
+* Files changed
+* Bugs fixed
+* Test results
+* Remaining issues

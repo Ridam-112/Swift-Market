@@ -13,6 +13,12 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
   const { shopId, category, status = "active", search, page = "1", limit = "20", pincode } =
     req.query as Record<string, string>;
   const filter: Record<string, unknown> = { status };
+
+  // For customer-facing active product listings, also exclude zero-stock products
+  if (status === "active") {
+    filter["stock"] = { $gt: 0 };
+  }
+
   if (category) filter["category"] = category;
   if (search) filter["name"] = { $regex: search, $options: "i" };
 
