@@ -12,7 +12,7 @@ import {
   XCircle, Clock, Search, Shield, Star, ShoppingBag, Trash2, Eye, EyeOff,
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, Send,
-  ImageIcon, Plus, Edit2
+  ImageIcon, Plus, Edit2, Tag
 } from "lucide-react";
 import { categories } from "@/data/categories";
 import { VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog, Vendor } from "@/types";
@@ -137,7 +137,7 @@ function buildTopProducts(orders: ApiOrder[]) {
     .sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 5);
 }
 
-type AdminSection = 'overview' | 'requests' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners';
+type AdminSection = 'overview' | 'requests' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons';
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -207,6 +207,7 @@ export default function Admin() {
               {activeSection === 'transactions' && <TransactionsTab />}
               {activeSection === 'notifications' && <AdminNotificationsTab />}
               {activeSection === 'hero-banners' && <HeroBannersTab />}
+              {activeSection === 'coupons' && <CouponsTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -240,6 +241,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'transactions', label: 'Transactions', icon: CreditCard },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'hero-banners', label: 'Hero Banners', icon: ImageIcon },
+    { id: 'coupons', label: 'Coupons', icon: Tag },
   ];
 
   return (
@@ -2374,6 +2376,457 @@ function HeroBannersTab() {
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Coupons Tab ─────────────────────────────────────────────────────────────
+
+interface ApiCoupon {
+  _id: string;
+  code: string;
+  type: 'percentage' | 'fixed' | 'free_delivery';
+  value: number;
+  minimumOrder: number;
+  maximumDiscount?: number;
+  expiryDate: string;
+  usageLimit: number;
+  usedCount: number;
+  isActive: boolean;
+  appliesTo: string;
+  createdAt: string;
+}
+
+type CouponForm = {
+  code: string;
+  type: 'percentage' | 'fixed';
+  value: string;
+  minimumOrder: string;
+  maximumDiscount: string;
+  expiryDate: string;
+  usageLimit: string;
+  isActive: boolean;
+};
+
+const emptyCouponForm = (): CouponForm => ({
+  code: '',
+  type: 'percentage',
+  value: '',
+  minimumOrder: '0',
+  maximumDiscount: '',
+  expiryDate: '',
+  usageLimit: '0',
+  isActive: true,
+});
+
+function CouponsTab() {
+  const [coupons, setCoupons] = useState<ApiCoupon[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<CouponForm>(emptyCouponForm());
+  const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api.get<{ success: boolean; coupons: ApiCoupon[] }>('/coupons');
+      setCoupons(data.coupons);
+    } catch {
+      toast.error('Failed to load coupons');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(emptyCouponForm());
+    setShowForm(true);
+  };
+
+  const openEdit = (c: ApiCoupon) => {
+    setEditingId(c._id);
+    setForm({
+      code: c.code,
+      type: c.type === 'free_delivery' ? 'fixed' : c.type,
+      value: String(c.value),
+      minimumOrder: String(c.minimumOrder),
+      maximumDiscount: c.maximumDiscount != null ? String(c.maximumDiscount) : '',
+      expiryDate: c.expiryDate ? c.expiryDate.slice(0, 10) : '',
+      usageLimit: String(c.usageLimit),
+      isActive: c.isActive,
+    });
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.code.trim()) { toast.error('Coupon code is required'); return; }
+    if (!form.value || Number(form.value) <= 0) { toast.error('Discount value must be positive'); return; }
+    if (!form.expiryDate) { toast.error('Expiry date is required'); return; }
+    if (form.type === 'percentage' && Number(form.value) > 100) { toast.error('Percentage cannot exceed 100'); return; }
+
+    setSaving(true);
+    const payload: Record<string, unknown> = {
+      code: form.code.toUpperCase().trim(),
+      type: form.type,
+      value: Number(form.value),
+      minimumOrder: Number(form.minimumOrder) || 0,
+      expiryDate: form.expiryDate,
+      usageLimit: Number(form.usageLimit) || 0,
+      isActive: form.isActive,
+    };
+    if (form.type === 'percentage' && form.maximumDiscount) {
+      payload.maximumDiscount = Number(form.maximumDiscount);
+    }
+
+    try {
+      if (editingId) {
+        await api.patch<{ success: boolean }>(`/coupons/${editingId}`, payload);
+        toast.success('Coupon updated');
+      } else {
+        await api.post<{ success: boolean }>('/coupons', payload);
+        toast.success('Coupon created');
+      }
+      setShowForm(false);
+      load();
+    } catch (e: unknown) {
+      const msg = (e as { message?: string })?.message ?? 'Save failed';
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleActive = async (c: ApiCoupon) => {
+    try {
+      await api.patch<{ success: boolean }>(`/coupons/${c._id}`, { isActive: !c.isActive });
+      setCoupons(prev => prev.map(x => x._id === c._id ? { ...x, isActive: !c.isActive } : x));
+      toast.success(c.isActive ? 'Coupon disabled' : 'Coupon enabled');
+    } catch {
+      toast.error('Failed to update coupon');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.delete<{ success: boolean }>(`/coupons/${id}`);
+      setCoupons(prev => prev.filter(c => c._id !== id));
+      setDeleteConfirm(null);
+      toast.success('Coupon deleted');
+    } catch {
+      toast.error('Failed to delete coupon');
+    }
+  };
+
+  const setField = <K extends keyof CouponForm>(k: K, v: CouponForm[K]) =>
+    setForm(f => ({ ...f, [k]: v }));
+
+  const typeLabel = (t: string) => t === 'percentage' ? 'Percentage' : t === 'fixed' ? 'Flat' : 'Free Delivery';
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Coupons</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage discount coupons for the platform</p>
+        </div>
+        <Button
+          onClick={openCreate}
+          className="rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" /> New Coupon
+        </Button>
+      </div>
+
+      {/* Create / Edit Form */}
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            className="bg-card rounded-3xl neu-card p-6 space-y-5"
+          >
+            <h3 className="font-bold text-foreground text-lg">
+              {editingId ? 'Edit Coupon' : 'Create Coupon'}
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Code */}
+              <div>
+                <label className="text-sm font-medium block mb-1">
+                  Coupon Code <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  value={form.code}
+                  onChange={e => setField('code', e.target.value.toUpperCase())}
+                  placeholder="e.g. SAVE20"
+                  disabled={!!editingId}
+                  className="bg-background neu-inset border-none font-mono tracking-widest uppercase"
+                />
+                {editingId && (
+                  <p className="text-xs text-muted-foreground mt-1">Code cannot be changed after creation.</p>
+                )}
+              </div>
+
+              {/* Type */}
+              <div>
+                <label className="text-sm font-medium block mb-1">Discount Type <span className="text-destructive">*</span></label>
+                <select
+                  value={form.type}
+                  onChange={e => setField('type', e.target.value as 'percentage' | 'fixed')}
+                  disabled={!!editingId}
+                  className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer"
+                >
+                  <option value="percentage">Percentage (%)</option>
+                  <option value="fixed">Flat (₹)</option>
+                </select>
+              </div>
+
+              {/* Value */}
+              <div>
+                <label className="text-sm font-medium block mb-1">
+                  Discount Value <span className="text-destructive">*</span>
+                  <span className="ml-1 text-muted-foreground font-normal">
+                    ({form.type === 'percentage' ? '%' : '₹'})
+                  </span>
+                </label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={form.type === 'percentage' ? 100 : undefined}
+                  value={form.value}
+                  onChange={e => setField('value', e.target.value)}
+                  placeholder={form.type === 'percentage' ? '10' : '50'}
+                  className="bg-background neu-inset border-none"
+                />
+              </div>
+
+              {/* Min order */}
+              <div>
+                <label className="text-sm font-medium block mb-1">Minimum Order (₹)</label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={form.minimumOrder}
+                  onChange={e => setField('minimumOrder', e.target.value)}
+                  placeholder="0"
+                  className="bg-background neu-inset border-none"
+                />
+              </div>
+
+              {/* Max discount — percentage only */}
+              {form.type === 'percentage' && (
+                <div>
+                  <label className="text-sm font-medium block mb-1">
+                    Max Discount (₹)
+                    <span className="ml-1 text-muted-foreground font-normal text-xs">optional cap</span>
+                  </label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={form.maximumDiscount}
+                    onChange={e => setField('maximumDiscount', e.target.value)}
+                    placeholder="e.g. 200"
+                    className="bg-background neu-inset border-none"
+                  />
+                </div>
+              )}
+
+              {/* Expiry */}
+              <div>
+                <label className="text-sm font-medium block mb-1">
+                  Expiry Date <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  type="date"
+                  value={form.expiryDate}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={e => setField('expiryDate', e.target.value)}
+                  className="bg-background neu-inset border-none"
+                />
+              </div>
+
+              {/* Usage limit */}
+              <div>
+                <label className="text-sm font-medium block mb-1">
+                  Usage Limit
+                  <span className="ml-1 text-muted-foreground font-normal text-xs">0 = unlimited</span>
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={form.usageLimit}
+                  onChange={e => setField('usageLimit', e.target.value)}
+                  placeholder="0"
+                  className="bg-background neu-inset border-none"
+                />
+              </div>
+
+              {/* Status toggle */}
+              <div className="flex items-center gap-3 self-end pb-1">
+                <button
+                  type="button"
+                  onClick={() => setField('isActive', !form.isActive)}
+                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${form.isActive ? 'bg-primary' : 'bg-muted'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${form.isActive ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+                <span className="text-sm text-muted-foreground">{form.isActive ? 'Active — usable by customers' : 'Inactive — disabled'}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-1">
+              <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-xl">Cancel</Button>
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className="rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {saving ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Saving…</> : editingId ? 'Update Coupon' : 'Create Coupon'}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Coupon list */}
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => <div key={i} className="h-20 bg-muted rounded-2xl animate-pulse" />)}
+        </div>
+      ) : coupons.length === 0 ? (
+        <div className="bg-card rounded-3xl neu-card p-16 text-center">
+          <Tag className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-25" />
+          <p className="font-semibold text-muted-foreground">No coupons yet</p>
+          <p className="text-sm text-muted-foreground mt-1">Create your first coupon to offer discounts to customers.</p>
+        </div>
+      ) : (
+        <div className="bg-card rounded-3xl neu-card overflow-hidden">
+          <div className="p-5 border-b border-border flex items-center justify-between">
+            <h3 className="font-bold text-foreground">All Coupons ({coupons.length})</h3>
+            <span className="text-xs text-muted-foreground">Latest first</span>
+          </div>
+
+          {/* Table header — desktop */}
+          <div className="hidden md:grid grid-cols-[1fr_90px_90px_100px_100px_80px_80px_110px] gap-3 px-5 py-3 border-b border-border/50 bg-muted/30">
+            {['Code', 'Type', 'Value', 'Min Order', 'Expiry', 'Limit', 'Used', 'Status / Actions'].map(h => (
+              <span key={h} className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</span>
+            ))}
+          </div>
+
+          <div className="divide-y divide-border/50">
+            {coupons.map(c => {
+              const expired = new Date(c.expiryDate) < new Date();
+              const exhausted = c.usageLimit > 0 && c.usedCount >= c.usageLimit;
+              const isDeleting = deleteConfirm === c._id;
+
+              return (
+                <div key={c._id}>
+                  {/* Desktop row */}
+                  <div className="hidden md:grid grid-cols-[1fr_90px_90px_100px_100px_80px_80px_110px] gap-3 px-5 py-4 items-center">
+                    <span className="font-mono font-bold text-sm text-foreground tracking-wider">{c.code}</span>
+                    <span className="text-sm text-muted-foreground">{typeLabel(c.type)}</span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {c.type === 'percentage' ? `${c.value}%` : formatINR(c.value)}
+                      {c.type === 'percentage' && c.maximumDiscount ? <span className="text-xs text-muted-foreground font-normal ml-1">max {formatINR(c.maximumDiscount)}</span> : null}
+                    </span>
+                    <span className="text-sm text-muted-foreground">{c.minimumOrder > 0 ? formatINR(c.minimumOrder) : '—'}</span>
+                    <span className={`text-sm ${expired ? 'text-destructive' : 'text-muted-foreground'}`}>
+                      {new Date(c.expiryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </span>
+                    <span className="text-sm text-muted-foreground">{c.usageLimit > 0 ? c.usageLimit : '∞'}</span>
+                    <span className={`text-sm font-semibold ${exhausted ? 'text-destructive' : 'text-foreground'}`}>{c.usedCount}</span>
+                    <div className="flex items-center gap-1.5">
+                      <Badge className={`text-[10px] border-none px-2 py-0 shrink-0 ${
+                        expired ? 'bg-red-500/10 text-red-600' :
+                        exhausted ? 'bg-amber-500/10 text-amber-600' :
+                        c.isActive ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {expired ? 'Expired' : exhausted ? 'Exhausted' : c.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                      {!expired && (
+                        <button
+                          onClick={() => handleToggleActive(c)}
+                          title={c.isActive ? 'Disable' : 'Enable'}
+                          className={`relative w-8 h-4.5 rounded-full transition-colors duration-200 shrink-0 ${c.isActive ? 'bg-primary' : 'bg-muted'}`}
+                          style={{ height: '18px', width: '32px' }}
+                        >
+                          <span className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow transition-transform duration-200 ${c.isActive ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => openEdit(c)}
+                        className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm(c._id)}
+                        className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mobile card */}
+                  <div className="md:hidden p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-base text-foreground tracking-wider">{c.code}</span>
+                      <Badge className={`text-[10px] border-none px-2 py-0 ${
+                        expired ? 'bg-red-500/10 text-red-600' :
+                        exhausted ? 'bg-amber-500/10 text-amber-600' :
+                        c.isActive ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {expired ? 'Expired' : exhausted ? 'Exhausted' : c.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                      <span>{typeLabel(c.type)} · {c.type === 'percentage' ? `${c.value}%` : formatINR(c.value)}</span>
+                      {c.minimumOrder > 0 && <span>Min {formatINR(c.minimumOrder)}</span>}
+                      <span className={expired ? 'text-destructive' : ''}>
+                        Expires {new Date(c.expiryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                      </span>
+                      <span>Used {c.usedCount}{c.usageLimit > 0 ? `/${c.usageLimit}` : ''}</span>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      {!expired && (
+                        <button
+                          onClick={() => handleToggleActive(c)}
+                          className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${c.isActive ? 'bg-primary' : 'bg-muted'}`}
+                        >
+                          <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${c.isActive ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </button>
+                      )}
+                      <button onClick={() => openEdit(c)} className="p-2 rounded-xl hover:bg-muted text-muted-foreground transition-colors"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => setDeleteConfirm(c._id)} className="p-2 rounded-xl hover:bg-destructive/10 text-destructive transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+
+                  {/* Delete confirm inline */}
+                  {isDeleting && (
+                    <div className="px-5 py-3 bg-destructive/5 border-t border-destructive/20 flex items-center justify-between gap-3">
+                      <span className="text-sm text-destructive font-medium">Delete coupon <span className="font-mono font-bold">{c.code}</span>? This cannot be undone.</span>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setDeleteConfirm(null)} className="rounded-lg h-8">Cancel</Button>
+                        <Button size="sm" onClick={() => handleDelete(c._id)} className="rounded-lg h-8 bg-destructive text-white hover:bg-destructive/90 shadow-none">Delete</Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
