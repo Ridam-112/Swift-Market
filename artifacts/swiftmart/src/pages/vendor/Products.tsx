@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { PackageOpen, Plus, Edit, Trash2, Loader2, AlertCircle } from "lucide-react";
+
 import { formatINR } from "@/lib/currency";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -175,9 +176,11 @@ export default function VendorProducts() {
               </div>
 
               <div className="flex gap-2 self-end sm:self-auto w-full sm:w-auto">
-                <Button variant="outline" className="flex-1 sm:flex-none rounded-xl neu-inset shadow-none border-none hover:bg-background/80" disabled>
-                  <Edit className="w-4 h-4 mr-2 sm:mr-0" /> <span className="sm:hidden">Edit</span>
-                </Button>
+                <Link href={`/vendor/edit-product/${product._id}`} className="flex-1 sm:flex-none">
+                  <Button variant="outline" className="w-full rounded-xl neu-inset shadow-none border-none hover:bg-background/80">
+                    <Edit className="w-4 h-4 mr-2 sm:mr-0" /> <span className="sm:hidden">Edit</span>
+                  </Button>
+                </Link>
                 <Button
                   variant="outline"
                   className="flex-1 sm:flex-none rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 border-none shadow-none"

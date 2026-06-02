@@ -44,7 +44,7 @@ const STATUS_FLOW: Record<string, { label: string; next: string[]; color: string
   accepted:         { label: 'Accepted',          next: ['preparing', 'cancelled'], color: 'text-amber-500 bg-amber-500/10' },
   preparing:        { label: 'Preparing',         next: ['packed', 'cancelled'], color: 'text-orange-500 bg-orange-500/10' },
   packed:           { label: 'Packed',            next: ['out_for_delivery'], color: 'text-indigo-500 bg-indigo-500/10' },
-  out_for_delivery: { label: 'Out for Delivery',  next: ['delivered'], color: 'text-purple-500 bg-purple-500/10' },
+  out_for_delivery: { label: 'Out for Delivery',  next: [], color: 'text-purple-500 bg-purple-500/10' },
   delivered:        { label: 'Delivered',         next: [], color: 'text-emerald-500 bg-emerald-500/10' },
   cancelled:        { label: 'Cancelled',         next: [], color: 'text-red-500 bg-red-500/10' },
 };
