@@ -12,14 +12,25 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
   const { shopId, category, status = "active", search, page = "1", limit = "20", pincode } =
     req.query as Record<string, string>;
   const filter: Record<string, unknown> = { status };
-  if (shopId) filter["shopId"] = shopId;
   if (category) filter["category"] = category;
   if (search) filter["name"] = { $regex: search, $options: "i" };
 
   if (pincode) {
-    const pincodeShops = await Shop.find({ "address.pincode": pincode, status: "approved" }).select("_id");
-    const shopIds = pincodeShops.map(s => String(s._id));
-    filter["shopId"] = { $in: shopIds };
+    // pincode browse — only approved shops in that pincode
+    const pincodeShops = await Shop.find({ "address.pincode": pincode, status: "approved" }).select("_id").lean();
+    filter["shopId"] = { $in: pincodeShops.map(s => String(s._id)) };
+  } else if (shopId) {
+    // specific shop page — verify shop is approved before returning products
+    const shop = await Shop.findById(shopId).select("status").lean();
+    if (!shop || shop.status !== "approved") {
+      res.json({ success: true, products: [], total: 0, page: 1, pages: 0 });
+      return;
+    }
+    filter["shopId"] = shopId;
+  } else {
+    // general browse (homepage, category, search) — only products from approved shops
+    const approvedShops = await Shop.find({ status: "approved" }).select("_id").lean();
+    filter["shopId"] = { $in: approvedShops.map(s => String(s._id)) };
   }
 
   const skip = (parseInt(page) - 1) * parseInt(limit);

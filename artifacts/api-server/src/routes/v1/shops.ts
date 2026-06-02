@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { Shop } from "../../models/Shop.js";
 import { User } from "../../models/User.js";
+import { Product } from "../../models/Product.js";
 import { Notification } from "../../models/Notification.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 
@@ -96,13 +97,17 @@ router.post("/:id/unban", authenticate, A, async (req: AuthRequest, res: Respons
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const shop = await Shop.findById(req.params["id"]);
   if (shop) {
-    await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "none", role: "customer" });
-    await Notification.create({
-      userId: shop.ownerId,
-      type: "system",
-      title: "Shop Removed",
-      message: "Your shop has been removed by admin. Please register again to continue selling.",
-    });
+    const shopIdStr = shop._id.toString();
+    await Promise.all([
+      Product.deleteMany({ shopId: shopIdStr }),
+      User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "none", role: "customer" }),
+      Notification.create({
+        userId: shop.ownerId,
+        type: "system",
+        title: "Shop Removed",
+        message: "Your shop has been removed by admin. Please register again to continue selling.",
+      }),
+    ]);
     await shop.deleteOne();
   }
   res.json({ success: true, message: "Shop deleted" });
