@@ -31,6 +31,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/uploads", express.static(path.join(__dirname, "..", "uploads")));
 app.use("/api", router);
 
+// In production: serve the built React frontend and handle SPA routing
+if (process.env.NODE_ENV === "production") {
+  const frontendDist = path.join(__dirname, "..", "..", "swiftmart", "dist", "public");
+  app.use(express.static(frontendDist));
+  app.get("*", (_req: Request, res: Response) => {
+    res.sendFile(path.join(frontendDist, "index.html"));
+  });
+}
+
 // Global error handler
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   logger.error({ err }, "Unhandled error");

@@ -3,6 +3,8 @@ modules = ["nodejs-20", "web", "bash"]
 [deployment]
 router = "application"
 deploymentTarget = "autoscale"
+run = ["bash", "-c", "NODE_ENV=production PORT=8080 node --enable-source-maps artifacts/api-server/dist/index.mjs"]
+build = ["bash", "-c", "pnpm --filter @workspace/swiftmart run build && pnpm --filter @workspace/api-server run build"]
 
 [deployment.postBuild]
 args = ["pnpm", "store", "prune"]
@@ -20,10 +22,6 @@ author = "agent"
 task = "workflow.run"
 args = "Start application"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Start API server"
-
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -36,18 +34,6 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
-
-[[workflows.workflow]]
-name = "Start API server"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pnpm --filter @workspace/api-server run dev"
-waitForPort = 8080
-
-[workflows.workflow.metadata]
-outputType = "console"
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
