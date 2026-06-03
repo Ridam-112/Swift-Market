@@ -42,6 +42,8 @@ export interface IOrder extends Document {
     pincode: string;
   };
   couponCode?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
   refundedAt?: Date;
   cancelReason?: string;
   createdAt: Date;
@@ -96,6 +98,8 @@ const OrderSchema = new Schema<IOrder>(
       pincode: { type: String, required: true },
     },
     couponCode: String,
+    razorpayOrderId: String,
+    razorpayPaymentId: String,
     refundedAt: Date,
     cancelReason: String,
   },
