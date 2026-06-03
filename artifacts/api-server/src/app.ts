@@ -35,7 +35,7 @@ app.use("/api", router);
 if (process.env.NODE_ENV === "production") {
   const frontendDist = path.join(__dirname, "..", "..", "swiftmart", "dist", "public");
   app.use(express.static(frontendDist));
-  app.get("*", (_req: Request, res: Response) => {
+  app.get("/{*splat}", (_req: Request, res: Response) => {
     res.sendFile(path.join(frontendDist, "index.html"));
   });
 }
