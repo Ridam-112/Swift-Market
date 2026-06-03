@@ -46,6 +46,7 @@ interface RazorpayResponse {
 
 interface RazorpayOrderResponse {
   success: boolean;
+  keyId: string;
   order: {
     id: string;
     amount: number;
@@ -214,7 +215,7 @@ export default function Checkout() {
         }
 
         const rzp = new window.Razorpay({
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+          key: rzpOrderData.keyId,
           amount: rzpOrderData.order.amount,
           currency: rzpOrderData.order.currency,
           name: "SwiftMart",

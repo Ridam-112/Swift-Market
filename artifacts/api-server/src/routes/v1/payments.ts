@@ -27,6 +27,7 @@ router.post("/create-order", authenticate, async (req: AuthRequest, res: Respons
     return;
   }
 
+  const keyId = process.env.RAZORPAY_KEY_ID!;
   const razorpay = getRazorpay();
   const order = await razorpay.orders.create({
     amount: Math.round(amount * 100),
@@ -34,7 +35,7 @@ router.post("/create-order", authenticate, async (req: AuthRequest, res: Respons
     receipt: receipt ?? `rcpt_${Date.now()}`,
   });
 
-  res.json({ success: true, order });
+  res.json({ success: true, order, keyId });
 });
 
 // POST /api/v1/payments/verify
