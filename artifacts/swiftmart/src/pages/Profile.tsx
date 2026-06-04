@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation, Link } from "wouter";
+import { api } from "@/lib/api";
+import { Address } from "@/types";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,9 +20,10 @@ const SUPPORTED_PINCODES = [
 ];
 
 export default function Profile() {
-  const { user, logout, updateUser, addAddress, deleteAddress, setRole, role, isAdmin } = useAuth();
+  const { user, logout, updateUser, addAddress, deleteAddress, updateAddress, setRole, role, isAdmin } = useAuth();
   const [, setLocation] = useLocation();
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -30,7 +33,10 @@ export default function Profile() {
     return null;
   }
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
+    try {
+      await api.patch("/users/me/profile", { name, email });
+    } catch { /* ignore, updateUser handles local state */ }
     updateUser({ name, email });
     setIsEditing(false);
     toast.success("Profile updated");
@@ -207,7 +213,7 @@ export default function Profile() {
 
         {showAddressForm && (
           <div className="mb-4">
-            <AddressForm 
+            <AddressForm
               onSubmit={(addr) => {
                 addAddress(addr);
                 setShowAddressForm(false);
@@ -218,12 +224,27 @@ export default function Profile() {
           </div>
         )}
 
+        {editingAddress && (
+          <div className="mb-4">
+            <AddressForm
+              initialValues={editingAddress}
+              onSubmit={(addr) => {
+                updateAddress(addr);
+                setEditingAddress(null);
+                toast.success("Address updated");
+              }}
+              onCancel={() => setEditingAddress(null)}
+            />
+          </div>
+        )}
+
         <div className="grid gap-3">
           {user.addresses.map(addr => (
-            <AddressCard 
+            <AddressCard
               key={addr.id}
               address={addr}
-              onDelete={() => deleteAddress(addr.id)}
+              onEdit={() => { setEditingAddress(addr); setShowAddressForm(false); }}
+              onDelete={() => { deleteAddress(addr.id); toast.success("Address removed"); }}
             />
           ))}
           {user.addresses.length === 0 && !showAddressForm && (

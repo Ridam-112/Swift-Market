@@ -19,6 +19,7 @@ interface AuthContextType {
   updateUser: (user: Partial<User>) => void;
   addAddress: (address: Address) => void;
   deleteAddress: (id: string) => void;
+  updateAddress: (address: Address) => void;
   updatePincode: (pincode: string) => Promise<void>;
   loginWithPhone: (phone: string) => Promise<void>;
   verifyOtp: (otp: string, phone: string) => Promise<{ isNewUser: boolean; user?: User }>;
@@ -211,12 +212,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const persistAddresses = async (addresses: Address[]) => {
+    try {
+      const data = await api.patch<{ success: boolean; user: ApiUser }>("/users/me/profile", { addresses });
+      const u = apiUserToFrontend(data.user);
+      setUser(u);
+      localStorage.setItem("sm_user", JSON.stringify(u));
+    } catch { /* local state already updated optimistically */ }
+  };
+
   const addAddress = (address: Address) => {
-    if (user) updateUser({ addresses: [...user.addresses, address] });
+    if (!user) return;
+    const updated = [...user.addresses, address];
+    updateUser({ addresses: updated });
+    void persistAddresses(updated);
   };
 
   const deleteAddress = (id: string) => {
-    if (user) updateUser({ addresses: user.addresses.filter(a => a.id !== id) });
+    if (!user) return;
+    const updated = user.addresses.filter(a => a.id !== id);
+    updateUser({ addresses: updated });
+    void persistAddresses(updated);
+  };
+
+  const updateAddress = (address: Address) => {
+    if (!user) return;
+    const updated = user.addresses.map(a => a.id === address.id ? address : a);
+    updateUser({ addresses: updated });
+    void persistAddresses(updated);
   };
 
   const updatePincode = async (pincode: string): Promise<void> => {
@@ -387,7 +410,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, userRole, role, isAdmin, isLoading, selectedDeliveryAddress, setSelectedDeliveryAddress,
-      login, logout, setRole, updateUser, addAddress, deleteAddress, updatePincode,
+      login, logout, setRole, updateUser, addAddress, deleteAddress, updateAddress, updatePincode,
       loginWithPhone, verifyOtp, loginWithGoogle, completeOnboarding,
       applications, submitVendorApplication, approveApplication, rejectApplication,
       adminCustomers, banCustomer, unbanCustomer, bannedVendorIds, banVendor, unbanVendor, removeVendor,

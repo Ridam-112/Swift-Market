@@ -7,9 +7,10 @@ interface AddressCardProps {
   selected?: boolean;
   onClick?: () => void;
   onDelete?: () => void;
+  onEdit?: () => void;
 }
 
-export function AddressCard({ address, selected, onClick, onDelete }: AddressCardProps) {
+export function AddressCard({ address, selected, onClick, onDelete, onEdit }: AddressCardProps) {
   const Icon = address.label === 'Home' ? Home : address.label === 'Work' ? Briefcase : MapPin;
 
   return (
@@ -37,14 +38,24 @@ export function AddressCard({ address, selected, onClick, onDelete }: AddressCar
               {address.label}
               {selected && <Check className="w-4 h-4 text-primary" />}
             </h4>
-            {onDelete && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                className="text-xs text-destructive hover:underline p-1"
-              >
-                Delete
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {onEdit && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                  className="text-xs text-primary hover:underline p-1"
+                >
+                  Edit
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                  className="text-xs text-destructive hover:underline p-1"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
           </div>
           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
             {address.line1}{address.line2 ? `, ${address.line2}` : ''}, {address.city}, {address.pincode}

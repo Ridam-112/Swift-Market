@@ -9,14 +9,15 @@ import { isServicePincode, getServiceAreaName } from "@/lib/serviceArea";
 interface AddressFormProps {
   onSubmit: (address: Address) => void;
   onCancel: () => void;
+  initialValues?: Partial<Address>;
 }
 
-export function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
-  const [label, setLabel] = useState<'Home' | 'Work' | 'Other'>('Home');
-  const [line1, setLine1] = useState("");
-  const [line2, setLine2] = useState("");
-  const [city, setCity] = useState("");
-  const [pincode, setPincode] = useState("");
+export function AddressForm({ onSubmit, onCancel, initialValues }: AddressFormProps) {
+  const [label, setLabel] = useState<'Home' | 'Work' | 'Other'>((initialValues?.label as 'Home' | 'Work' | 'Other') ?? 'Home');
+  const [line1, setLine1] = useState(initialValues?.line1 ?? "");
+  const [line2, setLine2] = useState(initialValues?.line2 ?? "");
+  const [city, setCity] = useState(initialValues?.city ?? "");
+  const [pincode, setPincode] = useState(initialValues?.pincode ?? "");
 
   const pincodeValid = pincode.length === 6 && isServicePincode(pincode);
   const pincodeOutOfArea = pincode.length === 6 && !isServicePincode(pincode);
@@ -28,7 +29,7 @@ export function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
     if (!pincodeValid) return;
 
     onSubmit({
-      id: `a_${Date.now()}`,
+      id: initialValues?.id ?? `a_${Date.now()}`,
       label,
       line1,
       line2,

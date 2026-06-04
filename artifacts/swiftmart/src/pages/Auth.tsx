@@ -10,11 +10,11 @@ import { Loader2, ArrowRight, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isServicePincode, getServiceAreaName } from "@/lib/serviceArea";
 
-type Step = 'login' | 'otp' | 'onboarding';
+type Step = 'login' | 'otp' | 'onboarding' | 'address';
 
 export default function Auth() {
   const [, setLocation] = useLocation();
-  const { user, loginWithPhone, verifyOtp, loginWithGoogle, completeOnboarding } = useAuth();
+  const { user, loginWithPhone, verifyOtp, loginWithGoogle, completeOnboarding, addAddress } = useAuth();
 
   const [step, setStep] = useState<Step>('login');
   const [phone, setPhone] = useState("");
@@ -35,6 +35,7 @@ export default function Auth() {
   const [city, setCity] = useState("");
   const [pincode, setPincode] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
 
   const pincodeValid = pincode.length === 6 && isServicePincode(pincode);
   const pincodeOutOfArea = pincode.length === 6 && !isServicePincode(pincode);
@@ -101,6 +102,8 @@ export default function Auth() {
       const result = await verifyOtp(otpString, phone);
       if (result.isNewUser) {
         setStep('onboarding');
+      } else if (!result.user?.addresses?.length) {
+        setStep('address');
       } else {
         toast.success("Welcome back!");
         setLocation("/");
@@ -410,6 +413,110 @@ export default function Auth() {
                     ? <Loader2 className="w-5 h-5 animate-spin" />
                     : <><span>Start Shopping</span> <ArrowRight className="w-5 h-5 ml-2" /></>
                   }
+                </Button>
+              </form>
+            </motion.div>
+          )}
+
+          {step === 'address' && (
+            <motion.div key="address" variants={slideVariants} initial="initial" animate="animate" exit="exit" className="bg-card p-6 md:p-8 rounded-[2rem] neu-card space-y-6">
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl font-bold">Add Delivery Address</h2>
+                <p className="text-muted-foreground">Where should we deliver your orders?</p>
+              </div>
+
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (!addressLine1.trim()) { toast.error("Please enter your address"); return; }
+                if (!addressArea.trim()) { toast.error("Please enter your area"); return; }
+                if (!city.trim()) { toast.error("Please enter your city"); return; }
+                if (pincodeOutOfArea) { toast.error("SwiftMart is not available in your area yet."); return; }
+                if (!pincodeValid) { toast.error("Please enter a valid service-area pincode"); return; }
+                setIsSavingAddress(true);
+                try {
+                  addAddress({
+                    id: `a_${Date.now()}`,
+                    label: addressLabel,
+                    line1: addressLine1,
+                    line2: addressArea,
+                    city,
+                    pincode,
+                  });
+                  toast.success("Address saved! Welcome back!");
+                  setLocation("/");
+                } catch {
+                  toast.error("Failed to save address. Please try again.");
+                } finally {
+                  setIsSavingAddress(false);
+                }
+              }} className="space-y-4">
+                <div className="flex gap-2">
+                  {(['Home', 'Work', 'Other'] as const).map(label => (
+                    <div
+                      key={label}
+                      onClick={() => setAddressLabel(label)}
+                      className={cn(
+                        "px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all flex-1 text-center",
+                        addressLabel === label ? "bg-primary text-primary-foreground neu-card shadow-none" : "bg-background neu-inset text-muted-foreground"
+                      )}
+                    >
+                      {label}
+                    </div>
+                  ))}
+                </div>
+
+                <Input
+                  placeholder="House/Flat No., Building Name, Street"
+                  value={addressLine1}
+                  onChange={e => setAddressLine1(e.target.value)}
+                  className="bg-background neu-inset border-none h-12 rounded-xl"
+                />
+                <Input
+                  placeholder="Area / Locality / Mohalla"
+                  value={addressArea}
+                  onChange={e => setAddressArea(e.target.value)}
+                  className="bg-background neu-inset border-none h-12 rounded-xl"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    placeholder="City"
+                    value={city}
+                    onChange={e => setCity(e.target.value)}
+                    className="bg-background neu-inset border-none h-12 rounded-xl"
+                  />
+                  <div className="relative">
+                    <Input
+                      placeholder="Pincode"
+                      value={pincode}
+                      onChange={e => setPincode(e.target.value.replace(/\D/g, ''))}
+                      maxLength={6}
+                      className="bg-background neu-inset border-none h-12 rounded-xl pr-9"
+                    />
+                    {pincodeValid && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />}
+                    {pincodeOutOfArea && <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-destructive" />}
+                  </div>
+                </div>
+                {pincodeValid && (
+                  <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> SwiftMart delivers to {areaName}!
+                  </p>
+                )}
+                {pincodeOutOfArea && (
+                  <div className="bg-destructive/10 text-destructive rounded-xl p-3 text-sm">
+                    <p className="font-semibold">Sorry, not available in your area yet.</p>
+                    <p className="text-xs mt-0.5">Use pincode 733101 or 733103.</p>
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={isSavingAddress || pincodeOutOfArea || !addressLine1.trim() || !addressArea.trim() || !city.trim() || !pincodeValid}
+                  className="w-full rounded-2xl h-14 text-lg font-bold shadow-none neu-card mt-2"
+                >
+                  {isSavingAddress ? <Loader2 className="w-5 h-5 animate-spin" /> : <><span>Save & Continue</span> <ArrowRight className="w-5 h-5 ml-2" /></>}
+                </Button>
+                <Button type="button" variant="ghost" className="w-full text-muted-foreground" onClick={() => { toast.success("Welcome back!"); setLocation("/"); }}>
+                  Skip for now
                 </Button>
               </form>
             </motion.div>

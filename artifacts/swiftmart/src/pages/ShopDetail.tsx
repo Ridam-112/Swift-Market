@@ -6,7 +6,7 @@ import { useShops } from "@/hooks/useShops";
 import { useProducts } from "@/hooks/useProducts";
 import { ProductGrid } from "@/components/ProductGrid";
 import { EmptyState } from "@/components/EmptyState";
-import { ArrowLeft, Star, Clock, MapPin, PackageOpen, Store } from "lucide-react";
+import { ArrowLeft, Star, Clock, MapPin, PackageOpen, Store, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
