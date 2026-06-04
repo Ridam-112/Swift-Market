@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { Product } from "../../models/Product.js";
 import { Shop } from "../../models/Shop.js";
+import { Category } from "../../models/Category.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { deleteFromCloudinary } from "../../lib/cloudinary.js";
 
@@ -25,6 +26,23 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
 
   if (category) filter["category"] = category;
   if (search) filter["name"] = { $regex: search, $options: "i" };
+
+  // For customer-facing active queries, restrict to active categories only
+  if (status === "active") {
+    const activeCategories = await Category.find({ isActive: true }).select("slug").lean();
+    if (activeCategories.length > 0) {
+      const activeSlugs = activeCategories.map(c => c.slug);
+      if (category) {
+        // If caller requested a specific category, only proceed if it's active
+        if (!activeSlugs.includes(category)) {
+          res.json({ success: true, products: [], total: 0, page: 1, pages: 0 });
+          return;
+        }
+      } else {
+        filter["category"] = { $in: activeSlugs };
+      }
+    }
+  }
 
   if (pincode) {
     // pincode browse — only approved shops in that pincode

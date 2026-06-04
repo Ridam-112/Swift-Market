@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { Shop } from "../../models/Shop.js";
+import { ShopType } from "../../models/ShopType.js";
 import { User } from "../../models/User.js";
 import { Product } from "../../models/Product.js";
 import { Order } from "../../models/Order.js";
@@ -18,7 +19,6 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     req.query as Record<string, string>;
   const filter: Record<string, unknown> = {};
   if (status) filter["status"] = status;
-  if (shopType) filter["shopType"] = shopType;
   if (category) filter["category"] = { $regex: category, $options: "i" };
   if (city) filter["address.city"] = { $regex: city, $options: "i" };
   if (ownerId) filter["ownerId"] = ownerId;
@@ -30,6 +30,24 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       { phone: { $regex: search, $options: "i" } },
     ];
   }
+
+  // When serving customer-facing approved-shop queries, restrict to active shop types only
+  if (status === "approved" || (!status && !ownerId)) {
+    const activeShopTypes = await ShopType.find({ isActive: true }).select("slug").lean();
+    if (activeShopTypes.length > 0) {
+      const activeSlugs = activeShopTypes.map(st => st.slug);
+      if (shopType) {
+        // If a specific shopType was requested, only return results if that type is active
+        filter["shopType"] = activeSlugs.includes(shopType) ? shopType : "__none__";
+      } else {
+        filter["shopType"] = { $in: activeSlugs };
+      }
+    }
+  } else if (shopType) {
+    // Admin or vendor-specific queries: apply shopType filter as-is
+    filter["shopType"] = shopType;
+  }
+
   const skip = (parseInt(page) - 1) * parseInt(limit);
   const [shops, total] = await Promise.all([
     Shop.find(filter).skip(skip).limit(parseInt(limit)).sort({ createdAt: -1 }),
