@@ -1,11 +1,17 @@
 import { CommissionRule } from "../models/CommissionRule.js";
 
-export async function resolveCommissionRate(opts: {
+export interface ResolvedCommission {
+  rate: number;
+  type: "percentage" | "fixed";
+  level: string;
+}
+
+export async function resolveCommission(opts: {
   productId?: string;
   vendorId?: string;
   categorySlug?: string;
   shopTypeSlug?: string;
-}): Promise<number> {
+}): Promise<ResolvedCommission> {
   const rules = await CommissionRule.find({ isActive: true });
 
   const find = (level: string, targetId?: string) =>
@@ -13,20 +19,39 @@ export async function resolveCommissionRate(opts: {
 
   if (opts.productId) {
     const r = find("product", opts.productId);
-    if (r) return r.rate;
+    if (r) return { rate: r.rate, type: r.type ?? "percentage", level: "product" };
   }
   if (opts.vendorId) {
     const r = find("vendor", opts.vendorId);
-    if (r) return r.rate;
+    if (r) return { rate: r.rate, type: r.type ?? "percentage", level: "vendor" };
   }
   if (opts.categorySlug) {
     const r = find("category", opts.categorySlug);
-    if (r) return r.rate;
+    if (r) return { rate: r.rate, type: r.type ?? "percentage", level: "category" };
   }
   if (opts.shopTypeSlug) {
     const r = find("shop_type", opts.shopTypeSlug);
-    if (r) return r.rate;
+    if (r) return { rate: r.rate, type: r.type ?? "percentage", level: "shop_type" };
   }
   const global = find("global");
-  return global?.rate ?? 5;
+  if (global) return { rate: global.rate, type: global.type ?? "percentage", level: "global" };
+  return { rate: 5, type: "percentage", level: "default" };
+}
+
+export function calculateCommissionAmount(netAmount: number, resolved: ResolvedCommission): number {
+  if (resolved.type === "fixed") {
+    return +Math.min(resolved.rate, netAmount).toFixed(2);
+  }
+  return +(netAmount * resolved.rate / 100).toFixed(2);
+}
+
+/** Backward-compat shim — returns rate number only */
+export async function resolveCommissionRate(opts: {
+  productId?: string;
+  vendorId?: string;
+  categorySlug?: string;
+  shopTypeSlug?: string;
+}): Promise<number> {
+  const r = await resolveCommission(opts);
+  return r.rate;
 }

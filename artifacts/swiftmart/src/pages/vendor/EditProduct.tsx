@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useProducts } from "@/hooks/useProducts";
-import { categories } from "@/data/categories";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +24,15 @@ interface ApiProduct {
   image?: string;
 }
 
+interface ApiCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  emoji?: string;
+  subcategories?: string[];
+  isActive: boolean;
+}
+
 export default function EditProduct() {
   const params = useParams<{ id: string }>();
   const productId = params.id;
@@ -44,6 +52,14 @@ export default function EditProduct() {
   const [image, setImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const [apiCategories, setApiCategories] = useState<ApiCategory[]>([]);
+
+  useEffect(() => {
+    api.get<{ success: boolean; categories: ApiCategory[] }>("/categories")
+      .then(d => setApiCategories(d.categories ?? []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!productId) {
@@ -68,7 +84,7 @@ export default function EditProduct() {
       .finally(() => setLoadingProduct(false));
   }, [productId]);
 
-  const selectedCat = categories.find(c => c.id === category);
+  const selectedCat = apiCategories.find(c => c.slug === category);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -238,8 +254,8 @@ export default function EditProduct() {
                   required
                 >
                   <option value="" disabled>Select category</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
+                  {apiCategories.map(c => (
+                    <option key={c._id} value={c.slug}>{c.emoji ?? ""} {c.name}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />

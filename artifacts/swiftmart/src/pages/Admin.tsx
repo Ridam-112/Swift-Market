@@ -12,7 +12,7 @@ import {
   XCircle, Clock, Search, Shield, Star, ShoppingBag, Trash2, Eye, EyeOff,
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, Send,
-  ImageIcon, Plus, Edit2, Tag
+  ImageIcon, Plus, Edit2, Tag, Loader2
 } from "lucide-react";
 import { categories } from "@/data/categories";
 import { VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog, Vendor } from "@/types";
@@ -137,7 +137,7 @@ function buildTopProducts(orders: ApiOrder[]) {
     .sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 5);
 }
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts';
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -209,6 +209,9 @@ export default function Admin() {
               {activeSection === 'notifications' && <AdminNotificationsTab />}
               {activeSection === 'hero-banners' && <HeroBannersTab />}
               {activeSection === 'coupons' && <CouponsTab />}
+              {activeSection === 'commissions' && <CommissionsTab />}
+              {activeSection === 'shop-types' && <ShopTypesTab />}
+              {activeSection === 'payouts' && <PayoutsTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -244,6 +247,9 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'hero-banners', label: 'Hero Banners', icon: ImageIcon },
     { id: 'coupons', label: 'Coupons', icon: Tag },
+    { id: 'commissions', label: 'Commissions', icon: Award },
+    { id: 'shop-types', label: 'Shop Types', icon: Building2 },
+    { id: 'payouts', label: 'Payouts', icon: CreditCard },
   ];
 
   return (
@@ -3649,7 +3655,7 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
             {products.map(p => {
               const isDeleting = deleteConfirm === p._id;
               const isEditingStock = editingStockId === p._id;
-              const cat = categories.find(c => c.id === p.category);
+              const cat = categories.find((c: { id: string }) => c.id === p.category);
               return (
                 <div key={p._id}>
                   <div className="p-4 flex items-center gap-3">
@@ -3658,7 +3664,7 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-foreground truncate">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">{cat?.emoji ?? ''} {cat?.name ?? p.category} · {p.unit ?? 'piece'}</p>
+                      <p className="text-xs text-muted-foreground">{(cat as { emoji?: string })?.emoji ?? ''} {(cat as { name?: string })?.name ?? p.category} · {p.unit ?? 'piece'}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs font-semibold text-foreground">
                           {p.discountedPrice ? (
@@ -3714,6 +3720,522 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// COMMISSIONS TAB
+// ============================================================================
+
+interface CommissionRuleRecord {
+  _id: string;
+  level: "global" | "shop_type" | "category" | "vendor" | "product";
+  type: "percentage" | "fixed";
+  targetId?: string;
+  targetName?: string;
+  rate: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+const LEVEL_LABELS: Record<string, string> = {
+  global: "Global (all orders)",
+  shop_type: "Shop Type",
+  category: "Category",
+  vendor: "Vendor / Shop",
+  product: "Product",
+};
+
+function levelBadgeClass(level: string) {
+  switch (level) {
+    case "global": return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
+    case "shop_type": return "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300";
+    case "category": return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+    case "vendor": return "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300";
+    case "product": return "bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300";
+    default: return "bg-muted text-muted-foreground";
+  }
+}
+
+const BLANK_RULE = { level: "global" as CommissionRuleRecord["level"], type: "percentage" as CommissionRuleRecord["type"], targetId: "", targetName: "", rate: "5", isActive: true };
+
+function CommissionsTab() {
+  const [rules, setRules] = useState<CommissionRuleRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(BLANK_RULE);
+  const [saving, setSaving] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await api.get<{ success: boolean; rules: CommissionRuleRecord[] }>("/commissions");
+      setRules(d.rules ?? []);
+    } catch { } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const setF = <K extends keyof typeof BLANK_RULE>(k: K, v: (typeof BLANK_RULE)[K]) => setForm(f => ({ ...f, [k]: v }));
+
+  const openAdd = () => { setForm(BLANK_RULE); setEditingId(null); setShowForm(true); };
+  const openEdit = (r: CommissionRuleRecord) => {
+    setForm({ level: r.level, type: r.type ?? "percentage", targetId: r.targetId ?? "", targetName: r.targetName ?? "", rate: String(r.rate), isActive: r.isActive });
+    setEditingId(r._id);
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.rate || isNaN(Number(form.rate)) || Number(form.rate) < 0) { toast.error("Enter a valid rate"); return; }
+    if (form.level !== "global" && !form.targetId.trim() && !form.targetName.trim()) { toast.error("Target ID or name required for non-global rules"); return; }
+    setSaving(true);
+    try {
+      const payload = { level: form.level, type: form.type, targetId: form.targetId || undefined, targetName: form.targetName || undefined, rate: Number(form.rate), isActive: form.isActive };
+      if (editingId) { await api.patch(`/commissions/${editingId}`, payload); toast.success("Rule updated"); }
+      else { await api.post("/commissions", payload); toast.success("Rule created"); }
+      setShowForm(false); load();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Save failed"); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id: string) => {
+    try { await api.delete(`/commissions/${id}`); toast.success("Rule deleted"); setDeleteConfirmId(null); load(); }
+    catch { toast.error("Delete failed"); }
+  };
+
+  const handleToggleActive = async (r: CommissionRuleRecord) => {
+    try { await api.patch(`/commissions/${r._id}`, { isActive: !r.isActive }); load(); }
+    catch { toast.error("Update failed"); }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Commission Rules</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Higher-specificity rules override lower ones. Default is 5% when no rules exist.</p>
+        </div>
+        <Button onClick={openAdd} className="rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90">
+          <Plus className="w-4 h-4 mr-2" /> Add Rule
+        </Button>
+      </div>
+
+      <AnimatePresence>
+        {showForm && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="bg-card rounded-3xl neu-card p-6 space-y-4">
+            <h3 className="font-bold text-foreground">{editingId ? "Edit Rule" : "New Commission Rule"}</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium block mb-1">Level</label>
+                <select value={form.level} onChange={e => { setF("level", e.target.value as CommissionRuleRecord["level"]); setF("targetId", ""); setF("targetName", ""); }}
+                  className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer">
+                  {Object.entries(LEVEL_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Type</label>
+                <select value={form.type} onChange={e => setF("type", e.target.value as CommissionRuleRecord["type"])}
+                  className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer">
+                  <option value="percentage">Percentage (%)</option>
+                  <option value="fixed">Fixed Amount (₹)</option>
+                </select>
+              </div>
+              {form.level !== "global" && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium block mb-1">Target ID <span className="text-xs text-muted-foreground font-normal">(slug / shop ID)</span></label>
+                    <Input value={form.targetId} onChange={e => setF("targetId", e.target.value)} placeholder="e.g. grocery, shop-id-123" className="bg-background neu-inset border-none" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-1">Target Name <span className="text-xs text-muted-foreground font-normal">(label)</span></label>
+                    <Input value={form.targetName} onChange={e => setF("targetName", e.target.value)} placeholder="e.g. Grocery, Fresh Mart" className="bg-background neu-inset border-none" />
+                  </div>
+                </>
+              )}
+              <div>
+                <label className="text-sm font-medium block mb-1">Rate {form.type === "percentage" ? "(%)" : "(₹ fixed)"}</label>
+                <Input type="number" min={0} step={form.type === "percentage" ? "0.1" : "1"} value={form.rate} onChange={e => setF("rate", e.target.value)} placeholder={form.type === "percentage" ? "5" : "50"} className="bg-background neu-inset border-none" />
+              </div>
+              <div className="flex items-center gap-3 self-end pb-1">
+                <button type="button" onClick={() => setF("isActive", !form.isActive)} className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${form.isActive ? "bg-primary" : "bg-muted"}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${form.isActive ? "translate-x-5" : "translate-x-0"}`} />
+                </button>
+                <span className="text-sm text-muted-foreground">{form.isActive ? "Active" : "Inactive"}</span>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-1">
+              <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-xl">Cancel</Button>
+              <Button onClick={handleSave} disabled={saving} className="rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90">
+                {saving ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Saving…</> : editingId ? "Update Rule" : "Create Rule"}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {loading ? (
+        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-muted rounded-2xl animate-pulse" />)}</div>
+      ) : rules.length === 0 ? (
+        <div className="bg-card rounded-3xl neu-card p-16 text-center">
+          <Award className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-25" />
+          <p className="font-semibold text-muted-foreground">No commission rules yet</p>
+          <p className="text-sm text-muted-foreground mt-1">A default 5% rate applies. Add rules to customise per level.</p>
+        </div>
+      ) : (
+        <div className="bg-card rounded-3xl neu-card overflow-hidden">
+          <div className="p-5 border-b border-border flex items-center justify-between">
+            <h3 className="font-bold text-foreground">Rules ({rules.length})</h3>
+            <button onClick={load} className="p-2 hover:bg-muted rounded-xl text-muted-foreground transition-colors" title="Refresh"><RefreshCw className="w-4 h-4" /></button>
+          </div>
+          <div className="divide-y divide-border/50">
+            {rules.map(r => (
+              <div key={r._id}>
+                <div className="p-4 flex items-center gap-3 flex-wrap">
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${levelBadgeClass(r.level)}`}>{LEVEL_LABELS[r.level] ?? r.level}</span>
+                      {r.targetName && <span className="text-sm font-semibold text-foreground">{r.targetName}</span>}
+                      {r.targetId && !r.targetName && <span className="text-sm font-mono text-muted-foreground">{r.targetId}</span>}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {r.type === "fixed" ? `₹${r.rate} fixed per order` : `${r.rate}% of order value`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => handleToggleActive(r)} className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${r.isActive ? "bg-primary" : "bg-muted"}`}>
+                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${r.isActive ? "translate-x-5" : "translate-x-0"}`} />
+                    </button>
+                    <button onClick={() => openEdit(r)} className="p-2 rounded-xl hover:bg-muted text-muted-foreground transition-colors"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={() => setDeleteConfirmId(r._id)} className="p-2 rounded-xl hover:bg-destructive/10 text-destructive transition-colors"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </div>
+                {deleteConfirmId === r._id && (
+                  <div className="px-4 py-3 bg-destructive/5 border-t border-destructive/20 flex items-center justify-between gap-3">
+                    <span className="text-sm text-destructive font-medium">Delete this rule?</span>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setDeleteConfirmId(null)} className="rounded-lg h-8">Cancel</Button>
+                      <Button size="sm" onClick={() => handleDelete(r._id)} className="rounded-lg h-8 bg-destructive text-white hover:bg-destructive/90 shadow-none">Delete</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// SHOP TYPES TAB
+// ============================================================================
+
+interface ApiShopTypeRecord {
+  _id: string;
+  name: string;
+  slug: string;
+  commissionRate?: number;
+  isActive: boolean;
+}
+
+function ShopTypesTab() {
+  const [shopTypes, setShopTypes] = useState<ApiShopTypeRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addName, setAddName] = useState("");
+  const [addRate, setAddRate] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [editingRate, setEditingRate] = useState<{ id: string; value: string } | null>(null);
+  const [deleteConfirmId2, setDeleteConfirmId2] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await api.get<{ success: boolean; shopTypes: ApiShopTypeRecord[] }>("/shop-types");
+      setShopTypes(d.shopTypes ?? []);
+    } catch { } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleToggle = async (st: ApiShopTypeRecord) => {
+    setSaving(st._id);
+    try { await api.patch(`/shop-types/${st._id}`, { isActive: !st.isActive }); load(); }
+    catch { toast.error("Update failed"); } finally { setSaving(null); }
+  };
+
+  const handleSaveRate = async (id: string) => {
+    if (!editingRate) return;
+    const rate = Number(editingRate.value);
+    if (isNaN(rate) || rate < 0) { toast.error("Invalid rate"); return; }
+    setSaving(id);
+    try { await api.patch(`/shop-types/${id}`, { commissionRate: rate }); setEditingRate(null); load(); }
+    catch { toast.error("Update failed"); } finally { setSaving(null); }
+  };
+
+  const handleCreate = async () => {
+    if (!addName.trim()) { toast.error("Name is required"); return; }
+    setCreating(true);
+    try {
+      await api.post("/shop-types", { name: addName.trim(), commissionRate: addRate ? Number(addRate) : undefined });
+      toast.success("Shop type created"); setAddName(""); setAddRate(""); setShowAddForm(false); load();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Create failed"); } finally { setCreating(false); }
+  };
+
+  const handleDeleteType = async (id: string) => {
+    try { await api.delete(`/shop-types/${id}`); toast.success("Deleted"); setDeleteConfirmId2(null); load(); }
+    catch { toast.error("Delete failed"); }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Shop Types</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Enable or disable shop types and set their default commission rates.</p>
+        </div>
+        <Button onClick={() => setShowAddForm(v => !v)} className="rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90">
+          <Plus className="w-4 h-4 mr-2" /> Add Type
+        </Button>
+      </div>
+
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="bg-card rounded-3xl neu-card p-6 space-y-4">
+            <h3 className="font-bold text-foreground">New Shop Type</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium block mb-1">Name <span className="text-destructive">*</span></label>
+                <Input value={addName} onChange={e => setAddName(e.target.value)} placeholder="e.g. Bakery" className="bg-background neu-inset border-none" />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Commission Rate (%) <span className="text-muted-foreground font-normal text-xs">optional</span></label>
+                <Input type="number" min={0} max={100} value={addRate} onChange={e => setAddRate(e.target.value)} placeholder="5" className="bg-background neu-inset border-none" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowAddForm(false)} className="rounded-xl">Cancel</Button>
+              <Button onClick={handleCreate} disabled={creating} className="rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90">
+                {creating ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Creating…</> : "Create Type"}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {loading ? (
+        <div className="space-y-3">{[1, 2, 3, 4].map(i => <div key={i} className="h-16 bg-muted rounded-2xl animate-pulse" />)}</div>
+      ) : shopTypes.length === 0 ? (
+        <div className="bg-card rounded-3xl neu-card p-16 text-center">
+          <Building2 className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-25" />
+          <p className="font-semibold text-muted-foreground">No shop types yet</p>
+          <p className="text-sm text-muted-foreground mt-1">Add shop types to categorise vendor shops and control visibility.</p>
+        </div>
+      ) : (
+        <div className="bg-card rounded-3xl neu-card overflow-hidden">
+          <div className="p-5 border-b border-border flex items-center justify-between">
+            <h3 className="font-bold text-foreground">All Types ({shopTypes.length})</h3>
+            <button onClick={load} className="p-2 hover:bg-muted rounded-xl text-muted-foreground transition-colors" title="Refresh"><RefreshCw className="w-4 h-4" /></button>
+          </div>
+          <div className="divide-y divide-border/50">
+            {shopTypes.map(st => (
+              <div key={st._id}>
+                <div className="p-4 flex items-center gap-3 flex-wrap">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-sm text-foreground">{st.name}</p>
+                      <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">{st.slug}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      {editingRate?.id === st._id ? (
+                        <div className="flex items-center gap-1.5">
+                          <Input type="number" min={0} max={100} value={editingRate.value}
+                            onChange={e => setEditingRate({ id: st._id, value: e.target.value })}
+                            onKeyDown={e => { if (e.key === "Enter") handleSaveRate(st._id); if (e.key === "Escape") setEditingRate(null); }}
+                            className="w-20 h-7 text-xs bg-background neu-inset border-none text-center" autoFocus />
+                          <span className="text-xs text-muted-foreground">%</span>
+                          <button onClick={() => handleSaveRate(st._id)} disabled={saving === st._id} className="p-1 rounded-lg bg-primary text-primary-foreground"><CheckCircle className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setEditingRate(null)} className="p-1 rounded-lg hover:bg-muted text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setEditingRate({ id: st._id, value: String(st.commissionRate ?? "") })} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                          {st.commissionRate != null ? `${st.commissionRate}% commission` : "No rate set — click to add"}
+                          <Edit2 className="w-3 h-3 opacity-60" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${st.isActive ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" : "bg-muted text-muted-foreground"}`}>
+                      {st.isActive ? "Active" : "Disabled"}
+                    </span>
+                    <button onClick={() => handleToggle(st)} disabled={saving === st._id} className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${st.isActive ? "bg-primary" : "bg-muted"}`}>
+                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${st.isActive ? "translate-x-5" : "translate-x-0"}`} />
+                    </button>
+                    <button onClick={() => setDeleteConfirmId2(st._id)} className="p-2 rounded-xl hover:bg-destructive/10 text-destructive transition-colors"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </div>
+                {deleteConfirmId2 === st._id && (
+                  <div className="px-4 py-3 bg-destructive/5 border-t border-destructive/20 flex items-center justify-between gap-3">
+                    <span className="text-sm text-destructive font-medium">Delete <span className="font-bold">{st.name}</span>?</span>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setDeleteConfirmId2(null)} className="rounded-lg h-8">Cancel</Button>
+                      <Button size="sm" onClick={() => handleDeleteType(st._id)} className="rounded-lg h-8 bg-destructive text-white hover:bg-destructive/90 shadow-none">Delete</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// PAYOUTS TAB
+// ============================================================================
+
+interface ApiPayoutRecord {
+  _id: string;
+  vendorId: string;
+  vendorName: string;
+  shopId: string;
+  amount: number;
+  status: "pending" | "processing" | "paid" | "failed";
+  ordersIncluded: string[];
+  paidAt?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+const PAYOUT_FILTER_STATUSES = ["all", "pending", "processing", "paid", "failed"] as const;
+
+function payoutBadgeClass(status: string) {
+  switch (status) {
+    case "pending": return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+    case "processing": return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
+    case "paid": return "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300";
+    case "failed": return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
+    default: return "bg-muted text-muted-foreground";
+  }
+}
+
+function PayoutsTab() {
+  const [payouts, setPayouts] = useState<ApiPayoutRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [notesMap, setNotesMap] = useState<Record<string, string>>({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const q = filterStatus !== "all" ? `?status=${filterStatus}` : "";
+      const d = await api.get<{ success: boolean; payouts: ApiPayoutRecord[] }>(`/payouts${q}`);
+      setPayouts(d.payouts ?? []);
+    } catch { } finally { setLoading(false); }
+  }, [filterStatus]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleUpdateStatus = async (id: string, status: string) => {
+    setUpdatingId(id);
+    try {
+      await api.patch(`/payouts/${id}/status`, { status, notes: notesMap[id] || undefined });
+      toast.success(`Marked as ${status}`); load();
+    } catch { toast.error("Update failed"); } finally { setUpdatingId(null); }
+  };
+
+  const totalPending = payouts.filter(p => p.status === "pending").reduce((s, p) => s + p.amount, 0);
+  const totalPaid = payouts.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Vendor Payouts</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Track and process pending vendor payouts generated from orders.</p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {[
+          { label: "Pending Payout", value: formatINR(totalPending), sub: `${payouts.filter(p => p.status === "pending").length} payouts`, color: "text-amber-600" },
+          { label: "Total Paid Out", value: formatINR(totalPaid), sub: `${payouts.filter(p => p.status === "paid").length} payouts`, color: "text-green-600" },
+          { label: "Total Records", value: String(payouts.length), sub: "across all statuses", color: "text-foreground" },
+        ].map(c => (
+          <div key={c.label} className="bg-card rounded-2xl neu-card p-4">
+            <p className="text-xs text-muted-foreground font-medium">{c.label}</p>
+            <p className={`text-xl font-bold mt-1 ${c.color}`}>{c.value}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{c.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        {PAYOUT_FILTER_STATUSES.map(s => (
+          <button key={s} onClick={() => setFilterStatus(s)}
+            className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors capitalize ${filterStatus === s ? "bg-primary text-primary-foreground" : "bg-card neu-card text-muted-foreground hover:text-foreground"}`}>
+            {s === "all" ? "All" : s}
+          </button>
+        ))}
+        <button onClick={load} className="ml-auto p-2 hover:bg-muted rounded-xl text-muted-foreground transition-colors" title="Refresh"><RefreshCw className="w-4 h-4" /></button>
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">{[1, 2, 3, 4].map(i => <div key={i} className="h-20 bg-muted rounded-2xl animate-pulse" />)}</div>
+      ) : payouts.length === 0 ? (
+        <div className="bg-card rounded-3xl neu-card p-16 text-center">
+          <CreditCard className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-25" />
+          <p className="font-semibold text-muted-foreground">No payouts {filterStatus !== "all" ? `with status "${filterStatus}"` : "yet"}</p>
+          <p className="text-sm text-muted-foreground mt-1">Payouts are created automatically when orders are placed.</p>
+        </div>
+      ) : (
+        <div className="bg-card rounded-3xl neu-card overflow-hidden">
+          <div className="divide-y divide-border/50">
+            {payouts.map(p => (
+              <div key={p._id} className="p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-sm text-foreground">{p.vendorName}</p>
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${payoutBadgeClass(p.status)}`}>{p.status}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {p.ordersIncluded.length} order{p.ordersIncluded.length !== 1 ? "s" : ""} · {new Date(p.createdAt).toLocaleDateString("en-IN")}
+                      {p.paidAt && ` · Paid ${new Date(p.paidAt).toLocaleDateString("en-IN")}`}
+                    </p>
+                    {p.notes && <p className="text-xs text-muted-foreground italic mt-0.5">"{p.notes}"</p>}
+                  </div>
+                  <p className="text-lg font-bold text-foreground shrink-0">{formatINR(p.amount)}</p>
+                </div>
+                {p.status !== "paid" && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Input placeholder="Notes (optional)" value={notesMap[p._id] ?? ""} onChange={e => setNotesMap(m => ({ ...m, [p._id]: e.target.value }))}
+                      className="flex-1 h-8 text-xs bg-background neu-inset border-none min-w-[120px]" />
+                    {p.status === "pending" && (
+                      <Button size="sm" onClick={() => handleUpdateStatus(p._id, "processing")} disabled={updatingId === p._id} className="rounded-lg h-8 shadow-none">
+                        {updatingId === p._id ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Processing"}
+                      </Button>
+                    )}
+                    <Button size="sm" onClick={() => handleUpdateStatus(p._id, "paid")} disabled={updatingId === p._id} className="rounded-lg h-8 bg-green-600 hover:bg-green-700 text-white shadow-none">
+                      {updatingId === p._id ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Mark Paid"}
+                    </Button>
+                    {p.status !== "failed" && (
+                      <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(p._id, "failed")} disabled={updatingId === p._id} className="rounded-lg h-8 text-destructive border-destructive/30 hover:bg-destructive/5 shadow-none">Fail</Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}

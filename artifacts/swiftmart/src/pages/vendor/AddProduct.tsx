@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useProducts } from "@/hooks/useProducts";
 import { useAuth } from "@/hooks/useAuth";
-import { categories } from "@/data/categories";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,11 +11,22 @@ import { toast } from "sonner";
 import { Upload, X, Loader2, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 
+interface ApiCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  emoji?: string;
+  subcategories?: string[];
+  isActive: boolean;
+}
+
 export default function AddProduct() {
   const [, setLocation] = useLocation();
   const { addProduct } = useProducts();
   const { user } = useAuth();
   const [shopId, setShopId] = useState<string>("");
+
+  const [apiCategories, setApiCategories] = useState<ApiCategory[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -24,6 +34,12 @@ export default function AddProduct() {
       .then(d => { if (d.shops[0]) setShopId(d.shops[0]._id); })
       .catch(() => {});
   }, [user]);
+
+  useEffect(() => {
+    api.get<{ success: boolean; categories: ApiCategory[] }>("/categories")
+      .then(d => setApiCategories(d.categories ?? []))
+      .catch(() => {});
+  }, []);
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
@@ -35,7 +51,7 @@ export default function AddProduct() {
   const [image, setImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  const selectedCat = categories.find(c => c.id === category);
+  const selectedCat = apiCategories.find(c => c.slug === category);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -155,8 +171,8 @@ export default function AddProduct() {
                   required
                 >
                   <option value="" disabled>Select category</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
+                  {apiCategories.map(c => (
+                    <option key={c._id} value={c.slug}>{c.emoji ?? ""} {c.name}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -171,7 +187,7 @@ export default function AddProduct() {
             </div>
           </div>
 
-          {selectedCat && selectedCat.subcategories.length > 0 && (
+          {selectedCat && selectedCat.subcategories && selectedCat.subcategories.length > 0 && (
             <div className="space-y-2">
               <Label htmlFor="subcategory">Subcategory <span className="text-xs text-muted-foreground font-normal">(optional)</span></Label>
               <div className="relative">
@@ -190,7 +206,7 @@ export default function AddProduct() {
               </div>
               {subcategory && (
                 <p className="text-xs text-muted-foreground">
-                  {selectedCat.emoji} {selectedCat.name} › {subcategory}
+                  {selectedCat.emoji ?? ""} {selectedCat.name} › {subcategory}
                 </p>
               )}
             </div>

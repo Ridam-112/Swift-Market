@@ -2,6 +2,7 @@ import { Schema, model, type Document } from "mongoose";
 
 export interface ICommissionRule extends Document {
   level: "global" | "shop_type" | "category" | "vendor" | "product";
+  type: "percentage" | "fixed";
   targetId?: string;
   targetName?: string;
   rate: number;
@@ -17,9 +18,14 @@ const CommissionRuleSchema = new Schema<ICommissionRule>(
       enum: ["global", "shop_type", "category", "vendor", "product"],
       required: true,
     },
+    type: {
+      type: String,
+      enum: ["percentage", "fixed"],
+      default: "percentage",
+    },
     targetId: String,
     targetName: String,
-    rate: { type: Number, required: true, min: 0, max: 100 },
+    rate: { type: Number, required: true, min: 0 },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

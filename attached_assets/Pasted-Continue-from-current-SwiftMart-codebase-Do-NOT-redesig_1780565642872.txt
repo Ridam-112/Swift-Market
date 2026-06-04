@@ -1,0 +1,111 @@
+Continue from current SwiftMart codebase.
+
+Do NOT redesign UI.
+Do NOT rebuild backend.
+Do NOT break existing order, payment, vendor, customer, admin, coupon, notification, stock, or Cloudinary flows.
+
+Implement Admin Commission & Shop Type Control.
+
+1. Admin Commission Settings Page
+Add Admin panel tab: "Commissions"
+
+Admin can set commission for:
+- Global default commission
+- Shop type commission
+- Category commission
+- Vendor/shop specific commission
+- Product specific commission
+
+Commission types:
+- Percentage
+- Fixed amount
+
+Rules:
+- Product level commission highest priority
+- Vendor/shop level second
+- Category/shop type level third
+- Global default last
+
+2. Supported Shop/Product Categories for Now
+Keep these active by default:
+- Food
+- Fashion
+- Kirana
+- Grocery
+- Vegetable
+- Gift Shop
+- Sweet Shop
+- Medicine
+
+Admin should be able to:
+- Enable/disable shop types
+- Enable/disable product categories
+- Decide which shop/product categories are visible to customers
+- Decide which categories vendors can add products under
+
+3. Vendor Product Upload
+Vendor should only see active/enabled categories.
+Disabled categories should not appear in vendor product add/edit forms.
+
+4. Customer Side
+Customers should only see:
+- Shops from enabled shop types
+- Products from enabled categories
+- Approved + open shops only
+
+5. Order Commission Calculation
+When customer places order:
+- Calculate commission using existing commission engine or update it if needed.
+- Save in order:
+  - totalAmount
+  - commissionAmount
+  - vendorPayableAmount
+  - commissionRate
+  - commissionRuleUsed
+
+6. Payment Split Logic
+Important:
+Do NOT attempt direct Razorpay split settlement unless Razorpay Route is already configured.
+
+For now:
+- Customer payment goes to SwiftMart account.
+- System records platform commission.
+- System records vendor payable amount.
+- Vendor payout record is created for the payable amount.
+- Admin can later mark vendor payout as paid.
+
+7. Admin Payout View
+If payout backend exists, connect UI:
+- Pending payouts
+- Vendor name
+- Shop name
+- Order ID
+- Total order amount
+- Commission amount
+- Vendor payable amount
+- Payment method
+- Payout status
+- Mark as paid
+
+8. Testing
+Verify:
+- Admin creates global commission
+- Admin creates shop type/category commission
+- Admin creates product-specific commission
+- Vendor adds product only in enabled category
+- Customer sees only enabled shop/product categories
+- Order calculates commission correctly
+- Vendor payable amount is correct
+- Payout record created
+
+Generate final report:
+- Files changed
+- APIs added/used
+- MongoDB changes
+- Commission priority logic
+- Payout behavior
+- Remaining issues
+- Production readiness %
+- Launch readiness %
+
+Stop after report.

@@ -5,8 +5,15 @@ import { authenticate, requireRole, type AuthRequest } from "../../middlewares/a
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
+// GET /api/categories — active only (vendor & customer use)
 router.get("/", async (_req: Request, res: Response): Promise<void> => {
   const categories = await Category.find({ isActive: true }).sort({ name: 1 });
+  res.json({ success: true, categories });
+});
+
+// GET /api/categories/all — all including inactive (admin use)
+router.get("/all", authenticate, A, async (_req: Request, res: Response): Promise<void> => {
+  const categories = await Category.find().sort({ name: 1 });
   res.json({ success: true, categories });
 });
 

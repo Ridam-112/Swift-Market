@@ -4,8 +4,9 @@ import { Coupon } from "../../models/Coupon.js";
 import { Shop } from "../../models/Shop.js";
 import { User } from "../../models/User.js";
 import { Product } from "../../models/Product.js";
+import { Payout } from "../../models/Payout.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
-import { resolveCommissionRate } from "../../utils/commission.js";
+import { resolveCommission, calculateCommissionAmount } from "../../utils/commission.js";
 import { createNotificationLimited } from "../../utils/notification.js";
 
 const router = Router();
@@ -21,7 +22,6 @@ const STATUS_MESSAGES: Record<string, { title: string; message: string }> = {
   refunded:         { title: "Refund Processed", message: "Your refund has been processed." },
 };
 
-// Statuses that should restore stock
 const STOCK_RESTORE_STATUSES = new Set(["cancelled", "refunded"]);
 
 // GET /api/orders
@@ -60,7 +60,6 @@ router.get("/:id", authenticate, async (req: AuthRequest, res: Response): Promis
 router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body as Record<string, unknown>;
 
-  // Validate and atomically reduce stock for each item
   type OrderItemInput = { productId: string; productName: string; qty: number; price: number; category: string };
   const items = (body["items"] as OrderItemInput[]) ?? [];
   const reducedProducts: Array<{ productId: string; qty: number }> = [];
@@ -73,7 +72,6 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
     );
 
     if (!updated) {
-      // Rollback previously reduced items
       if (reducedProducts.length > 0) {
         await Promise.all(reducedProducts.map(r =>
           Product.findByIdAndUpdate(r.productId, { $inc: { stock: r.qty } })
@@ -88,7 +86,6 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
 
     reducedProducts.push({ productId: item.productId, qty: item.qty });
 
-    // Mark product as out_of_stock if stock hits 0
     if (updated.stock === 0) {
       await Product.findByIdAndUpdate(item.productId, { status: "out_of_stock" });
     }
@@ -99,8 +96,12 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
   const couponDiscount = Number(body["couponDiscount"] ?? 0);
   const netAmount = subtotal + deliveryCharge - couponDiscount;
 
-  const commissionRate = await resolveCommissionRate({ vendorId: String(body["shopId"] ?? "") });
-  const commissionAmount = +(netAmount * commissionRate / 100).toFixed(2);
+  const shopId = String(body["shopId"] ?? "");
+
+  // Resolve commission using priority chain
+  const resolved = await resolveCommission({ vendorId: shopId });
+  const commissionRate = resolved.rate;
+  const commissionAmount = calculateCommissionAmount(netAmount, resolved);
   const vendorPayable = +(netAmount - commissionAmount).toFixed(2);
 
   const order = await Order.create({
@@ -114,7 +115,23 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
     paymentStatus: body["paymentMethod"] === "COD" ? "pending" : "success",
   });
 
-  // Increment coupon usedCount AFTER order is created successfully
+  // Create payout record for vendor
+  try {
+    if (shopId && vendorPayable > 0) {
+      const shop = await Shop.findById(shopId);
+      if (shop) {
+        await Payout.create({
+          vendorId: String(shop.ownerId ?? shopId),
+          vendorName: shop.ownerName ?? String(body["shopName"] ?? ""),
+          shopId,
+          amount: vendorPayable,
+          status: "pending",
+          ordersIncluded: [String(order._id)],
+        });
+      }
+    }
+  } catch { /* non-fatal — payout can be created manually */ }
+
   const couponCode = typeof body["couponCode"] === "string" ? body["couponCode"].trim().toUpperCase() : "";
   if (couponCode) {
     await Coupon.findOneAndUpdate({ code: couponCode }, { $inc: { usedCount: 1 } });
@@ -130,7 +147,6 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
 
   // Notify vendor/shop owner
   try {
-    const shopId = String(body["shopId"] ?? "");
     if (shopId) {
       const shop = await Shop.findById(shopId);
       if (shop?.ownerId) {
@@ -158,7 +174,6 @@ router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response
   const order = await Order.findByIdAndUpdate(req.params["id"], update, { new: true });
   if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
-  // Restore stock when order is cancelled or refunded
   if (STOCK_RESTORE_STATUSES.has(status) && order.items?.length) {
     await Promise.all(order.items.map(async item => {
       const product = await Product.findByIdAndUpdate(
@@ -166,14 +181,12 @@ router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response
         { $inc: { stock: item.qty } },
         { new: true }
       );
-      // Re-activate product if it was out_of_stock and now has stock
       if (product && product.stock > 0 && product.status === "out_of_stock") {
         await Product.findByIdAndUpdate(item.productId, { status: "active" });
       }
     }));
   }
 
-  // Notify customer about status change
   try {
     const msg = STATUS_MESSAGES[status];
     if (msg && order.customerId) {
@@ -198,7 +211,6 @@ router.post("/:id/refund", authenticate, A, async (req: AuthRequest, res: Respon
   );
   if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
-  // Restore stock on refund
   if (order.items?.length) {
     await Promise.all(order.items.map(async item => {
       const product = await Product.findByIdAndUpdate(
