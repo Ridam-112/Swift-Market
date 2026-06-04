@@ -47,6 +47,16 @@ interface AuthContextType {
   ignoreReport: (reportId: string) => void;
 }
 
+interface ApiAddress {
+  _id?: string;
+  id?: string;
+  label: 'Home' | 'Work' | 'Other';
+  line1: string;
+  line2?: string;
+  city: string;
+  pincode: string;
+}
+
 interface ApiUser {
   id: string;
   name: string;
@@ -56,7 +66,7 @@ interface ApiUser {
   status: string;
   vendorStatus?: string;
   pincode?: string;
-  addresses?: Address[];
+  addresses?: ApiAddress[];
 }
 
 interface ApiReport {
@@ -87,6 +97,17 @@ function mapApiReport(r: ApiReport): Report {
   };
 }
 
+function normalizeAddress(addr: ApiAddress): Address {
+  return {
+    id: addr.id || addr._id || "",
+    label: addr.label,
+    line1: addr.line1,
+    line2: addr.line2,
+    city: addr.city,
+    pincode: addr.pincode,
+  };
+}
+
 function apiUserToFrontend(apiUser: ApiUser): User {
   const id = apiUser.id || (apiUser as ApiUser & { _id?: string })._id || "";
   return {
@@ -95,7 +116,7 @@ function apiUserToFrontend(apiUser: ApiUser): User {
     phone: apiUser.phone,
     email: apiUser.email ?? "",
     pincode: apiUser.pincode ?? "",
-    addresses: apiUser.addresses ?? [],
+    addresses: (apiUser.addresses ?? []).map(normalizeAddress),
     isVendorRegistered: apiUser.vendorStatus === 'approved' || apiUser.vendorStatus === 'pending',
     vendorStatus: (apiUser.vendorStatus as User['vendorStatus']) ?? 'none',
   };
@@ -296,7 +317,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserRole(data.user.role);
     localStorage.setItem("sm_user", JSON.stringify(u));
     localStorage.setItem("sm_role", data.user.role);
-    setSelectedDeliveryAddress(address);
+    // Use the API-returned address (normalized _id → id) so selectedDeliveryAddress.id
+    // matches user.addresses[0].id in Checkout.
+    setSelectedDeliveryAddress(u.addresses.length > 0 ? u.addresses[0] : address);
   };
 
   const submitVendorApplication = (appData: Omit<VendorApplication, 'id' | 'userId' | 'userName' | 'userPhone' | 'submittedAt' | 'status'>) => {
