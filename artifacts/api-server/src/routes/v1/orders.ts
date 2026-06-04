@@ -98,8 +98,14 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
 
   const shopId = String(body["shopId"] ?? "");
 
-  // Resolve commission using priority chain
-  const resolved = await resolveCommission({ vendorId: shopId });
+  // Look up shop to get owner ID and shop type slug for accurate commission resolution
+  const shop = await Shop.findById(shopId).select("ownerId shopType ownerName").lean();
+
+  // Resolve commission using priority chain: vendor > shop_type > global
+  const resolved = await resolveCommission({
+    vendorId: shop ? String(shop.ownerId) : shopId,
+    shopTypeSlug: shop?.shopType,
+  });
   const commissionRate = resolved.rate;
   const commissionAmount = calculateCommissionAmount(netAmount, resolved);
   const vendorPayable = +(netAmount - commissionAmount).toFixed(2);
@@ -118,7 +124,6 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
   // Create payout record for vendor
   try {
     if (shopId && vendorPayable > 0) {
-      const shop = await Shop.findById(shopId);
       if (shop) {
         await Payout.create({
           vendorId: String(shop.ownerId ?? shopId),
