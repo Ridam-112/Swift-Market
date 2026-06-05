@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Check, ChevronRight, ChevronDown, CheckCircle2, XCircle } from "lucide-react";
 import { categories } from "@/data/categories";
+import { api } from "@/lib/api";
 import { isServicePincode, getServiceAreaName } from "@/lib/serviceArea";
 
 export default function VendorRegister() {
@@ -15,6 +16,13 @@ export default function VendorRegister() {
   const { user, submitVendorApplication } = useAuth();
 
   const [step, setStep] = useState(1);
+  const [activeShopSlugs, setActiveShopSlugs] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    api.get<{ success: boolean; shopTypes: { slug: string }[] }>("/shop-types/active")
+      .then(d => setActiveShopSlugs(d.shopTypes.map(st => st.slug)))
+      .catch(() => setActiveShopSlugs(null));
+  }, []);
 
   const [storeName, setStoreName] = useState("");
   const [storeCategory, setStoreCategory] = useState("");
@@ -34,7 +42,11 @@ export default function VendorRegister() {
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [bankIfscCode, setBankIfscCode] = useState("");
 
-  const selectedCat = categories.find(c => c.id === storeCategory);
+  const visibleCategories = activeShopSlugs === null
+    ? categories
+    : categories.filter(c => activeShopSlugs.includes(c.id));
+
+  const selectedCat = visibleCategories.find(c => c.id === storeCategory);
 
   const pinValid = storePincode.length === 6 && isServicePincode(storePincode);
   const pinOutOfArea = storePincode.length === 6 && !isServicePincode(storePincode);
@@ -131,7 +143,7 @@ export default function VendorRegister() {
                       className="w-full h-12 px-3 py-2 pr-10 rounded-xl bg-background neu-inset border-none text-sm focus:outline-none appearance-none text-foreground"
                     >
                       <option value="" disabled>Select Main Category</option>
-                      {categories.map(c => (
+                      {visibleCategories.map(c => (
                         <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
                       ))}
                     </select>

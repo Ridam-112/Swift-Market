@@ -176,8 +176,8 @@ export default function VendorOrders() {
     );
   }
 
-  const activeOrders = orders.filter(o => !['delivered', 'cancelled'].includes(o.status));
-  const pastOrders = orders.filter(o => ['delivered', 'cancelled'].includes(o.status));
+  const activeOrders = orders.filter(o => !['delivered', 'cancelled', 'refunded'].includes(o.status));
+  const pastOrders = orders.filter(o => ['delivered', 'cancelled', 'refunded'].includes(o.status));
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-4xl mx-auto space-y-6">
