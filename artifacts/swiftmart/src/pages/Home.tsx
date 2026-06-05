@@ -8,29 +8,17 @@ import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SkeletonGrid } from "@/components/SkeletonGrid";
 import { categories } from "@/data/categories";
-import { api } from "@/lib/api";
 import { Star } from "lucide-react";
 
 export default function Home() {
   const { products } = useProducts();
   const { shops, isLoading: shopsLoading } = useShops();
   const [loading, setLoading] = useState(true);
-  const [activeShopSlugs, setActiveShopSlugs] = useState<string[] | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 300);
     return () => clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    api.get<{ success: boolean; shopTypes: { slug: string }[] }>("/shop-types/active")
-      .then(d => setActiveShopSlugs(d.shopTypes.map(st => st.slug)))
-      .catch(() => setActiveShopSlugs(null));
-  }, []);
-
-  const visibleCategories = activeShopSlugs === null
-    ? categories
-    : categories.filter(c => activeShopSlugs.includes(c.id));
 
 
   const trendingProducts = products.filter(p => p.trending).slice(0, 4);
@@ -44,7 +32,7 @@ export default function Home() {
       <section>
         <SectionHeader title="Shop by Category" />
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
-          {visibleCategories.map((category) => (
+          {categories.map((category) => (
             <div key={category.id} className="snap-start shrink-0">
               <CategoryBubble category={category} />
             </div>
