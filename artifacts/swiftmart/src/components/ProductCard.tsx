@@ -38,7 +38,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         <img 
           src={product.image} 
           alt={product.name} 
-          className={`w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? "opacity-40" : ""}`}
+          className={`w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? "opacity-40" : ""}`}
         />
         {product.trending && !isOutOfStock && (
           <div className="absolute top-2 left-2 bg-primary/90 text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
