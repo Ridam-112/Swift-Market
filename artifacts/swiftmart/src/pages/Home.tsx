@@ -8,7 +8,9 @@ import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SkeletonGrid } from "@/components/SkeletonGrid";
 import { categories } from "@/data/categories";
-import { Star } from "lucide-react";
+import { Star, ChevronRight } from "lucide-react";
+
+const VISIBLE_CATEGORIES = 8;
 
 export default function Home() {
   const { products } = useProducts();
@@ -30,10 +32,17 @@ export default function Home() {
       <HeroBannerSlider />
 
       <section>
-        <SectionHeader title="Shop by Category" />
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
-          {categories.map((category) => (
-            <div key={category.id} className="snap-start shrink-0">
+        <SectionHeader
+          title="Shop by Category"
+          action={
+            <Link href="/categories" className="flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80 transition-opacity">
+              See more <ChevronRight className="w-4 h-4" />
+            </Link>
+          }
+        />
+        <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8">
+          {categories.slice(0, VISIBLE_CATEGORIES).map((category) => (
+            <div key={category.id} className="flex justify-center">
               <CategoryBubble category={category} />
             </div>
           ))}
