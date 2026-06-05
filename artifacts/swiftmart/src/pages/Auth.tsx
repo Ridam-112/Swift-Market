@@ -193,7 +193,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="h-[100dvh] flex flex-col justify-center px-4 py-4 max-w-md mx-auto relative bg-background overflow-hidden">
+    <div className="h-[100dvh] flex flex-col justify-center px-4 py-4 max-w-md mx-auto relative bg-background overflow-y-auto">
       <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
 
       <div className="text-center mb-5 relative z-10">
@@ -264,17 +264,17 @@ export default function Auth() {
           )}
 
           {step === 'otp' && (
-            <motion.div key="otp" variants={slideVariants} initial="initial" animate="animate" exit="exit" className="bg-card p-6 md:p-8 rounded-[2rem] neu-card space-y-6">
-              <div className="text-center space-y-2">
-                <h2 className="text-2xl font-bold">Verification</h2>
-                <p className="text-muted-foreground">
+            <motion.div key="otp" variants={slideVariants} initial="initial" animate="animate" exit="exit" className="bg-card p-5 rounded-[2rem] neu-card space-y-4">
+              <div className="text-center space-y-1">
+                <h2 className="text-xl font-bold">Verification</h2>
+                <p className="text-muted-foreground text-sm">
                   Enter 6-digit OTP sent to +91 {phone.slice(0, 2)}XXXXX{phone.slice(-3)}
                 </p>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <motion.div
-                  className="flex justify-between gap-2"
+                  className="flex justify-between gap-1.5"
                   animate={otpError ? { x: [-10, 10, -10, 10, 0] } : {}}
                   transition={{ duration: 0.4 }}
                 >
@@ -290,7 +290,7 @@ export default function Auth() {
                       onChange={e => handleOtpChange(i, e.target.value)}
                       onKeyDown={e => handleOtpKeyDown(i, e)}
                       className={cn(
-                        "w-12 h-14 text-center text-xl font-bold bg-background neu-inset border-none rounded-xl focus-visible:ring-2 focus-visible:ring-primary",
+                        "w-10 h-12 text-center text-lg font-bold bg-background neu-inset border-none rounded-xl focus-visible:ring-2 focus-visible:ring-primary",
                         otpError && "ring-2 ring-destructive"
                       )}
                     />
@@ -330,7 +330,7 @@ export default function Auth() {
           )}
 
           {step === 'onboarding' && (
-            <motion.div key="onboarding" variants={slideVariants} initial="initial" animate="animate" exit="exit" className="bg-card p-6 md:p-8 rounded-[2rem] neu-card space-y-6">
+            <motion.div key="onboarding" variants={slideVariants} initial="initial" animate="animate" exit="exit" className="bg-card p-5 rounded-[2rem] neu-card space-y-4 max-h-[calc(100dvh-9rem)] overflow-y-auto">
               <div className="text-center space-y-2">
                 <h2 className="text-2xl font-bold">Almost there!</h2>
                 <p className="text-muted-foreground">Tell us about yourself and where to deliver.</p>
@@ -447,7 +447,7 @@ export default function Auth() {
           )}
 
           {step === 'address' && (
-            <motion.div key="address" variants={slideVariants} initial="initial" animate="animate" exit="exit" className="bg-card p-6 md:p-8 rounded-[2rem] neu-card space-y-6">
+            <motion.div key="address" variants={slideVariants} initial="initial" animate="animate" exit="exit" className="bg-card p-5 rounded-[2rem] neu-card space-y-4 max-h-[calc(100dvh-9rem)] overflow-y-auto">
               <div className="text-center space-y-2">
                 <h2 className="text-2xl font-bold">Add Delivery Address</h2>
                 <p className="text-muted-foreground">Where should we deliver your orders?</p>
