@@ -140,7 +140,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
 
 function ThemedShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-[100dvh] flex flex-col font-sans selection:bg-primary selection:text-primary-foreground overflow-x-hidden w-full bg-background text-foreground">
+    <div className="min-h-[100dvh] flex flex-col font-sans selection:bg-primary selection:text-primary-foreground overflow-x-hidden w-full bg-background text-foreground border-t-[2px] border-r-[2px] border-b-[2px] border-l-[2px] rounded-tl-[22px] rounded-tr-[22px] rounded-br-[22px] rounded-bl-[22px]">
       {children}
     </div>
   );

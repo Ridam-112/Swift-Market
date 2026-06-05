@@ -209,9 +209,18 @@
 /* ── Google Sign-In button dark overrides ────────────────── */
 .customer-theme .nsm7Bb-HzV7m-LgbsSe-MJoBVe,
 .customer-theme div[class*="nsm7Bb"][class*="MJoBVe"] {
-  background-color: #1f1f1f !important;
+  background-color: #1e1e1e !important;
+  border-width: 10px !important;
+  border-style: solid !important;
+  border-color: #fff5f5fc !important;
   border-radius: 22px !important;
-  border-width: 0 !important;
+}
+
+.customer-theme .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf,
+.customer-theme div[class*="nsm7Bb"][class*="Bz112c"][class*="haAclf"] {
+  background-color: #211919 !important;
+  border-width: 22px !important;
+  border-style: solid !important;
 }
 
 .customer-theme .nsm7Bb-HzV7m-LgbsSe.hJDwNd-SxQuSe,
