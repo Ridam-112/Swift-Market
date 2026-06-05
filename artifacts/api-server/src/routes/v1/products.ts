@@ -15,7 +15,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     req.query as Record<string, string>;
   const filter: Record<string, unknown> = {};
 
-  // status=all skips the status filter entirely (used by admin product management)
+  // status=all skips the status filter entirely (used by admin/vendor product management)
   if (status !== "all") {
     filter["status"] = status;
     // For customer-facing active product listings, also exclude zero-stock products
@@ -33,7 +33,6 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     if (activeCategories.length > 0) {
       const activeSlugs = activeCategories.map(c => c.slug);
       if (category) {
-        // If caller requested a specific category, only proceed if it's active
         if (!activeSlugs.includes(category)) {
           res.json({ success: true, products: [], total: 0, page: 1, pages: 0 });
           return;
@@ -45,11 +44,9 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
   }
 
   if (pincode) {
-    // pincode browse — only approved shops in that pincode
     const pincodeShops = await Shop.find({ "address.pincode": pincode, status: "approved" }).select("_id").lean();
     filter["shopId"] = { $in: pincodeShops.map(s => String(s._id)) };
   } else if (shopId) {
-    // specific shop page — verify shop is approved before returning products
     const shop = await Shop.findById(shopId).select("status").lean();
     if (!shop || shop.status !== "approved") {
       res.json({ success: true, products: [], total: 0, page: 1, pages: 0 });
@@ -57,7 +54,6 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     }
     filter["shopId"] = shopId;
   } else {
-    // general browse (homepage, category, search) — only products from approved shops
     const approvedShops = await Shop.find({ status: "approved" }).select("_id").lean();
     filter["shopId"] = { $in: approvedShops.map(s => String(s._id)) };
   }
@@ -68,6 +64,28 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     Product.countDocuments(filter),
   ]);
   res.json({ success: true, products, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+});
+
+// GET /api/products/admin-review — admin: list products for approval with shop name
+// IMPORTANT: must be defined before /:id to avoid route conflict
+router.get("/admin-review", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { status = "pending", page = "1", limit = "50" } = req.query as Record<string, string>;
+  const filter: Record<string, unknown> = {};
+  if (status !== "all") filter["status"] = status;
+
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const [products, total] = await Promise.all([
+    Product.find(filter).skip(skip).limit(parseInt(limit)).sort({ createdAt: -1 }).lean(),
+    Product.countDocuments(filter),
+  ]);
+
+  // Batch-fetch shop names
+  const shopIds = [...new Set(products.map(p => p.shopId))];
+  const shops = await Shop.find({ _id: { $in: shopIds } }).select("_id shopName").lean();
+  const shopMap = Object.fromEntries(shops.map(s => [String(s._id), s.shopName]));
+
+  const enriched = products.map(p => ({ ...p, shopName: shopMap[p.shopId] ?? "Unknown Shop" }));
+  res.json({ success: true, products: enriched, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
 });
 
 // GET /api/products/:id
@@ -82,7 +100,7 @@ router.post("/", authenticate, V, async (req: AuthRequest, res: Response): Promi
   const body = req.body as Record<string, unknown>;
   const isAdmin = req.user!.role === "admin" || req.user!.role === "super_admin";
 
-  // Admin can create a product for any shop by passing shopId directly
+  // Admin can create a product for any shop by passing shopId directly (may specify status)
   if (isAdmin && body["shopId"]) {
     const shopExists = await Shop.findById(String(body["shopId"]));
     if (!shopExists) { res.status(400).json({ success: false, message: "Shop not found" }); return; }
@@ -93,7 +111,10 @@ router.post("/", authenticate, V, async (req: AuthRequest, res: Response): Promi
 
   const shop = await Shop.findOne({ ownerId: req.user!.userId });
   if (!shop) { res.status(400).json({ success: false, message: "No approved shop found for this vendor" }); return; }
-  const product = await Product.create({ ...body, shopId: shop._id.toString() });
+
+  // Vendor uploads always start as pending — strip any status the client may have sent
+  const { status: _ignored, ...safeBody } = body;
+  const product = await Product.create({ ...safeBody, shopId: shop._id.toString(), status: "pending" });
   res.status(201).json({ success: true, product });
 });
 

@@ -137,7 +137,7 @@ function buildTopProducts(orders: ApiOrder[]) {
     .sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 5);
 }
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals';
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -209,6 +209,7 @@ export default function Admin() {
               {activeSection === 'notifications' && <AdminNotificationsTab />}
               {activeSection === 'hero-banners' && <HeroBannersTab />}
               {activeSection === 'coupons' && <CouponsTab />}
+              {activeSection === 'product-approvals' && <ProductApprovalsTab />}
               {activeSection === 'commissions' && <CommissionsTab />}
               {activeSection === 'shop-types' && <ShopTypesTab />}
               {activeSection === 'categories' && <CategoriesTab />}
@@ -248,6 +249,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'hero-banners', label: 'Hero Banners', icon: ImageIcon },
     { id: 'coupons', label: 'Coupons', icon: Tag },
+    { id: 'product-approvals', label: 'Product Approvals', icon: Package },
     { id: 'commissions', label: 'Commissions', icon: Award },
     { id: 'shop-types', label: 'Shop Types', icon: Building2 },
     { id: 'categories', label: 'Categories', icon: Tag },
@@ -4487,6 +4489,190 @@ function CategoriesTab() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface AdminReviewProduct {
+  _id: string;
+  name: string;
+  category: string;
+  price: number;
+  discountedPrice?: number;
+  images?: string[];
+  image?: string;
+  stock: number;
+  unit?: string;
+  shopId: string;
+  shopName: string;
+  status: "pending" | "active" | "inactive" | "rejected" | "out_of_stock";
+  createdAt: string;
+}
+
+const APPROVAL_STATUS_CONFIG = {
+  pending:      { label: "Pending",   className: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400" },
+  active:       { label: "Active",    className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" },
+  inactive:     { label: "Inactive",  className: "bg-muted text-muted-foreground" },
+  rejected:     { label: "Rejected",  className: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" },
+  out_of_stock: { label: "No Stock",  className: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400" },
+} as const;
+
+function ProductApprovalsTab() {
+  const [products, setProducts] = useState<AdminReviewProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<"pending" | "active" | "rejected" | "all">("pending");
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const fetchProducts = useCallback(async (s: string) => {
+    setLoading(true);
+    try {
+      const data = await api.get<{ success: boolean; products: AdminReviewProduct[] }>(
+        `/products/admin-review?status=${s}&limit=100`
+      );
+      setProducts(data.products ?? []);
+    } catch {
+      toast.error("Failed to load products");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchProducts(statusFilter); }, [statusFilter, fetchProducts]);
+
+  const handleApprove = async (p: AdminReviewProduct) => {
+    setActingId(p._id);
+    try {
+      await api.patch(`/products/${p._id}`, { status: "active" });
+      setProducts(prev => prev.filter(x => x._id !== p._id));
+      toast.success(`"${p.name}" approved — now visible to customers`);
+    } catch {
+      toast.error("Failed to approve product");
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const handleReject = async (p: AdminReviewProduct) => {
+    setActingId(p._id);
+    try {
+      await api.patch(`/products/${p._id}`, { status: "rejected" });
+      setProducts(prev => prev.filter(x => x._id !== p._id));
+      toast.success(`"${p.name}" rejected`);
+    } catch {
+      toast.error("Failed to reject product");
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const handleDelete = async (p: AdminReviewProduct) => {
+    if (!confirm(`Permanently delete "${p.name}"?`)) return;
+    setDeletingId(p._id);
+    try {
+      await api.delete(`/products/${p._id}`);
+      setProducts(prev => prev.filter(x => x._id !== p._id));
+      toast.success("Product deleted");
+    } catch {
+      toast.error("Failed to delete product");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const tabs: { key: typeof statusFilter; label: string }[] = [
+    { key: "pending",  label: "Pending" },
+    { key: "active",   label: "Approved" },
+    { key: "rejected", label: "Rejected" },
+    { key: "all",      label: "All" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold text-foreground">Product Approvals</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">Review vendor product submissions before they go live</p>
+      </div>
+
+      <div className="flex gap-2 flex-wrap items-center">
+        {tabs.map(t => (
+          <Button key={t.key} size="sm" variant={statusFilter === t.key ? "default" : "outline"}
+            onClick={() => setStatusFilter(t.key)} className="rounded-lg shadow-none">
+            {t.label}
+          </Button>
+        ))}
+        <span className="ml-auto text-xs text-muted-foreground">{products.length} product{products.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : products.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground text-sm">
+          {statusFilter === "pending" ? "No products awaiting approval" : "No products found"}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {products.map(p => {
+            const thumb = p.images?.[0] ?? p.image;
+            const cfg = APPROVAL_STATUS_CONFIG[p.status] ?? APPROVAL_STATUS_CONFIG.pending;
+            const isActing = actingId === p._id;
+            const isDeleting = deletingId === p._id;
+            return (
+              <div key={p._id} className="neu-card rounded-2xl p-4 flex gap-4 items-start flex-wrap">
+                {/* Image */}
+                <div className="w-16 h-16 rounded-xl bg-background neu-inset p-1.5 flex-shrink-0 overflow-hidden">
+                  {thumb ? (
+                    <img src={thumb} alt={p.name} className="w-full h-full object-contain"
+                      onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                      <Package className="w-6 h-6" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-sm text-foreground truncate">{p.name}</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cfg.className}`}>{cfg.label}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Store className="w-3 h-3" />{p.shopName}</span>
+                    <span className="capitalize">{p.category}</span>
+                    <span className="text-primary font-semibold text-sm">{formatINR(p.price)}</span>
+                    <span>Stock: {p.stock}</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 flex-wrap shrink-0">
+                  {p.status !== "active" && (
+                    <Button size="sm" onClick={() => handleApprove(p)} disabled={isActing || isDeleting}
+                      className="rounded-lg h-8 shadow-none bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
+                      {isActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                      Approve
+                    </Button>
+                  )}
+                  {p.status !== "rejected" && (
+                    <Button size="sm" variant="outline" onClick={() => handleReject(p)} disabled={isActing || isDeleting}
+                      className="rounded-lg h-8 shadow-none text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950 gap-1.5">
+                      {isActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
+                      Reject
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => handleDelete(p)} disabled={isActing || isDeleting}
+                    className="rounded-lg h-8 shadow-none text-destructive border-destructive/30 hover:bg-destructive/5">
+                    {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
