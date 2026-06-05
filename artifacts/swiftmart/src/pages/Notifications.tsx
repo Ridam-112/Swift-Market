@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { Bell, BellOff, CheckCheck, ShoppingBag, Store, Tag, Info, Megaphone } from "lucide-react";
+import { Bell, BellOff, CheckCheck, ShoppingBag, Store, Tag, Info, Megaphone, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/SectionHeader";
 import { api } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
+import { registerPushNotifications, unregisterPushNotifications, getPushPermissionState } from "@/lib/pushNotifications";
+import { toast } from "sonner";
 
 interface Notification {
   _id: string;
@@ -29,6 +31,8 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
+  const [pushState, setPushState] = useState<"granted" | "denied" | "default" | "unsupported">("default");
+  const [pushLoading, setPushLoading] = useState(false);
 
   const fetchNotifications = () => {
     setLoading(true);
@@ -38,7 +42,10 @@ export default function Notifications() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchNotifications(); }, []);
+  useEffect(() => {
+    fetchNotifications();
+    getPushPermissionState().then(setPushState);
+  }, []);
 
   const markAllRead = async () => {
     setMarkingAll(true);
@@ -52,6 +59,36 @@ export default function Notifications() {
   const markRead = async (id: string) => {
     await api.patch(`/notifications/${id}/read`).catch(() => {});
     setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+  };
+
+  const handleEnablePush = async () => {
+    setPushLoading(true);
+    try {
+      const success = await registerPushNotifications();
+      if (success) {
+        setPushState("granted");
+        toast.success("Push notifications enabled! You'll get alerts even when the app is closed.");
+      } else {
+        const state = await getPushPermissionState();
+        setPushState(state);
+        if (state === "denied") {
+          toast.error("Notifications blocked. Please allow them in your browser settings.");
+        }
+      }
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const handleDisablePush = async () => {
+    setPushLoading(true);
+    try {
+      await unregisterPushNotifications();
+      setPushState("default");
+      toast.success("Push notifications disabled.");
+    } finally {
+      setPushLoading(false);
+    }
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -91,6 +128,67 @@ export default function Notifications() {
           </Button>
         )}
       </div>
+
+      {/* Push notification toggle banner */}
+      {pushState !== "unsupported" && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`flex items-center gap-3 p-4 rounded-2xl neu-card ${
+            pushState === "granted"
+              ? "bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800"
+              : pushState === "denied"
+              ? "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800"
+              : "bg-primary/5 border border-primary/20"
+          }`}
+        >
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            pushState === "granted" ? "bg-green-100 dark:bg-green-900/40" :
+            pushState === "denied"  ? "bg-red-100 dark:bg-red-900/40" : "bg-primary/10"
+          }`}>
+            {pushState === "granted"
+              ? <BellRing className="w-5 h-5 text-green-600" />
+              : pushState === "denied"
+              ? <BellOff className="w-5 h-5 text-red-500" />
+              : <Bell className="w-5 h-5 text-primary" />
+            }
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm text-foreground">
+              {pushState === "granted" ? "Push notifications on" :
+               pushState === "denied"  ? "Notifications blocked" :
+               "Get notified instantly"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {pushState === "granted"
+                ? "You'll receive alerts on this device even when the app is closed."
+                : pushState === "denied"
+                ? "Enable notifications in your browser settings to receive alerts."
+                : "Allow notifications to get order updates, offers and more — like Swiggy."}
+            </p>
+          </div>
+          {pushState === "granted" ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={pushLoading}
+              onClick={handleDisablePush}
+              className="shrink-0 text-xs text-muted-foreground hover:text-destructive"
+            >
+              Turn off
+            </Button>
+          ) : pushState === "default" ? (
+            <Button
+              size="sm"
+              disabled={pushLoading}
+              onClick={handleEnablePush}
+              className="shrink-0 text-xs bg-primary text-white hover:bg-primary/90"
+            >
+              {pushLoading ? "Enabling…" : "Enable"}
+            </Button>
+          ) : null}
+        </motion.div>
+      )}
 
       {notifications.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
