@@ -260,4 +260,20 @@
     color: hsl(var(--muted-foreground));
     pointer-events: none;
   }
+
+  select {
+    background-color: #1E2327;
+    color: #f5f5f5;
+    color-scheme: dark;
+  }
+  select option {
+    background-color: #1E2327;
+    color: #f5f5f5;
+  }
+  select option:hover,
+  select option:focus,
+  select option:checked {
+    background-color: #2a2f35;
+    color: #ffffff;
+  }
 }
