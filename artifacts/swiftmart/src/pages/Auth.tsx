@@ -188,18 +188,18 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col justify-center px-4 py-12 max-w-md mx-auto relative bg-background">
+    <div className="h-[100dvh] flex flex-col justify-center px-4 py-4 max-w-md mx-auto relative bg-background overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
 
-      <div className="text-center mb-10 relative z-10">
-        <img src="/logo.png" alt="SwiftMart" className="h-24 w-auto object-contain mx-auto mb-2" />
-        <p className="text-muted-foreground">Delivery in 10 minutes</p>
+      <div className="text-center mb-5 relative z-10">
+        <img src="/logo.png" alt="SwiftMart" className="h-16 w-auto object-contain mx-auto mb-1" />
+        <p className="text-muted-foreground text-sm">Delivery in 10 minutes</p>
       </div>
 
       <div className="relative z-10">
         <AnimatePresence mode="wait">
           {step === 'login' && (
-            <motion.div key="login" variants={slideVariants} initial="initial" animate="animate" exit="exit" className="bg-card p-6 md:p-8 rounded-[2rem] neu-card space-y-6">
+            <motion.div key="login" variants={slideVariants} initial="initial" animate="animate" exit="exit" className="bg-card p-5 rounded-[2rem] neu-card space-y-4">
               {isGoogleLoading ? (
                 <div className="w-full h-14 rounded-2xl bg-white border border-gray-200 flex items-center justify-center gap-3 text-gray-700 font-bold text-lg">
                   <Loader2 className="w-5 h-5 animate-spin" />
