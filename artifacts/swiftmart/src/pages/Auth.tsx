@@ -214,6 +214,7 @@ export default function Auth() {
                     onError={() => toast.error("Google sign-in failed. Please try again.")}
                     width="340"
                     size="large"
+                    theme="filled_black"
                     shape="rectangular"
                     text="continue_with"
                     logo_alignment="left"

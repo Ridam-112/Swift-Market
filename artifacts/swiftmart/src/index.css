@@ -202,6 +202,25 @@
   color: hsl(0 0% 95%);
 }
 
+/* ── Google Sign-In button dark overrides ────────────────── */
+.customer-theme .nsm7Bb-HzV7m-LgbsSe-MJoBVe,
+.customer-theme div[class*="nsm7Bb"][class*="MJoBVe"] {
+  background-color: #1f1f1f !important;
+  border-radius: 22px !important;
+  border-width: 0 !important;
+}
+
+.customer-theme .nsm7Bb-HzV7m-LgbsSe.hJDwNd-SxQuSe,
+.customer-theme div[class*="nsm7Bb"][class*="hJDwNd"] {
+  border-radius: 22px !important;
+  overflow: hidden;
+}
+
+.customer-theme .nsm7Bb-HzV7m-LgbsSe-BPrWId,
+.customer-theme span[class*="nsm7Bb"][class*="BPrWId"] {
+  color: #ffffff !important;
+}
+
 @layer base {
   * {
     @apply border-border;
