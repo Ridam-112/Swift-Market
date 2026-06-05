@@ -163,8 +163,7 @@ export default function Checkout() {
     }
 
     if (addressPincodeInvalid) {
-      toast.error("This address is outside our service area.", {
-        description: "SwiftMart delivers only to 733101 and 733103.",
+      toast.error("Please enter a valid 6-digit pincode for your address.", {
         duration: 4000,
       });
       return;
@@ -324,7 +323,7 @@ export default function Checkout() {
           {addressPincodeInvalid && (
             <div className="mt-3 flex items-start gap-2 bg-destructive/10 text-destructive rounded-xl p-3 text-sm">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <p>This address pincode is outside our service area. Please add an address with pincode 733101 or 733103.</p>
+              <p>Please add a valid 6-digit pincode to this address before placing your order.</p>
             </div>
           )}
         </section>
