@@ -20,6 +20,12 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const prev = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = "#1E1E1E";
+    return () => { document.body.style.backgroundColor = prev; };
+  }, []);
+
   const trendingProducts = products.filter(p => p.trending).slice(0, 4);
   const recentProducts = products.slice(0, 4);
   const popularShops = shops.slice(0, 8);
