@@ -32,11 +32,6 @@ export default function Home() {
     ? categories
     : categories.filter(c => activeShopSlugs.includes(c.id));
 
-  useEffect(() => {
-    const prev = document.body.style.backgroundColor;
-    document.body.style.backgroundColor = "#1E1E1E";
-    return () => { document.body.style.backgroundColor = prev; };
-  }, []);
 
   const trendingProducts = products.filter(p => p.trending).slice(0, 4);
   const recentProducts = products.slice(0, 4);

@@ -138,9 +138,19 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ThemedShell({ children }: { children: React.ReactNode }) {
+  const { role, isAdmin, isLoading } = useAuth();
+  const isCustomer = !isLoading && !isAdmin && role === 'customer';
+  return (
+    <div className={`min-h-[100dvh] flex flex-col font-sans selection:bg-primary selection:text-primary-foreground overflow-x-hidden w-full ${isCustomer ? 'customer-theme' : 'bg-background'}`}>
+      {children}
+    </div>
+  );
+}
+
 function Router() {
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-background font-sans selection:bg-primary selection:text-primary-foreground overflow-x-hidden w-full">
+    <ThemedShell>
       <Switch>
         <Route path="/auth" component={Auth} />
 
@@ -220,7 +230,7 @@ function Router() {
           <ProtectedLayout><NotFound /></ProtectedLayout>
         </Route>
       </Switch>
-    </div>
+    </ThemedShell>
   );
 }
 
