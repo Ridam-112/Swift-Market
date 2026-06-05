@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useProducts } from "@/hooks/useProducts";
 import { useAuth } from "@/hooks/useAuth";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,6 @@ interface ApiCategory {
 
 export default function AddProduct() {
   const [, setLocation] = useLocation();
-  const { addProduct } = useProducts();
   const { user } = useAuth();
   const [shopId, setShopId] = useState<string>("");
 
@@ -50,6 +48,7 @@ export default function AddProduct() {
   const [description, setDescription] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const selectedCat = apiCategories.find(c => c.slug === category);
 
@@ -86,31 +85,39 @@ export default function AddProduct() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (uploading) { toast.error("Please wait for image upload to finish"); return; }
     if (!name || !category || !price || !unit || !stock || !image) {
       toast.error("Please fill all required fields and upload an image");
       return;
     }
+    if (!shopId) {
+      toast.error("Could not find your shop. Please refresh and try again.");
+      return;
+    }
 
-    const newProduct = {
-      id: `p_${Date.now()}`,
-      name,
-      category,
-      subcategory: subcategory || undefined,
-      price: Number(price),
-      unit,
-      stock: Number(stock),
-      description,
-      image,
-      rating: 0,
-      vendorId: shopId,
-    };
-
-    addProduct(newProduct);
-    toast.success("Product added successfully");
-    setLocation("/vendor/products");
+    setSaving(true);
+    try {
+      await api.post("/products", {
+        name: name.trim(),
+        category,
+        subcategory: subcategory || undefined,
+        price: Number(price),
+        unit: unit.trim(),
+        stock: Number(stock),
+        description: description.trim(),
+        images: [image],
+        shopId,
+      });
+      toast.success("Product submitted for review. It will go live once approved.");
+      setLocation("/vendor/products");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to save product";
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -239,11 +246,13 @@ export default function AddProduct() {
         </div>
 
         <div className="pt-4 flex gap-3">
-          <Button type="button" variant="outline" className="flex-1 rounded-xl shadow-none" onClick={() => setLocation("/vendor/products")}>
+          <Button type="button" variant="outline" className="flex-1 rounded-xl shadow-none" onClick={() => setLocation("/vendor/products")} disabled={saving}>
             Cancel
           </Button>
-          <Button type="submit" className="flex-[2] rounded-xl shadow-none neu-card" disabled={uploading}>
-            {uploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading…</> : "Save Product"}
+          <Button type="submit" className="flex-[2] rounded-xl shadow-none neu-card" disabled={uploading || saving}>
+            {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving…</> :
+             uploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading…</> :
+             "Save Product"}
           </Button>
         </div>
       </form>

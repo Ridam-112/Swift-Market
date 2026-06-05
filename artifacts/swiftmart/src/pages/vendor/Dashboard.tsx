@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { api } from "@/lib/api";
-import { useProducts } from "@/hooks/useProducts";
 import { StatCard } from "@/components/StatCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,6 +17,12 @@ interface VendorOrder {
   subtotal?: number;
   status: string;
   createdAt: string;
+}
+
+interface VendorProduct {
+  _id: string;
+  stock?: number;
+  status?: string;
 }
 
 interface ApiShop {
@@ -50,8 +55,8 @@ function buildSeries(orders: VendorOrder[]): { date: string; revenue: number; or
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const { products } = useProducts();
   const [orders, setOrders] = useState<VendorOrder[]>([]);
+  const [vendorProducts, setVendorProducts] = useState<VendorProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [shopId, setShopId] = useState<string | null>(null);
   const [shopIsOpen, setShopIsOpen] = useState<boolean | null>(null);
@@ -70,13 +75,18 @@ export default function Dashboard() {
         setShopId(shop._id);
         setShopIsOpen(shop.isOpen ?? false);
         setShopStatus(shop.status ?? "");
-        const ordersData = await api.get<{ success: boolean; orders: VendorOrder[] }>(`/orders?shopId=${shop._id}&limit=200`);
+        const [ordersData, productsData] = await Promise.all([
+          api.get<{ success: boolean; orders: VendorOrder[] }>(`/orders?shopId=${shop._id}&limit=200`),
+          api.get<{ success: boolean; products: VendorProduct[] }>(`/products?shopId=${shop._id}&status=all&limit=500`),
+        ]);
         setOrders(ordersData.orders);
+        setVendorProducts(productsData.products);
       } else {
         setShopNotFound(true);
       }
-    } catch {
-      // silently fail — show zeros
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to load dashboard data";
+      toast.error(msg.includes("buffering") ? "Database connecting — please retry." : msg);
     } finally {
       setLoading(false);
     }
@@ -107,7 +117,7 @@ export default function Dashboard() {
   const todayOrders = orders.filter(o => new Date(o.createdAt) >= todayStart);
   const todayRevenue = todayOrders.reduce((s, o) => s + (o.netAmount ?? o.subtotal ?? 0), 0);
   const activeOrders = orders.filter(o => !['delivered', 'cancelled', 'refunded'].includes(o.status)).length;
-  const lowStockProducts = products.filter(p => p.stock < 20);
+  const lowStockProducts = vendorProducts.filter(p => (p.stock ?? 0) < 20 && p.status === "active");
   const series = buildSeries(orders);
 
   if (loading) {
@@ -129,14 +139,14 @@ export default function Dashboard() {
           <Store className="w-10 h-10 text-muted-foreground" />
         </div>
         <div>
-          <h2 className="text-xl font-bold mb-2">You do not have an active shop.</h2>
-          <p className="text-muted-foreground text-sm">Your shop may have been removed or is no longer active. Register a new shop to start selling again.</p>
+          <h2 className="text-xl font-bold mb-2">No shop found.</h2>
+          <p className="text-muted-foreground text-sm">You don't have a registered shop yet. Register one to start selling.</p>
         </div>
         <Button
           className="rounded-2xl h-14 px-8 text-lg font-bold shadow-none neu-card"
           onClick={() => setLocation("/vendor-register")}
         >
-          Register Again
+          Register a Shop
         </Button>
       </div>
     );
@@ -181,6 +191,18 @@ export default function Dashboard() {
         </div>
       )}
 
+      {shopStatus === "pending" && (
+        <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+          <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold text-sm text-amber-700 dark:text-amber-400">Shop pending approval</p>
+            <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">
+              Your shop is under review by SwiftMart. You can set up your profile and add products in the meantime — they'll go live once approved.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           title="Today's Revenue"
@@ -198,7 +220,7 @@ export default function Dashboard() {
         />
         <StatCard
           title="Total Products"
-          value={products.length}
+          value={vendorProducts.length}
           icon={Package}
         />
         <StatCard

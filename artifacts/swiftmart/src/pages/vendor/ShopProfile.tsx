@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Upload, X, Loader2, ChevronDown, Store } from "lucide-react";
+import { Upload, X, Loader2, ChevronDown, Store, Clock } from "lucide-react";
 
 interface ApiCategory {
   _id: string;
@@ -277,6 +277,15 @@ export default function ShopProfile() {
           />
         </section>
 
+        {!loading && shopId && (
+          <div className="flex items-start gap-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+            <Clock className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              Changes are saved immediately but your shop remains visible to customers only after admin approval.
+            </p>
+          </div>
+        )}
+
         <section className="bg-card p-6 rounded-3xl neu-card space-y-5">
           <h3 className="font-semibold text-base text-foreground">Basic Info</h3>
 
@@ -308,7 +317,7 @@ export default function ShopProfile() {
             <div className="relative">
               <select
                 id="category"
-                value={shopType}
+                value={category || shopType}
                 onChange={e => { setShopType(e.target.value); setCategory(e.target.value); }}
                 className="w-full h-10 px-3 py-2 pr-9 rounded-md bg-background neu-inset border-none text-sm focus:outline-none appearance-none text-foreground"
               >

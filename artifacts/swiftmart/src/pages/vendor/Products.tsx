@@ -42,6 +42,7 @@ export default function VendorProducts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const fetchProducts = useCallback(async (sid: string) => {
     try {
@@ -80,11 +81,11 @@ export default function VendorProducts() {
   }, [user, authLoading, fetchProducts]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
     try {
       await api.delete(`/products/${id}`);
       setProducts(prev => prev.filter(p => p._id !== id));
-      toast.success("Product deleted successfully");
+      setConfirmDeleteId(null);
+      toast.success("Product deleted");
     } catch {
       toast.error("Failed to delete product");
     }
@@ -244,13 +245,33 @@ export default function VendorProducts() {
                       <Edit className="w-4 h-4 mr-2 sm:mr-0" /> <span className="sm:hidden">Edit</span>
                     </Button>
                   </Link>
-                  <Button
-                    variant="outline"
-                    className="flex-1 sm:flex-none rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 border-none shadow-none"
-                    onClick={() => handleDelete(product._id)}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2 sm:mr-0" /> <span className="sm:hidden">Delete</span>
-                  </Button>
+                  {confirmDeleteId === product._id ? (
+                    <div className="flex gap-1 flex-1 sm:flex-none">
+                      <Button
+                        size="sm"
+                        className="flex-1 rounded-xl bg-destructive text-white hover:bg-destructive/90 shadow-none border-none h-9 text-xs font-bold"
+                        onClick={() => handleDelete(product._id)}
+                      >
+                        Confirm
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 rounded-xl shadow-none border-none neu-inset h-9 text-xs"
+                        onClick={() => setConfirmDeleteId(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="flex-1 sm:flex-none rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 border-none shadow-none"
+                      onClick={() => setConfirmDeleteId(product._id)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2 sm:mr-0" /> <span className="sm:hidden">Delete</span>
+                    </Button>
+                  )}
                 </div>
               </div>
             );

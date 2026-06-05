@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Upload, X, Loader2, ChevronDown, AlertCircle } from "lucide-react";
+import { Upload, X, Loader2, ChevronDown, AlertCircle, Clock } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface ApiProduct {
@@ -189,6 +189,13 @@ export default function EditProduct() {
   return (
     <div className="pb-24 pt-4 px-4 max-w-2xl mx-auto space-y-6">
       <SectionHeader title="Edit Product" />
+
+      <div className="flex items-start gap-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+        <Clock className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+        <p className="text-xs text-amber-700 dark:text-amber-400">
+          Saving changes will reset this product to <span className="font-semibold">Pending Review</span>. It won't be visible to customers until an admin approves it again.
+        </p>
+      </div>
 
       <form onSubmit={handleSubmit} className="bg-card p-6 rounded-3xl neu-card space-y-6">
         <div className="space-y-2">
