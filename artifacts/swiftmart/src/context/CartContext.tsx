@@ -27,11 +27,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems(current => {
       const existing = current.find(item => item.product.id === product.id);
       if (existing) {
-        return current.map(item => 
-          item.product.id === product.id ? { ...item, qty: item.qty + qty } : item
+        const newQty = existing.qty + qty;
+        const capped = product.stock > 0 ? Math.min(newQty, product.stock) : newQty;
+        return current.map(item =>
+          item.product.id === product.id ? { ...item, qty: capped } : item
         );
       }
-      return [...current, { product, qty }];
+      return [...current, { product, qty: Math.min(qty, product.stock > 0 ? product.stock : qty) }];
     });
   };
 
@@ -44,9 +46,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeFromCart(productId);
       return;
     }
-    setItems(current => current.map(item => 
-      item.product.id === productId ? { ...item, qty } : item
-    ));
+    setItems(current => current.map(item => {
+      if (item.product.id !== productId) return item;
+      const stock = item.product.stock;
+      const capped = stock > 0 ? Math.min(qty, stock) : qty;
+      return { ...item, qty: capped };
+    }));
   };
 
   const clearCart = () => setItems([]);

@@ -19,6 +19,9 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const qty = cartItem?.qty || 0;
   const category = categories.find(c => c.id === product.category);
 
+  const isOutOfStock = product.stock === 0;
+  const isLowStock = product.stock > 0 && product.stock <= 5;
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -35,11 +38,23 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         <img 
           src={product.image} 
           alt={product.name} 
-          className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300"
+          className={`w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? "opacity-40" : ""}`}
         />
-        {product.trending && (
+        {product.trending && !isOutOfStock && (
           <div className="absolute top-2 left-2 bg-primary/90 text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
             Trending
+          </div>
+        )}
+        {isOutOfStock && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="bg-background/90 text-foreground text-[10px] font-bold px-2 py-1 rounded-full border border-border">
+              Out of Stock
+            </span>
+          </div>
+        )}
+        {isLowStock && (
+          <div className="absolute top-2 left-2 bg-amber-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
+            Only {product.stock} left
           </div>
         )}
       </Link>
@@ -56,9 +71,12 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
             {formatINR(product.price)}
           </div>
           <div className="z-10">
-            {qty > 0 ? (
+            {isOutOfStock ? (
+              <span className="text-[10px] font-semibold text-muted-foreground">Unavailable</span>
+            ) : qty > 0 ? (
               <QuantityStepper 
                 qty={qty} 
+                maxQty={product.stock}
                 onChange={(newQty) => updateQty(product.id, newQty)} 
                 size="sm"
               />

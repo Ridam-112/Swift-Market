@@ -5,7 +5,7 @@ import { useCart } from "@/hooks/useCart";
 import { formatINR } from "@/lib/currency";
 import { QuantityStepper } from "@/components/QuantityStepper";
 import { Button } from "@/components/ui/button";
-import { Star, ShieldCheck, Clock } from "lucide-react";
+import { Star, ShieldCheck, Clock, AlertTriangle } from "lucide-react";
 import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { categories } from "@/data/categories";
@@ -21,6 +21,9 @@ export default function Product() {
   const qty = cartItem?.qty || 0;
 
   if (!product) return <div className="p-8 text-center">Product not found</div>;
+
+  const isOutOfStock = product.stock === 0;
+  const isLowStock = product.stock > 0 && product.stock <= 5;
 
   const category = categories.find(c => c.id === product.category);
   const relatedProducts = products.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
@@ -78,10 +81,27 @@ export default function Product() {
             </div>
           </div>
 
+          {isLowStock && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 mb-4">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                Only {product.stock} left in stock — order soon!
+              </span>
+            </div>
+          )}
+
           <div className="mt-auto">
-            {qty > 0 ? (
+            {isOutOfStock ? (
+              <Button
+                size="lg"
+                disabled
+                className="w-full md:w-auto rounded-full text-lg font-bold shadow-none h-14 px-12 opacity-50 cursor-not-allowed"
+              >
+                Out of Stock
+              </Button>
+            ) : qty > 0 ? (
               <div className="flex items-center gap-4">
-                <QuantityStepper qty={qty} onChange={(newQty) => updateQty(product.id, newQty)} />
+                <QuantityStepper qty={qty} maxQty={product.stock} onChange={(newQty) => updateQty(product.id, newQty)} />
                 <div className="text-sm text-muted-foreground font-medium">Added to cart</div>
               </div>
             ) : (
