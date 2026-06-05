@@ -51,7 +51,6 @@ export function Header() {
         <div className="max-w-7xl mx-auto flex items-center gap-2 md:gap-4">
           {/* Logo — always visible */}
           <Link href="/" className="font-bold text-primary flex items-center gap-1.5 shrink-0">
-            <span className="text-white rounded-xl w-8 h-8 flex items-center justify-center neu-card text-sm font-bold bg-[#f59500]">S</span>
             <span className="hidden sm:inline text-lg font-bold">SwiftMart</span>
           </Link>
 
