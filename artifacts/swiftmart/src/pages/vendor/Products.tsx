@@ -22,6 +22,7 @@ interface ApiProduct {
   stock?: number;
   shopId?: string;
   status?: "pending" | "active" | "inactive" | "rejected" | "out_of_stock";
+  rejectionReason?: string;
 }
 
 const STATUS_CONFIG = {
@@ -229,6 +230,12 @@ export default function VendorProducts() {
                       Stock: {product.stock ?? 0}
                     </span>
                   </div>
+                  {product.status === "rejected" && product.rejectionReason && (
+                    <div className="mt-2 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                      <p className="text-xs font-semibold text-red-700 dark:text-red-400">Rejected by SwiftMart</p>
+                      <p className="text-xs text-red-600 dark:text-red-500 mt-0.5">Reason: {product.rejectionReason}</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2 self-end sm:self-auto w-full sm:w-auto">

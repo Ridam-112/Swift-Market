@@ -4519,12 +4519,27 @@ const APPROVAL_STATUS_CONFIG = {
   out_of_stock: { label: "No Stock",  className: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400" },
 } as const;
 
+const REJECTION_REASONS = [
+  "Wrong category selected",
+  "Incomplete product information",
+  "Duplicate product",
+  "Restricted product",
+  "Poor quality images",
+  "Other",
+] as const;
+
 function ProductApprovalsTab() {
   const [products, setProducts] = useState<AdminReviewProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"pending" | "active" | "rejected" | "all">("pending");
   const [actingId, setActingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Reject modal state
+  const [rejectTarget, setRejectTarget] = useState<AdminReviewProduct | null>(null);
+  const [rejectReason, setRejectReason] = useState<string>(REJECTION_REASONS[0]);
+  const [rejectCustom, setRejectCustom] = useState("");
+  const [submittingReject, setSubmittingReject] = useState(false);
 
   const fetchProducts = useCallback(async (s: string) => {
     setLoading(true);
@@ -4545,7 +4560,7 @@ function ProductApprovalsTab() {
   const handleApprove = async (p: AdminReviewProduct) => {
     setActingId(p._id);
     try {
-      await api.patch(`/products/${p._id}`, { status: "active" });
+      await api.patch(`/products/${p._id}/approval`, { action: "approve" });
       setProducts(prev => prev.filter(x => x._id !== p._id));
       toast.success(`"${p.name}" approved — now visible to customers`);
     } catch {
@@ -4555,16 +4570,29 @@ function ProductApprovalsTab() {
     }
   };
 
-  const handleReject = async (p: AdminReviewProduct) => {
-    setActingId(p._id);
+  const openRejectModal = (p: AdminReviewProduct) => {
+    setRejectTarget(p);
+    setRejectReason(REJECTION_REASONS[0]);
+    setRejectCustom("");
+  };
+
+  const submitReject = async () => {
+    if (!rejectTarget) return;
+    const finalReason = rejectReason === "Other" ? rejectCustom.trim() : rejectReason;
+    if (!finalReason) { toast.error("Please enter a rejection reason"); return; }
+    setSubmittingReject(true);
     try {
-      await api.patch(`/products/${p._id}`, { status: "rejected" });
-      setProducts(prev => prev.filter(x => x._id !== p._id));
-      toast.success(`"${p.name}" rejected`);
+      await api.patch(`/products/${rejectTarget._id}/approval`, {
+        action: "reject",
+        rejectionReason: finalReason,
+      });
+      setProducts(prev => prev.filter(x => x._id !== rejectTarget._id));
+      toast.success(`"${rejectTarget.name}" rejected`);
+      setRejectTarget(null);
     } catch {
       toast.error("Failed to reject product");
     } finally {
-      setActingId(null);
+      setSubmittingReject(false);
     }
   };
 
@@ -4647,6 +4675,11 @@ function ProductApprovalsTab() {
                     <span className="text-primary font-semibold text-sm">{formatINR(p.price)}</span>
                     <span>Stock: {p.stock}</span>
                   </div>
+                  {p.status === "rejected" && (p as AdminReviewProduct & { rejectionReason?: string }).rejectionReason && (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                      Reason: {(p as AdminReviewProduct & { rejectionReason?: string }).rejectionReason}
+                    </p>
+                  )}
                 </div>
 
                 {/* Actions */}
@@ -4659,10 +4692,9 @@ function ProductApprovalsTab() {
                     </Button>
                   )}
                   {p.status !== "rejected" && (
-                    <Button size="sm" variant="outline" onClick={() => handleReject(p)} disabled={isActing || isDeleting}
+                    <Button size="sm" variant="outline" onClick={() => openRejectModal(p)} disabled={isActing || isDeleting}
                       className="rounded-lg h-8 shadow-none text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950 gap-1.5">
-                      {isActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
-                      Reject
+                      <XCircle className="w-3 h-3" />Reject
                     </Button>
                   )}
                   <Button size="sm" variant="outline" onClick={() => handleDelete(p)} disabled={isActing || isDeleting}
@@ -4673,6 +4705,49 @@ function ProductApprovalsTab() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Reject modal */}
+      {rejectTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => { if (!submittingReject) setRejectTarget(null); }}>
+          <div className="bg-card rounded-2xl neu-card p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
+            <div>
+              <h3 className="font-bold text-foreground">Reject Product</h3>
+              <p className="text-sm text-muted-foreground mt-0.5 truncate">"{rejectTarget.name}"</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-foreground">Rejection Reason *</label>
+              <div className="space-y-2">
+                {REJECTION_REASONS.map(r => (
+                  <label key={r} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors ${rejectReason === r ? "bg-destructive/10 border border-destructive/30" : "bg-background neu-inset hover:bg-muted"}`}>
+                    <input type="radio" name="rejectReason" value={r} checked={rejectReason === r}
+                      onChange={() => setRejectReason(r)} className="accent-destructive shrink-0" />
+                    <span className="text-sm text-foreground">{r}</span>
+                  </label>
+                ))}
+              </div>
+              {rejectReason === "Other" && (
+                <Input
+                  value={rejectCustom}
+                  onChange={e => setRejectCustom(e.target.value)}
+                  placeholder="Describe the reason..."
+                  className="mt-2 neu-inset border-none bg-background"
+                />
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setRejectTarget(null)} disabled={submittingReject}
+                className="flex-1 rounded-xl shadow-none">Cancel</Button>
+              <Button onClick={submitReject} disabled={submittingReject}
+                className="flex-1 rounded-xl shadow-none bg-destructive hover:bg-destructive/90 text-destructive-foreground gap-2">
+                {submittingReject ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                Confirm Reject
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

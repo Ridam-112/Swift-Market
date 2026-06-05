@@ -4,6 +4,7 @@ import { Shop } from "../../models/Shop.js";
 import { Category } from "../../models/Category.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { deleteFromCloudinary } from "../../lib/cloudinary.js";
+import { createNotificationLimited } from "../../utils/notification.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -116,6 +117,55 @@ router.post("/", authenticate, V, async (req: AuthRequest, res: Response): Promi
   const { status: _ignored, ...safeBody } = body;
   const product = await Product.create({ ...safeBody, shopId: shop._id.toString(), status: "pending" });
   res.status(201).json({ success: true, product });
+});
+
+// PATCH /api/products/:id/approval — admin: approve or reject a product with notification
+router.patch("/:id/approval", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { action, rejectionReason } = req.body as { action: "approve" | "reject"; rejectionReason?: string };
+
+  if (action !== "approve" && action !== "reject") {
+    res.status(400).json({ success: false, message: "action must be 'approve' or 'reject'" });
+    return;
+  }
+  if (action === "reject" && !rejectionReason?.trim()) {
+    res.status(400).json({ success: false, message: "rejectionReason is required when rejecting" });
+    return;
+  }
+
+  const updatePayload: Record<string, unknown> =
+    action === "approve"
+      ? { status: "active", rejectionReason: null }
+      : { status: "rejected", rejectionReason: rejectionReason!.trim() };
+
+  const product = await Product.findByIdAndUpdate(req.params["id"], updatePayload, { new: true });
+  if (!product) { res.status(404).json({ success: false, message: "Product not found" }); return; }
+
+  // Notify the vendor who owns this product
+  try {
+    const shop = await Shop.findById(product.shopId).select("ownerId").lean();
+    if (shop?.ownerId) {
+      const vendorId = String(shop.ownerId);
+      if (action === "approve") {
+        await createNotificationLimited(vendorId, {
+          type: "system",
+          title: "✅ Product Approved",
+          message: `Your product "${product.name}" has been approved by SwiftMart and is now visible to customers.`,
+          data: { productId: String(product._id) },
+        });
+      } else {
+        await createNotificationLimited(vendorId, {
+          type: "system",
+          title: "❌ Product Rejected",
+          message: `Your product "${product.name}" has been rejected.\n\nReason:\n${rejectionReason}`,
+          data: { productId: String(product._id), rejectionReason },
+        });
+      }
+    }
+  } catch {
+    // Non-fatal — product status was updated; notification failure should not block response
+  }
+
+  res.json({ success: true, product });
 });
 
 // PATCH /api/products/:id
