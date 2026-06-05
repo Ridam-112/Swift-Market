@@ -48,12 +48,18 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     const pincodeShops = await Shop.find({ "address.pincode": pincode, status: "approved" }).select("_id").lean();
     filter["shopId"] = { $in: pincodeShops.map(s => String(s._id)) };
   } else if (shopId) {
-    const shop = await Shop.findById(shopId).select("status").lean();
-    if (!shop || shop.status !== "approved") {
-      res.json({ success: true, products: [], total: 0, page: 1, pages: 0 });
-      return;
+    if (status === "all") {
+      // Vendor/admin viewing their own shop's products — no approval check needed
+      filter["shopId"] = shopId;
+    } else {
+      // Customer-facing: only return products from approved shops
+      const shop = await Shop.findById(shopId).select("status").lean();
+      if (!shop || shop.status !== "approved") {
+        res.json({ success: true, products: [], total: 0, page: 1, pages: 0 });
+        return;
+      }
+      filter["shopId"] = shopId;
     }
-    filter["shopId"] = shopId;
   } else {
     const approvedShops = await Shop.find({ status: "approved" }).select("_id").lean();
     filter["shopId"] = { $in: approvedShops.map(s => String(s._id)) };

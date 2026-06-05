@@ -148,10 +148,6 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
 router.patch("/my/profile", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const shop = await Shop.findOne({ ownerId: req.user!.userId });
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
-  if (shop.status !== "approved") {
-    res.status(403).json({ success: false, message: "Only approved shops can update their profile" });
-    return;
-  }
   const body = req.body as Record<string, unknown>;
   const allowed: (keyof typeof body)[] = ["shopName", "description", "image", "banner", "address", "shopType", "category", "timings"];
   const update: Record<string, unknown> = {};
