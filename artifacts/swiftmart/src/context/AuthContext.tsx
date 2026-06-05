@@ -23,7 +23,7 @@ interface AuthContextType {
   updatePincode: (pincode: string) => Promise<void>;
   loginWithPhone: (phone: string) => Promise<void>;
   verifyOtp: (otp: string, phone: string) => Promise<{ isNewUser: boolean; user?: User }>;
-  loginWithGoogle: (credential: string) => Promise<{ isNewUser: boolean; user?: User }>;
+  loginWithGoogle: (token: string, type?: "credential" | "accessToken") => Promise<{ isNewUser: boolean; user?: User }>;
   completeOnboarding: (name: string, phone: string, address: Address, email?: string) => Promise<void>;
 
   applications: VendorApplication[];
@@ -320,14 +320,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { isNewUser: data.isNewUser, user: u };
   };
 
-  const loginWithGoogle = async (credential: string): Promise<{ isNewUser: boolean; user?: User }> => {
+  const loginWithGoogle = async (token: string, type: "credential" | "accessToken" = "credential"): Promise<{ isNewUser: boolean; user?: User }> => {
+    const body = type === "accessToken" ? { accessToken: token } : { credential: token };
     const data = await api.post<{
       success: boolean;
       isNewUser: boolean;
       accessToken: string;
       refreshToken: string;
       user: ApiUser;
-    }>("/auth/google", { credential });
+    }>("/auth/google", body);
 
     setTokens(data.accessToken, data.refreshToken);
     const u = apiUserToFrontend(data.user);

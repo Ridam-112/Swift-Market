@@ -18,22 +18,51 @@ router.get("/config", (_req: Request, res: Response): void => {
 
 // POST /api/auth/google
 router.post("/google", async (req: Request, res: Response): Promise<void> => {
-  const { credential } = req.body as { credential?: string };
-  if (!credential) {
+  const { credential, accessToken } = req.body as { credential?: string; accessToken?: string };
+  if (!credential && !accessToken) {
     res.status(400).json({ success: false, message: "Google credential token required" });
     return;
   }
   try {
-    const ticket = await googleClient.verifyIdToken({
-      idToken: credential,
-      audience: process.env["GOOGLE_CLIENT_ID"],
-    });
-    const payload = ticket.getPayload();
-    if (!payload || !payload.email) {
+    let email: string | undefined;
+    let name: string | undefined;
+    let googleId: string | undefined;
+
+    if (credential) {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env["GOOGLE_CLIENT_ID"],
+      });
+      const payload = ticket.getPayload();
+      if (!payload || !payload.email) {
+        res.status(400).json({ success: false, message: "Invalid Google token" });
+        return;
+      }
+      email = payload.email;
+      name = payload.name;
+      googleId = payload.sub;
+    } else {
+      const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!resp.ok) {
+        res.status(400).json({ success: false, message: "Invalid Google access token" });
+        return;
+      }
+      const info = await resp.json() as { email?: string; name?: string; sub?: string };
+      if (!info.email) {
+        res.status(400).json({ success: false, message: "Could not retrieve Google user info" });
+        return;
+      }
+      email = info.email;
+      name = info.name;
+      googleId = info.sub;
+    }
+
+    if (!email || !googleId) {
       res.status(400).json({ success: false, message: "Invalid Google token" });
       return;
     }
-    const { email, name, sub: googleId } = payload;
 
     let user = await User.findOne({ $or: [{ googleId }, { email }] });
     const isNewUser = !user;
