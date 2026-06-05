@@ -193,7 +193,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="h-[100dvh] flex flex-col justify-center px-4 py-4 max-w-md mx-auto relative bg-background overflow-y-auto">
+    <div className="h-[100dvh] flex flex-col justify-center px-4 py-4 w-full max-w-md mx-auto relative bg-background overflow-x-hidden overflow-y-auto">
       <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
 
       <div className="text-center mb-5 relative z-10">
