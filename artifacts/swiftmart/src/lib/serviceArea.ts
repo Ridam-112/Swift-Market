@@ -1,7 +1,14 @@
+export const SERVICE_PINCODES = ["733101", "733103"];
+
+export const SERVICE_AREA_NAMES: Record<string, string> = {
+  "733101": "Balurghat, South Dinajpur",
+  "733103": "Gangarampur, South Dinajpur",
+};
+
 export function isServicePincode(pincode: string): boolean {
-  return /^[1-9]\d{5}$/.test(pincode.trim());
+  return SERVICE_PINCODES.includes(pincode.trim());
 }
 
-export function getServiceAreaName(_pincode: string): string {
-  return "";
+export function getServiceAreaName(pincode: string): string {
+  return SERVICE_AREA_NAMES[pincode.trim()] ?? "";
 }
