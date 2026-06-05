@@ -52,11 +52,10 @@ export function BottomNav() {
                   {tab.label}
                 </span>
               </div>
-              
               {isActive && (
                 <motion.div
                   layoutId="bottom-nav-active"
-                  className="absolute top-1 w-12 h-10 bg-primary rounded-2xl -z-0 neu-card"
+                  className="absolute top-1 w-12 h-10 rounded-2xl -z-0 neu-card opacity-[0] border-t-[#ff8300] border-r-[#ff8300] border-b-[#ff8300] border-l-[#ff8300] border-t-[4px] border-r-[4px] border-b-[4px] border-l-[4px] bg-[#00000000]"
                   initial={false}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
