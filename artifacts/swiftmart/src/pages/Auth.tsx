@@ -188,7 +188,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col justify-center px-4 py-12 max-w-md mx-auto relative overflow-hidden bg-background">
+    <div className="min-h-[100dvh] flex flex-col justify-center px-4 py-12 max-w-md mx-auto relative bg-background">
       <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
 
       <div className="text-center mb-10 relative z-10">
