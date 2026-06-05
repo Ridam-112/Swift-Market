@@ -49,50 +49,53 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* LIGHT MODE - Saffron / Amber Theme for Soft UI */
+/* DEFAULT THEME — Dark (#1E1E1E bg, #1E2327 cards) */
 :root {
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
-  --opaque-button-border-intensity: -8;
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+  --opaque-button-border-intensity: 9;
 
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
 
-  --background: 35 30% 98%;
-  --foreground: 35 50% 15%;
-  --border: 35 20% 90%;
-  --card: 35 30% 97%;
-  --card-foreground: 35 50% 15%;
-  --card-border: 35 20% 90%;
-  --sidebar: 35 30% 98%;
-  --sidebar-foreground: 35 50% 15%;
-  --sidebar-border: 35 20% 90%;
+  --background: 0 0% 11.8%;
+  --foreground: 0 0% 96%;
+  --border: 0 0% 22%;
+
+  --card: 207 13% 13.5%;
+  --card-foreground: 0 0% 96%;
+  --card-border: 0 0% 24%;
+
+  --sidebar: 0 0% 11.8%;
+  --sidebar-foreground: 0 0% 96%;
+  --sidebar-border: 0 0% 22%;
   --sidebar-primary: 35 90% 55%;
-  --sidebar-primary-foreground: 35 30% 98%;
-  --sidebar-accent: 35 40% 90%;
-  --sidebar-accent-foreground: 35 50% 15%;
+  --sidebar-primary-foreground: 0 0% 96%;
+  --sidebar-accent: 0 0% 22%;
+  --sidebar-accent-foreground: 0 0% 96%;
   --sidebar-ring: 35 90% 55%;
-  --popover: 35 30% 98%;
-  --popover-foreground: 35 50% 15%;
-  --popover-border: 35 20% 90%;
+
+  --popover: 207 13% 13.5%;
+  --popover-foreground: 0 0% 96%;
+  --popover-border: 0 0% 24%;
 
   /* Primary: Saffron / Orange */
   --primary: 35 90% 55%;
-  --primary-foreground: 35 30% 98%;
-  
-  --secondary: 35 40% 92%;
-  --secondary-foreground: 35 50% 15%;
-  
-  --muted: 35 20% 90%;
-  --muted-foreground: 35 20% 40%;
-  
-  --accent: 35 90% 90%;
-  --accent-foreground: 35 90% 30%;
-  
-  --destructive: 0 84% 60%;
+  --primary-foreground: 0 0% 11.8%;
+
+  --secondary: 0 0% 20%;
+  --secondary-foreground: 0 0% 90%;
+
+  --muted: 0 0% 22%;
+  --muted-foreground: 0 0% 60%;
+
+  --accent: 35 50% 22%;
+  --accent-foreground: 35 90% 70%;
+
+  --destructive: 0 72% 50%;
   --destructive-foreground: 0 0% 100%;
-  
-  --input: 35 20% 88%;
+
+  --input: 0 0% 24%;
   --ring: 35 90% 55%;
 
   --chart-1: 35 90% 55%;
@@ -104,11 +107,11 @@
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
-  
-  --radius: 1.5rem; /* Large rounded corners for Soft UI >= 1.25rem */
-  
-  --neu-shadow-dark: 35 20% 85%;
-  --neu-shadow-light: 0 0% 100%;
+
+  --radius: 1.5rem;
+
+  --neu-shadow-dark: 0 0% 4%;
+  --neu-shadow-light: 0 0% 22%;
 }
 
 .dark {

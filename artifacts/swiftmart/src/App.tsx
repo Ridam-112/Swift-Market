@@ -139,10 +139,8 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
 }
 
 function ThemedShell({ children }: { children: React.ReactNode }) {
-  const { role, isAdmin, isLoading } = useAuth();
-  const isCustomer = !isLoading && !isAdmin && role === 'customer';
   return (
-    <div className={`min-h-[100dvh] flex flex-col font-sans selection:bg-primary selection:text-primary-foreground overflow-x-hidden w-full ${isCustomer ? 'customer-theme' : 'bg-background'}`}>
+    <div className="min-h-[100dvh] flex flex-col font-sans selection:bg-primary selection:text-primary-foreground overflow-x-hidden w-full bg-background text-foreground">
       {children}
     </div>
   );
