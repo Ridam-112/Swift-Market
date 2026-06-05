@@ -192,10 +192,7 @@ export default function Auth() {
       <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
 
       <div className="text-center mb-10 relative z-10">
-        <div className="w-20 h-20 bg-primary mx-auto rounded-3xl neu-card flex items-center justify-center text-white font-bold text-4xl mb-6 shadow-xl">
-          S
-        </div>
-        <h1 className="text-3xl font-bold mb-2 text-foreground">SwiftMart</h1>
+        <img src="/logo.png" alt="SwiftMart" className="h-24 w-auto object-contain mx-auto mb-2" />
         <p className="text-muted-foreground">Delivery in 10 minutes</p>
       </div>
 

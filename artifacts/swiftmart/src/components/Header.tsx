@@ -50,8 +50,8 @@ export function Header() {
       <header className="sticky top-0 z-50 glass w-full px-3 py-2.5 md:px-6">
         <div className="max-w-7xl mx-auto flex items-center gap-2 md:gap-4">
           {/* Logo — always visible */}
-          <Link href="/" className="font-bold text-primary flex items-center gap-1.5 shrink-0">
-            <span className="hidden sm:inline text-lg font-bold">SwiftMart</span>
+          <Link href="/" className="shrink-0 flex items-center">
+            <img src="/logo.png" alt="SwiftMart" className="h-9 w-auto object-contain" />
           </Link>
 
           {/* Location pill — customer only, takes remaining space on mobile */}
