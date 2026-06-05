@@ -123,7 +123,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
     <AuthGuard>
       <PincodeGuard>
         <Header />
-        <main className="flex-1 w-full">{children}</main>
+        <main className="flex-1 w-full bg-[1E1E1E]">{children}</main>
         <BottomNav />
       </PincodeGuard>
     </AuthGuard>
