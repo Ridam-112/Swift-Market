@@ -5,7 +5,7 @@ import { User } from "../../models/User.js";
 import { Product } from "../../models/Product.js";
 import { Order } from "../../models/Order.js";
 import { deleteFromCloudinary } from "../../lib/cloudinary.js";
-import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
+import { authenticate, requireRole, optionalAuth, type AuthRequest } from "../../middlewares/auth.js";
 import { createNotificationLimited } from "../../utils/notification.js";
 
 const router = Router();
@@ -14,7 +14,10 @@ const A = requireRole("admin", "super_admin");
 const ADMIN_ROLES = new Set(["admin", "super_admin"]);
 
 // GET /api/shops
-router.get("/", async (req: Request, res: Response): Promise<void> => {
+router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  const authReq = req as AuthRequest;
+  const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
+
   const { status, shopType, city, ownerId, pincode, page = "1", limit = "20", search, category } =
     req.query as Record<string, string>;
   const filter: Record<string, unknown> = {};
@@ -31,20 +34,20 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     ];
   }
 
-  // When serving customer-facing approved-shop queries, restrict to active shop types only
-  if (status === "approved" || (!status && !ownerId)) {
+  // For customer-facing queries (non-admin, no explicit status, no ownerId),
+  // restrict to approved shops with active shop types only.
+  // Admins always see all shops regardless of shopType status.
+  if (!isAdmin && (status === "approved" || (!status && !ownerId))) {
     const activeShopTypes = await ShopType.find({ isActive: true }).select("slug").lean();
     if (activeShopTypes.length > 0) {
       const activeSlugs = activeShopTypes.map(st => st.slug);
       if (shopType) {
-        // If a specific shopType was requested, only return results if that type is active
         filter["shopType"] = activeSlugs.includes(shopType) ? shopType : "__none__";
       } else {
         filter["shopType"] = { $in: activeSlugs };
       }
     }
   } else if (shopType) {
-    // Admin or vendor-specific queries: apply shopType filter as-is
     filter["shopType"] = shopType;
   }
 
