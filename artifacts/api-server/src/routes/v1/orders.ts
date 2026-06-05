@@ -100,21 +100,49 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
 
   // Look up shop to get owner ID and shop type slug for accurate commission resolution
   const shop = await Shop.findById(shopId).select("ownerId shopType ownerName").lean();
+  const vendorId = shop ? String(shop.ownerId) : shopId;
 
-  // Resolve commission using priority chain: vendor > shop_type > global
-  const resolved = await resolveCommission({
-    vendorId: shop ? String(shop.ownerId) : shopId,
-    shopTypeSlug: shop?.shopType,
-  });
-  const commissionRate = resolved.rate;
-  const commissionAmount = calculateCommissionAmount(netAmount, resolved);
+  // Per-item commission calculation (product-level has highest priority)
+  let totalCommissionAmount = 0;
+  const enrichedItems: Array<OrderItemInput & {
+    commissionType: string;
+    commissionRate: number;
+    commissionAmount: number;
+    commissionLevel: string;
+  }> = [];
+
+  for (const item of items) {
+    const lineTotal = item.price * item.qty;
+    const itemResolved = await resolveCommission({
+      productId: item.productId,
+      vendorId,
+      categorySlug: item.category,
+      shopTypeSlug: shop?.shopType,
+    });
+    const itemCommission = calculateCommissionAmount(lineTotal, itemResolved);
+    totalCommissionAmount += itemCommission;
+    enrichedItems.push({
+      ...item,
+      commissionType: itemResolved.type,
+      commissionRate: itemResolved.rate,
+      commissionAmount: +itemCommission.toFixed(2),
+      commissionLevel: itemResolved.level,
+    });
+  }
+
+  const commissionAmount = +totalCommissionAmount.toFixed(2);
   const vendorPayable = +(netAmount - commissionAmount).toFixed(2);
+  // commissionRate stored as weighted-average rate across items for display / backward compat
+  const avgRate = items.length > 0
+    ? +(enrichedItems.reduce((s, it) => s + it.commissionRate, 0) / enrichedItems.length).toFixed(2)
+    : 0;
 
   const order = await Order.create({
     ...body,
+    items: enrichedItems,
     customerId: req.user!.userId,
     netAmount,
-    commissionRate,
+    commissionRate: avgRate,
     commissionAmount,
     vendorPayable,
     platformRevenue: commissionAmount,
@@ -130,6 +158,8 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
           vendorName: shop.ownerName ?? String(body["shopName"] ?? ""),
           shopId,
           amount: vendorPayable,
+          orderTotal: netAmount,
+          commissionAmount,
           status: "pending",
           ordersIncluded: [String(order._id)],
         });
@@ -153,9 +183,9 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
   // Notify vendor/shop owner
   try {
     if (shopId) {
-      const shop = await Shop.findById(shopId);
-      if (shop?.ownerId) {
-        const vendor = await User.findById(shop.ownerId);
+      const shopDoc = await Shop.findById(shopId);
+      if (shopDoc?.ownerId) {
+        const vendor = await User.findById(shopDoc.ownerId);
         if (vendor) {
           await createNotificationLimited(String(vendor._id), {
             type: "order_update",

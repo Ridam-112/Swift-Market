@@ -5,8 +5,11 @@ import { authenticate, requireRole, type AuthRequest } from "../../middlewares/a
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
-router.get("/", authenticate, A, async (_req, res: Response): Promise<void> => {
-  const rules = await CommissionRule.find().sort({ level: 1 });
+router.get("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const filter: Record<string, unknown> = {};
+  if (req.query["level"]) filter["level"] = req.query["level"];
+  if (req.query["targetId"]) filter["targetId"] = req.query["targetId"];
+  const rules = await CommissionRule.find(filter).sort({ level: 1 });
   res.json({ success: true, rules });
 });
 

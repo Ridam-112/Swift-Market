@@ -6,6 +6,10 @@ export interface IOrderItem {
   qty: number;
   price: number;
   category: string;
+  commissionType?: "percentage" | "fixed";
+  commissionRate?: number;
+  commissionAmount?: number;
+  commissionLevel?: string;
 }
 
 export interface IOrder extends Document {
@@ -56,6 +60,10 @@ const OrderItemSchema = new Schema<IOrderItem>({
   qty: { type: Number, required: true, min: 1 },
   price: { type: Number, required: true, min: 0 },
   category: { type: String, required: true },
+  commissionType: { type: String, enum: ["percentage", "fixed"] },
+  commissionRate: { type: Number },
+  commissionAmount: { type: Number },
+  commissionLevel: { type: String },
 });
 
 const OrderSchema = new Schema<IOrder>(

@@ -3405,6 +3405,9 @@ function ShopListPanel({ onManageProducts }: { onManageProducts: (shop: ApiShopF
   );
 }
 
+type CommForm = { type: 'percentage' | 'fixed'; rate: string; isActive: boolean };
+const emptyCommForm = (): CommForm => ({ type: 'percentage', rate: '', isActive: true });
+
 function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => void }) {
   const [products, setProducts] = useState<ApiProductFull[]>([]);
   const [loading, setLoading] = useState(true);
@@ -3417,6 +3420,26 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
   const [editingStockId, setEditingStockId] = useState<string | null>(null);
   const [stockInput, setStockInput] = useState('');
 
+  // Per-product commission state
+  const [productRules, setProductRules] = useState<Record<string, CommissionRuleRecord | undefined>>({});
+  const [commEditId, setCommEditId] = useState<string | null>(null);
+  const [commForm, setCommForm] = useState<CommForm>(emptyCommForm());
+  const [commSaving, setCommSaving] = useState<string | null>(null);
+
+  const loadCommissions = useCallback(async (productIds: string[]) => {
+    if (productIds.length === 0) return;
+    try {
+      const data = await api.get<{ success: boolean; rules: CommissionRuleRecord[] }>('/commissions?level=product');
+      const map: Record<string, CommissionRuleRecord | undefined> = {};
+      for (const r of data.rules ?? []) {
+        if (r.targetId && productIds.includes(r.targetId)) {
+          map[r.targetId] = r;
+        }
+      }
+      setProductRules(map);
+    } catch { /* non-fatal */ }
+  }, []);
+
   const loadProducts = useCallback(async () => {
     setLoading(true);
     try {
@@ -3424,12 +3447,67 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
         `/products?shopId=${shop._id}&status=all&limit=200`
       );
       setProducts(data.products);
+      await loadCommissions(data.products.map(p => p._id));
     } catch {
       toast.error('Failed to load products');
     } finally {
       setLoading(false);
     }
-  }, [shop._id]);
+  }, [shop._id, loadCommissions]);
+
+  const openCommEdit = (p: ApiProductFull) => {
+    const rule = productRules[p._id];
+    setCommForm(rule
+      ? { type: rule.type, rate: String(rule.rate), isActive: rule.isActive }
+      : emptyCommForm()
+    );
+    setCommEditId(p._id);
+  };
+
+  const handleSaveCommission = async (p: ApiProductFull) => {
+    const rate = Number(commForm.rate);
+    if (isNaN(rate) || rate < 0) { toast.error('Enter a valid commission rate'); return; }
+    setCommSaving(p._id);
+    try {
+      const existingRule = productRules[p._id];
+      if (existingRule) {
+        await api.patch(`/commissions/${existingRule._id}`, { type: commForm.type, rate, isActive: commForm.isActive });
+        toast.success('Commission updated');
+      } else {
+        await api.post('/commissions', {
+          level: 'product',
+          type: commForm.type,
+          rate,
+          isActive: commForm.isActive,
+          targetId: p._id,
+          targetName: p.name,
+        });
+        toast.success('Product commission set');
+      }
+      setCommEditId(null);
+      await loadCommissions(products.map(q => q._id));
+    } catch (e) {
+      toast.error((e as Error).message ?? 'Save failed');
+    } finally {
+      setCommSaving(null);
+    }
+  };
+
+  const handleRemoveCommission = async (p: ApiProductFull) => {
+    const rule = productRules[p._id];
+    if (!rule) return;
+    setCommSaving(p._id);
+    try {
+      await api.delete(`/commissions/${rule._id}`);
+      toast.success('Product commission removed');
+      setCommEditId(null);
+      setProductRules(prev => { const n = { ...prev }; delete n[p._id]; return n; });
+    } catch {
+      toast.error('Remove failed');
+    } finally {
+      setCommSaving(null);
+    }
+  };
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
 
@@ -3708,10 +3786,84 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
                       {p.status.replace('_', ' ')}
                     </Badge>
                     <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => openEdit(p)} title="Edit" className="p-2 rounded-xl hover:bg-muted text-muted-foreground transition-colors"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => openEdit(p)} title="Edit product" className="p-2 rounded-xl hover:bg-muted text-muted-foreground transition-colors"><Edit2 className="w-4 h-4" /></button>
+                      <button
+                        onClick={() => commEditId === p._id ? setCommEditId(null) : openCommEdit(p)}
+                        title="Set product commission"
+                        className={`p-2 rounded-xl transition-colors ${commEditId === p._id ? 'bg-primary/10 text-primary' : productRules[p._id] ? 'text-primary hover:bg-primary/10' : 'text-muted-foreground hover:bg-muted'}`}
+                      >
+                        <Award className="w-4 h-4" />
+                      </button>
                       <button onClick={() => setDeleteConfirm(p._id)} title="Delete" className="p-2 rounded-xl hover:bg-destructive/10 text-destructive transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
+
+                  {/* Inline commission editor */}
+                  {commEditId === p._id && (
+                    <div className="mx-4 mb-3 px-4 py-3 rounded-2xl bg-primary/5 border border-primary/15 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-primary">Product Commission</p>
+                        {productRules[p._id] && (
+                          <button
+                            onClick={() => handleRemoveCommission(p)}
+                            disabled={commSaving === p._id}
+                            className="text-xs text-destructive hover:underline disabled:opacity-50"
+                          >
+                            Remove rule
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <select
+                          value={commForm.type}
+                          onChange={e => setCommForm(f => ({ ...f, type: e.target.value as 'percentage' | 'fixed' }))}
+                          className="h-8 px-2 rounded-lg bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer"
+                        >
+                          <option value="percentage">% Percentage</option>
+                          <option value="fixed">₹ Fixed</option>
+                        </select>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={commForm.type === 'percentage' ? '0.1' : '1'}
+                          value={commForm.rate}
+                          onChange={e => setCommForm(f => ({ ...f, rate: e.target.value }))}
+                          placeholder={commForm.type === 'percentage' ? 'e.g. 12' : 'e.g. 50'}
+                          className="w-28 h-8 text-sm bg-background neu-inset border-none text-center"
+                        />
+                        <span className="text-xs text-muted-foreground">{commForm.type === 'percentage' ? '%' : '₹'}</span>
+                        <button
+                          type="button"
+                          onClick={() => setCommForm(f => ({ ...f, isActive: !f.isActive }))}
+                          className={`relative w-9 h-5 rounded-full transition-colors duration-200 shrink-0 ${commForm.isActive ? 'bg-primary' : 'bg-muted'}`}
+                          title={commForm.isActive ? 'Enabled' : 'Disabled'}
+                        >
+                          <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${commForm.isActive ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </button>
+                        <span className="text-xs text-muted-foreground">{commForm.isActive ? 'Active' : 'Disabled'}</span>
+                        <div className="flex gap-1.5 ml-auto">
+                          <Button size="sm" variant="outline" onClick={() => setCommEditId(null)} className="rounded-lg h-8 text-xs">Cancel</Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleSaveCommission(p)}
+                            disabled={commSaving === p._id || !commForm.rate}
+                            className="rounded-lg h-8 text-xs shadow-none bg-primary text-primary-foreground hover:bg-primary/90"
+                          >
+                            {commSaving === p._id ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'Save'}
+                          </Button>
+                        </div>
+                      </div>
+                      {productRules[p._id] && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Current: {productRules[p._id]!.type === 'fixed'
+                            ? `₹${productRules[p._id]!.rate} fixed`
+                            : `${productRules[p._id]!.rate}% of item total`
+                          } · {productRules[p._id]!.isActive ? 'Active' : 'Disabled'}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {isDeleting && (
                     <div className="px-4 py-3 bg-destructive/5 border-t border-destructive/20 flex items-center justify-between gap-3">
                       <span className="text-sm text-destructive font-medium">Delete <span className="font-bold">{p.name}</span>?</span>
@@ -4115,6 +4267,8 @@ interface ApiPayoutRecord {
   vendorName: string;
   shopId: string;
   amount: number;
+  orderTotal?: number;
+  commissionAmount?: number;
   status: "pending" | "processing" | "paid" | "failed";
   ordersIncluded: string[];
   paidAt?: string;
@@ -4218,8 +4372,19 @@ function PayoutsTab() {
                       {p.paidAt && ` · Paid ${new Date(p.paidAt).toLocaleDateString("en-IN")}`}
                     </p>
                     {p.notes && <p className="text-xs text-muted-foreground italic mt-0.5">"{p.notes}"</p>}
+                    {(p.orderTotal != null || p.commissionAmount != null) && (
+                      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                        {p.orderTotal != null && (
+                          <span className="text-xs text-muted-foreground">Order total: <span className="font-medium text-foreground">{formatINR(p.orderTotal)}</span></span>
+                        )}
+                        {p.commissionAmount != null && (
+                          <span className="text-xs text-muted-foreground">Commission: <span className="font-medium text-destructive">−{formatINR(p.commissionAmount)}</span></span>
+                        )}
+                        <span className="text-xs text-muted-foreground">Vendor payable: <span className="font-medium text-emerald-600">{formatINR(p.amount)}</span></span>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-lg font-bold text-foreground shrink-0">{formatINR(p.amount)}</p>
+                  <p className="text-lg font-bold text-emerald-600 shrink-0">{formatINR(p.amount)}</p>
                 </div>
                 {p.status !== "paid" && (
                   <div className="flex items-center gap-2 flex-wrap">
