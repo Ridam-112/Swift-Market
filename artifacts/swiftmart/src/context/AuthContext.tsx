@@ -67,6 +67,16 @@ interface ApiUser {
   vendorStatus?: string;
   pincode?: string;
   addresses?: ApiAddress[];
+  vendorProfile?: {
+    storeName: string;
+    storeCategory: string;
+    storeDescription: string;
+    upiId: string;
+    bankAccountNumber: string;
+    bankIfscCode: string;
+    panNumber: string;
+    gstNumber?: string;
+  };
 }
 
 interface ApiReport {
@@ -119,6 +129,7 @@ function apiUserToFrontend(apiUser: ApiUser): User {
     addresses: (apiUser.addresses ?? []).map(normalizeAddress),
     isVendorRegistered: apiUser.vendorStatus === 'approved' || apiUser.vendorStatus === 'pending',
     vendorStatus: (apiUser.vendorStatus as User['vendorStatus']) ?? 'none',
+    vendorProfile: apiUser.vendorProfile,
   };
 }
 

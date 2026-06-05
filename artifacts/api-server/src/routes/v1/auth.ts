@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { OAuth2Client } from "google-auth-library";
 import { User } from "../../models/User.js";
+import { Shop } from "../../models/Shop.js";
 import { OtpSession } from "../../models/OtpSession.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt.js";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
@@ -172,6 +173,24 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response): Promise
     res.status(404).json({ success: false, message: "User not found" });
     return;
   }
+
+  let vendorProfile: Record<string, unknown> | undefined;
+  if (user.vendorStatus === "approved" || user.vendorStatus === "pending") {
+    const shop = await Shop.findOne({ ownerId: String(user._id) }).select("shopName category shopType upiId bankAccountNumber bankIfscCode panNumber gstNumber description").lean();
+    if (shop) {
+      vendorProfile = {
+        storeName: shop.shopName,
+        storeCategory: shop.category ?? shop.shopType,
+        storeDescription: shop.description ?? "",
+        upiId: shop.upiId,
+        bankAccountNumber: shop.bankAccountNumber,
+        bankIfscCode: shop.bankIfscCode,
+        panNumber: shop.panNumber,
+        gstNumber: shop.gstNumber ?? "",
+      };
+    }
+  }
+
   res.json({
     success: true,
     user: {
@@ -184,6 +203,7 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response): Promise
       vendorStatus: user.vendorStatus,
       pincode: user.pincode ?? "",
       addresses: user.addresses,
+      vendorProfile,
     },
   });
 });
