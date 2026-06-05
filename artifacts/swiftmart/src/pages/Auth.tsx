@@ -274,7 +274,7 @@ export default function Auth() {
 
               <div className="space-y-3">
                 <motion.div
-                  className="flex justify-between gap-1.5"
+                  className="grid grid-cols-6 gap-1.5 w-full"
                   animate={otpError ? { x: [-10, 10, -10, 10, 0] } : {}}
                   transition={{ duration: 0.4 }}
                 >
@@ -290,7 +290,7 @@ export default function Auth() {
                       onChange={e => handleOtpChange(i, e.target.value)}
                       onKeyDown={e => handleOtpKeyDown(i, e)}
                       className={cn(
-                        "w-10 h-12 text-center text-lg font-bold bg-background neu-inset border-none rounded-xl focus-visible:ring-2 focus-visible:ring-primary",
+                        "w-full h-11 text-center text-lg font-bold bg-background neu-inset border-none rounded-xl focus-visible:ring-2 focus-visible:ring-primary",
                         otpError && "ring-2 ring-destructive"
                       )}
                     />
