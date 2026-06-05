@@ -137,7 +137,7 @@ function buildTopProducts(orders: ApiOrder[]) {
     .sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 5);
 }
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories';
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -211,6 +211,7 @@ export default function Admin() {
               {activeSection === 'coupons' && <CouponsTab />}
               {activeSection === 'commissions' && <CommissionsTab />}
               {activeSection === 'shop-types' && <ShopTypesTab />}
+              {activeSection === 'categories' && <CategoriesTab />}
               {activeSection === 'payouts' && <PayoutsTab />}
             </motion.div>
           </AnimatePresence>
@@ -249,6 +250,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'coupons', label: 'Coupons', icon: Tag },
     { id: 'commissions', label: 'Commissions', icon: Award },
     { id: 'shop-types', label: 'Shop Types', icon: Building2 },
+    { id: 'categories', label: 'Categories', icon: Tag },
     { id: 'payouts', label: 'Payouts', icon: CreditCard },
   ];
 
@@ -4237,6 +4239,254 @@ function PayoutsTab() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ApiCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  isActive: boolean;
+  commissionRate: number;
+  createdAt: string;
+}
+
+function CategoriesTab() {
+  const [cats, setCats] = useState<ApiCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editRate, setEditRate] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: "", slug: "", description: "", commissionRate: "5" });
+  const [creating, setCreating] = useState(false);
+  const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all");
+
+  const fetchCategories = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api.get<{ success: boolean; categories: ApiCategory[] }>("/categories/all");
+      setCats(data.categories ?? []);
+    } catch {
+      toast.error("Failed to load categories");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchCategories(); }, [fetchCategories]);
+
+  const handleToggle = async (cat: ApiCategory) => {
+    setTogglingId(cat._id);
+    try {
+      await api.patch(`/categories/${cat._id}`, { isActive: !cat.isActive });
+      setCats(prev => prev.map(c => c._id === cat._id ? { ...c, isActive: !cat.isActive } : c));
+      toast.success(`"${cat.name}" ${cat.isActive ? "disabled" : "enabled"}`);
+    } catch {
+      toast.error("Failed to update category");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const handleSaveRate = async (cat: ApiCategory) => {
+    const rate = parseFloat(editRate);
+    if (isNaN(rate) || rate < 0) { toast.error("Enter a valid rate"); return; }
+    try {
+      await api.patch(`/categories/${cat._id}`, { commissionRate: rate });
+      setCats(prev => prev.map(c => c._id === cat._id ? { ...c, commissionRate: rate } : c));
+      setEditingId(null);
+      toast.success("Commission rate updated");
+    } catch {
+      toast.error("Failed to update rate");
+    }
+  };
+
+  const handleDelete = async (cat: ApiCategory) => {
+    if (!confirm(`Delete category "${cat.name}"? This cannot be undone.`)) return;
+    setDeletingId(cat._id);
+    try {
+      await api.delete(`/categories/${cat._id}`);
+      setCats(prev => prev.filter(c => c._id !== cat._id));
+      toast.success("Category deleted");
+    } catch {
+      toast.error("Failed to delete category");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!createForm.name.trim() || !createForm.slug.trim()) { toast.error("Name and slug are required"); return; }
+    const rate = parseFloat(createForm.commissionRate);
+    if (isNaN(rate) || rate < 0) { toast.error("Enter a valid commission rate"); return; }
+    setCreating(true);
+    try {
+      const data = await api.post<{ success: boolean; category: ApiCategory }>("/categories", {
+        name: createForm.name.trim(),
+        slug: createForm.slug.trim().toLowerCase().replace(/\s+/g, "-"),
+        description: createForm.description.trim(),
+        commissionRate: rate,
+        isActive: true,
+      });
+      setCats(prev => [data.category, ...prev]);
+      setCreateForm({ name: "", slug: "", description: "", commissionRate: "5" });
+      setShowCreate(false);
+      toast.success("Category created");
+    } catch {
+      toast.error("Failed to create category");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const displayed = cats.filter(c =>
+    filterActive === "all" ? true : filterActive === "active" ? c.isActive : !c.isActive
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-foreground">Categories</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Enable / disable categories and set per-category commission rates</p>
+        </div>
+        <Button onClick={() => setShowCreate(v => !v)} className="rounded-xl shadow-none gap-2">
+          <Plus className="w-4 h-4" />New Category
+        </Button>
+      </div>
+
+      {showCreate && (
+        <div className="neu-card rounded-2xl p-5 space-y-4">
+          <h3 className="font-semibold text-sm text-foreground">Create Category</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Name *</label>
+              <Input value={createForm.name}
+                onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Electronics"
+                className="h-9 neu-inset border-none bg-background" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Slug * (used as category key)</label>
+              <Input value={createForm.slug}
+                onChange={e => setCreateForm(f => ({ ...f, slug: e.target.value }))}
+                placeholder="e.g. electronics"
+                className="h-9 neu-inset border-none bg-background" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Commission Rate (%)</label>
+              <Input type="number" min="0" value={createForm.commissionRate}
+                onChange={e => setCreateForm(f => ({ ...f, commissionRate: e.target.value }))}
+                className="h-9 neu-inset border-none bg-background" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Description</label>
+              <Input value={createForm.description}
+                onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Optional"
+                className="h-9 neu-inset border-none bg-background" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={handleCreate} disabled={creating} className="rounded-xl shadow-none">
+              {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create"}
+            </Button>
+            <Button variant="outline" onClick={() => setShowCreate(false)} className="rounded-xl shadow-none">Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-2 flex-wrap items-center">
+        {(["all", "active", "inactive"] as const).map(f => (
+          <Button key={f} size="sm" variant={filterActive === f ? "default" : "outline"}
+            onClick={() => setFilterActive(f)} className="rounded-lg shadow-none capitalize">
+            {f}
+          </Button>
+        ))}
+        <span className="ml-auto text-xs text-muted-foreground">
+          {displayed.length} categor{displayed.length === 1 ? "y" : "ies"}
+        </span>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : displayed.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground text-sm">No categories found</div>
+      ) : (
+        <div className="space-y-3">
+          {displayed.map(cat => (
+            <div key={cat._id} className="neu-card rounded-2xl p-4 flex items-center gap-4 flex-wrap">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-sm text-foreground">{cat.name}</span>
+                  <Badge variant={cat.isActive ? "default" : "secondary"} className="text-xs">
+                    {cat.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">{cat.slug}</span>
+                </div>
+                {cat.description && (
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{cat.description}</p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                {editingId === cat._id ? (
+                  <>
+                    <Input type="number" min="0" value={editRate}
+                      onChange={e => setEditRate(e.target.value)}
+                      className="w-24 h-8 text-xs neu-inset border-none bg-background"
+                      placeholder="Rate %" />
+                    <Button size="sm" onClick={() => handleSaveRate(cat)} className="rounded-lg h-8 shadow-none">Save</Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditingId(null)} className="rounded-lg h-8 shadow-none">Cancel</Button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => { setEditingId(cat._id); setEditRate(String(cat.commissionRate)); }}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                    {cat.commissionRate}% commission
+                  </button>
+                )}
+
+                <Button size="sm" variant="outline"
+                  onClick={() => handleToggle(cat)}
+                  disabled={togglingId === cat._id}
+                  className={`rounded-lg h-8 shadow-none gap-1.5 ${
+                    cat.isActive
+                      ? "text-destructive border-destructive/30 hover:bg-destructive/5"
+                      : "text-green-600 border-green-600/30 hover:bg-green-50 dark:hover:bg-green-950"
+                  }`}
+                >
+                  {togglingId === cat._id
+                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                    : cat.isActive
+                      ? <><EyeOff className="w-3 h-3" />Disable</>
+                      : <><Eye className="w-3 h-3" />Enable</>
+                  }
+                </Button>
+
+                <Button size="sm" variant="outline"
+                  onClick={() => handleDelete(cat)}
+                  disabled={deletingId === cat._id}
+                  className="rounded-lg h-8 shadow-none text-destructive border-destructive/30 hover:bg-destructive/5"
+                >
+                  {deletingId === cat._id
+                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                    : <Trash2 className="w-3 h-3" />
+                  }
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
