@@ -15,6 +15,8 @@ export interface IShop extends Document {
   category?: string;
   description?: string;
   image?: string;
+  banner?: string;
+  timings?: { open: string; close: string };
   commissionRate?: number;
   status: "pending" | "approved" | "rejected" | "banned";
   isOpen: boolean;
@@ -48,6 +50,11 @@ const ShopSchema = new Schema<IShop>(
     subcategory: String,
     description: String,
     image: String,
+    banner: String,
+    timings: {
+      open: { type: String },
+      close: { type: String },
+    },
     commissionRate: { type: Number, min: 0, max: 100 },
     status: { type: String, enum: ["pending", "approved", "rejected", "banned"], default: "pending" },
     isOpen: { type: Boolean, default: false },

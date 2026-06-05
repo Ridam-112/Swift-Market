@@ -45,4 +45,18 @@ router.post(
   },
 );
 
+router.post(
+  "/shop-image",
+  authenticate,
+  upload.single("image"),
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.file) {
+      res.status(400).json({ success: false, message: "No file uploaded" });
+      return;
+    }
+    const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/shops");
+    res.json({ success: true, imageUrl: url });
+  },
+);
+
 export default router;

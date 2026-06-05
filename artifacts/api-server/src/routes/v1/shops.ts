@@ -141,6 +141,28 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
   res.status(201).json({ success: true, shop });
 });
 
+// PATCH /api/shops/my/profile — vendor updates their own shop profile (safe fields only)
+router.patch("/my/profile", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const shop = await Shop.findOne({ ownerId: req.user!.userId });
+  if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+  if (shop.status !== "approved") {
+    res.status(403).json({ success: false, message: "Only approved shops can update their profile" });
+    return;
+  }
+  const body = req.body as Record<string, unknown>;
+  const allowed: (keyof typeof body)[] = ["shopName", "description", "image", "banner", "address", "shopType", "category", "timings"];
+  const update: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (body[key] !== undefined) update[key] = body[key];
+  }
+  const updated = await Shop.findOneAndUpdate(
+    { ownerId: req.user!.userId },
+    update,
+    { new: true, runValidators: true }
+  );
+  res.json({ success: true, shop: updated });
+});
+
 // PATCH /api/shops/my/toggle-open — vendor toggles their own shop open/close
 router.patch("/my/toggle-open", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const shop = await Shop.findOne({ ownerId: req.user!.userId });

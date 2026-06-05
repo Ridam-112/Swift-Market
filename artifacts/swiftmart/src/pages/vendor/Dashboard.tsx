@@ -8,7 +8,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { IndianRupee, ShoppingBag, Package, AlertCircle, RefreshCw, Store, Power } from "lucide-react";
+import { IndianRupee, ShoppingBag, Package, AlertCircle, RefreshCw, Store, Power, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/currency";
 
@@ -146,9 +146,14 @@ export default function Dashboard() {
     <div className="pb-24 pt-4 px-4 max-w-5xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <SectionHeader title="Vendor Dashboard" />
-        <Button variant="ghost" size="sm" onClick={fetchData} className="text-muted-foreground">
-          <RefreshCw className="w-4 h-4 mr-1" /> Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setLocation("/vendor/shop-profile")} className="text-muted-foreground">
+            <Pencil className="w-4 h-4 mr-1" /> Edit Shop
+          </Button>
+          <Button variant="ghost" size="sm" onClick={fetchData} className="text-muted-foreground">
+            <RefreshCw className="w-4 h-4 mr-1" /> Refresh
+          </Button>
+        </div>
       </div>
 
       {shopStatus === "approved" && shopIsOpen !== null && (

@@ -37,6 +37,7 @@ import VendorProducts from "@/pages/vendor/Products";
 import AddProduct from "@/pages/vendor/AddProduct";
 import EditProduct from "@/pages/vendor/EditProduct";
 import VendorOrders from "@/pages/vendor/Orders";
+import VendorShopProfile from "@/pages/vendor/ShopProfile";
 import VendorRegister from "@/pages/VendorRegister";
 import VendorStatus from "@/pages/VendorStatus";
 
@@ -206,6 +207,9 @@ function Router() {
         </Route>
         <Route path="/vendor/orders">
           <ProtectedLayout><RoleGuard requiredRole="vendor"><VendorOrders /></RoleGuard></ProtectedLayout>
+        </Route>
+        <Route path="/vendor/shop-profile">
+          <ProtectedLayout><RoleGuard requiredRole="vendor"><VendorShopProfile /></RoleGuard></ProtectedLayout>
         </Route>
 
         <Route path="/admin">
