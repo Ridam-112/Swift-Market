@@ -130,10 +130,12 @@ router.post("/verify-otp", async (req: Request, res: Response): Promise<void> =>
       id: String(user._id),
       name: user.name,
       phone: user.phone,
+      email: user.email ?? "",
       role: user.role,
       status: user.status,
       vendorStatus: user.vendorStatus,
       pincode: user.pincode ?? "",
+      addresses: user.addresses ?? [],
     },
   });
 });

@@ -239,6 +239,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const u = apiUserToFrontend(data.user);
       setUser(u);
       localStorage.setItem("sm_user", JSON.stringify(u));
+      // After backend saves, addresses get MongoDB _ids. If selectedDeliveryAddress
+      // still holds a stale client-generated id, re-sync it to the backend address.
+      setSelectedDeliveryAddress(prev => {
+        if (!prev || !u.addresses.length) return prev;
+        const stillValid = u.addresses.find(a => a.id === prev.id);
+        if (stillValid) return stillValid;
+        // Match by content (label + line1) to find the freshly-saved address
+        const matched = u.addresses.find(a => a.label === prev.label && a.line1 === prev.line1);
+        return matched ?? u.addresses[0];
+      });
     } catch { /* local state already updated optimistically */ }
   };
 
