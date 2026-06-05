@@ -23,7 +23,7 @@ interface AuthContextType {
   updatePincode: (pincode: string) => Promise<void>;
   loginWithPhone: (phone: string) => Promise<void>;
   verifyOtp: (otp: string, phone: string) => Promise<{ isNewUser: boolean; user?: User }>;
-  loginWithGoogle: () => { isNewUser: boolean; user?: User; mockEmail?: string; mockName?: string };
+  loginWithGoogle: (credential: string) => Promise<{ isNewUser: boolean; user?: User }>;
   completeOnboarding: (name: string, phone: string, address: Address, email?: string) => Promise<void>;
 
   applications: VendorApplication[];
@@ -299,10 +299,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { isNewUser: data.isNewUser, user: u };
   };
 
-  const loginWithGoogle = () => {
-    const mockEmail = `user${Math.floor(Math.random() * 1000)}@gmail.com`;
-    const mockName = `User ${Math.floor(Math.random() * 1000)}`;
-    return { isNewUser: true, mockEmail, mockName };
+  const loginWithGoogle = async (credential: string): Promise<{ isNewUser: boolean; user?: User }> => {
+    const data = await api.post<{
+      success: boolean;
+      isNewUser: boolean;
+      accessToken: string;
+      refreshToken: string;
+      user: ApiUser;
+    }>("/auth/google", { credential });
+
+    setTokens(data.accessToken, data.refreshToken);
+    const u = apiUserToFrontend(data.user);
+    setUser(u);
+    setUserRole(data.user.role);
+    localStorage.setItem("sm_user", JSON.stringify(u));
+    localStorage.setItem("sm_role", data.user.role);
+
+    if (u.addresses?.length > 0) setSelectedDeliveryAddress(u.addresses[0]);
+
+    const dashRole = data.user.role === 'vendor' ? 'vendor' : 'customer';
+    setRoleState(dashRole);
+    localStorage.setItem("swiftmart_role", dashRole);
+
+    return { isNewUser: data.isNewUser, user: u };
   };
 
   const completeOnboarding = async (name: string, phone: string, address: Address, email?: string): Promise<void> => {

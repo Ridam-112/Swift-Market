@@ -1,5 +1,23 @@
 import { createRoot } from "react-dom/client";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import App from "./App";
 import "./index.css";
 
-createRoot(document.getElementById("root")!).render(<App />);
+async function bootstrap() {
+  let googleClientId = "";
+  try {
+    const res = await fetch("/api/auth/config");
+    const data = await res.json() as { success: boolean; googleClientId?: string };
+    googleClientId = data.googleClientId ?? "";
+  } catch {
+    // non-fatal — Google login will be unavailable
+  }
+
+  createRoot(document.getElementById("root")!).render(
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <App />
+    </GoogleOAuthProvider>
+  );
+}
+
+void bootstrap();

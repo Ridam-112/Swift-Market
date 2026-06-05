@@ -4,6 +4,7 @@ export interface IUser extends Document {
   name: string;
   phone: string;
   email?: string;
+  googleId?: string;
   role: "customer" | "vendor" | "delivery_partner" | "admin" | "super_admin";
   status: "active" | "banned" | "suspended";
   vendorStatus: "none" | "pending" | "approved" | "rejected";
@@ -25,6 +26,7 @@ const UserSchema = new Schema<IUser>(
     name: { type: String, required: true, trim: true },
     phone: { type: String, required: true, unique: true, trim: true },
     email: { type: String, trim: true, lowercase: true },
+    googleId: { type: String, sparse: true },
     role: {
       type: String,
       enum: ["customer", "vendor", "delivery_partner", "admin", "super_admin"],

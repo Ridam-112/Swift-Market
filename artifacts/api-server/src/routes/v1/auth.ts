@@ -1,11 +1,85 @@
 import { Router, type Request, type Response } from "express";
+import { OAuth2Client } from "google-auth-library";
 import { User } from "../../models/User.js";
 import { OtpSession } from "../../models/OtpSession.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt.js";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
 
+const googleClient = new OAuth2Client(process.env["GOOGLE_CLIENT_ID"]);
+
 const router = Router();
 const DEMO_OTP = process.env["OTP_DEMO_CODE"] ?? "123456";
+
+// GET /api/auth/config — public, returns non-secret client-side config
+router.get("/config", (_req: Request, res: Response): void => {
+  res.json({ success: true, googleClientId: process.env["GOOGLE_CLIENT_ID"] ?? "" });
+});
+
+// POST /api/auth/google
+router.post("/google", async (req: Request, res: Response): Promise<void> => {
+  const { credential } = req.body as { credential?: string };
+  if (!credential) {
+    res.status(400).json({ success: false, message: "Google credential token required" });
+    return;
+  }
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env["GOOGLE_CLIENT_ID"],
+    });
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      res.status(400).json({ success: false, message: "Invalid Google token" });
+      return;
+    }
+    const { email, name, sub: googleId } = payload;
+
+    let user = await User.findOne({ $or: [{ googleId }, { email }] });
+    const isNewUser = !user;
+
+    if (!user) {
+      user = await User.create({
+        name: name ?? "User",
+        email,
+        googleId,
+        phone: `g_${googleId}`,
+        role: "customer",
+        status: "active",
+      });
+    } else if (!user.googleId) {
+      user.googleId = googleId;
+      await user.save();
+    }
+
+    user.lastLoginAt = new Date();
+    await user.save();
+
+    const tokenPayload = { userId: String(user._id), phone: user.phone, role: user.role };
+    const accessToken = signAccessToken(tokenPayload);
+    const refreshToken = signRefreshToken(tokenPayload);
+
+    res.json({
+      success: true,
+      isNewUser,
+      accessToken,
+      refreshToken,
+      user: {
+        id: String(user._id),
+        name: user.name,
+        phone: user.phone,
+        email: user.email ?? "",
+        role: user.role,
+        status: user.status,
+        vendorStatus: user.vendorStatus,
+        pincode: user.pincode ?? "",
+        addresses: user.addresses ?? [],
+      },
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Google authentication failed";
+    res.status(401).json({ success: false, message: msg });
+  }
+});
 
 // POST /api/auth/send-otp
 router.post("/send-otp", async (req: Request, res: Response): Promise<void> => {
