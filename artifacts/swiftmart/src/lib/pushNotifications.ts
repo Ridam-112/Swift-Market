@@ -22,7 +22,7 @@ export async function registerPushNotifications(): Promise<boolean> {
 
     const subscription = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
+      applicationServerKey: urlBase64ToUint8Array(publicKey).buffer as ArrayBuffer,
     });
 
     const subJson = subscription.toJSON() as {

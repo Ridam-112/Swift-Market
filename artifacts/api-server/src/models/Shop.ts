@@ -13,6 +13,7 @@ export interface IShop extends Document {
   };
   shopType: string;
   category?: string;
+  subcategory?: string;
   description?: string;
   image?: string;
   banner?: string;

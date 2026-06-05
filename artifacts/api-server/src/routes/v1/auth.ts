@@ -18,8 +18,8 @@ router.get("/config", (_req: Request, res: Response): void => {
 
 // POST /api/auth/google
 router.post("/google", async (req: Request, res: Response): Promise<void> => {
-  const { credential, accessToken } = req.body as { credential?: string; accessToken?: string };
-  if (!credential && !accessToken) {
+  const { credential, accessToken: googleAccessToken } = req.body as { credential?: string; accessToken?: string };
+  if (!credential && !googleAccessToken) {
     res.status(400).json({ success: false, message: "Google credential token required" });
     return;
   }
@@ -43,7 +43,7 @@ router.post("/google", async (req: Request, res: Response): Promise<void> => {
       googleId = payload.sub;
     } else {
       const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${googleAccessToken}` },
       });
       if (!resp.ok) {
         res.status(400).json({ success: false, message: "Invalid Google access token" });
