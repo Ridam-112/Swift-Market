@@ -47,6 +47,9 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    headers: {
+      "Cache-Control": "no-store",
+    },
     proxy: {
       "/api": {
         target: "http://localhost:8080",
