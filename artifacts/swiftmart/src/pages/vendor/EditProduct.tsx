@@ -86,6 +86,21 @@ export default function EditProduct() {
 
   const selectedCat = apiCategories.find(c => c.slug === category);
 
+  // Bug #15 fix: revoke blob URL when component unmounts or image changes
+  useEffect(() => {
+    return () => {
+      if (image?.startsWith("blob:")) URL.revokeObjectURL(image);
+    };
+  }, [image]);
+
+  // Bug #15 fix: warn user before leaving while upload is in progress
+  useEffect(() => {
+    if (!uploading) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [uploading]);
+
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -109,10 +124,12 @@ export default function EditProduct() {
         setImage(data.imageUrl);
       } else {
         toast.error(data.message ?? "Upload failed");
+        URL.revokeObjectURL(preview);
         setImage(null);
       }
     } catch {
       toast.error("Image upload failed. Please try again.");
+      URL.revokeObjectURL(preview);
       setImage(null);
     } finally {
       setUploading(false);

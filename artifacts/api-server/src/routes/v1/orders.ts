@@ -62,7 +62,13 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
 
   type OrderItemInput = { productId: string; productName: string; qty: number; price: number; category: string };
   const items = (body["items"] as OrderItemInput[]) ?? [];
-  const reducedProducts: Array<{ productId: string; qty: number }> = [];
+  const reducedProducts: Array<{ productId: string; qty: number; dbPrice: number }> = [];
+
+  // Stock deduction — captured outside try so rollback helper can access it
+  const rollbackStock = () =>
+    Promise.all(reducedProducts.map(r =>
+      Product.findByIdAndUpdate(r.productId, { $inc: { stock: r.qty } })
+    ));
 
   for (const item of items) {
     const updated = await Product.findOneAndUpdate(
@@ -72,11 +78,7 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
     );
 
     if (!updated) {
-      if (reducedProducts.length > 0) {
-        await Promise.all(reducedProducts.map(r =>
-          Product.findByIdAndUpdate(r.productId, { $inc: { stock: r.qty } })
-        ));
-      }
+      if (reducedProducts.length > 0) await rollbackStock();
       res.status(400).json({
         success: false,
         message: `"${item.productName}" is out of stock or unavailable.`,
@@ -84,14 +86,18 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
-    reducedProducts.push({ productId: item.productId, qty: item.qty });
+    reducedProducts.push({ productId: item.productId, qty: item.qty, dbPrice: updated.price });
 
     if (updated.stock === 0) {
       await Product.findByIdAndUpdate(item.productId, { status: "out_of_stock" });
     }
   }
 
-  const subtotal = Number(body["subtotal"] ?? 0);
+  try {
+  // Bug #11 fix: recalculate subtotal from real DB prices, ignore client value
+  const subtotal = +reducedProducts
+    .reduce((sum, r) => sum + r.dbPrice * r.qty, 0)
+    .toFixed(2);
   const deliveryCharge = Number(body["deliveryCharge"] ?? 0);
   const couponDiscount = Number(body["couponDiscount"] ?? 0);
   const netAmount = subtotal + deliveryCharge - couponDiscount;
@@ -199,6 +205,11 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
   } catch { /* ignore vendor notification errors */ }
 
   res.status(201).json({ success: true, order });
+  } catch (err) {
+    // Bug #13 fix: roll back deducted stock on any unexpected error
+    await rollbackStock().catch(() => {});
+    throw err; // re-throw so Express 5 + global error handler returns 500
+  }
 });
 
 // PATCH /api/orders/:id/status
