@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect } from "react";
 import { User, Address, VendorApplication, AdminCustomer, PlatformOrder, Report } from "@/types";
-import { mockAdminCustomers, mockPlatformOrders } from "@/data/adminData";
+
 import { api, setTokens, clearTokens } from "@/lib/api";
 
 export type UserRole = 'customer' | 'vendor' | 'admin' | 'super_admin';
@@ -142,9 +142,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRoleState] = useState<'customer' | 'vendor'>('customer');
   const [selectedDeliveryAddress, setSelectedDeliveryAddress] = useState<Address | null>(null);
   const [applications, setApplications] = useState<VendorApplication[]>([]);
-  const [adminCustomers] = useState<AdminCustomer[]>(mockAdminCustomers);
+  const [adminCustomers] = useState<AdminCustomer[]>([]);
   const [bannedVendorIds, setBannedVendorIds] = useState<string[]>([]);
-  const [platformOrders] = useState<PlatformOrder[]>(mockPlatformOrders);
+  const [platformOrders] = useState<PlatformOrder[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
 
   const isAdmin = userRole === 'admin' || userRole === 'super_admin';
@@ -198,20 +198,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchReports();
   }, [isAdmin, isLoading]);
 
-  const login = (phone: string, name: string) => {
-    const newUser: User = {
-      id: `u_${Date.now()}`,
-      name,
-      phone,
-      email: "",
-      pincode: "",
-      addresses: [],
-      isVendorRegistered: false,
-      vendorStatus: 'none',
-    };
-    setUser(newUser);
-    setRoleState('customer');
-    setSelectedDeliveryAddress(null);
+  const login = (_phone: string, _name: string) => {
+    console.warn("login() is a stub — use verifyOtp() or loginWithGoogle() for real auth.");
   };
 
   const logout = async () => {

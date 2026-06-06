@@ -225,7 +225,7 @@ export default function Admin() {
 function SidebarContent({ activeSection, setActiveSection, handleLogout }: { activeSection: AdminSection, setActiveSection: (s: AdminSection) => void, handleLogout: () => void }) {
   const [pendingRequests, setPendingRequests] = useState(0);
   const [pendingOrders, setPendingOrders] = useState(0);
-  const { reports } = useAuth();
+  const { reports, user } = useAuth();
   const openReports = reports.filter(r => r.status === 'open').length;
 
   useEffect(() => {
@@ -293,7 +293,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
       </div>
       <div className="p-4 border-t border-border mt-auto">
         <div className="bg-muted/30 p-3 rounded-xl mb-4 flex items-center justify-center text-xs font-mono text-muted-foreground">
-          ID: ADMIN-0000000000
+          ID: {user?.id ?? "—"}
         </div>
         <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl">
           <LogOut className="w-4 h-4 mr-2" /> Logout

@@ -34,6 +34,7 @@ interface ApiShopItem {
   commissionRate?: number;
   image?: string;
   status: string;
+  eta?: string;
 }
 
 export function mapApiShop(s: ApiShopItem): ShopListing {
@@ -52,7 +53,7 @@ export function mapApiShop(s: ApiShopItem): ShopListing {
     commissionRate: s.commissionRate ?? 5,
     image: s.image || `/assets/cat-${s.shopType}.png`,
     status: s.status,
-    eta: "20 mins",
+    eta: s.eta ?? "",
   };
 }
 
