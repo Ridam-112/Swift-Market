@@ -164,7 +164,7 @@ export default function Checkout() {
 
     if (addressPincodeInvalid) {
       toast.error("This address is outside our delivery area.", {
-        description: "SwiftMart currently delivers to Balurghat (733101) and Gangarampur (733103).",
+        description: "SwiftMart currently delivers within Balurghat (pincodes 733101 & 733103).",
         duration: 4000,
       });
       return;
@@ -324,7 +324,7 @@ export default function Checkout() {
           {addressPincodeInvalid && (
             <div className="mt-3 flex items-start gap-2 bg-destructive/10 text-destructive rounded-xl p-3 text-sm">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <p>SwiftMart currently delivers only to Balurghat (733101) and Gangarampur (733103). Please use one of these pincodes.</p>
+              <p>SwiftMart currently delivers within Balurghat only (pincodes 733101 & 733103). Please use one of these pincodes.</p>
             </div>
           )}
         </section>
