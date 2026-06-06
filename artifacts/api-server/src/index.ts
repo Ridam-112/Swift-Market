@@ -4,6 +4,7 @@ import { connectMongoDB } from "./lib/mongoose.js";
 import { seedSuperAdmins } from "./utils/seedAdmins.js";
 import { seedShopTypes } from "./utils/seedShopTypes.js";
 import { seedCategories } from "./utils/seedCategories.js";
+import { seedDemoData } from "./utils/seedDemoData.js";
 
 const rawPort = process.env["PORT"];
 if (!rawPort) throw new Error("PORT environment variable is required but was not provided.");
@@ -27,6 +28,7 @@ async function main() {
         await seedSuperAdmins();
         await seedShopTypes();
         await seedCategories();
+        await seedDemoData();
         logger.info("Seed complete");
       } catch (err) {
         logger.error({ err }, "Seed error (non-fatal)");

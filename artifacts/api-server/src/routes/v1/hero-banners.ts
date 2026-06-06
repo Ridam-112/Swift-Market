@@ -3,6 +3,13 @@ import { HeroBanner } from "../../models/HeroBanner.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { deleteFromCloudinary } from "../../lib/cloudinary.js";
 
+// Bug #12 fix: simple in-memory rate limiter — 1 view/click per IP per banner per hour
+const viewedRecently = new Set<string>();
+const clickedRecently = new Set<string>();
+function scheduleCleanup(set: Set<string>, key: string, ttlMs: number) {
+  setTimeout(() => set.delete(key), ttlMs);
+}
+
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
@@ -26,20 +33,35 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
   res.status(201).json({ success: true, banner });
 });
 
-// POST /api/hero-banners/batch-view — public, bulk-increment views
+// POST /api/hero-banners/batch-view — public, rate-limited to 1 view per IP per banner per hour
 router.post("/batch-view", async (req: Request, res: Response): Promise<void> => {
   const { ids } = req.body as { ids?: string[] };
-  if (!Array.isArray(ids) || ids.length === 0) {
-    res.json({ success: true });
-    return;
+  if (!Array.isArray(ids) || ids.length === 0) { res.json({ success: true }); return; }
+  const ip = req.ip ?? "unknown";
+  const TTL = 60 * 60 * 1000;
+  const newIds = ids.filter(id => {
+    const key = `${ip}:${id}`;
+    if (viewedRecently.has(key)) return false;
+    viewedRecently.add(key);
+    scheduleCleanup(viewedRecently, key, TTL);
+    return true;
+  });
+  if (newIds.length > 0) {
+    await HeroBanner.updateMany({ _id: { $in: newIds } }, { $inc: { views: 1 } });
   }
-  await HeroBanner.updateMany({ _id: { $in: ids } }, { $inc: { views: 1 } });
   res.json({ success: true });
 });
 
-// POST /api/hero-banners/:id/click — public, increment click count
+// POST /api/hero-banners/:id/click — public, rate-limited to 1 click per IP per banner per hour
 router.post("/:id/click", async (req: Request, res: Response): Promise<void> => {
-  await HeroBanner.findByIdAndUpdate(req.params["id"], { $inc: { clicks: 1 } });
+  const id = req.params["id"]!;
+  const ip = req.ip ?? "unknown";
+  const key = `${ip}:${id}`;
+  if (!clickedRecently.has(key)) {
+    clickedRecently.add(key);
+    scheduleCleanup(clickedRecently, key, 60 * 60 * 1000);
+    await HeroBanner.findByIdAndUpdate(id, { $inc: { clicks: 1 } });
+  }
   res.json({ success: true });
 });
 

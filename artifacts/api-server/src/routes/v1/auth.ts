@@ -118,11 +118,15 @@ router.post("/send-otp", async (req: Request, res: Response): Promise<void> => {
     res.status(400).json({ success: false, message: "Valid 10-digit phone number required" });
     return;
   }
-  await OtpSession.deleteMany({ phone });
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-  await OtpSession.create({ phone, otp: DEMO_OTP, expiresAt });
-  req.log.info({ phone }, "OTP sent (demo)");
-  res.json({ success: true, message: "OTP sent successfully" });
+  try {
+    await OtpSession.deleteMany({ phone });
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    await OtpSession.create({ phone, otp: DEMO_OTP, expiresAt });
+    req.log.info({ phone }, "OTP sent (demo)");
+    res.json({ success: true, message: "OTP sent successfully" });
+  } catch {
+    res.status(500).json({ success: false, message: "Failed to send OTP. Please try again." });
+  }
 });
 
 // POST /api/auth/verify-otp
@@ -132,42 +136,46 @@ router.post("/verify-otp", async (req: Request, res: Response): Promise<void> =>
     res.status(400).json({ success: false, message: "Phone and OTP required" });
     return;
   }
-  const session = await OtpSession.findOne({ phone, verified: false }).sort({ createdAt: -1 });
-  if (!session || session.otp !== otp || session.expiresAt < new Date()) {
-    res.status(400).json({ success: false, message: "Invalid or expired OTP" });
-    return;
+  try {
+    const session = await OtpSession.findOne({ phone, verified: false }).sort({ createdAt: -1 });
+    if (!session || session.otp !== otp || session.expiresAt < new Date()) {
+      res.status(400).json({ success: false, message: "Invalid or expired OTP" });
+      return;
+    }
+    await OtpSession.deleteOne({ _id: session._id });
+
+    let user = await User.findOne({ phone });
+    const isNewUser = !user;
+    if (!user) {
+      user = await User.create({ phone, name: "User", role: "customer" });
+    }
+    user.lastLoginAt = new Date();
+    await user.save();
+
+    const payload = { userId: String(user._id), phone: user.phone, role: user.role };
+    const accessToken = signAccessToken(payload);
+    const refreshToken = signRefreshToken(payload);
+
+    res.json({
+      success: true,
+      isNewUser,
+      accessToken,
+      refreshToken,
+      user: {
+        id: String(user._id),
+        name: user.name,
+        phone: user.phone,
+        email: user.email ?? "",
+        role: user.role,
+        status: user.status,
+        vendorStatus: user.vendorStatus,
+        pincode: user.pincode ?? "",
+        addresses: user.addresses ?? [],
+      },
+    });
+  } catch {
+    res.status(500).json({ success: false, message: "Login failed. Please try again." });
   }
-  await OtpSession.deleteOne({ _id: session._id });
-
-  let user = await User.findOne({ phone });
-  const isNewUser = !user;
-  if (!user) {
-    user = await User.create({ phone, name: "User", role: "customer" });
-  }
-  user.lastLoginAt = new Date();
-  await user.save();
-
-  const payload = { userId: String(user._id), phone: user.phone, role: user.role };
-  const accessToken = signAccessToken(payload);
-  const refreshToken = signRefreshToken(payload);
-
-  res.json({
-    success: true,
-    isNewUser,
-    accessToken,
-    refreshToken,
-    user: {
-      id: String(user._id),
-      name: user.name,
-      phone: user.phone,
-      email: user.email ?? "",
-      role: user.role,
-      status: user.status,
-      vendorStatus: user.vendorStatus,
-      pincode: user.pincode ?? "",
-      addresses: user.addresses ?? [],
-    },
-  });
 });
 
 // POST /api/auth/refresh
@@ -197,50 +205,58 @@ router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
 
 // GET /api/auth/me
 router.get("/me", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const user = await User.findById(req.user!.userId).select("-__v");
-  if (!user) {
-    res.status(404).json({ success: false, message: "User not found" });
-    return;
-  }
-
-  let vendorProfile: Record<string, unknown> | undefined;
-  if (user.vendorStatus === "approved" || user.vendorStatus === "pending") {
-    const shop = await Shop.findOne({ ownerId: String(user._id) }).select("shopName category shopType upiId bankAccountNumber bankIfscCode panNumber gstNumber description").lean();
-    if (shop) {
-      vendorProfile = {
-        storeName: shop.shopName,
-        storeCategory: shop.category ?? shop.shopType,
-        storeDescription: shop.description ?? "",
-        upiId: shop.upiId,
-        bankAccountNumber: shop.bankAccountNumber,
-        bankIfscCode: shop.bankIfscCode,
-        panNumber: shop.panNumber,
-        gstNumber: shop.gstNumber ?? "",
-      };
+  try {
+    const user = await User.findById(req.user!.userId).select("-__v");
+    if (!user) {
+      res.status(404).json({ success: false, message: "User not found" });
+      return;
     }
-  }
 
-  res.json({
-    success: true,
-    user: {
-      id: String(user._id),
-      name: user.name,
-      phone: user.phone,
-      email: user.email ?? "",
-      role: user.role,
-      status: user.status,
-      vendorStatus: user.vendorStatus,
-      pincode: user.pincode ?? "",
-      addresses: user.addresses,
-      vendorProfile,
-    },
-  });
+    let vendorProfile: Record<string, unknown> | undefined;
+    if (user.vendorStatus === "approved" || user.vendorStatus === "pending") {
+      const shop = await Shop.findOne({ ownerId: String(user._id) }).select("shopName category shopType upiId bankAccountNumber bankIfscCode panNumber gstNumber description").lean();
+      if (shop) {
+        vendorProfile = {
+          storeName: shop.shopName,
+          storeCategory: shop.category ?? shop.shopType,
+          storeDescription: shop.description ?? "",
+          upiId: shop.upiId,
+          bankAccountNumber: shop.bankAccountNumber,
+          bankIfscCode: shop.bankIfscCode,
+          panNumber: shop.panNumber,
+          gstNumber: shop.gstNumber ?? "",
+        };
+      }
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: String(user._id),
+        name: user.name,
+        phone: user.phone,
+        email: user.email ?? "",
+        role: user.role,
+        status: user.status,
+        vendorStatus: user.vendorStatus,
+        pincode: user.pincode ?? "",
+        addresses: user.addresses,
+        vendorProfile,
+      },
+    });
+  } catch {
+    res.status(500).json({ success: false, message: "Failed to fetch profile." });
+  }
 });
 
 // POST /api/auth/logout
 router.post("/logout", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  req.log.info({ userId: req.user!.userId }, "User logged out");
-  res.json({ success: true, message: "Logged out successfully" });
+  try {
+    req.log.info({ userId: req.user!.userId }, "User logged out");
+    res.json({ success: true, message: "Logged out successfully" });
+  } catch {
+    res.json({ success: true, message: "Logged out" });
+  }
 });
 
 export default router;

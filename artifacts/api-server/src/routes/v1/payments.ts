@@ -27,15 +27,18 @@ router.post("/create-order", authenticate, async (req: AuthRequest, res: Respons
     return;
   }
 
-  const keyId = process.env.RAZORPAY_KEY_ID!;
-  const razorpay = getRazorpay();
-  const order = await razorpay.orders.create({
-    amount: Math.round(amount * 100),
-    currency,
-    receipt: receipt ?? `rcpt_${Date.now()}`,
-  });
-
-  res.json({ success: true, order, keyId });
+  try {
+    const keyId = process.env.RAZORPAY_KEY_ID!;
+    const razorpay = getRazorpay();
+    const order = await razorpay.orders.create({
+      amount: Math.round(amount * 100),
+      currency,
+      receipt: receipt ?? `rcpt_${Date.now()}`,
+    });
+    res.json({ success: true, order, keyId });
+  } catch {
+    res.status(502).json({ success: false, message: "Payment gateway error. Please try again." });
+  }
 });
 
 // POST /api/v1/payments/verify
@@ -64,23 +67,27 @@ router.post("/verify", authenticate, async (req: AuthRequest, res: Response): Pr
     return;
   }
 
-  // Update our order record with payment confirmation
-  const order = await Order.findByIdAndUpdate(
-    orderId,
-    {
-      paymentStatus: "success",
-      razorpayOrderId: razorpay_order_id,
-      razorpayPaymentId: razorpay_payment_id,
-    },
-    { new: true }
-  );
+  try {
+    // Update our order record with payment confirmation
+    const order = await Order.findByIdAndUpdate(
+      orderId,
+      {
+        paymentStatus: "success",
+        razorpayOrderId: razorpay_order_id,
+        razorpayPaymentId: razorpay_payment_id,
+      },
+      { new: true }
+    );
 
-  if (!order) {
-    res.status(404).json({ success: false, message: "Order not found" });
-    return;
+    if (!order) {
+      res.status(404).json({ success: false, message: "Order not found" });
+      return;
+    }
+
+    res.json({ success: true, order });
+  } catch {
+    res.status(500).json({ success: false, message: "Failed to confirm payment. Contact support." });
   }
-
-  res.json({ success: true, order });
 });
 
 export default router;
