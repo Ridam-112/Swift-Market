@@ -74,7 +74,7 @@ router.post("/google", async (req: Request, res: Response): Promise<void> => {
     await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
     const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
 
-    const tokenPayload = { userId: updated.id, phone: updated.phone, role: updated.role as any };
+    const tokenPayload = { userId: updated.id, phone: updated.phone, role: updated.role as any, tokenVersion: updated.tokenVersion ?? 1 };
     res.json({ success: true, isNewUser, accessToken: signAccessToken(tokenPayload), refreshToken: signRefreshToken(tokenPayload), user: formatUser(updated) });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Google authentication failed";
@@ -124,7 +124,7 @@ router.post("/verify-otp", async (req: Request, res: Response): Promise<void> =>
     await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
     const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
 
-    const payload = { userId: updated.id, phone: updated.phone, role: updated.role as any };
+    const payload = { userId: updated.id, phone: updated.phone, role: updated.role as any, tokenVersion: updated.tokenVersion ?? 1 };
     res.json({ success: true, isNewUser, accessToken: signAccessToken(payload), refreshToken: signRefreshToken(payload), user: formatUser(updated) });
   } catch {
     res.status(500).json({ success: false, message: "Login failed. Please try again." });
@@ -139,7 +139,12 @@ router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
     const payload = verifyRefreshToken(refreshToken);
     const [user] = await db.select().from(users).where(eq(users.id, payload.userId)).limit(1);
     if (!user || user.status !== "active") { res.status(401).json({ success: false, message: "User not found or banned" }); return; }
-    const newPayload = { userId: user.id, phone: user.phone, role: user.role as any };
+    // Also validate tokenVersion on refresh — logout revokes refresh tokens too
+    if ((user.tokenVersion ?? 1) !== (payload.tokenVersion ?? 1)) {
+      res.status(401).json({ success: false, message: "Session has been revoked. Please log in again." });
+      return;
+    }
+    const newPayload = { userId: user.id, phone: user.phone, role: user.role as any, tokenVersion: user.tokenVersion ?? 1 };
     res.json({ success: true, accessToken: signAccessToken(newPayload), refreshToken: signRefreshToken(newPayload) });
   } catch {
     res.status(401).json({ success: false, message: "Invalid refresh token" });
@@ -178,7 +183,12 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response): Promise
 // POST /api/auth/logout
 router.post("/logout", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    req.log.info({ userId: req.user!.userId }, "User logged out");
+    const userId = req.user!.userId;
+    // Increment tokenVersion — instantly invalidates all issued access + refresh tokens
+    await db.update(users)
+      .set({ tokenVersion: (req.user!.tokenVersion ?? 1) + 1 })
+      .where(eq(users.id, userId));
+    req.log.info({ userId }, "User logged out — tokens revoked");
     res.json({ success: true, message: "Logged out successfully" });
   } catch {
     res.json({ success: true, message: "Logged out" });
