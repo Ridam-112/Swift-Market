@@ -1,12 +1,10 @@
 import { Router, type Request, type Response } from "express";
-import { Shop } from "../../models/Shop.js";
-import { ShopType } from "../../models/ShopType.js";
-import { User } from "../../models/User.js";
-import { Product } from "../../models/Product.js";
-import { Order } from "../../models/Order.js";
+import { db, shops, shopTypes, users, products, orders } from "@workspace/db";
+import { eq, and, ilike, or, inArray, desc, count, sql } from "drizzle-orm";
 import { deleteFromCloudinary } from "../../lib/cloudinary.js";
 import { authenticate, requireRole, optionalAuth, type AuthRequest } from "../../middlewares/auth.js";
 import { createNotificationLimited } from "../../utils/notification.js";
+import { mi, miArr } from "../../utils/mapId.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -20,243 +18,257 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
 
   const { status, shopType, city, ownerId, pincode, page = "1", limit = "20", search, category } =
     req.query as Record<string, string>;
-  const filter: Record<string, unknown> = {};
-  if (status) filter["status"] = status;
-  if (category) filter["category"] = { $regex: category, $options: "i" };
-  if (city) filter["address.city"] = { $regex: city, $options: "i" };
-  if (ownerId) filter["ownerId"] = ownerId;
-  if (pincode) filter["address.pincode"] = pincode;
+
+  const pg = parseInt(page), lm = parseInt(limit);
+  const conditions = [];
+
+  if (status) conditions.push(eq(shops.status, status));
+  if (category) conditions.push(ilike(shops.category, `%${category}%`));
+  if (city) conditions.push(sql`${shops.address}->>'city' ILIKE ${"%" + city + "%"}`);
+  if (ownerId) conditions.push(eq(shops.ownerId, ownerId));
+  if (pincode) conditions.push(sql`${shops.address}->>'pincode' = ${pincode}`);
   if (search) {
-    filter["$or"] = [
-      { shopName: { $regex: search, $options: "i" } },
-      { ownerName: { $regex: search, $options: "i" } },
-      { phone: { $regex: search, $options: "i" } },
-    ];
+    conditions.push(or(
+      ilike(shops.shopName, `%${search}%`),
+      ilike(shops.ownerName, `%${search}%`),
+      ilike(shops.phone, `%${search}%`),
+    )!);
   }
 
   // For customer-facing queries (non-admin, no explicit status, no ownerId),
   // restrict to approved shops with active shop types only.
-  // Admins always see all shops regardless of shopType status.
   if (!isAdmin && (status === "approved" || (!status && !ownerId))) {
-    const activeShopTypes = await ShopType.find({ isActive: true }).select("slug").lean();
-    if (activeShopTypes.length > 0) {
-      const activeSlugs = activeShopTypes.map(st => st.slug);
+    const activeShopTypeRows = await db.select({ slug: shopTypes.slug }).from(shopTypes).where(eq(shopTypes.isActive, true));
+    if (activeShopTypeRows.length > 0) {
+      const activeSlugs = activeShopTypeRows.map(st => st.slug);
       if (shopType) {
-        filter["shopType"] = activeSlugs.includes(shopType) ? shopType : "__none__";
+        conditions.push(eq(shops.shopType, activeSlugs.includes(shopType) ? shopType : "__none__"));
       } else {
-        filter["shopType"] = { $in: activeSlugs };
+        conditions.push(inArray(shops.shopType, activeSlugs));
       }
     }
   } else if (shopType) {
-    filter["shopType"] = shopType;
+    conditions.push(eq(shops.shopType, shopType));
   }
 
-  const skip = (parseInt(page) - 1) * parseInt(limit);
-  const [shops, total] = await Promise.all([
-    Shop.find(filter).skip(skip).limit(parseInt(limit)).sort({ createdAt: -1 }),
-    Shop.countDocuments(filter),
+  const where = conditions.length ? and(...conditions) : undefined;
+  const skip = (pg - 1) * lm;
+
+  const [result, [{ total }]] = await Promise.all([
+    db.select().from(shops).where(where).orderBy(desc(shops.createdAt)).offset(skip).limit(lm),
+    db.select({ total: count() }).from(shops).where(where),
   ]);
-  res.json({ success: true, shops, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+
+  res.json({ success: true, shops: miArr(result), total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
 });
 
 // GET /api/shops/:id/details — admin: shop + products + recent orders + owner
 router.get("/:id/details", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const shop = await Shop.findById(req.params["id"]);
+  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"]!)).limit(1);
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
-  const shopIdStr = String(shop._id);
-  const [products, orders, owner] = await Promise.all([
-    Product.find({ shopId: shopIdStr }).lean(),
-    Order.find({ shopId: shopIdStr }).sort({ createdAt: -1 }).limit(50).lean(),
-    User.findById(shop.ownerId).select("name phone email role vendorStatus status createdAt").lean(),
+
+  const [shopProducts, shopOrders, ownerArr] = await Promise.all([
+    db.select().from(products).where(eq(products.shopId, shop.id)),
+    db.select().from(orders).where(eq(orders.shopId, shop.id)).orderBy(desc(orders.createdAt)).limit(50),
+    db.select({
+      id: users.id, name: users.name, phone: users.phone, email: users.email,
+      role: users.role, vendorStatus: users.vendorStatus, status: users.status, createdAt: users.createdAt,
+    }).from(users).where(eq(users.id, shop.ownerId)).limit(1),
   ]);
-  const revenue = orders.reduce((sum, o) => sum + (o.netAmount ?? o.subtotal ?? 0), 0);
+
+  const revenue = shopOrders.reduce((sum, o) => sum + (o.netAmount ?? o.subtotal ?? 0), 0);
+  const owner = ownerArr[0] ? { ...ownerArr[0], _id: ownerArr[0].id } : null;
+
   res.json({
-    success: true, shop, products, orders, owner,
-    totalProducts: products.length,
-    totalOrders: orders.length,
+    success: true,
+    shop: mi(shop),
+    products: miArr(shopProducts),
+    orders: miArr(shopOrders),
+    owner,
+    totalProducts: shopProducts.length,
+    totalOrders: shopOrders.length,
     revenue,
   });
 });
 
 // GET /api/shops/:id
 router.get("/:id", async (req: Request, res: Response): Promise<void> => {
-  const shop = await Shop.findById(req.params["id"]);
+  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"]!)).limit(1);
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
-  res.json({ success: true, shop });
+  res.json({ success: true, shop: mi(shop) });
 });
 
 // POST /api/shops/admin-create
 router.post("/admin-create", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body as Record<string, unknown>;
-  const phone = String(body.phone ?? "").trim();
+  const phone = String(body["phone"] ?? "").trim();
   if (!phone) { res.status(400).json({ success: false, message: "Owner phone is required" }); return; }
-  if (!body.shopName) { res.status(400).json({ success: false, message: "Shop name is required" }); return; }
+  if (!body["shopName"]) { res.status(400).json({ success: false, message: "Shop name is required" }); return; }
 
-  let owner = await User.findOne({ phone });
+  let [owner] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
   if (!owner) {
-    owner = await User.create({
-      name: body.ownerName ?? body.shopName,
+    [owner] = await db.insert(users).values({
+      name: String(body["ownerName"] ?? body["shopName"] ?? "Vendor"),
       phone,
-      email: body.ownerEmail ?? undefined,
+      email: body["ownerEmail"] ? String(body["ownerEmail"]) : undefined,
       role: "vendor",
       vendorStatus: "approved",
       status: "active",
-    });
+    }).returning();
   } else {
-    // Only set role to vendor if not already admin/super_admin
-    const updates: Record<string, unknown> = { vendorStatus: "approved" };
+    const updates: Record<string, string> = { vendorStatus: "approved" };
     if (!ADMIN_ROLES.has(owner.role)) updates["role"] = "vendor";
-    await User.findByIdAndUpdate(owner._id, updates);
+    [owner] = await db.update(users).set(updates).where(eq(users.id, owner.id)).returning();
   }
 
-  const shop = await Shop.create({
-    shopName: body.shopName,
-    ownerName: body.ownerName ?? (owner as { name: string }).name,
+  const [shop] = await db.insert(shops).values({
+    shopName: String(body["shopName"]),
+    ownerName: String(body["ownerName"] ?? owner.name),
     phone,
-    ownerId: String(owner._id),
-    address: body.address,
-    shopType: body.shopType ?? body.category,
-    category: body.category,
-    description: body.description,
-    image: body.image,
+    ownerId: owner.id,
+    address: (body["address"] ?? {}) as Record<string, string>,
+    shopType: body["shopType"] ? String(body["shopType"]) : (body["category"] ? String(body["category"]) : undefined),
+    category: body["category"] ? String(body["category"]) : undefined,
+    description: body["description"] ? String(body["description"]) : undefined,
+    image: body["image"] ? String(body["image"]) : undefined,
     status: "approved",
     isOpen: true,
-    panNumber: body.panNumber ?? "ADMIN000000A",
-    bankAccountNumber: body.bankAccountNumber ?? "0000000000",
-    bankIfscCode: body.bankIfscCode ?? "ADMIN0000000",
-    upiId: body.upiId ?? `${phone}@upi`,
-  });
+    panNumber: String(body["panNumber"] ?? "ADMIN000000A"),
+    bankAccountNumber: String(body["bankAccountNumber"] ?? "0000000000"),
+    bankIfscCode: String(body["bankIfscCode"] ?? "ADMIN0000000"),
+    upiId: String(body["upiId"] ?? `${phone}@upi`),
+  }).returning();
 
-  await createNotificationLimited(String(owner._id), {
+  await createNotificationLimited(owner.id, {
     type: "system",
     title: "Vendor Account Created",
     message: "Your shop has been created and approved by SwiftMart Admin.",
   });
 
-  res.status(201).json({ success: true, shop, owner });
+  res.status(201).json({ success: true, shop: mi(shop!), owner: mi(owner) });
 });
 
 // POST /api/shops — vendor applies
 router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body as Record<string, unknown>;
-  const shop = await Shop.create({ ...body, ownerId: req.user!.userId, status: "pending" });
-  await User.findByIdAndUpdate(req.user!.userId, { vendorStatus: "pending" });
-  res.status(201).json({ success: true, shop });
+  const [shop] = await db.insert(shops).values({
+    shopName: String(body["shopName"] ?? ""),
+    ownerName: String(body["ownerName"] ?? ""),
+    phone: String(body["phone"] ?? ""),
+    ownerId: req.user!.userId,
+    address: (body["address"] ?? {}) as Record<string, string>,
+    shopType: body["shopType"] ? String(body["shopType"]) : undefined,
+    category: body["category"] ? String(body["category"]) : undefined,
+    subcategory: body["subcategory"] ? String(body["subcategory"]) : undefined,
+    description: body["description"] ? String(body["description"]) : undefined,
+    image: body["image"] ? String(body["image"]) : undefined,
+    banner: body["banner"] ? String(body["banner"]) : undefined,
+    panNumber: String(body["panNumber"] ?? ""),
+    bankAccountNumber: String(body["bankAccountNumber"] ?? ""),
+    bankIfscCode: String(body["bankIfscCode"] ?? ""),
+    upiId: String(body["upiId"] ?? ""),
+    status: "pending",
+  }).returning();
+  await db.update(users).set({ vendorStatus: "pending" }).where(eq(users.id, req.user!.userId));
+  res.status(201).json({ success: true, shop: mi(shop!) });
 });
 
 // PATCH /api/shops/my/profile — vendor updates their own shop profile (safe fields only)
 router.patch("/my/profile", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const shop = await Shop.findOne({ ownerId: req.user!.userId });
-  if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
   const body = req.body as Record<string, unknown>;
-  const allowed: (keyof typeof body)[] = ["shopName", "description", "image", "banner", "address", "shopType", "category", "timings"];
+  const allowed = ["shopName", "description", "image", "banner", "address", "shopType", "category", "timings"] as const;
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (body[key] !== undefined) update[key] = body[key];
   }
-  const updated = await Shop.findOneAndUpdate(
-    { ownerId: req.user!.userId },
-    update,
-    { new: true, runValidators: true }
-  );
-  res.json({ success: true, shop: updated });
+  const [updated] = await db.update(shops).set(update).where(eq(shops.ownerId, req.user!.userId)).returning();
+  if (!updated) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+  res.json({ success: true, shop: mi(updated) });
 });
 
 // PATCH /api/shops/my/toggle-open — vendor toggles their own shop open/close
 router.patch("/my/toggle-open", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const shop = await Shop.findOne({ ownerId: req.user!.userId });
+  const [shop] = await db.select().from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
   if (shop.status !== "approved") {
     res.status(403).json({ success: false, message: "Only approved shops can change their open status" });
     return;
   }
-  shop.isOpen = !shop.isOpen;
-  await shop.save();
-  res.json({ success: true, isOpen: shop.isOpen, shop });
+  const [updated] = await db.update(shops).set({ isOpen: !shop.isOpen }).where(eq(shops.id, shop.id)).returning();
+  res.json({ success: true, isOpen: updated!.isOpen, shop: mi(updated!) });
 });
 
-// PATCH /api/shops/:id
+// PATCH /api/shops/:id — admin updates any shop field
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const shop = await Shop.findByIdAndUpdate(req.params["id"], req.body as Record<string, unknown>, {
-    new: true,
-    runValidators: true,
-  });
+  const [shop] = await db.update(shops).set(req.body as Record<string, unknown>).where(eq(shops.id, req.params["id"]!)).returning();
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
-  res.json({ success: true, shop });
+  res.json({ success: true, shop: mi(shop) });
 });
 
 // POST /api/shops/:id/approve
 router.post("/:id/approve", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const shop = await Shop.findByIdAndUpdate(req.params["id"], { status: "approved", isOpen: true }, { new: true });
+  const [shop] = await db.update(shops).set({ status: "approved", isOpen: true }).where(eq(shops.id, req.params["id"]!)).returning();
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
-  // Only promote to vendor if not already admin/super_admin
-  const owner = await User.findOne({ phone: shop.phone }).select("role").lean();
-  if (owner && !ADMIN_ROLES.has(owner.role)) {
-    await User.findOneAndUpdate({ phone: shop.phone }, { vendorStatus: "approved", role: "vendor" });
-  } else {
-    await User.findOneAndUpdate({ phone: shop.phone }, { vendorStatus: "approved" });
+  const [owner] = await db.select({ role: users.role }).from(users).where(eq(users.phone, shop.phone)).limit(1);
+  if (owner) {
+    const updates: Record<string, string> = { vendorStatus: "approved" };
+    if (!ADMIN_ROLES.has(owner.role)) updates["role"] = "vendor";
+    await db.update(users).set(updates).where(eq(users.phone, shop.phone));
   }
-  res.json({ success: true, shop });
+  res.json({ success: true, shop: mi(shop) });
 });
 
 // POST /api/shops/:id/reject
 router.post("/:id/reject", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const { reason } = req.body as { reason?: string };
-  const shop = await Shop.findByIdAndUpdate(
-    req.params["id"],
-    { status: "rejected", rejectionReason: reason },
-    { new: true }
-  );
+  const [shop] = await db.update(shops)
+    .set({ status: "rejected", rejectionReason: reason ?? null })
+    .where(eq(shops.id, req.params["id"]!))
+    .returning();
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
-  await User.findOneAndUpdate({ phone: shop.phone }, { vendorStatus: "rejected" });
-  res.json({ success: true, shop });
+  await db.update(users).set({ vendorStatus: "rejected" }).where(eq(users.phone, shop.phone));
+  res.json({ success: true, shop: mi(shop) });
 });
 
 // POST /api/shops/:id/ban
 router.post("/:id/ban", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const shop = await Shop.findByIdAndUpdate(req.params["id"], { status: "banned", isOpen: false }, { new: true });
+  const [shop] = await db.update(shops).set({ status: "banned", isOpen: false }).where(eq(shops.id, req.params["id"]!)).returning();
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
 
-  // Never downgrade admin/super_admin role
-  const owner = await User.findById(shop.ownerId).select("role").lean();
-  if (owner && !ADMIN_ROLES.has(owner.role)) {
-    await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "rejected", role: "customer" });
-  } else {
-    await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "rejected" });
-  }
+  const [owner] = await db.select({ role: users.role }).from(users).where(eq(users.id, shop.ownerId)).limit(1);
+  const updates: Record<string, string> = { vendorStatus: "rejected" };
+  if (owner && !ADMIN_ROLES.has(owner.role)) updates["role"] = "customer";
+  await db.update(users).set(updates).where(eq(users.id, shop.ownerId));
 
   await createNotificationLimited(shop.ownerId, {
     type: "system",
     title: "Vendor Access Removed",
     message: "Your vendor access is no longer active. Please contact admin or register again.",
   });
-  res.json({ success: true, shop });
+  res.json({ success: true, shop: mi(shop) });
 });
 
 // POST /api/shops/:id/unban
 router.post("/:id/unban", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const shop = await Shop.findByIdAndUpdate(req.params["id"], { status: "approved", isOpen: true }, { new: true });
+  const [shop] = await db.update(shops).set({ status: "approved", isOpen: true }).where(eq(shops.id, req.params["id"]!)).returning();
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
-  const owner = await User.findById(shop.ownerId).select("role").lean();
-  if (owner && !ADMIN_ROLES.has(owner.role)) {
-    await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "approved", role: "vendor" });
-  } else {
-    await User.findByIdAndUpdate(shop.ownerId, { vendorStatus: "approved" });
-  }
-  res.json({ success: true, shop });
+  const [owner] = await db.select({ role: users.role }).from(users).where(eq(users.id, shop.ownerId)).limit(1);
+  const updates: Record<string, string> = { vendorStatus: "approved" };
+  if (owner && !ADMIN_ROLES.has(owner.role)) updates["role"] = "vendor";
+  await db.update(users).set(updates).where(eq(users.id, shop.ownerId));
+  res.json({ success: true, shop: mi(shop) });
 });
 
 // PATCH /api/shops/:id/toggle-open — admin opens or closes any shop
 router.patch("/:id/toggle-open", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const shop = await Shop.findById(req.params["id"]);
+  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"]!)).limit(1);
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
   if (shop.status !== "approved") {
     res.status(400).json({ success: false, message: "Only approved shops can change open status" });
     return;
   }
-  shop.isOpen = !shop.isOpen;
-  await shop.save();
-  res.json({ success: true, isOpen: shop.isOpen, shop });
+  const [updated] = await db.update(shops).set({ isOpen: !shop.isOpen }).where(eq(shops.id, shop.id)).returning();
+  res.json({ success: true, isOpen: updated!.isOpen, shop: mi(updated!) });
 });
 
 // PATCH /api/shops/:id/owner — admin assigns/changes the owner of a shop
@@ -264,57 +276,56 @@ router.patch("/:id/owner", authenticate, A, async (req: AuthRequest, res: Respon
   const { phone, ownerName } = req.body as { phone: string; ownerName?: string };
   if (!phone) { res.status(400).json({ success: false, message: "Phone is required" }); return; }
 
-  const shop = await Shop.findById(req.params["id"]);
+  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"]!)).limit(1);
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
 
-  let newOwner = await User.findOne({ phone });
+  let [newOwner] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
   if (!newOwner) {
-    newOwner = await User.create({
+    [newOwner] = await db.insert(users).values({
       name: ownerName ?? "Vendor",
       phone,
       role: "vendor",
       vendorStatus: "approved",
       status: "active",
-    });
+    }).returning();
   } else {
-    const updates: Record<string, unknown> = { vendorStatus: "approved" };
+    const updates: Record<string, string> = { vendorStatus: "approved" };
     if (!ADMIN_ROLES.has(newOwner.role)) updates["role"] = "vendor";
-    await User.findByIdAndUpdate(newOwner._id, updates);
+    [newOwner] = await db.update(users).set(updates).where(eq(users.id, newOwner.id)).returning();
   }
 
-  const updatedShop = await Shop.findByIdAndUpdate(
-    req.params["id"],
-    { ownerId: String(newOwner._id), phone, ownerName: ownerName ?? newOwner.name },
-    { new: true }
-  );
-  res.json({ success: true, shop: updatedShop, owner: newOwner });
+  const [updatedShop] = await db.update(shops).set({
+    ownerId: newOwner.id,
+    phone,
+    ownerName: ownerName ?? newOwner.name,
+  }).where(eq(shops.id, req.params["id"]!)).returning();
+
+  res.json({ success: true, shop: mi(updatedShop!), owner: mi(newOwner) });
 });
 
 // DELETE /api/shops/:id
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const shop = await Shop.findById(req.params["id"]);
+  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"]!)).limit(1);
   if (shop) {
-    const shopIdStr = shop._id.toString();
-    const products = await Product.find({ shopId: shopIdStr }).select("images").lean();
-    const allImages = products.flatMap(p => p.images ?? []);
+    const shopProducts = await db.select({ images: products.images }).from(products).where(eq(products.shopId, shop.id));
+    const allImages = shopProducts.flatMap(p => (p.images as string[]) ?? []);
     await Promise.all(allImages.map(url => deleteFromCloudinary(url)));
 
-    // Never downgrade admin/super_admin role
-    const owner = await User.findById(shop.ownerId).select("role").lean();
-    const roleUpdate = owner && ADMIN_ROLES.has(owner.role)
+    const [owner] = await db.select({ role: users.role }).from(users).where(eq(users.id, shop.ownerId)).limit(1);
+    const roleUpdate: Record<string, string> = owner && ADMIN_ROLES.has(owner.role)
       ? { vendorStatus: "none" }
       : { vendorStatus: "none", role: "customer" };
 
     await Promise.all([
-      Product.deleteMany({ shopId: shopIdStr }),
-      User.findByIdAndUpdate(shop.ownerId, roleUpdate),
+      db.delete(products).where(eq(products.shopId, shop.id)),
+      db.update(users).set(roleUpdate).where(eq(users.id, shop.ownerId)),
       createNotificationLimited(shop.ownerId, {
         type: "system",
         title: "Shop Removed",
         message: "Your shop has been removed by admin. Please register again to continue selling.",
       }),
     ]);
-    await shop.deleteOne();
+    await db.delete(shops).where(eq(shops.id, shop.id));
   }
   res.json({ success: true, message: "Shop deleted" });
 });
