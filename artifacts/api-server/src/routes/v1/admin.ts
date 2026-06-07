@@ -46,6 +46,16 @@ router.get("/stats", authenticate, A, async (_req, res: Response): Promise<void>
   });
 });
 
+// GET /api/admin/user-signups — customer registration dates for analytics (last 6 months)
+router.get("/user-signups", authenticate, A, async (_req, res: Response): Promise<void> => {
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const users = await User.find({ role: "customer", createdAt: { $gte: sixMonthsAgo } })
+    .select("createdAt").lean();
+  const dates = (users as { createdAt: Date }[]).map(u => u.createdAt.toISOString());
+  res.json({ success: true, dates });
+});
+
 // GET /api/admin/admins
 router.get("/admins", authenticate, SA, async (_req, res: Response): Promise<void> => {
   const admins = await Admin.find().sort({ createdAt: -1 }).select("-activityLog");

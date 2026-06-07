@@ -96,10 +96,16 @@ function buildDaySeries(orders: ApiOrder[]) {
   });
 }
 
-function buildAnalyticsSeries(orders: ApiOrder[], period: 'Daily' | 'Weekly' | 'Monthly'): AnalyticsPoint[] {
+function buildAnalyticsSeries(orders: ApiOrder[], period: 'Daily' | 'Weekly' | 'Monthly', signupDates: number[] = []): AnalyticsPoint[] {
   const now = new Date();
+  const countSignups = (startMs: number, endMs: number) =>
+    signupDates.filter(t => t >= startMs && t <= endMs).length;
   if (period === 'Daily') {
-    return buildDaySeries(orders).map(d => ({ label: d.date, revenue: d.revenue, orders: d.orders, newUsers: 0, commission: d.commission }));
+    return buildDaySeries(orders).map((d, i) => {
+      const day = new Date(now); day.setDate(day.getDate() - (6 - i));
+      const startMs = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+      return { label: d.date, revenue: d.revenue, orders: d.orders, newUsers: countSignups(startMs, startMs + 86400000 - 1), commission: d.commission };
+    });
   }
   if (period === 'Weekly') {
     return Array.from({ length: 4 }, (_, i) => {
@@ -107,7 +113,7 @@ function buildAnalyticsSeries(orders: ApiOrder[], period: 'Daily' | 'Weekly' | '
       const wStart = new Date(wEnd); wStart.setDate(wEnd.getDate() - 6);
       const wo = orders.filter(o => { const t = new Date(o.createdAt).getTime(); return t >= wStart.getTime() && t <= wEnd.getTime(); });
       const revenue = wo.reduce((s, o) => s + (o.netAmount ?? o.subtotal ?? 0), 0);
-      return { label: `Week ${4 - i}`, revenue, orders: wo.length, newUsers: 0, commission: Math.round(revenue * 0.05) };
+      return { label: `Week ${4 - i}`, revenue, orders: wo.length, newUsers: countSignups(wStart.getTime(), wEnd.getTime()), commission: Math.round(revenue * 0.05) };
     }).reverse();
   }
   return Array.from({ length: 6 }, (_, i) => {
@@ -115,7 +121,7 @@ function buildAnalyticsSeries(orders: ApiOrder[], period: 'Daily' | 'Weekly' | '
     const next = new Date(now.getFullYear(), now.getMonth() - (5 - i) + 1, 1);
     const mo = orders.filter(o => { const t = new Date(o.createdAt).getTime(); return t >= month.getTime() && t < next.getTime(); });
     const revenue = mo.reduce((s, o) => s + (o.netAmount ?? o.subtotal ?? 0), 0);
-    return { label: month.toLocaleDateString('en-US', { month: 'short' }), revenue, orders: mo.length, newUsers: 0, commission: Math.round(revenue * 0.05) };
+    return { label: month.toLocaleDateString('en-US', { month: 'short' }), revenue, orders: mo.length, newUsers: countSignups(month.getTime(), next.getTime() - 1), commission: Math.round(revenue * 0.05) };
   });
 }
 
@@ -1420,13 +1426,16 @@ function AnalyticsTab() {
   const [period, setPeriod] = useState<'Daily' | 'Weekly' | 'Monthly'>('Daily');
   const { shops } = useShops();
   const [allOrders, setAllOrders] = useState<ApiOrder[]>([]);
+  const [signupTimestamps, setSignupTimestamps] = useState<number[]>([]);
 
   useEffect(() => {
     api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=500')
       .then(d => setAllOrders(d.orders)).catch(() => {});
+    api.get<{ success: boolean; dates: string[] }>('/admin/user-signups')
+      .then(d => setSignupTimestamps(d.dates.map(s => new Date(s).getTime()))).catch(() => {});
   }, []);
 
-  const data = useMemo(() => buildAnalyticsSeries(allOrders, period), [allOrders, period]);
+  const data = useMemo(() => buildAnalyticsSeries(allOrders, period, signupTimestamps), [allOrders, period, signupTimestamps]);
   const computedTopProducts = useMemo(() => buildTopProducts(allOrders), [allOrders]);
 
   const totalRev = data.reduce((sum, d) => sum + d.revenue, 0);
