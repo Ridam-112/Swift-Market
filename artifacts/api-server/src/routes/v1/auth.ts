@@ -5,6 +5,7 @@ import { eq, or, and, lt } from "drizzle-orm";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt.js";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
 import { mi } from "../../utils/mapId.js";
+import { otpPhoneLimiter, otpIpLimiter } from "../../middlewares/rateLimiter.js";
 
 const googleClient = new OAuth2Client(process.env["GOOGLE_CLIENT_ID"]);
 const router = Router();
@@ -82,7 +83,7 @@ router.post("/google", async (req: Request, res: Response): Promise<void> => {
 });
 
 // POST /api/auth/send-otp
-router.post("/send-otp", async (req: Request, res: Response): Promise<void> => {
+router.post("/send-otp", otpIpLimiter, otpPhoneLimiter, async (req: Request, res: Response): Promise<void> => {
   const { phone } = req.body as { phone?: string };
   if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
     res.status(400).json({ success: false, message: "Valid 10-digit phone number required" });
