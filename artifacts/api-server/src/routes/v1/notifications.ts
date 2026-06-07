@@ -1,31 +1,35 @@
 import { Router, type Response } from "express";
-import { Notification } from "../../models/Notification.js";
-import { AdminBroadcast } from "../../models/AdminBroadcast.js";
-import { User } from "../../models/User.js";
+import { db, notifications, adminBroadcasts, users } from "@workspace/db";
+import { eq, and, desc, count } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { createNotificationLimited } from "../../utils/notification.js";
+import { miArr } from "../../utils/mapId.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
 // GET /api/notifications — current user's notifications (latest 10)
 router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const notifications = await Notification.find({ userId: req.user!.userId })
-    .sort({ createdAt: -1 })
-    .limit(10);
-  const unreadCount = await Notification.countDocuments({ userId: req.user!.userId, isRead: false });
-  res.json({ success: true, notifications, unreadCount });
+  const uid = req.user!.userId;
+  const [rows, [{ unread }]] = await Promise.all([
+    db.select().from(notifications).where(eq(notifications.userId, uid)).orderBy(desc(notifications.createdAt)).limit(10),
+    db.select({ unread: count() }).from(notifications).where(and(eq(notifications.userId, uid), eq(notifications.isRead, false))),
+  ]);
+  res.json({ success: true, notifications: miArr(rows), unreadCount: Number(unread) });
 });
 
-// PATCH /api/notifications/read-all
+// PATCH /api/notifications/read-all — mark all unread as read
+// Must be defined before /:id/read to avoid route conflict
 router.patch("/read-all", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  await Notification.updateMany({ userId: req.user!.userId, isRead: false }, { isRead: true });
+  await db.update(notifications)
+    .set({ isRead: true })
+    .where(and(eq(notifications.userId, req.user!.userId), eq(notifications.isRead, false)));
   res.json({ success: true, message: "All notifications marked as read" });
 });
 
 // PATCH /api/notifications/:id/read
 router.patch("/:id/read", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  await Notification.findByIdAndUpdate(req.params["id"], { isRead: true });
+  await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, req.params["id"]!));
   res.json({ success: true });
 });
 
@@ -39,47 +43,46 @@ router.post("/broadcast", authenticate, A, async (req: AuthRequest, res: Respons
     return;
   }
 
-  let userFilter: Record<string, unknown> = {};
-  if (targetAudience === "customers") {
-    userFilter = { role: "customer" };
-  } else if (targetAudience === "vendors") {
-    userFilter = { role: "vendor" };
-  } else if (targetAudience === "specific") {
+  let recipientIds: string[];
+
+  if (targetAudience === "specific") {
     if (!targetUserId) {
       res.status(400).json({ success: false, message: "targetUserId required for specific audience" });
       return;
     }
-    userFilter = { _id: targetUserId };
+    recipientIds = [targetUserId];
+  } else if (targetAudience === "customers") {
+    const rows = await db.select({ id: users.id }).from(users).where(eq(users.role, "customer"));
+    recipientIds = rows.map(r => r.id);
+  } else if (targetAudience === "vendors") {
+    const rows = await db.select({ id: users.id }).from(users).where(eq(users.role, "vendor"));
+    recipientIds = rows.map(r => r.id);
+  } else {
+    // "all" — every user
+    const rows = await db.select({ id: users.id }).from(users);
+    recipientIds = rows.map(r => r.id);
   }
 
-  const users = await User.find(userFilter).select("_id").lean();
-
-  // Use createNotificationLimited for each user to enforce the 10-notification cap
-  await Promise.all(users.map(u =>
-    createNotificationLimited(String(u._id), {
-      type: "system",
-      title,
-      message,
-    })
+  // Use createNotificationLimited for each recipient to enforce the 10-notification cap
+  await Promise.all(recipientIds.map(id =>
+    createNotificationLimited(id, { type: "system", title, message })
   ));
 
-  await AdminBroadcast.create({
+  await db.insert(adminBroadcasts).values({
     title,
     message,
     targetAudience,
     targetUserId,
-    sentCount: users.length,
+    sentCount: recipientIds.length,
   });
 
-  res.json({ success: true, sentCount: users.length });
+  res.json({ success: true, sentCount: recipientIds.length });
 });
 
-// GET /api/notifications/broadcasts — admin history
-router.get("/broadcasts", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const broadcasts = await AdminBroadcast.find({})
-    .sort({ createdAt: -1 })
-    .limit(50);
-  res.json({ success: true, broadcasts });
+// GET /api/notifications/broadcasts — admin broadcast history
+router.get("/broadcasts", authenticate, A, async (_req: AuthRequest, res: Response): Promise<void> => {
+  const broadcasts = await db.select().from(adminBroadcasts).orderBy(desc(adminBroadcasts.createdAt)).limit(50);
+  res.json({ success: true, broadcasts: miArr(broadcasts) });
 });
 
 export default router;
