@@ -1,18 +1,23 @@
 import { Router, type Request, type Response } from "express";
-import { Coupon } from "../../models/Coupon.js";
+import { db, coupons } from "@workspace/db";
+import { eq, and, desc } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
+import { mi, miArr } from "../../utils/mapId.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
 router.get("/", authenticate, A, async (_req: Request, res: Response): Promise<void> => {
-  const coupons = await Coupon.find().sort({ createdAt: -1 });
-  res.json({ success: true, coupons });
+  const rows = await db.select().from(coupons).orderBy(desc(coupons.createdAt));
+  res.json({ success: true, coupons: miArr(rows) });
 });
 
+// POST /validate — validate a coupon code against an order total
 router.post("/validate", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const { code, orderTotal } = req.body as { code: string; orderTotal: number };
-  const coupon = await Coupon.findOne({ code: code.toUpperCase(), isActive: true });
+  const [coupon] = await db.select().from(coupons)
+    .where(and(eq(coupons.code, code.toUpperCase()), eq(coupons.isActive, true)))
+    .limit(1);
   if (!coupon) { res.status(404).json({ success: false, message: "Invalid coupon code" }); return; }
   if (coupon.expiryDate < new Date()) { res.status(400).json({ success: false, message: "Coupon expired" }); return; }
   if (coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit) {
@@ -29,22 +34,38 @@ router.post("/validate", authenticate, async (req: AuthRequest, res: Response): 
   } else if (coupon.type === "fixed") {
     discount = coupon.value;
   }
-  res.json({ success: true, coupon, discount: +discount.toFixed(2) });
+  res.json({ success: true, coupon: mi(coupon), discount: +discount.toFixed(2) });
 });
 
 router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const coupon = await Coupon.create(req.body as Record<string, unknown>);
-  res.status(201).json({ success: true, coupon });
+  const body = req.body as Record<string, unknown>;
+  const [coupon] = await db.insert(coupons).values({
+    code: String(body["code"] ?? "").toUpperCase(),
+    type: body["type"] ? String(body["type"]) : "percentage",
+    value: body["value"] != null ? Number(body["value"]) : 0,
+    minimumOrder: body["minimumOrder"] != null ? Number(body["minimumOrder"]) : 0,
+    maximumDiscount: body["maximumDiscount"] != null ? Number(body["maximumDiscount"]) : undefined,
+    expiryDate: new Date(String(body["expiryDate"] ?? "")),
+    usageLimit: body["usageLimit"] != null ? Number(body["usageLimit"]) : 0,
+    perUserLimit: body["perUserLimit"] != null ? Number(body["perUserLimit"]) : 0,
+    isActive: body["isActive"] != null ? Boolean(body["isActive"]) : true,
+    appliesTo: body["appliesTo"] ? String(body["appliesTo"]) : "all",
+    targetId: body["targetId"] ? String(body["targetId"]) : undefined,
+  }).returning();
+  res.status(201).json({ success: true, coupon: mi(coupon!) });
 });
 
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const coupon = await Coupon.findByIdAndUpdate(req.params["id"], req.body as Record<string, unknown>, { new: true });
+  const [coupon] = await db.update(coupons)
+    .set(req.body as Record<string, unknown>)
+    .where(eq(coupons.id, req.params["id"]!))
+    .returning();
   if (!coupon) { res.status(404).json({ success: false, message: "Not found" }); return; }
-  res.json({ success: true, coupon });
+  res.json({ success: true, coupon: mi(coupon) });
 });
 
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  await Coupon.findByIdAndDelete(req.params["id"]);
+  await db.delete(coupons).where(eq(coupons.id, req.params["id"]!));
   res.json({ success: true, message: "Deleted" });
 });
 

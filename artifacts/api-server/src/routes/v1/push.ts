@@ -1,6 +1,7 @@
 import { Router, type Response } from "express";
+import { db, pushSubscriptions } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
-import { PushSubscription } from "../../models/PushSubscription.js";
 import { vapidPublicKey } from "../../lib/webpush.js";
 
 const router = Router();
@@ -11,6 +12,7 @@ router.get("/vapid-public-key", (_req, res: Response): void => {
 });
 
 // POST /api/push/subscribe — save or update a push subscription for this user
+// Uses delete+insert to emulate upsert on (userId, endpoint)
 router.post("/subscribe", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const { endpoint, keys } = req.body as {
     endpoint: string;
@@ -22,11 +24,14 @@ router.post("/subscribe", authenticate, async (req: AuthRequest, res: Response):
     return;
   }
 
-  await PushSubscription.findOneAndUpdate(
-    { userId: req.user!.userId, endpoint },
-    { userId: req.user!.userId, endpoint, keys },
-    { upsert: true, new: true }
+  await db.delete(pushSubscriptions).where(
+    and(eq(pushSubscriptions.userId, req.user!.userId), eq(pushSubscriptions.endpoint, endpoint))
   );
+  await db.insert(pushSubscriptions).values({
+    userId: req.user!.userId,
+    endpoint,
+    keys,
+  });
 
   res.json({ success: true });
 });
@@ -35,7 +40,9 @@ router.post("/subscribe", authenticate, async (req: AuthRequest, res: Response):
 router.post("/unsubscribe", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const { endpoint } = req.body as { endpoint: string };
   if (endpoint) {
-    await PushSubscription.deleteOne({ userId: req.user!.userId, endpoint });
+    await db.delete(pushSubscriptions).where(
+      and(eq(pushSubscriptions.userId, req.user!.userId), eq(pushSubscriptions.endpoint, endpoint))
+    );
   }
   res.json({ success: true });
 });

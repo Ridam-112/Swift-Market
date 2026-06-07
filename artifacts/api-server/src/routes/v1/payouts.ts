@@ -1,24 +1,29 @@
 import { Router, type Response } from "express";
-import { Payout } from "../../models/Payout.js";
+import { db, payouts } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
+import { mi, miArr } from "../../utils/mapId.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
 router.get("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const { status } = req.query as { status?: string };
-  const filter = status ? { status } : {};
-  const payouts = await Payout.find(filter).sort({ createdAt: -1 });
-  res.json({ success: true, payouts });
+  const where = status ? eq(payouts.status, status) : undefined;
+  const rows = await db.select().from(payouts).where(where).orderBy(desc(payouts.createdAt));
+  res.json({ success: true, payouts: miArr(rows) });
 });
 
 router.patch("/:id/status", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const { status, notes } = req.body as { status: string; notes?: string };
-  const update: Record<string, unknown> = { status, notes };
-  if (status === "paid") update["paidAt"] = new Date();
-  const payout = await Payout.findByIdAndUpdate(req.params["id"], update, { new: true });
+  const updatePayload: Record<string, unknown> = { status, notes };
+  if (status === "paid") updatePayload["paidAt"] = new Date();
+  const [payout] = await db.update(payouts)
+    .set(updatePayload)
+    .where(eq(payouts.id, req.params["id"]!))
+    .returning();
   if (!payout) { res.status(404).json({ success: false, message: "Not found" }); return; }
-  res.json({ success: true, payout });
+  res.json({ success: true, payout: mi(payout) });
 });
 
 export default router;
