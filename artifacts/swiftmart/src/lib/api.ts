@@ -19,7 +19,16 @@ export function clearTokens() {
   localStorage.removeItem("sm_role");
 }
 
+// Singleton promise to prevent concurrent refresh races (M3)
+let refreshInFlight: Promise<string | null> | null = null;
+
 async function refreshTokens(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = doRefreshTokens().finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
+}
+
+async function doRefreshTokens(): Promise<string | null> {
   const { refresh } = getTokens();
   if (!refresh) return null;
   try {

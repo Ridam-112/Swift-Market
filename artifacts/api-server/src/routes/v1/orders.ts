@@ -33,6 +33,11 @@ const STATUS_MESSAGES: Record<string, { title: string; message: string }> = {
 
 const STOCK_RESTORE_STATUSES = new Set(["cancelled", "refunded"]);
 
+// All valid order statuses — rejects arbitrary strings (L1)
+const VALID_STATUSES = new Set([
+  "placed", "confirmed", "packed", "out_for_delivery", "delivered", "cancelled", "refunded",
+]);
+
 // Restore stock for a list of order items and re-activate any that had gone out_of_stock
 async function restoreStock(items: OrderItem[]): Promise<void> {
   await Promise.all(items.map(async item => {
@@ -44,6 +49,21 @@ async function restoreStock(items: OrderItem[]): Promise<void> {
       await db.update(products).set({ status: "active" }).where(eq(products.id, item.productId));
     }
   }));
+}
+
+// Cancel the payout associated with an order and decrement coupon usage (M1, M5)
+async function reverseOrderFinancials(order: { id: string; shopId: string; couponCode?: string | null }): Promise<void> {
+  await db.update(payouts)
+    .set({ status: "cancelled" })
+    .where(sql`${payouts.ordersIncluded} @> ${JSON.stringify([order.id])}::jsonb`)
+    .catch(() => {});
+
+  if (order.couponCode) {
+    await db.update(coupons)
+      .set({ usedCount: sql`GREATEST(${coupons.usedCount} - 1, 0)` })
+      .where(eq(coupons.code, order.couponCode))
+      .catch(() => {});
+  }
 }
 
 // GET /api/orders
@@ -177,6 +197,10 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
       ? +(enrichedItems.reduce((s, it) => s + it.commissionRate, 0) / enrichedItems.length).toFixed(2)
       : 0;
 
+    // Online payment orders start as "pending"; verify endpoint upgrades to "success"
+    const paymentMethod = String(body["paymentMethod"] ?? "COD");
+    const paymentStatus = paymentMethod === "COD" ? "pending" : "pending";
+
     const [order] = await db.insert(orders).values({
       customerId: req.user!.userId,
       customerName: String(body["customerName"] ?? ""),
@@ -192,11 +216,15 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
       commissionAmount,
       vendorPayable,
       platformRevenue: commissionAmount,
-      paymentMethod: String(body["paymentMethod"] ?? "COD"),
-      paymentStatus: body["paymentMethod"] === "COD" ? "pending" : "success",
+      paymentMethod,
+      paymentStatus,
       address: (body["address"] ?? {}) as Record<string, string>,
       couponCode: typeof body["couponCode"] === "string" && body["couponCode"].trim()
         ? body["couponCode"].trim().toUpperCase()
+        : undefined,
+      // Store Razorpay order ID early so webhook can reconcile abandoned payments
+      razorpayOrderId: typeof body["razorpayOrderId"] === "string" && body["razorpayOrderId"].trim()
+        ? body["razorpayOrderId"].trim()
         : undefined,
     }).returning();
 
@@ -258,6 +286,18 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
 // PATCH /api/orders/:id/status
 router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const { status, cancelReason } = req.body as { status: string; cancelReason?: string };
+
+  // Validate status is a known value (L1)
+  if (!VALID_STATUSES.has(status)) {
+    res.status(400).json({ success: false, message: `Invalid status '${status}'` });
+    return;
+  }
+
+  // Fetch current order to guard against double-reversals
+  const [current] = await db.select({ status: orders.status, couponCode: orders.couponCode })
+    .from(orders).where(eq(orders.id, req.params["id"]!)).limit(1);
+  if (!current) { res.status(404).json({ success: false, message: "Not found" }); return; }
+
   const update: Record<string, unknown> = { status };
   if (cancelReason) update["cancelReason"] = cancelReason;
 
@@ -267,8 +307,13 @@ router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response
     .returning();
   if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
-  if (STOCK_RESTORE_STATUSES.has(status) && Array.isArray(order.items) && order.items.length) {
-    await restoreStock(order.items as OrderItem[]);
+  const wasAlreadyTerminal = STOCK_RESTORE_STATUSES.has(current.status);
+
+  if (STOCK_RESTORE_STATUSES.has(status) && !wasAlreadyTerminal) {
+    if (Array.isArray(order.items) && order.items.length) {
+      await restoreStock(order.items as OrderItem[]);
+    }
+    await reverseOrderFinancials({ id: order.id, shopId: order.shopId, couponCode: order.couponCode });
   }
 
   try {
@@ -288,14 +333,23 @@ router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response
 
 // POST /api/orders/:id/refund
 router.post("/:id/refund", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  // Fetch current state to avoid double-reversals
+  const [current] = await db.select({ status: orders.status })
+    .from(orders).where(eq(orders.id, req.params["id"]!)).limit(1);
+
   const [order] = await db.update(orders)
     .set({ status: "refunded", paymentStatus: "refunded", refundedAt: new Date() })
     .where(eq(orders.id, req.params["id"]!))
     .returning();
   if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
-  if (Array.isArray(order.items) && order.items.length) {
-    await restoreStock(order.items as OrderItem[]);
+  const wasAlreadyTerminal = current && STOCK_RESTORE_STATUSES.has(current.status);
+
+  if (!wasAlreadyTerminal) {
+    if (Array.isArray(order.items) && order.items.length) {
+      await restoreStock(order.items as OrderItem[]);
+    }
+    await reverseOrderFinancials({ id: order.id, shopId: order.shopId, couponCode: order.couponCode });
   }
 
   try {

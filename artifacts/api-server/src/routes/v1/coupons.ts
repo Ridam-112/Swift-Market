@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
-import { db, coupons } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { db, coupons, orders } from "@workspace/db";
+import { eq, and, desc, count, ne } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { mi, miArr } from "../../utils/mapId.js";
 
@@ -28,11 +28,33 @@ router.post("/validate", authenticate, async (req: AuthRequest, res: Response): 
     res.status(400).json({ success: false, message: `Minimum order ₹${coupon.minimumOrder} required` });
     return;
   }
+
+  // Enforce per-user limit (M4)
+  if (coupon.perUserLimit > 0) {
+    const userId = req.user!.userId;
+    const [{ uses }] = await db
+      .select({ uses: count() })
+      .from(orders)
+      .where(and(
+        eq(orders.customerId, userId),
+        eq(orders.couponCode, coupon.code),
+        ne(orders.status, "cancelled"),
+        ne(orders.status, "refunded"),
+      ));
+    if (Number(uses) >= coupon.perUserLimit) {
+      res.status(400).json({
+        success: false,
+        message: `You've already used this coupon ${coupon.perUserLimit} time${coupon.perUserLimit > 1 ? "s" : ""} (limit reached)`,
+      });
+      return;
+    }
+  }
+
   let discount = 0;
   if (coupon.type === "percentage") {
     discount = Math.min((orderTotal * coupon.value) / 100, coupon.maximumDiscount ?? Infinity);
   } else if (coupon.type === "fixed") {
-    discount = coupon.value;
+    discount = Math.min(coupon.value, orderTotal);
   }
   res.json({ success: true, coupon: mi(coupon), discount: +discount.toFixed(2) });
 });

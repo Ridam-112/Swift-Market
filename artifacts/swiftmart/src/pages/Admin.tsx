@@ -370,9 +370,6 @@ function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) 
     reports.filter(r => r.status === 'open').slice(0, 1).forEach((r, i) => {
       activities.push({ id: `rep-${i}`, type: 'report', icon: Flag, title: 'New report opened', desc: `Regarding ${r.targetName}`, time: timeAgo(r.reportedAt), color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-950/20' });
     });
-    [...shops].filter(s => s.status === 'active').slice(0, 1).forEach((s, i) => {
-      activities.push({ id: `shop-${i}`, type: 'shop', icon: Store, title: 'Shop active', desc: s.storeName, time: '', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-950/20' });
-    });
     return activities.slice(0, 5);
   }, [recentOrders, reports, shops]);
 
@@ -899,7 +896,7 @@ function CustomersList() {
     setLoadingCustomers(true);
     Promise.all([
       api.get<{ success: boolean; users: ApiUser[] }>('/users?role=customer&limit=100'),
-      api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=500'),
+      api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=2000'),
     ]).then(([usersData, ordersData]) => {
       const allOrders = ordersData.orders ?? [];
       setCustomers(usersData.users.map(u => {
@@ -1600,7 +1597,7 @@ function AnalyticsTab() {
   const loadAnalytics = useCallback(() => {
     setAnalyticsLoading(true);
     Promise.all([
-      api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=500')
+      api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=2000')
         .then(d => setAllOrders(d.orders)).catch(() => {}),
       api.get<{ success: boolean; dates: string[] }>('/admin/user-signups')
         .then(d => setSignupTimestamps(d.dates.map(s => new Date(s).getTime()))).catch(() => {}),
@@ -1800,7 +1797,7 @@ function TransactionsTab() {
   const loadTransactions = useCallback(() => {
     setTxLoading(true);
     const methodMap: Record<string, TransactionLog['method']> = { COD: 'COD', UPI: 'UPI', card: 'Card', wallet: 'UPI' };
-    api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=500')
+    api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=2000')
       .then(d => {
         const txns: TransactionLog[] = d.orders.map(o => ({
           id: `TXN-${o._id.slice(-8).toUpperCase()}`,
@@ -2596,7 +2593,7 @@ function HeroBannersTab() {
 interface ApiCoupon {
   _id: string;
   code: string;
-  type: 'percentage' | 'fixed' | 'free_delivery';
+  type: 'percentage' | 'fixed';
   value: number;
   minimumOrder: number;
   maximumDiscount?: number;
@@ -2663,7 +2660,7 @@ function CouponsTab() {
     setEditingId(c._id);
     setForm({
       code: c.code,
-      type: c.type === 'free_delivery' ? 'fixed' : c.type,
+      type: c.type,
       value: String(c.value),
       minimumOrder: String(c.minimumOrder),
       maximumDiscount: c.maximumDiscount != null ? String(c.maximumDiscount) : '',

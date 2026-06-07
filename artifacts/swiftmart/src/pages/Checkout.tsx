@@ -47,6 +47,8 @@ interface RazorpayResponse {
 interface RazorpayOrderResponse {
   success: boolean;
   keyId: string;
+  serverTotal: number;
+  couponDiscount: number;
   order: {
     id: string;
     amount: number;
@@ -124,7 +126,7 @@ export default function Checkout() {
     setCouponInput("");
   };
 
-  const createOrderRecord = async (shopId: string, shopName: string) => {
+  const createOrderRecord = async (shopId: string, shopName: string, razorpayOrderId?: string) => {
     const paymentMethodApi = paymentMethod === 'Card' ? 'card' : paymentMethod;
     return api.post<ApiOrderResponse>("/orders", {
       shopId,
@@ -142,6 +144,7 @@ export default function Checkout() {
       deliveryCharge: deliveryFee,
       couponDiscount,
       ...(couponApplied ? { couponCode: couponApplied.code } : {}),
+      ...(razorpayOrderId ? { razorpayOrderId } : {}),
       paymentMethod: paymentMethodApi,
       address: {
         label: address!.label,
@@ -202,9 +205,11 @@ export default function Checkout() {
         clearCart();
         setLocation(`/order/success/${data.order._id}`);
       } else {
-        // Online payment: create Razorpay order first, then open popup
+        // Online payment: server computes amount from DB prices (prevents tampering)
         const rzpOrderData = await api.post<RazorpayOrderResponse>("/payments/create-order", {
-          amount: totalAmount,
+          items: items.map(i => ({ productId: i.product.id, qty: i.qty })),
+          deliveryCharge: deliveryFee,
+          ...(couponApplied ? { couponCode: couponApplied.code } : {}),
           receipt: `order_${Date.now()}`,
         });
 
@@ -228,8 +233,8 @@ export default function Checkout() {
           theme: { color: "#16a34a" },
           handler: async (response: RazorpayResponse) => {
             try {
-              // Create order record in our DB
-              const orderData = await createOrderRecord(shopId, shopName);
+              // Create order record in our DB — pass razorpayOrderId so webhook can reconcile if verify fails
+              const orderData = await createOrderRecord(shopId, shopName, rzpOrderData.order.id);
               // Verify payment signature with backend
               await api.post("/payments/verify", {
                 razorpay_order_id: response.razorpay_order_id,

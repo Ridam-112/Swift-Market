@@ -135,7 +135,7 @@ export default function Auth() {
     } catch (err: unknown) {
       setOtpError(true);
       const msg = err instanceof Error ? err.message : "Invalid OTP";
-      toast.error(msg.includes("Invalid") ? "Invalid OTP. Use 123456 for demo." : msg);
+      toast.error(msg.includes("Invalid") ? "Invalid OTP. Please try again." : msg);
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {

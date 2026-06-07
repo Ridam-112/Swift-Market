@@ -225,10 +225,35 @@ router.patch("/:id/approval", authenticate, A, async (req: AuthRequest, res: Res
   res.json({ success: true, product: mi(product) });
 });
 
-// PATCH /api/products/:id
+// PATCH /api/products/:id — vendor/admin edit
+// Vendor edits always reset status to "pending" and verify ownership (M2)
 router.patch("/:id", authenticate, V, async (req: AuthRequest, res: Response): Promise<void> => {
+  const isAdmin = req.user!.role === "admin" || req.user!.role === "super_admin";
+  const body = req.body as Record<string, unknown>;
+
+  if (!isAdmin) {
+    // Verify the vendor owns this product's shop
+    const [existing] = await db.select({ shopId: products.shopId })
+      .from(products).where(eq(products.id, req.params["id"]!)).limit(1);
+    if (!existing) { res.status(404).json({ success: false, message: "Not found" }); return; }
+
+    const [shop] = await db.select({ id: shops.id }).from(shops)
+      .where(eq(shops.ownerId, req.user!.userId)).limit(1);
+    if (!shop || shop.id !== existing.shopId) {
+      res.status(403).json({ success: false, message: "Forbidden" });
+      return;
+    }
+  }
+
+  const updateData: Record<string, unknown> = { ...body };
+  if (!isAdmin) {
+    // Vendor edits must go through re-approval — force status back to pending
+    updateData["status"] = "pending";
+    delete updateData["rejectionReason"];
+  }
+
   const [product] = await db.update(products)
-    .set(req.body as Record<string, unknown>)
+    .set(updateData)
     .where(eq(products.id, req.params["id"]!))
     .returning();
   if (!product) { res.status(404).json({ success: false, message: "Not found" }); return; }

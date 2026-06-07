@@ -232,14 +232,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const persistAddresses = async (addresses: Address[]) => {
+  const persistAddresses = async (addresses: Address[], rollbackUser?: User) => {
     try {
       const data = await api.patch<{ success: boolean; user: ApiUser }>("/users/me/profile", { addresses });
       const u = apiUserToFrontend(data.user);
       setUser(u);
       localStorage.setItem("sm_user", JSON.stringify(u));
-      // After backend saves, addresses get MongoDB _ids. If selectedDeliveryAddress
-      // still holds a stale client-generated id, re-sync it to the backend address.
+      // After backend saves, addresses get server-generated ids. Re-sync selectedDeliveryAddress.
       setSelectedDeliveryAddress(prev => {
         if (!prev || !u.addresses.length) return prev;
         const stillValid = u.addresses.find(a => a.id === prev.id);
@@ -248,28 +247,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const matched = u.addresses.find(a => a.label === prev.label && a.line1 === prev.line1);
         return matched ?? u.addresses[0];
       });
-    } catch { /* local state already updated optimistically */ }
+    } catch {
+      // Rollback optimistic update on failure (L5)
+      if (rollbackUser) {
+        setUser(rollbackUser);
+        localStorage.setItem("sm_user", JSON.stringify(rollbackUser));
+      }
+    }
   };
 
   const addAddress = (address: Address) => {
     if (!user) return;
+    const snapshot = { ...user, addresses: [...user.addresses] };
     const updated = [...user.addresses, address];
     updateUser({ addresses: updated });
-    void persistAddresses(updated);
+    void persistAddresses(updated, snapshot);
   };
 
   const deleteAddress = (id: string) => {
     if (!user) return;
+    const snapshot = { ...user, addresses: [...user.addresses] };
     const updated = user.addresses.filter(a => a.id !== id);
     updateUser({ addresses: updated });
-    void persistAddresses(updated);
+    void persistAddresses(updated, snapshot);
   };
 
   const updateAddress = (address: Address) => {
     if (!user) return;
+    const snapshot = { ...user, addresses: [...user.addresses] };
     const updated = user.addresses.map(a => a.id === address.id ? address : a);
     updateUser({ addresses: updated });
-    void persistAddresses(updated);
+    void persistAddresses(updated, snapshot);
   };
 
   const updatePincode = async (pincode: string): Promise<void> => {

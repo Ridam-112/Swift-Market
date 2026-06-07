@@ -34,7 +34,14 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({
+  verify: (req, _res, buf) => {
+    // Capture raw body for Razorpay webhook signature verification (M6)
+    if ((req as Request & { url?: string }).url?.includes("/payments/webhook")) {
+      (req as Request & { rawBody?: Buffer }).rawBody = buf;
+    }
+  },
+}));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/uploads", express.static(path.join(__dirname, "..", "uploads")));

@@ -2,7 +2,8 @@ import { db, notifications, pushSubscriptions } from "@workspace/db";
 import { eq, count, asc, inArray } from "drizzle-orm";
 import { webpush } from "../lib/webpush.js";
 
-const NOTIFICATION_LIMIT = 10;
+// Increased from 10 to 50 so broadcast notifications don't wipe order history (L7)
+const NOTIFICATION_LIMIT = 50;
 
 type NotificationPayload = {
   type: "order_update" | "shop_approval" | "delivery_update" | "coupon" | "promo" | "system";

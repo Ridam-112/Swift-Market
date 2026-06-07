@@ -8,14 +8,32 @@ import { miArr } from "../../utils/mapId.js";
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
-// GET /api/notifications — current user's notifications (latest 10)
+// GET /api/notifications — current user's notifications with pagination (L7)
 router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const uid = req.user!.userId;
-  const [rows, [{ unread }]] = await Promise.all([
-    db.select().from(notifications).where(eq(notifications.userId, uid)).orderBy(desc(notifications.createdAt)).limit(10),
-    db.select({ unread: count() }).from(notifications).where(and(eq(notifications.userId, uid), eq(notifications.isRead, false))),
+  const limit = Math.min(parseInt((req.query["limit"] as string) ?? "20"), 50);
+  const page = Math.max(parseInt((req.query["page"] as string) ?? "1"), 1);
+  const offset = (page - 1) * limit;
+
+  const [rows, [{ unread }], [{ total }]] = await Promise.all([
+    db.select().from(notifications)
+      .where(eq(notifications.userId, uid))
+      .orderBy(desc(notifications.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db.select({ unread: count() }).from(notifications)
+      .where(and(eq(notifications.userId, uid), eq(notifications.isRead, false))),
+    db.select({ total: count() }).from(notifications)
+      .where(eq(notifications.userId, uid)),
   ]);
-  res.json({ success: true, notifications: miArr(rows), unreadCount: Number(unread) });
+  res.json({
+    success: true,
+    notifications: miArr(rows),
+    unreadCount: Number(unread),
+    total: Number(total),
+    page,
+    pages: Math.ceil(Number(total) / limit),
+  });
 });
 
 // PATCH /api/notifications/read-all — mark all unread as read
@@ -63,7 +81,7 @@ router.post("/broadcast", authenticate, A, async (req: AuthRequest, res: Respons
     recipientIds = rows.map(r => r.id);
   }
 
-  // Use createNotificationLimited for each recipient to enforce the 10-notification cap
+  // Use createNotificationLimited for each recipient to enforce the notification cap
   await Promise.all(recipientIds.map(id =>
     createNotificationLimited(id, { type: "system", title, message })
   ));
