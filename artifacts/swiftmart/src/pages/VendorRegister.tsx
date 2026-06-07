@@ -10,12 +10,14 @@ import { ArrowLeft, Check, ChevronRight, ChevronDown, CheckCircle2, XCircle } fr
 import { categories } from "@/data/categories";
 import { api } from "@/lib/api";
 import { isServicePincode, getServiceAreaName } from "@/lib/serviceArea";
+import { toast } from "sonner";
 
 export default function VendorRegister() {
   const [, setLocation] = useLocation();
   const { user, submitVendorApplication } = useAuth();
 
   const [step, setStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
   const [activeShopSlugs, setActiveShopSlugs] = useState<string[] | null>(null);
 
   useEffect(() => {
@@ -72,28 +74,35 @@ export default function VendorRegister() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!upiId || !bankAccountNumber || !bankIfscCode) return;
+    if (submitting) return;
 
-    submitVendorApplication({
-      storeName,
-      storeCategory,
-      storeSubcategory,
-      storeDescription,
-      ownerName,
-      storeAddress,
-      storeArea,
-      storeCity,
-      storePincode,
-      panNumber,
-      gstNumber,
-      upiId,
-      bankAccountNumber,
-      bankIfscCode,
-    });
-
-    setLocation("/vendor-status");
+    setSubmitting(true);
+    try {
+      await submitVendorApplication({
+        storeName,
+        storeCategory,
+        storeSubcategory,
+        storeDescription,
+        ownerName,
+        storeAddress,
+        storeArea,
+        storeCity,
+        storePincode,
+        panNumber,
+        gstNumber,
+        upiId,
+        bankAccountNumber,
+        bankIfscCode,
+      });
+      setLocation("/vendor-status");
+    } catch {
+      toast.error("Application failed — please check your details and try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -336,10 +345,10 @@ export default function VendorRegister() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={!upiId || !bankAccountNumber || bankIfscCode.length !== 11}
+                    disabled={!upiId || !bankAccountNumber || bankIfscCode.length !== 11 || submitting}
                     className="flex-[2] rounded-2xl h-14 text-lg font-bold shadow-none neu-card bg-primary text-primary-foreground"
                   >
-                    Submit <Check className="w-5 h-5 ml-2" />
+                    {submitting ? "Submitting…" : <><span>Submit</span><Check className="w-5 h-5 ml-2" /></>}
                   </Button>
                 </div>
               </form>

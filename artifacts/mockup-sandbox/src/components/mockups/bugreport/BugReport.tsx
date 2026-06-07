@@ -1,5 +1,5 @@
 export default function BugReport() {
-  const FIXED_IDS = new Set([1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17,18,21]);
+  const FIXED_IDS = new Set([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,21]);
 
   const bugs = [
     // CRITICAL — all 4 fixed
@@ -83,7 +83,7 @@ export default function BugReport() {
     "Auth": "#ec4899", "Vendor Dashboard": "#f97316", "Delivery": "#ef4444", "Database": "#14b8a6",
   };
 
-  const launchScore = 82;
+  const launchScore = 86;
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#0f172a", minHeight: "100vh", padding: "32px", color: "#f1f5f9" }}>
@@ -275,9 +275,9 @@ export default function BugReport() {
         {[
           { icon: "✅", label: "All 4 Critical bugs fixed", color: "#22c55e" },
           { icon: "✅", label: "All 6 High severity bugs fixed", color: "#22c55e" },
-          { icon: "⚠️", label: "1 Medium open — vendor rollback UI", color: "#eab308" },
+          { icon: "✅", label: "All 7 Medium bugs fixed", color: "#22c55e" },
           { icon: "⚠️", label: "2 Low open — OTP SMS + admin phones", color: "#eab308" },
-          { icon: "🚀", label: "Beta ready — 0 launch blockers remain", color: "#84cc16" },
+          { icon: "🚀", label: "Beta ready — 19/21 fixed, 0 blockers", color: "#84cc16" },
         ].map(item => (
           <div key={item.label} style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 10, padding: "8px 14px", display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
             <span>{item.icon}</span>

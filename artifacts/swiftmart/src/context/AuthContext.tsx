@@ -27,7 +27,7 @@ interface AuthContextType {
   completeOnboarding: (name: string, phone: string, address: Address, email?: string) => Promise<void>;
 
   applications: VendorApplication[];
-  submitVendorApplication: (app: Omit<VendorApplication, 'id' | 'userId' | 'userName' | 'userPhone' | 'submittedAt' | 'status'>) => void;
+  submitVendorApplication: (app: Omit<VendorApplication, 'id' | 'userId' | 'userName' | 'userPhone' | 'submittedAt' | 'status'>) => Promise<void>;
   approveApplication: (applicationId: string) => void;
   rejectApplication: (applicationId: string, reason: string) => void;
 
@@ -351,7 +351,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSelectedDeliveryAddress(u.addresses.length > 0 ? u.addresses[0] : address);
   };
 
-  const submitVendorApplication = (appData: Omit<VendorApplication, 'id' | 'userId' | 'userName' | 'userPhone' | 'submittedAt' | 'status'>) => {
+  const submitVendorApplication = async (appData: Omit<VendorApplication, 'id' | 'userId' | 'userName' | 'userPhone' | 'submittedAt' | 'status'>): Promise<void> => {
     if (!user) return;
     const newApp: VendorApplication = {
       ...appData,
@@ -362,10 +362,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       submittedAt: new Date().toISOString(),
       status: 'pending',
     };
-    setApplications(prev => [...prev, newApp]);
-    updateUser({ vendorStatus: 'pending', vendorApplicationId: newApp.id, isVendorRegistered: true });
 
-    api.post("/shops", {
+    // Bug #14 fix: do NOT update UI state before the API succeeds.
+    // Wait for the API call — only update on success, rollback is implicit (nothing to undo).
+    await api.post("/shops", {
       shopName: appData.storeName,
       ownerName: appData.ownerName,
       phone: user.phone,
@@ -385,7 +385,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         pincode: appData.storePincode || "",
         state: "West Bengal",
       },
-    }).catch(() => { /* ignore API errors, local state updated */ });
+    });
+
+    // API succeeded — now update local state
+    setApplications(prev => [...prev, newApp]);
+    updateUser({ vendorStatus: 'pending', vendorApplicationId: newApp.id, isVendorRegistered: true });
 
     if (appData.storePincode) {
       api.patch<{ success: boolean; user: ApiUser }>("/users/me/profile", { pincode: appData.storePincode })
