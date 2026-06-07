@@ -24,7 +24,16 @@ app.use(
   }),
 );
 
-app.use(cors({ origin: true, credentials: true }));
+const allowedOrigins = process.env["ALLOWED_ORIGINS"]?.split(",").map(o => o.trim()).filter(Boolean) ?? [];
+app.use(cors({
+  origin: (origin, cb) => {
+    // Allow non-browser requests (server-to-server, curl) and all origins in dev
+    if (!origin || process.env["NODE_ENV"] !== "production") return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error(`CORS: origin '${origin}' not allowed`));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
