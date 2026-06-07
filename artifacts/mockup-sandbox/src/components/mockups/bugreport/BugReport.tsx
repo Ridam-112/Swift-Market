@@ -97,12 +97,15 @@ export default function BugReport() {
         <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, background: "linear-gradient(135deg,#f1f5f9,#94a3b8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
           Bug Report & Launch Readiness
         </h1>
-        <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <div style={{ background: "#052e16", border: "1px solid #166534", borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700, color: "#22c55e" }}>
             ✓ {fixedCount} / {total} fixed
           </div>
           <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#94a3b8" }}>
-            {openCount} remaining
+            {openCount} remaining (Low severity only)
+          </div>
+          <div style={{ background: "#0c1a35", border: "1px solid #1d4ed8", borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700, color: "#60a5fa" }}>
+            🧹 All mock &amp; demo data cleared
           </div>
         </div>
       </div>
@@ -277,7 +280,8 @@ export default function BugReport() {
           { icon: "✅", label: "All 6 High severity bugs fixed", color: "#22c55e" },
           { icon: "✅", label: "All 7 Medium bugs fixed", color: "#22c55e" },
           { icon: "⚠️", label: "2 Low open — OTP SMS + admin phones", color: "#eab308" },
-          { icon: "🚀", label: "Beta ready — 19/21 fixed, 0 blockers", color: "#84cc16" },
+          { icon: "🧹", label: "DB clean — all mock & demo data removed", color: "#60a5fa" },
+          { icon: "🚀", label: "Launch ready — 19/21 fixed, 0 blockers", color: "#84cc16" },
         ].map(item => (
           <div key={item.label} style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 10, padding: "8px 14px", display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
             <span>{item.icon}</span>
