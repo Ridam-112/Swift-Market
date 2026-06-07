@@ -1,6 +1,5 @@
 import app from "./app.js";
 import { logger } from "./lib/logger.js";
-import { connectMongoDB } from "./lib/mongoose.js";
 import { seedSuperAdmins } from "./utils/seedAdmins.js";
 import { seedShopTypes } from "./utils/seedShopTypes.js";
 import { seedCategories } from "./utils/seedCategories.js";
@@ -21,22 +20,16 @@ async function main() {
     });
   });
 
-  // Connect DB in background — server stays up even if Atlas is unreachable
-  connectMongoDB()
-    .then(async () => {
-      try {
-        await seedSuperAdmins();
-        await seedShopTypes();
-        await seedCategories();
-        await clearDemoData();
-        logger.info("Seed complete");
-      } catch (err) {
-        logger.error({ err }, "Seed error (non-fatal)");
-      }
-    })
-    .catch((err) => {
-      logger.error({ err }, "MongoDB connection error (non-fatal) — check Atlas IP whitelist");
-    });
+  // Run seeds against PostgreSQL (Drizzle / Neon)
+  try {
+    await seedSuperAdmins();
+    await seedShopTypes();
+    await seedCategories();
+    await clearDemoData();
+    logger.info("Seed complete");
+  } catch (err) {
+    logger.error({ err }, "Seed error (non-fatal)");
+  }
 }
 
 main().catch((err) => {
