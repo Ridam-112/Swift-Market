@@ -1,10 +1,10 @@
 import { Router, type Request, type Response } from "express";
-import { Product } from "../../models/Product.js";
-import { Shop } from "../../models/Shop.js";
-import { Category } from "../../models/Category.js";
+import { db, products, shops, categories } from "@workspace/db";
+import { eq, and, ilike, inArray, desc, count, gt, sql } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { deleteFromCloudinary } from "../../lib/cloudinary.js";
 import { createNotificationLimited } from "../../utils/notification.js";
+import { mi, miArr } from "../../utils/mapId.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -14,92 +14,115 @@ const V = requireRole("vendor", "admin", "super_admin");
 router.get("/", async (req: Request, res: Response): Promise<void> => {
   const { shopId, category, status = "active", search, page = "1", limit = "20", pincode } =
     req.query as Record<string, string>;
-  const filter: Record<string, unknown> = {};
+
+  const pg = parseInt(page), lm = parseInt(limit);
+  const conditions = [];
 
   // status=all skips the status filter entirely (used by admin/vendor product management)
   if (status !== "all") {
-    filter["status"] = status;
+    conditions.push(eq(products.status, status));
     // For customer-facing active product listings, also exclude zero-stock products
     if (status === "active") {
-      filter["stock"] = { $gt: 0 };
+      conditions.push(gt(products.stock, 0));
     }
   }
 
-  if (category) filter["category"] = category;
-  if (search) filter["name"] = { $regex: search, $options: "i" };
+  if (category) conditions.push(eq(products.category, category));
+  if (search) conditions.push(ilike(products.name, `%${search}%`));
 
   // For customer-facing active queries, restrict to active categories only
   if (status === "active") {
-    const activeCategories = await Category.find({ isActive: true }).select("slug").lean();
-    if (activeCategories.length > 0) {
-      const activeSlugs = activeCategories.map(c => c.slug);
+    const activeCats = await db.select({ slug: categories.slug }).from(categories).where(eq(categories.isActive, true));
+    if (activeCats.length > 0) {
+      const activeSlugs = activeCats.map(c => c.slug);
       if (category) {
         if (!activeSlugs.includes(category)) {
           res.json({ success: true, products: [], total: 0, page: 1, pages: 0 });
           return;
         }
+        // category is already a valid active slug — no extra condition needed
       } else {
-        filter["category"] = { $in: activeSlugs };
+        conditions.push(inArray(products.category, activeSlugs));
       }
     }
   }
 
+  // Shop scope
   if (pincode) {
-    const pincodeShops = await Shop.find({ "address.pincode": pincode, status: "approved" }).select("_id").lean();
-    filter["shopId"] = { $in: pincodeShops.map(s => String(s._id)) };
+    const pincodeShops = await db.select({ id: shops.id })
+      .from(shops)
+      .where(and(
+        sql`${shops.address}->>'pincode' = ${pincode}`,
+        eq(shops.status, "approved"),
+      ));
+    if (pincodeShops.length === 0) {
+      res.json({ success: true, products: [], total: 0, page: pg, pages: 0 });
+      return;
+    }
+    conditions.push(inArray(products.shopId, pincodeShops.map(s => s.id)));
   } else if (shopId) {
     if (status === "all") {
       // Vendor/admin viewing their own shop's products — no approval check needed
-      filter["shopId"] = shopId;
+      conditions.push(eq(products.shopId, shopId));
     } else {
       // Customer-facing: only return products from approved shops
-      const shop = await Shop.findById(shopId).select("status").lean();
+      const [shop] = await db.select({ status: shops.status }).from(shops).where(eq(shops.id, shopId)).limit(1);
       if (!shop || shop.status !== "approved") {
-        res.json({ success: true, products: [], total: 0, page: 1, pages: 0 });
+        res.json({ success: true, products: [], total: 0, page: pg, pages: 0 });
         return;
       }
-      filter["shopId"] = shopId;
+      conditions.push(eq(products.shopId, shopId));
     }
   } else {
-    const approvedShops = await Shop.find({ status: "approved" }).select("_id").lean();
-    filter["shopId"] = { $in: approvedShops.map(s => String(s._id)) };
+    // No shopId, no pincode — restrict to products from approved shops
+    const approvedShops = await db.select({ id: shops.id }).from(shops).where(eq(shops.status, "approved"));
+    if (approvedShops.length === 0) {
+      res.json({ success: true, products: [], total: 0, page: pg, pages: 0 });
+      return;
+    }
+    conditions.push(inArray(products.shopId, approvedShops.map(s => s.id)));
   }
 
-  const skip = (parseInt(page) - 1) * parseInt(limit);
-  const [products, total] = await Promise.all([
-    Product.find(filter).skip(skip).limit(parseInt(limit)).sort({ createdAt: -1 }),
-    Product.countDocuments(filter),
+  const where = conditions.length ? and(...conditions) : undefined;
+  const skip = (pg - 1) * lm;
+
+  const [result, [{ total }]] = await Promise.all([
+    db.select().from(products).where(where).orderBy(desc(products.createdAt)).offset(skip).limit(lm),
+    db.select({ total: count() }).from(products).where(where),
   ]);
-  res.json({ success: true, products, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+
+  res.json({ success: true, products: miArr(result), total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
 });
 
 // GET /api/products/admin-review — admin: list products for approval with shop name
 // IMPORTANT: must be defined before /:id to avoid route conflict
 router.get("/admin-review", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const { status = "pending", page = "1", limit = "50" } = req.query as Record<string, string>;
-  const filter: Record<string, unknown> = {};
-  if (status !== "all") filter["status"] = status;
+  const pg = parseInt(page), lm = parseInt(limit);
+  const where = status !== "all" ? eq(products.status, status) : undefined;
+  const skip = (pg - 1) * lm;
 
-  const skip = (parseInt(page) - 1) * parseInt(limit);
-  const [products, total] = await Promise.all([
-    Product.find(filter).skip(skip).limit(parseInt(limit)).sort({ createdAt: -1 }).lean(),
-    Product.countDocuments(filter),
+  const [result, [{ total }]] = await Promise.all([
+    db.select().from(products).where(where).orderBy(desc(products.createdAt)).offset(skip).limit(lm),
+    db.select({ total: count() }).from(products).where(where),
   ]);
 
   // Batch-fetch shop names
-  const shopIds = [...new Set(products.map(p => p.shopId))];
-  const shops = await Shop.find({ _id: { $in: shopIds } }).select("_id shopName").lean();
-  const shopMap = Object.fromEntries(shops.map(s => [String(s._id), s.shopName]));
+  const shopIds = [...new Set(result.map(p => p.shopId))];
+  const shopRows = shopIds.length > 0
+    ? await db.select({ id: shops.id, shopName: shops.shopName }).from(shops).where(inArray(shops.id, shopIds))
+    : [];
+  const shopMap = Object.fromEntries(shopRows.map(s => [s.id, s.shopName]));
 
-  const enriched = products.map(p => ({ ...p, shopName: shopMap[p.shopId] ?? "Unknown Shop" }));
-  res.json({ success: true, products: enriched, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+  const enriched = result.map(p => ({ ...mi(p), shopName: shopMap[p.shopId] ?? "Unknown Shop" }));
+  res.json({ success: true, products: enriched, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
 });
 
 // GET /api/products/:id
 router.get("/:id", async (req: Request, res: Response): Promise<void> => {
-  const product = await Product.findById(req.params["id"]);
+  const [product] = await db.select().from(products).where(eq(products.id, req.params["id"]!)).limit(1);
   if (!product) { res.status(404).json({ success: false, message: "Not found" }); return; }
-  res.json({ success: true, product });
+  res.json({ success: true, product: mi(product) });
 });
 
 // POST /api/products
@@ -109,20 +132,50 @@ router.post("/", authenticate, V, async (req: AuthRequest, res: Response): Promi
 
   // Admin can create a product for any shop by passing shopId directly (may specify status)
   if (isAdmin && body["shopId"]) {
-    const shopExists = await Shop.findById(String(body["shopId"]));
+    const [shopExists] = await db.select({ id: shops.id }).from(shops).where(eq(shops.id, String(body["shopId"]))).limit(1);
     if (!shopExists) { res.status(400).json({ success: false, message: "Shop not found" }); return; }
-    const product = await Product.create({ ...body, shopId: String(body["shopId"]) });
-    res.status(201).json({ success: true, product });
+    const [product] = await db.insert(products).values({
+      name: String(body["name"] ?? ""),
+      description: body["description"] ? String(body["description"]) : undefined,
+      price: Number(body["price"] ?? 0),
+      discountedPrice: body["discountedPrice"] != null ? Number(body["discountedPrice"]) : undefined,
+      category: String(body["category"] ?? ""),
+      subcategory: body["subcategory"] ? String(body["subcategory"]) : undefined,
+      shopId: String(body["shopId"]),
+      images: Array.isArray(body["images"]) ? (body["images"] as string[]) : [],
+      stock: body["stock"] != null ? Number(body["stock"]) : 0,
+      sku: body["sku"] ? String(body["sku"]) : undefined,
+      unit: body["unit"] ? String(body["unit"]) : undefined,
+      commissionRate: body["commissionRate"] != null ? Number(body["commissionRate"]) : undefined,
+      trending: Boolean(body["trending"] ?? false),
+      status: body["status"] ? String(body["status"]) : "pending",
+    }).returning();
+    res.status(201).json({ success: true, product: mi(product!) });
     return;
   }
 
-  const shop = await Shop.findOne({ ownerId: req.user!.userId });
+  const [shop] = await db.select({ id: shops.id }).from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
   if (!shop) { res.status(400).json({ success: false, message: "No approved shop found for this vendor" }); return; }
 
   // Vendor uploads always start as pending — strip any status the client may have sent
   const { status: _ignored, ...safeBody } = body;
-  const product = await Product.create({ ...safeBody, shopId: shop._id.toString(), status: "pending" });
-  res.status(201).json({ success: true, product });
+  const [product] = await db.insert(products).values({
+    name: String(safeBody["name"] ?? ""),
+    description: safeBody["description"] ? String(safeBody["description"]) : undefined,
+    price: Number(safeBody["price"] ?? 0),
+    discountedPrice: safeBody["discountedPrice"] != null ? Number(safeBody["discountedPrice"]) : undefined,
+    category: String(safeBody["category"] ?? ""),
+    subcategory: safeBody["subcategory"] ? String(safeBody["subcategory"]) : undefined,
+    shopId: shop.id,
+    images: Array.isArray(safeBody["images"]) ? (safeBody["images"] as string[]) : [],
+    stock: safeBody["stock"] != null ? Number(safeBody["stock"]) : 0,
+    sku: safeBody["sku"] ? String(safeBody["sku"]) : undefined,
+    unit: safeBody["unit"] ? String(safeBody["unit"]) : undefined,
+    commissionRate: safeBody["commissionRate"] != null ? Number(safeBody["commissionRate"]) : undefined,
+    trending: Boolean(safeBody["trending"] ?? false),
+    status: "pending",
+  }).returning();
+  res.status(201).json({ success: true, product: mi(product!) });
 });
 
 // PATCH /api/products/:id/approval — admin: approve or reject a product with notification
@@ -138,32 +191,30 @@ router.patch("/:id/approval", authenticate, A, async (req: AuthRequest, res: Res
     return;
   }
 
-  const updatePayload: Record<string, unknown> =
-    action === "approve"
-      ? { status: "active", rejectionReason: null }
-      : { status: "rejected", rejectionReason: rejectionReason!.trim() };
+  const updatePayload = action === "approve"
+    ? { status: "active", rejectionReason: null as string | null }
+    : { status: "rejected", rejectionReason: rejectionReason!.trim() };
 
-  const product = await Product.findByIdAndUpdate(req.params["id"], updatePayload, { new: true });
+  const [product] = await db.update(products).set(updatePayload).where(eq(products.id, req.params["id"]!)).returning();
   if (!product) { res.status(404).json({ success: false, message: "Product not found" }); return; }
 
   // Notify the vendor who owns this product
   try {
-    const shop = await Shop.findById(product.shopId).select("ownerId").lean();
+    const [shop] = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq(shops.id, product.shopId)).limit(1);
     if (shop?.ownerId) {
-      const vendorId = String(shop.ownerId);
       if (action === "approve") {
-        await createNotificationLimited(vendorId, {
+        await createNotificationLimited(shop.ownerId, {
           type: "system",
           title: "✅ Product Approved",
           message: `Your product "${product.name}" has been approved by SwiftMart and is now visible to customers.`,
-          data: { productId: String(product._id) },
+          data: { productId: product.id },
         });
       } else {
-        await createNotificationLimited(vendorId, {
+        await createNotificationLimited(shop.ownerId, {
           type: "system",
           title: "❌ Product Rejected",
           message: `Your product "${product.name}" has been rejected.\n\nReason:\n${rejectionReason}`,
-          data: { productId: String(product._id), rejectionReason },
+          data: { productId: product.id, rejectionReason },
         });
       }
     }
@@ -171,25 +222,26 @@ router.patch("/:id/approval", authenticate, A, async (req: AuthRequest, res: Res
     // Non-fatal — product status was updated; notification failure should not block response
   }
 
-  res.json({ success: true, product });
+  res.json({ success: true, product: mi(product) });
 });
 
 // PATCH /api/products/:id
 router.patch("/:id", authenticate, V, async (req: AuthRequest, res: Response): Promise<void> => {
-  const product = await Product.findByIdAndUpdate(req.params["id"], req.body as Record<string, unknown>, {
-    new: true,
-    runValidators: true,
-  });
+  const [product] = await db.update(products)
+    .set(req.body as Record<string, unknown>)
+    .where(eq(products.id, req.params["id"]!))
+    .returning();
   if (!product) { res.status(404).json({ success: false, message: "Not found" }); return; }
-  res.json({ success: true, product });
+  res.json({ success: true, product: mi(product) });
 });
 
 // DELETE /api/products/:id
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const product = await Product.findByIdAndDelete(req.params["id"]);
-  if (product?.images?.length) {
-    await Promise.all(product.images.map(url => deleteFromCloudinary(url)));
+  const [product] = await db.select({ images: products.images }).from(products).where(eq(products.id, req.params["id"]!)).limit(1);
+  if (product?.images && (product.images as string[]).length > 0) {
+    await Promise.all((product.images as string[]).map(url => deleteFromCloudinary(url)));
   }
+  await db.delete(products).where(eq(products.id, req.params["id"]!));
   res.json({ success: true, message: "Deleted" });
 });
 

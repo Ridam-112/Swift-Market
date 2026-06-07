@@ -1,8 +1,10 @@
 import { Router, type Response } from "express";
 import Razorpay from "razorpay";
 import crypto from "crypto";
-import { Order } from "../../models/Order.js";
+import { db, orders } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
+import { mi } from "../../utils/mapId.js";
 
 const router = Router();
 
@@ -68,23 +70,21 @@ router.post("/verify", authenticate, async (req: AuthRequest, res: Response): Pr
   }
 
   try {
-    // Update our order record with payment confirmation
-    const order = await Order.findByIdAndUpdate(
-      orderId,
-      {
+    const [order] = await db.update(orders)
+      .set({
         paymentStatus: "success",
         razorpayOrderId: razorpay_order_id,
         razorpayPaymentId: razorpay_payment_id,
-      },
-      { new: true }
-    );
+      })
+      .where(eq(orders.id, orderId))
+      .returning();
 
     if (!order) {
       res.status(404).json({ success: false, message: "Order not found" });
       return;
     }
 
-    res.json({ success: true, order });
+    res.json({ success: true, order: mi(order) });
   } catch {
     res.status(500).json({ success: false, message: "Failed to confirm payment. Contact support." });
   }
