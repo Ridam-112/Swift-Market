@@ -318,11 +318,17 @@ function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) 
   const { shops } = useShops();
   const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<ApiOrder[]>([]);
+  const [overviewLoading, setOverviewLoading] = useState(false);
 
-  useEffect(() => {
-    api.get<{ success: boolean; stats: AdminStats }>('/admin/stats').then(d => setAdminStats(d.stats)).catch(() => {});
-    api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=200').then(d => setRecentOrders(d.orders)).catch(() => {});
+  const loadOverview = useCallback(() => {
+    setOverviewLoading(true);
+    Promise.all([
+      api.get<{ success: boolean; stats: AdminStats }>('/admin/stats').then(d => setAdminStats(d.stats)).catch(() => {}),
+      api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=200').then(d => setRecentOrders(d.orders)).catch(() => {}),
+    ]).finally(() => setOverviewLoading(false));
   }, []);
+
+  useEffect(() => { loadOverview(); }, [loadOverview]);
 
   const weekRevData = useMemo(() => buildDaySeries(recentOrders), [recentOrders]);
   const totalRevenue = adminStats?.totalRevenue ?? 0;
@@ -363,6 +369,14 @@ function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) 
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-foreground">Overview</h2>
+        <button onClick={loadOverview} disabled={overviewLoading} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-card neu-card text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50">
+          <RefreshCw className={`w-4 h-4 ${overviewLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard title="Total Revenue" value={formatLargeValue(totalRevenue)} icon={TrendingUp} color="text-green-600" />
         <StatCard title="Platform Commission" value={formatLargeValue(platformComm)} icon={Award} color="text-amber-600" />
@@ -1442,13 +1456,19 @@ function AnalyticsTab() {
   const { shops } = useShops();
   const [allOrders, setAllOrders] = useState<ApiOrder[]>([]);
   const [signupTimestamps, setSignupTimestamps] = useState<number[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
-  useEffect(() => {
-    api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=500')
-      .then(d => setAllOrders(d.orders)).catch(() => {});
-    api.get<{ success: boolean; dates: string[] }>('/admin/user-signups')
-      .then(d => setSignupTimestamps(d.dates.map(s => new Date(s).getTime()))).catch(() => {});
+  const loadAnalytics = useCallback(() => {
+    setAnalyticsLoading(true);
+    Promise.all([
+      api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=500')
+        .then(d => setAllOrders(d.orders)).catch(() => {}),
+      api.get<{ success: boolean; dates: string[] }>('/admin/user-signups')
+        .then(d => setSignupTimestamps(d.dates.map(s => new Date(s).getTime()))).catch(() => {}),
+    ]).finally(() => setAnalyticsLoading(false));
   }, []);
+
+  useEffect(() => { loadAnalytics(); }, [loadAnalytics]);
 
   const data = useMemo(() => buildAnalyticsSeries(allOrders, period, signupTimestamps), [allOrders, period, signupTimestamps]);
   const computedTopProducts = useMemo(() => buildTopProducts(allOrders), [allOrders]);
@@ -1462,7 +1482,13 @@ function AnalyticsTab() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold text-foreground">Platform Analytics</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-foreground">Platform Analytics</h2>
+          <button onClick={loadAnalytics} disabled={analyticsLoading} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-card neu-card text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 ${analyticsLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
         <div className="flex gap-1 p-1 bg-background neu-inset rounded-xl max-w-fit">
           {(['Daily', 'Weekly', 'Monthly'] as const).map(p => (
             <button
@@ -1632,7 +1658,7 @@ function TransactionsTab() {
   const [filter, setFilter] = useState<TransactionLog['status'] | 'all'>('all');
   const [dateFilter, setDateFilter] = useState<'7' | '30' | 'all'>('all');
 
-  useEffect(() => {
+  const loadTransactions = useCallback(() => {
     setTxLoading(true);
     const methodMap: Record<string, TransactionLog['method']> = { COD: 'COD', UPI: 'UPI', card: 'Card', wallet: 'UPI' };
     api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=500')
@@ -1652,6 +1678,8 @@ function TransactionsTab() {
       .catch(() => setTransactions([]))
       .finally(() => setTxLoading(false));
   }, []);
+
+  useEffect(() => { loadTransactions(); }, [loadTransactions]);
 
   if (txLoading) {
     return (
@@ -1693,9 +1721,13 @@ function TransactionsTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <h2 className="text-2xl font-bold text-foreground">Transaction Logs</h2>
         <Badge className="bg-primary/10 text-primary neu-inset border-none">{transactions.length} total</Badge>
+        <button onClick={loadTransactions} disabled={txLoading} className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-card neu-card text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50">
+          <RefreshCw className={`w-4 h-4 ${txLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
       </div>
 
       <div className="flex flex-col gap-4 bg-card p-4 rounded-3xl neu-card">
