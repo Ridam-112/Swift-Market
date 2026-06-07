@@ -1,59 +1,87 @@
 import { Router, type Response } from "express";
-import { Order } from "../../models/Order.js";
-import { Coupon } from "../../models/Coupon.js";
-import { Shop } from "../../models/Shop.js";
-import { User } from "../../models/User.js";
-import { Product } from "../../models/Product.js";
-import { Payout } from "../../models/Payout.js";
+import { db, orders, products, shops, users, payouts, coupons } from "@workspace/db";
+import { eq, and, ilike, or, gte, ne, desc, count, sql } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { resolveCommission, calculateCommissionAmount } from "../../utils/commission.js";
 import { createNotificationLimited } from "../../utils/notification.js";
+import { mi, miArr } from "../../utils/mapId.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
+type OrderItem = {
+  productId: string;
+  productName: string;
+  qty: number;
+  price: number;
+  category: string;
+  commissionType?: string;
+  commissionRate?: number;
+  commissionAmount?: number;
+  commissionLevel?: string;
+};
+
 const STATUS_MESSAGES: Record<string, { title: string; message: string }> = {
-  placed:           { title: "Order Placed", message: "Your order has been placed successfully!" },
-  confirmed:        { title: "Order Confirmed", message: "Your order has been confirmed by the shop." },
-  packed:           { title: "Order Packed", message: "Your order is packed and ready for pickup." },
-  out_for_delivery: { title: "Out for Delivery", message: "Your order is on the way! 🚚" },
-  delivered:        { title: "Order Delivered", message: "Your order has been delivered. Enjoy!" },
-  cancelled:        { title: "Order Cancelled", message: "Your order has been cancelled." },
-  refunded:         { title: "Refund Processed", message: "Your refund has been processed." },
+  placed:           { title: "Order Placed",       message: "Your order has been placed successfully!" },
+  confirmed:        { title: "Order Confirmed",     message: "Your order has been confirmed by the shop." },
+  packed:           { title: "Order Packed",        message: "Your order is packed and ready for pickup." },
+  out_for_delivery: { title: "Out for Delivery",    message: "Your order is on the way! 🚚" },
+  delivered:        { title: "Order Delivered",     message: "Your order has been delivered. Enjoy!" },
+  cancelled:        { title: "Order Cancelled",     message: "Your order has been cancelled." },
+  refunded:         { title: "Refund Processed",    message: "Your refund has been processed." },
 };
 
 const STOCK_RESTORE_STATUSES = new Set(["cancelled", "refunded"]);
 
+// Restore stock for a list of order items and re-activate any that had gone out_of_stock
+async function restoreStock(items: OrderItem[]): Promise<void> {
+  await Promise.all(items.map(async item => {
+    const [updated] = await db.update(products)
+      .set({ stock: sql`${products.stock} + ${item.qty}` })
+      .where(eq(products.id, item.productId))
+      .returning({ stock: products.stock, status: products.status });
+    if (updated && updated.stock > 0 && updated.status === "out_of_stock") {
+      await db.update(products).set({ status: "active" }).where(eq(products.id, item.productId));
+    }
+  }));
+}
+
 // GET /api/orders
 router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const { status, shopId, page = "1", limit = "20", search } = req.query as Record<string, string>;
-  const filter: Record<string, unknown> = {};
-  if (req.user!.role === "customer") filter["customerId"] = req.user!.userId;
-  if (status) filter["status"] = status;
-  if (shopId) filter["shopId"] = shopId;
+  const pg = parseInt(page), lm = parseInt(limit);
+  const conditions = [];
+
+  if (req.user!.role === "customer") conditions.push(eq(orders.customerId, req.user!.userId));
+  if (status) conditions.push(eq(orders.status, status));
+  if (shopId) conditions.push(eq(orders.shopId, shopId));
   if (search) {
-    filter["$or"] = [
-      { customerName: { $regex: search, $options: "i" } },
-      { shopName: { $regex: search, $options: "i" } },
-    ];
+    conditions.push(or(
+      ilike(orders.customerName, `%${search}%`),
+      ilike(orders.shopName, `%${search}%`),
+    )!);
   }
-  const skip = (parseInt(page) - 1) * parseInt(limit);
-  const [orders, total] = await Promise.all([
-    Order.find(filter).skip(skip).limit(parseInt(limit)).sort({ createdAt: -1 }),
-    Order.countDocuments(filter),
+
+  const where = conditions.length ? and(...conditions) : undefined;
+  const skip = (pg - 1) * lm;
+
+  const [result, [{ total }]] = await Promise.all([
+    db.select().from(orders).where(where).orderBy(desc(orders.createdAt)).offset(skip).limit(lm),
+    db.select({ total: count() }).from(orders).where(where),
   ]);
-  res.json({ success: true, orders, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+
+  res.json({ success: true, orders: miArr(result), total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
 });
 
 // GET /api/orders/:id
 router.get("/:id", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const order = await Order.findById(req.params["id"]);
+  const [order] = await db.select().from(orders).where(eq(orders.id, req.params["id"]!)).limit(1);
   if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
   if (req.user!.role === "customer" && order.customerId !== req.user!.userId) {
     res.status(403).json({ success: false, message: "Forbidden" });
     return;
   }
-  res.json({ success: true, order });
+  res.json({ success: true, order: mi(order) });
 });
 
 // POST /api/orders
@@ -67,15 +95,21 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
   // Stock deduction — captured outside try so rollback helper can access it
   const rollbackStock = () =>
     Promise.all(reducedProducts.map(r =>
-      Product.findByIdAndUpdate(r.productId, { $inc: { stock: r.qty } })
+      db.update(products)
+        .set({ stock: sql`${products.stock} + ${r.qty}` })
+        .where(eq(products.id, r.productId))
     ));
 
   for (const item of items) {
-    const updated = await Product.findOneAndUpdate(
-      { _id: item.productId, stock: { $gte: item.qty }, status: { $ne: "inactive" } },
-      { $inc: { stock: -item.qty } },
-      { new: true }
-    );
+    // Atomic: decrement only if stock >= qty and product is not inactive
+    const [updated] = await db.update(products)
+      .set({ stock: sql`${products.stock} - ${item.qty}` })
+      .where(and(
+        eq(products.id, item.productId),
+        gte(products.stock, item.qty),
+        ne(products.status, "inactive"),
+      ))
+      .returning({ id: products.id, price: products.price, stock: products.stock });
 
     if (!updated) {
       if (reducedProducts.length > 0) await rollbackStock();
@@ -89,126 +123,135 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
     reducedProducts.push({ productId: item.productId, qty: item.qty, dbPrice: updated.price });
 
     if (updated.stock === 0) {
-      await Product.findByIdAndUpdate(item.productId, { status: "out_of_stock" });
+      await db.update(products).set({ status: "out_of_stock" }).where(eq(products.id, item.productId));
     }
   }
 
   try {
-  // Bug #11 fix: recalculate subtotal from real DB prices, ignore client value
-  const subtotal = +reducedProducts
-    .reduce((sum, r) => sum + r.dbPrice * r.qty, 0)
-    .toFixed(2);
-  const deliveryCharge = Number(body["deliveryCharge"] ?? 0);
-  const couponDiscount = Number(body["couponDiscount"] ?? 0);
-  const netAmount = subtotal + deliveryCharge - couponDiscount;
+    // Recalculate subtotal from real DB prices, ignore client value
+    const subtotal = +reducedProducts
+      .reduce((sum, r) => sum + r.dbPrice * r.qty, 0)
+      .toFixed(2);
+    const deliveryCharge = Number(body["deliveryCharge"] ?? 0);
+    const couponDiscount = Number(body["couponDiscount"] ?? 0);
+    const netAmount = subtotal + deliveryCharge - couponDiscount;
 
-  const shopId = String(body["shopId"] ?? "");
+    const shopId = String(body["shopId"] ?? "");
 
-  // Look up shop to get owner ID and shop type slug for accurate commission resolution
-  const shop = await Shop.findById(shopId).select("ownerId shopType ownerName").lean();
-  const vendorId = shop ? String(shop.ownerId) : shopId;
+    // Look up shop to get owner ID and shop type slug for accurate commission resolution
+    const [shop] = await db.select({ id: shops.id, ownerId: shops.ownerId, shopType: shops.shopType, ownerName: shops.ownerName })
+      .from(shops).where(eq(shops.id, shopId)).limit(1);
+    const vendorId = shop ? shop.ownerId : shopId;
 
-  // Per-item commission calculation (product-level has highest priority)
-  let totalCommissionAmount = 0;
-  const enrichedItems: Array<OrderItemInput & {
-    commissionType: string;
-    commissionRate: number;
-    commissionAmount: number;
-    commissionLevel: string;
-  }> = [];
+    // Per-item commission calculation (product-level has highest priority)
+    let totalCommissionAmount = 0;
+    const enrichedItems: Array<OrderItemInput & {
+      commissionType: string;
+      commissionRate: number;
+      commissionAmount: number;
+      commissionLevel: string;
+    }> = [];
 
-  for (const item of items) {
-    const lineTotal = item.price * item.qty;
-    const itemResolved = await resolveCommission({
-      productId: item.productId,
-      vendorId,
-      categorySlug: item.category,
-      shopTypeSlug: shop?.shopType,
-    });
-    const itemCommission = calculateCommissionAmount(lineTotal, itemResolved);
-    totalCommissionAmount += itemCommission;
-    enrichedItems.push({
-      ...item,
-      commissionType: itemResolved.type,
-      commissionRate: itemResolved.rate,
-      commissionAmount: +itemCommission.toFixed(2),
-      commissionLevel: itemResolved.level,
-    });
-  }
+    for (const item of items) {
+      const lineTotal = item.price * item.qty;
+      const itemResolved = await resolveCommission({
+        productId: item.productId,
+        vendorId,
+        categorySlug: item.category,
+        shopTypeSlug: shop?.shopType ?? undefined,
+      });
+      const itemCommission = calculateCommissionAmount(lineTotal, itemResolved);
+      totalCommissionAmount += itemCommission;
+      enrichedItems.push({
+        ...item,
+        commissionType: itemResolved.type,
+        commissionRate: itemResolved.rate,
+        commissionAmount: +itemCommission.toFixed(2),
+        commissionLevel: itemResolved.level,
+      });
+    }
 
-  const commissionAmount = +totalCommissionAmount.toFixed(2);
-  const vendorPayable = +(netAmount - commissionAmount).toFixed(2);
-  // commissionRate stored as weighted-average rate across items for display / backward compat
-  const avgRate = items.length > 0
-    ? +(enrichedItems.reduce((s, it) => s + it.commissionRate, 0) / enrichedItems.length).toFixed(2)
-    : 0;
+    const commissionAmount = +totalCommissionAmount.toFixed(2);
+    const vendorPayable = +(netAmount - commissionAmount).toFixed(2);
+    const avgRate = items.length > 0
+      ? +(enrichedItems.reduce((s, it) => s + it.commissionRate, 0) / enrichedItems.length).toFixed(2)
+      : 0;
 
-  const order = await Order.create({
-    ...body,
-    items: enrichedItems,
-    customerId: req.user!.userId,
-    netAmount,
-    commissionRate: avgRate,
-    commissionAmount,
-    vendorPayable,
-    platformRevenue: commissionAmount,
-    paymentStatus: body["paymentMethod"] === "COD" ? "pending" : "success",
-  });
+    const [order] = await db.insert(orders).values({
+      customerId: req.user!.userId,
+      customerName: String(body["customerName"] ?? ""),
+      customerPhone: String(body["customerPhone"] ?? ""),
+      shopId,
+      shopName: String(body["shopName"] ?? ""),
+      items: enrichedItems,
+      subtotal,
+      deliveryCharge,
+      couponDiscount,
+      netAmount,
+      commissionRate: avgRate,
+      commissionAmount,
+      vendorPayable,
+      platformRevenue: commissionAmount,
+      paymentMethod: String(body["paymentMethod"] ?? "COD"),
+      paymentStatus: body["paymentMethod"] === "COD" ? "pending" : "success",
+      address: (body["address"] ?? {}) as Record<string, string>,
+      couponCode: typeof body["couponCode"] === "string" && body["couponCode"].trim()
+        ? body["couponCode"].trim().toUpperCase()
+        : undefined,
+    }).returning();
 
-  // Create payout record for vendor
-  try {
-    if (shopId && vendorPayable > 0) {
-      if (shop) {
-        await Payout.create({
-          vendorId: String(shop.ownerId ?? shopId),
+    // Create payout record for vendor
+    try {
+      if (shopId && vendorPayable > 0 && shop) {
+        await db.insert(payouts).values({
+          vendorId: shop.ownerId,
           vendorName: shop.ownerName ?? String(body["shopName"] ?? ""),
           shopId,
           amount: vendorPayable,
           orderTotal: netAmount,
           commissionAmount,
           status: "pending",
-          ordersIncluded: [String(order._id)],
+          ordersIncluded: [order!.id],
         });
       }
+    } catch { /* non-fatal — payout can be created manually */ }
+
+    // Increment coupon usedCount
+    const couponCode = order!.couponCode;
+    if (couponCode) {
+      await db.update(coupons)
+        .set({ usedCount: sql`${coupons.usedCount} + 1` })
+        .where(eq(coupons.code, couponCode));
     }
-  } catch { /* non-fatal — payout can be created manually */ }
 
-  const couponCode = typeof body["couponCode"] === "string" ? body["couponCode"].trim().toUpperCase() : "";
-  if (couponCode) {
-    await Coupon.findOneAndUpdate({ code: couponCode }, { $inc: { usedCount: 1 } });
-  }
+    // Notify customer
+    await createNotificationLimited(req.user!.userId, {
+      type: "order_update",
+      title: "Order Placed Successfully",
+      message: `Your order #${order!.id.slice(-6).toUpperCase()} has been placed. We'll keep you updated!`,
+      data: { orderId: order!.id },
+    });
 
-  // Notify customer
-  await createNotificationLimited(req.user!.userId, {
-    type: "order_update",
-    title: "Order Placed Successfully",
-    message: `Your order #${String(order._id).slice(-6).toUpperCase()} has been placed. We'll keep you updated!`,
-    data: { orderId: String(order._id) },
-  });
-
-  // Notify vendor/shop owner
-  try {
-    if (shopId) {
-      const shopDoc = await Shop.findById(shopId);
-      if (shopDoc?.ownerId) {
-        const vendor = await User.findById(shopDoc.ownerId);
+    // Notify vendor/shop owner
+    try {
+      if (shop?.ownerId) {
+        const [vendor] = await db.select({ id: users.id }).from(users).where(eq(users.id, shop.ownerId)).limit(1);
         if (vendor) {
-          await createNotificationLimited(String(vendor._id), {
+          await createNotificationLimited(vendor.id, {
             type: "order_update",
             title: "New Order Received",
-            message: `You have a new order #${String(order._id).slice(-6).toUpperCase()} worth ₹${netAmount}.`,
-            data: { orderId: String(order._id) },
+            message: `You have a new order #${order!.id.slice(-6).toUpperCase()} worth ₹${netAmount}.`,
+            data: { orderId: order!.id },
           });
         }
       }
-    }
-  } catch { /* ignore vendor notification errors */ }
+    } catch { /* ignore vendor notification errors */ }
 
-  res.status(201).json({ success: true, order });
+    res.status(201).json({ success: true, order: mi(order!) });
   } catch (err) {
-    // Bug #13 fix: roll back deducted stock on any unexpected error
+    // Roll back deducted stock on any unexpected error
     await rollbackStock().catch(() => {});
-    throw err; // re-throw so Express 5 + global error handler returns 500
+    throw err; // re-throw so Express 5 global error handler returns 500
   }
 });
 
@@ -217,20 +260,15 @@ router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response
   const { status, cancelReason } = req.body as { status: string; cancelReason?: string };
   const update: Record<string, unknown> = { status };
   if (cancelReason) update["cancelReason"] = cancelReason;
-  const order = await Order.findByIdAndUpdate(req.params["id"], update, { new: true });
+
+  const [order] = await db.update(orders)
+    .set(update)
+    .where(eq(orders.id, req.params["id"]!))
+    .returning();
   if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
-  if (STOCK_RESTORE_STATUSES.has(status) && order.items?.length) {
-    await Promise.all(order.items.map(async item => {
-      const product = await Product.findByIdAndUpdate(
-        item.productId,
-        { $inc: { stock: item.qty } },
-        { new: true }
-      );
-      if (product && product.stock > 0 && product.status === "out_of_stock") {
-        await Product.findByIdAndUpdate(item.productId, { status: "active" });
-      }
-    }));
+  if (STOCK_RESTORE_STATUSES.has(status) && Array.isArray(order.items) && order.items.length) {
+    await restoreStock(order.items as OrderItem[]);
   }
 
   try {
@@ -240,34 +278,24 @@ router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response
         type: "order_update",
         title: msg.title,
         message: msg.message,
-        data: { orderId: String(order._id), status },
+        data: { orderId: order.id, status },
       });
     }
   } catch { /* ignore */ }
 
-  res.json({ success: true, order });
+  res.json({ success: true, order: mi(order) });
 });
 
 // POST /api/orders/:id/refund
 router.post("/:id/refund", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const order = await Order.findByIdAndUpdate(
-    req.params["id"],
-    { status: "refunded", paymentStatus: "refunded", refundedAt: new Date() },
-    { new: true }
-  );
+  const [order] = await db.update(orders)
+    .set({ status: "refunded", paymentStatus: "refunded", refundedAt: new Date() })
+    .where(eq(orders.id, req.params["id"]!))
+    .returning();
   if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
-  if (order.items?.length) {
-    await Promise.all(order.items.map(async item => {
-      const product = await Product.findByIdAndUpdate(
-        item.productId,
-        { $inc: { stock: item.qty } },
-        { new: true }
-      );
-      if (product && product.stock > 0 && product.status === "out_of_stock") {
-        await Product.findByIdAndUpdate(item.productId, { status: "active" });
-      }
-    }));
+  if (Array.isArray(order.items) && order.items.length) {
+    await restoreStock(order.items as OrderItem[]);
   }
 
   try {
@@ -275,13 +303,13 @@ router.post("/:id/refund", authenticate, A, async (req: AuthRequest, res: Respon
       await createNotificationLimited(order.customerId, {
         type: "order_update",
         title: "Refund Processed",
-        message: `Your refund for order #${String(order._id).slice(-6).toUpperCase()} has been processed.`,
-        data: { orderId: String(order._id) },
+        message: `Your refund for order #${order.id.slice(-6).toUpperCase()} has been processed.`,
+        data: { orderId: order.id },
       });
     }
   } catch { /* ignore */ }
 
-  res.json({ success: true, order });
+  res.json({ success: true, order: mi(order) });
 });
 
 export default router;
