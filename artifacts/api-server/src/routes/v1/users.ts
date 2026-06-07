@@ -1,63 +1,60 @@
 import { Router, type Response } from "express";
-import { User } from "../../models/User.js";
+import { db, users } from "@workspace/db";
+import { eq, and, ilike, or, count, desc } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
+import { mi, miArr } from "../../utils/mapId.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
-// GET /api/users — admin lists all users
+// GET /api/users
 router.get("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const { role, status, search, page = "1", limit = "20" } = req.query as Record<string, string>;
-  const filter: Record<string, unknown> = {};
-  if (role) filter["role"] = role;
-  if (status) filter["status"] = status;
-  if (search) {
-    filter["$or"] = [
-      { name: { $regex: search, $options: "i" } },
-      { phone: { $regex: search, $options: "i" } },
-    ];
-  }
-  const skip = (parseInt(page) - 1) * parseInt(limit);
-  const [users, total] = await Promise.all([
-    User.find(filter).skip(skip).limit(parseInt(limit)).sort({ createdAt: -1 }).select("-__v"),
-    User.countDocuments(filter),
+  const pg = parseInt(page), lm = parseInt(limit);
+  const conditions = [];
+  if (role) conditions.push(eq(users.role, role));
+  if (status) conditions.push(eq(users.status, status));
+  if (search) conditions.push(or(ilike(users.name, `%${search}%`), ilike(users.phone, `%${search}%`))!);
+  const where = conditions.length ? and(...conditions) : undefined;
+  const skip = (pg - 1) * lm;
+  const [result, [{ total }]] = await Promise.all([
+    db.select().from(users).where(where).orderBy(desc(users.createdAt)).offset(skip).limit(lm),
+    db.select({ total: count() }).from(users).where(where),
   ]);
-  res.json({ success: true, users, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+  res.json({ success: true, users: miArr(result), total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
 });
 
 // PATCH /api/users/:id/ban
 router.patch("/:id/ban", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const user = await User.findByIdAndUpdate(req.params["id"], { status: "banned" }, { new: true });
+  const [user] = await db.update(users).set({ status: "banned" }).where(eq(users.id, req.params["id"]!)).returning();
   if (!user) { res.status(404).json({ success: false, message: "User not found" }); return; }
-  res.json({ success: true, user });
+  res.json({ success: true, user: mi(user) });
 });
 
 // PATCH /api/users/:id/unban
 router.patch("/:id/unban", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const user = await User.findByIdAndUpdate(req.params["id"], { status: "active" }, { new: true });
+  const [user] = await db.update(users).set({ status: "active" }).where(eq(users.id, req.params["id"]!)).returning();
   if (!user) { res.status(404).json({ success: false, message: "User not found" }); return; }
-  res.json({ success: true, user });
+  res.json({ success: true, user: mi(user) });
 });
 
 // GET /api/users/me/profile
 router.get("/me/profile", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const user = await User.findById(req.user!.userId).select("-__v");
+  const [user] = await db.select().from(users).where(eq(users.id, req.user!.userId)).limit(1);
   if (!user) { res.status(404).json({ success: false, message: "Not found" }); return; }
-  res.json({ success: true, user });
+  res.json({ success: true, user: mi(user) });
 });
 
 // PATCH /api/users/me/profile
 router.patch("/me/profile", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const allowed = ["name", "email", "addresses", "pincode"];
-  const updates: Record<string, unknown> = {};
-  for (const key of allowed) {
-    if ((req.body as Record<string, unknown>)[key] !== undefined) {
-      updates[key] = (req.body as Record<string, unknown>)[key];
-    }
+  const body = req.body as Record<string, unknown>;
+  const update: Record<string, unknown> = {};
+  for (const key of ["name", "email", "addresses", "pincode"] as const) {
+    if (body[key] !== undefined) update[key] = body[key];
   }
-  const user = await User.findByIdAndUpdate(req.user!.userId, updates, { new: true }).select("-__v");
+  const [user] = await db.update(users).set(update).where(eq(users.id, req.user!.userId)).returning();
   if (!user) { res.status(404).json({ success: false, message: "Not found" }); return; }
-  res.json({ success: true, user: { ...user.toObject(), id: String(user._id) } });
+  res.json({ success: true, user: mi(user) });
 });
 
 export default router;

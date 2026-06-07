@@ -1,17 +1,31 @@
 import { Router, type Request, type Response } from "express";
 import { OAuth2Client } from "google-auth-library";
-import { User } from "../../models/User.js";
-import { Shop } from "../../models/Shop.js";
-import { OtpSession } from "../../models/OtpSession.js";
+import { db, users, shops, otpSessions } from "@workspace/db";
+import { eq, or, and, lt } from "drizzle-orm";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt.js";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
+import { mi } from "../../utils/mapId.js";
 
 const googleClient = new OAuth2Client(process.env["GOOGLE_CLIENT_ID"]);
-
 const router = Router();
 const DEMO_OTP = process.env["OTP_DEMO_CODE"] ?? "123456";
 
-// GET /api/auth/config — public, returns non-secret client-side config
+function formatUser(u: typeof users.$inferSelect) {
+  return {
+    id: u.id,
+    _id: u.id,
+    name: u.name,
+    phone: u.phone,
+    email: u.email ?? "",
+    role: u.role,
+    status: u.status,
+    vendorStatus: u.vendorStatus,
+    pincode: u.pincode ?? "",
+    addresses: (u.addresses as unknown[]) ?? [],
+  };
+}
+
+// GET /api/auth/config
 router.get("/config", (_req: Request, res: Response): void => {
   res.json({ success: true, googleClientId: process.env["GOOGLE_CLIENT_ID"] ?? "" });
 });
@@ -29,82 +43,38 @@ router.post("/google", async (req: Request, res: Response): Promise<void> => {
     let googleId: string | undefined;
 
     if (credential) {
-      const ticket = await googleClient.verifyIdToken({
-        idToken: credential,
-        audience: process.env["GOOGLE_CLIENT_ID"],
-      });
+      const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: process.env["GOOGLE_CLIENT_ID"] });
       const payload = ticket.getPayload();
-      if (!payload || !payload.email) {
-        res.status(400).json({ success: false, message: "Invalid Google token" });
-        return;
-      }
-      email = payload.email;
-      name = payload.name;
-      googleId = payload.sub;
+      if (!payload?.email) { res.status(400).json({ success: false, message: "Invalid Google token" }); return; }
+      email = payload.email; name = payload.name; googleId = payload.sub;
     } else {
       const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
         headers: { Authorization: `Bearer ${googleAccessToken}` },
       });
-      if (!resp.ok) {
-        res.status(400).json({ success: false, message: "Invalid Google access token" });
-        return;
-      }
+      if (!resp.ok) { res.status(400).json({ success: false, message: "Invalid Google access token" }); return; }
       const info = await resp.json() as { email?: string; name?: string; sub?: string };
-      if (!info.email) {
-        res.status(400).json({ success: false, message: "Could not retrieve Google user info" });
-        return;
-      }
-      email = info.email;
-      name = info.name;
-      googleId = info.sub;
+      if (!info.email) { res.status(400).json({ success: false, message: "Could not retrieve Google user info" }); return; }
+      email = info.email; name = info.name; googleId = info.sub;
     }
 
-    if (!email || !googleId) {
-      res.status(400).json({ success: false, message: "Invalid Google token" });
-      return;
-    }
+    if (!email || !googleId) { res.status(400).json({ success: false, message: "Invalid Google token" }); return; }
 
-    let user = await User.findOne({ $or: [{ googleId }, { email }] });
+    let [user] = await db.select().from(users).where(or(eq(users.googleId, googleId), eq(users.email, email))).limit(1);
     const isNewUser = !user;
 
     if (!user) {
-      user = await User.create({
-        name: name ?? "User",
-        email,
-        googleId,
-        phone: `g_${googleId}`,
-        role: "customer",
-        status: "active",
-      });
+      [user] = await db.insert(users).values({
+        name: name ?? "User", email, googleId, phone: `g_${googleId}`, role: "customer", status: "active",
+      }).returning();
     } else if (!user.googleId) {
-      user.googleId = googleId;
-      await user.save();
+      await db.update(users).set({ googleId }).where(eq(users.id, user.id));
     }
 
-    user.lastLoginAt = new Date();
-    await user.save();
+    await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
 
-    const tokenPayload = { userId: String(user._id), phone: user.phone, role: user.role };
-    const accessToken = signAccessToken(tokenPayload);
-    const refreshToken = signRefreshToken(tokenPayload);
-
-    res.json({
-      success: true,
-      isNewUser,
-      accessToken,
-      refreshToken,
-      user: {
-        id: String(user._id),
-        name: user.name,
-        phone: user.phone,
-        email: user.email ?? "",
-        role: user.role,
-        status: user.status,
-        vendorStatus: user.vendorStatus,
-        pincode: user.pincode ?? "",
-        addresses: user.addresses ?? [],
-      },
-    });
+    const tokenPayload = { userId: updated.id, phone: updated.phone, role: updated.role as any };
+    res.json({ success: true, isNewUser, accessToken: signAccessToken(tokenPayload), refreshToken: signRefreshToken(tokenPayload), user: formatUser(updated) });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Google authentication failed";
     res.status(401).json({ success: false, message: msg });
@@ -119,9 +89,9 @@ router.post("/send-otp", async (req: Request, res: Response): Promise<void> => {
     return;
   }
   try {
-    await OtpSession.deleteMany({ phone });
+    await db.delete(otpSessions).where(eq(otpSessions.phone, phone));
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-    await OtpSession.create({ phone, otp: DEMO_OTP, expiresAt });
+    await db.insert(otpSessions).values({ phone, otp: DEMO_OTP, expiresAt });
     req.log.info({ phone }, "OTP sent (demo)");
     res.json({ success: true, message: "OTP sent successfully" });
   } catch {
@@ -132,47 +102,29 @@ router.post("/send-otp", async (req: Request, res: Response): Promise<void> => {
 // POST /api/auth/verify-otp
 router.post("/verify-otp", async (req: Request, res: Response): Promise<void> => {
   const { phone, otp } = req.body as { phone?: string; otp?: string };
-  if (!phone || !otp) {
-    res.status(400).json({ success: false, message: "Phone and OTP required" });
-    return;
-  }
+  if (!phone || !otp) { res.status(400).json({ success: false, message: "Phone and OTP required" }); return; }
   try {
-    const session = await OtpSession.findOne({ phone, verified: false }).sort({ createdAt: -1 });
+    const [session] = await db.select().from(otpSessions)
+      .where(and(eq(otpSessions.phone, phone), eq(otpSessions.verified, false)))
+      .orderBy(otpSessions.createdAt)
+      .limit(1);
+
     if (!session || session.otp !== otp || session.expiresAt < new Date()) {
       res.status(400).json({ success: false, message: "Invalid or expired OTP" });
       return;
     }
-    await OtpSession.deleteOne({ _id: session._id });
+    await db.delete(otpSessions).where(eq(otpSessions.id, session.id));
 
-    let user = await User.findOne({ phone });
+    let [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
     const isNewUser = !user;
     if (!user) {
-      user = await User.create({ phone, name: "User", role: "customer" });
+      [user] = await db.insert(users).values({ phone, name: "User", role: "customer" }).returning();
     }
-    user.lastLoginAt = new Date();
-    await user.save();
+    await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
 
-    const payload = { userId: String(user._id), phone: user.phone, role: user.role };
-    const accessToken = signAccessToken(payload);
-    const refreshToken = signRefreshToken(payload);
-
-    res.json({
-      success: true,
-      isNewUser,
-      accessToken,
-      refreshToken,
-      user: {
-        id: String(user._id),
-        name: user.name,
-        phone: user.phone,
-        email: user.email ?? "",
-        role: user.role,
-        status: user.status,
-        vendorStatus: user.vendorStatus,
-        pincode: user.pincode ?? "",
-        addresses: user.addresses ?? [],
-      },
-    });
+    const payload = { userId: updated.id, phone: updated.phone, role: updated.role as any };
+    res.json({ success: true, isNewUser, accessToken: signAccessToken(payload), refreshToken: signRefreshToken(payload), user: formatUser(updated) });
   } catch {
     res.status(500).json({ success: false, message: "Login failed. Please try again." });
   }
@@ -181,23 +133,13 @@ router.post("/verify-otp", async (req: Request, res: Response): Promise<void> =>
 // POST /api/auth/refresh
 router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
   const { refreshToken } = req.body as { refreshToken?: string };
-  if (!refreshToken) {
-    res.status(400).json({ success: false, message: "Refresh token required" });
-    return;
-  }
+  if (!refreshToken) { res.status(400).json({ success: false, message: "Refresh token required" }); return; }
   try {
     const payload = verifyRefreshToken(refreshToken);
-    const user = await User.findById(payload.userId);
-    if (!user || user.status !== "active") {
-      res.status(401).json({ success: false, message: "User not found or banned" });
-      return;
-    }
-    const newPayload = { userId: String(user._id), phone: user.phone, role: user.role };
-    res.json({
-      success: true,
-      accessToken: signAccessToken(newPayload),
-      refreshToken: signRefreshToken(newPayload),
-    });
+    const [user] = await db.select().from(users).where(eq(users.id, payload.userId)).limit(1);
+    if (!user || user.status !== "active") { res.status(401).json({ success: false, message: "User not found or banned" }); return; }
+    const newPayload = { userId: user.id, phone: user.phone, role: user.role as any };
+    res.json({ success: true, accessToken: signAccessToken(newPayload), refreshToken: signRefreshToken(newPayload) });
   } catch {
     res.status(401).json({ success: false, message: "Invalid refresh token" });
   }
@@ -206,44 +148,27 @@ router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
 // GET /api/auth/me
 router.get("/me", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const user = await User.findById(req.user!.userId).select("-__v");
-    if (!user) {
-      res.status(404).json({ success: false, message: "User not found" });
-      return;
-    }
+    const [user] = await db.select().from(users).where(eq(users.id, req.user!.userId)).limit(1);
+    if (!user) { res.status(404).json({ success: false, message: "User not found" }); return; }
 
     let vendorProfile: Record<string, unknown> | undefined;
     if (user.vendorStatus === "approved" || user.vendorStatus === "pending") {
-      const shop = await Shop.findOne({ ownerId: String(user._id) }).select("shopName category shopType upiId bankAccountNumber bankIfscCode panNumber gstNumber description").lean();
+      const [shop] = await db.select({
+        shopName: shops.shopName, category: shops.category, shopType: shops.shopType,
+        description: shops.description, upiId: shops.upiId, bankAccountNumber: shops.bankAccountNumber,
+        bankIfscCode: shops.bankIfscCode, panNumber: shops.panNumber, gstNumber: shops.gstNumber,
+      }).from(shops).where(eq(shops.ownerId, user.id)).limit(1);
       if (shop) {
         vendorProfile = {
-          storeName: shop.shopName,
-          storeCategory: shop.category ?? shop.shopType,
-          storeDescription: shop.description ?? "",
-          upiId: shop.upiId,
-          bankAccountNumber: shop.bankAccountNumber,
-          bankIfscCode: shop.bankIfscCode,
-          panNumber: shop.panNumber,
-          gstNumber: shop.gstNumber ?? "",
+          storeName: shop.shopName, storeCategory: shop.category ?? shop.shopType,
+          storeDescription: shop.description ?? "", upiId: shop.upiId,
+          bankAccountNumber: shop.bankAccountNumber, bankIfscCode: shop.bankIfscCode,
+          panNumber: shop.panNumber, gstNumber: shop.gstNumber ?? "",
         };
       }
     }
 
-    res.json({
-      success: true,
-      user: {
-        id: String(user._id),
-        name: user.name,
-        phone: user.phone,
-        email: user.email ?? "",
-        role: user.role,
-        status: user.status,
-        vendorStatus: user.vendorStatus,
-        pincode: user.pincode ?? "",
-        addresses: user.addresses,
-        vendorProfile,
-      },
-    });
+    res.json({ success: true, user: { ...formatUser(user), addresses: (user.addresses as unknown[]) ?? [], vendorProfile } });
   } catch {
     res.status(500).json({ success: false, message: "Failed to fetch profile." });
   }

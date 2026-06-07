@@ -1,4 +1,5 @@
-import { ShopType } from "../models/ShopType.js";
+import { db, shopTypes } from "@workspace/db";
+import { count } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 
 const DEFAULT_SHOP_TYPES = [
@@ -15,9 +16,11 @@ function toSlug(name: string): string {
 }
 
 export async function seedShopTypes(): Promise<void> {
-  const count = await ShopType.countDocuments();
-  if (count === 0) {
-    await ShopType.insertMany(DEFAULT_SHOP_TYPES.map((name) => ({ name, slug: toSlug(name), isActive: true })));
+  const [{ cnt }] = await db.select({ cnt: count() }).from(shopTypes);
+  if (Number(cnt) === 0) {
+    await db.insert(shopTypes).values(
+      DEFAULT_SHOP_TYPES.map((name) => ({ name, slug: toSlug(name), isActive: true }))
+    );
     logger.info(`Seeded ${DEFAULT_SHOP_TYPES.length} shop types`);
   }
 }

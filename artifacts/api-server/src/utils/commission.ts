@@ -1,4 +1,5 @@
-import { CommissionRule } from "../models/CommissionRule.js";
+import { db, commissionRules } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 export interface ResolvedCommission {
   rate: number;
@@ -12,29 +13,29 @@ export async function resolveCommission(opts: {
   categorySlug?: string;
   shopTypeSlug?: string;
 }): Promise<ResolvedCommission> {
-  const rules = await CommissionRule.find({ isActive: true });
+  const rules = await db.select().from(commissionRules).where(eq(commissionRules.isActive, true));
 
   const find = (level: string, targetId?: string) =>
     rules.find((r) => r.level === level && (!targetId || r.targetId === targetId));
 
   if (opts.productId) {
     const r = find("product", opts.productId);
-    if (r) return { rate: r.rate, type: r.type ?? "percentage", level: "product" };
+    if (r) return { rate: r.rate, type: (r.type ?? "percentage") as "percentage" | "fixed", level: "product" };
   }
   if (opts.vendorId) {
     const r = find("vendor", opts.vendorId);
-    if (r) return { rate: r.rate, type: r.type ?? "percentage", level: "vendor" };
+    if (r) return { rate: r.rate, type: (r.type ?? "percentage") as "percentage" | "fixed", level: "vendor" };
   }
   if (opts.categorySlug) {
     const r = find("category", opts.categorySlug);
-    if (r) return { rate: r.rate, type: r.type ?? "percentage", level: "category" };
+    if (r) return { rate: r.rate, type: (r.type ?? "percentage") as "percentage" | "fixed", level: "category" };
   }
   if (opts.shopTypeSlug) {
     const r = find("shop_type", opts.shopTypeSlug);
-    if (r) return { rate: r.rate, type: r.type ?? "percentage", level: "shop_type" };
+    if (r) return { rate: r.rate, type: (r.type ?? "percentage") as "percentage" | "fixed", level: "shop_type" };
   }
   const global = find("global");
-  if (global) return { rate: global.rate, type: global.type ?? "percentage", level: "global" };
+  if (global) return { rate: global.rate, type: (global.type ?? "percentage") as "percentage" | "fixed", level: "global" };
   return { rate: 5, type: "percentage", level: "default" };
 }
 
@@ -45,7 +46,6 @@ export function calculateCommissionAmount(netAmount: number, resolved: ResolvedC
   return +(netAmount * resolved.rate / 100).toFixed(2);
 }
 
-/** Backward-compat shim — returns rate number only */
 export async function resolveCommissionRate(opts: {
   productId?: string;
   vendorId?: string;

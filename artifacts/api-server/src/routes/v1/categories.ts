@@ -1,43 +1,39 @@
 import { Router, type Request, type Response } from "express";
-import { Category } from "../../models/Category.js";
+import { db, categories } from "@workspace/db";
+import { eq, asc } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
+import { mi, miArr } from "../../utils/mapId.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
-// GET /api/categories — active only (vendor & customer use)
 router.get("/", async (_req: Request, res: Response): Promise<void> => {
-  const categories = await Category.find({ isActive: true }).sort({ name: 1 });
-  res.json({ success: true, categories });
+  const cats = await db.select().from(categories).where(eq(categories.isActive, true)).orderBy(asc(categories.name));
+  res.json({ success: true, categories: miArr(cats) });
 });
 
-// GET /api/categories/all — all including inactive (admin use)
 router.get("/all", authenticate, A, async (_req: Request, res: Response): Promise<void> => {
-  const categories = await Category.find().sort({ name: 1 });
-  res.json({ success: true, categories });
+  const cats = await db.select().from(categories).orderBy(asc(categories.name));
+  res.json({ success: true, categories: miArr(cats) });
 });
 
 router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { name, shopTypes, commissionRate, emoji, color } = req.body as {
-    name: string;
-    shopTypes?: string[];
-    commissionRate?: number;
-    emoji?: string;
-    color?: string;
+  const { name, shopTypes: shopTypesList, commissionRate, emoji, color } = req.body as {
+    name: string; shopTypes?: string[]; commissionRate?: number; emoji?: string; color?: string;
   };
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  const cat = await Category.create({ name, slug, shopTypes, commissionRate, emoji, color });
-  res.status(201).json({ success: true, category: cat });
+  const [cat] = await db.insert(categories).values({ name, slug, shopTypes: shopTypesList ?? [], commissionRate, emoji, color }).returning();
+  res.status(201).json({ success: true, category: mi(cat) });
 });
 
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const cat = await Category.findByIdAndUpdate(req.params["id"], req.body as Record<string, unknown>, { new: true });
+  const [cat] = await db.update(categories).set(req.body as Record<string, unknown>).where(eq(categories.id, req.params["id"]!)).returning();
   if (!cat) { res.status(404).json({ success: false, message: "Not found" }); return; }
-  res.json({ success: true, category: cat });
+  res.json({ success: true, category: mi(cat) });
 });
 
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  await Category.findByIdAndDelete(req.params["id"]);
+  await db.delete(categories).where(eq(categories.id, req.params["id"]!));
   res.json({ success: true, message: "Deleted" });
 });
 
