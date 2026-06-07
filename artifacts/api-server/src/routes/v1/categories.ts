@@ -18,13 +18,15 @@ router.get("/all", authenticate, A, async (_req: Request, res: Response): Promis
 });
 
 router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { name, shopTypes, commissionRate } = req.body as {
+  const { name, shopTypes, commissionRate, emoji, color } = req.body as {
     name: string;
     shopTypes?: string[];
     commissionRate?: number;
+    emoji?: string;
+    color?: string;
   };
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  const cat = await Category.create({ name, slug, shopTypes, commissionRate });
+  const cat = await Category.create({ name, slug, shopTypes, commissionRate, emoji, color });
   res.status(201).json({ success: true, category: cat });
 });
 

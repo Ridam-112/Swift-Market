@@ -3,25 +3,45 @@ import { Link } from "wouter";
 import { useProducts } from "@/hooks/useProducts";
 import { useShops } from "@/hooks/useShops";
 import { HeroBannerSlider } from "@/components/HeroBannerSlider";
-import { CategoryBubble } from "@/components/CategoryBubble";
+import { CategoryBubble, type DisplayCategory } from "@/components/CategoryBubble";
 import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SkeletonGrid } from "@/components/SkeletonGrid";
-import { categories } from "@/data/categories";
+import { api } from "@/lib/api";
 import { Star, ChevronRight } from "lucide-react";
 
 const VISIBLE_CATEGORIES = 8;
+
+const DEFAULT_COLORS = [
+  "hsl(35,90%,55%)", "hsl(140,60%,45%)", "hsl(200,70%,55%)", "hsl(20,90%,55%)",
+  "hsl(210,80%,55%)", "hsl(45,90%,50%)", "hsl(0,65%,50%)", "hsl(330,70%,60%)",
+  "hsl(280,60%,60%)", "hsl(170,60%,45%)", "hsl(260,55%,55%)", "hsl(200,80%,50%)",
+  "hsl(350,80%,60%)", "hsl(160,60%,40%)", "hsl(230,60%,55%)", "hsl(250,55%,55%)",
+];
 
 export default function Home() {
   const { products } = useProducts();
   const { shops, isLoading: shopsLoading } = useShops();
   const [loading, setLoading] = useState(true);
+  const [apiCategories, setApiCategories] = useState<DisplayCategory[]>([]);
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 300);
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    api.get<{ success: boolean; categories: Array<{ _id: string; name: string; slug: string; emoji?: string; color?: string }> }>('/categories')
+      .then(d => {
+        setApiCategories((d.categories ?? []).map((c, i) => ({
+          id: c.slug,
+          name: c.name,
+          emoji: c.emoji ?? "🛍️",
+          color: c.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+        })));
+      })
+      .catch(() => {});
+  }, []);
 
   const trendingProducts = products.filter(p => p.trending).slice(0, 4);
   const recentProducts = products.slice(0, 4);
@@ -40,13 +60,23 @@ export default function Home() {
             </Link>
           }
         />
-        <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8">
-          {categories.slice(0, VISIBLE_CATEGORIES).map((category) => (
-            <div key={category.id} className="flex justify-center">
-              <CategoryBubble category={category} />
-            </div>
-          ))}
-        </div>
+        {apiCategories.length === 0 ? (
+          <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8">
+            {[1,2,3,4,5,6,7,8].map(i => (
+              <div key={i} className="flex justify-center">
+                <div className="w-16 h-16 rounded-2xl bg-muted animate-pulse" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8">
+            {apiCategories.slice(0, VISIBLE_CATEGORIES).map((category) => (
+              <div key={category.id} className="flex justify-center">
+                <CategoryBubble category={category} />
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section>

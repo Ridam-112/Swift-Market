@@ -1,8 +1,15 @@
-import { Category } from "@/data/categories";
 import { Link } from "wouter";
 import { useState } from "react";
 
-export function CategoryBubble({ category }: { category: Category }) {
+export interface DisplayCategory {
+  id: string;
+  name: string;
+  emoji: string;
+  color: string;
+  image?: string;
+}
+
+export function CategoryBubble({ category }: { category: DisplayCategory }) {
   const [imgFailed, setImgFailed] = useState(false);
 
   return (

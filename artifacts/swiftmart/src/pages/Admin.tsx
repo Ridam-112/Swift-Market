@@ -80,7 +80,7 @@ interface AdminStats {
   totalCommission: number;
 }
 
-interface AnalyticsPoint { label: string; revenue: number; orders: number; newUsers: number; commission: number }
+interface AnalyticsPoint { label: string; revenue: number; orders: number; newUsers: number; }
 
 function buildDaySeries(orders: ApiOrder[]) {
   const now = new Date();
@@ -92,7 +92,7 @@ function buildDaySeries(orders: ApiOrder[]) {
     const endMs = startMs + 86400000 - 1;
     const dayOrders = orders.filter(o => { const t = new Date(o.createdAt).getTime(); return t >= startMs && t <= endMs; });
     const revenue = dayOrders.reduce((s, o) => s + (o.netAmount ?? o.subtotal ?? 0), 0);
-    return { date: label, revenue, orders: dayOrders.length, commission: Math.round(revenue * 0.05) };
+    return { date: label, revenue, orders: dayOrders.length };
   });
 }
 
@@ -104,7 +104,7 @@ function buildAnalyticsSeries(orders: ApiOrder[], period: 'Daily' | 'Weekly' | '
     return buildDaySeries(orders).map((d, i) => {
       const day = new Date(now); day.setDate(day.getDate() - (6 - i));
       const startMs = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
-      return { label: d.date, revenue: d.revenue, orders: d.orders, newUsers: countSignups(startMs, startMs + 86400000 - 1), commission: d.commission };
+      return { label: d.date, revenue: d.revenue, orders: d.orders, newUsers: countSignups(startMs, startMs + 86400000 - 1) };
     });
   }
   if (period === 'Weekly') {
@@ -113,7 +113,7 @@ function buildAnalyticsSeries(orders: ApiOrder[], period: 'Daily' | 'Weekly' | '
       const wStart = new Date(wEnd); wStart.setDate(wEnd.getDate() - 6);
       const wo = orders.filter(o => { const t = new Date(o.createdAt).getTime(); return t >= wStart.getTime() && t <= wEnd.getTime(); });
       const revenue = wo.reduce((s, o) => s + (o.netAmount ?? o.subtotal ?? 0), 0);
-      return { label: `Week ${4 - i}`, revenue, orders: wo.length, newUsers: countSignups(wStart.getTime(), wEnd.getTime()), commission: Math.round(revenue * 0.05) };
+      return { label: `Week ${4 - i}`, revenue, orders: wo.length, newUsers: countSignups(wStart.getTime(), wEnd.getTime()) };
     }).reverse();
   }
   return Array.from({ length: 6 }, (_, i) => {
@@ -121,7 +121,7 @@ function buildAnalyticsSeries(orders: ApiOrder[], period: 'Daily' | 'Weekly' | '
     const next = new Date(now.getFullYear(), now.getMonth() - (5 - i) + 1, 1);
     const mo = orders.filter(o => { const t = new Date(o.createdAt).getTime(); return t >= month.getTime() && t < next.getTime(); });
     const revenue = mo.reduce((s, o) => s + (o.netAmount ?? o.subtotal ?? 0), 0);
-    return { label: month.toLocaleDateString('en-US', { month: 'short' }), revenue, orders: mo.length, newUsers: countSignups(month.getTime(), next.getTime() - 1), commission: Math.round(revenue * 0.05) };
+    return { label: month.toLocaleDateString('en-US', { month: 'short' }), revenue, orders: mo.length, newUsers: countSignups(month.getTime(), next.getTime() - 1) };
   });
 }
 
@@ -747,22 +747,35 @@ function CustomersList() {
 
   const fetchCustomers = () => {
     setLoadingCustomers(true);
-    api.get<{ success: boolean; users: ApiUser[] }>('/users?role=customer&limit=100')
-      .then(d => {
-        setCustomers(d.users.map(u => ({
+    Promise.all([
+      api.get<{ success: boolean; users: ApiUser[] }>('/users?role=customer&limit=100'),
+      api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=500'),
+    ]).then(([usersData, ordersData]) => {
+      const allOrders = ordersData.orders ?? [];
+      setCustomers(usersData.users.map(u => {
+        const customerOrders = allOrders.filter(o => o.customerId === u._id);
+        const totalSpent = customerOrders.reduce((s, o) => s + (o.netAmount ?? o.subtotal ?? 0), 0);
+        return {
           id: u._id,
           name: u.name,
           phone: u.phone,
           email: u.email ?? "",
           joinedAt: u.createdAt,
-          totalOrders: 0,
-          totalSpent: 0,
+          totalOrders: customerOrders.length,
+          totalSpent,
           status: (u.status === 'banned' ? 'banned' : 'active') as 'active' | 'banned',
-          orders: [],
-        })));
-      })
-      .catch(() => setCustomers([]))
-      .finally(() => setLoadingCustomers(false));
+          orders: customerOrders.map(o => ({
+            id: `#${o._id.slice(-6).toUpperCase()}`,
+            placedAt: o.createdAt,
+            vendorName: o.shopName ?? 'Shop',
+            items: o.items.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
+            total: o.netAmount ?? o.subtotal ?? o.items.reduce((s, i) => s + i.price * i.qty, 0),
+          })),
+        };
+      }));
+    })
+    .catch(() => setCustomers([]))
+    .finally(() => setLoadingCustomers(false));
   };
 
   useEffect(() => { fetchCustomers(); }, []);
@@ -953,7 +966,7 @@ function VendorsList() {
       rating: s.rating ?? 0,
       totalOrders: s.totalOrders ?? 0,
       isOpen: s.isOpen ?? true,
-      eta: "10-15 min",
+      eta: "",
       image: "",
       pincode: s.address?.pincode ?? "N/A",
       city: s.address?.city ?? "N/A",
@@ -961,7 +974,7 @@ function VendorsList() {
       status: (s.status === 'banned' ? 'banned' : 'active') as 'active' | 'banned',
       joinedAt: s.createdAt,
       revenue: s.totalRevenue ?? 0,
-      commission: Math.round((s.totalRevenue ?? 0) * 0.1),
+      commission: 0,
     }));
   }, [apiShops]);
 
@@ -1032,7 +1045,9 @@ function VendorsList() {
           filtered.map(shop => (
             <div key={shop.id} className={`bg-card p-6 rounded-3xl neu-card space-y-4 ${shop.status === 'banned' ? 'opacity-75 grayscale-[50%]' : ''}`}>
               <div className="flex items-start gap-4">
-                <img src={shop.image} alt={shop.storeName} className="w-16 h-16 rounded-2xl object-cover bg-muted neu-inset" />
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 neu-inset flex items-center justify-center shrink-0">
+                  <span className="text-2xl font-bold text-primary">{shop.storeName.charAt(0).toUpperCase()}</span>
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="font-bold text-foreground truncate">{shop.storeName}</h3>
@@ -1441,7 +1456,6 @@ function AnalyticsTab() {
   const totalRev = data.reduce((sum, d) => sum + d.revenue, 0);
   const totalOrd = data.reduce((sum, d) => sum + d.orders, 0);
   const totalNewUsers = data.reduce((sum, d) => sum + d.newUsers, 0);
-  const totalComm = data.reduce((sum, d) => sum + d.commission, 0);
 
   const maxUnits = computedTopProducts.length > 0 ? computedTopProducts[0].unitsSold : 1;
 
@@ -1464,11 +1478,10 @@ function AnalyticsTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard title="Total Revenue" value={formatINR(totalRev)} icon={TrendingUp} color="text-green-600" />
         <StatCard title="Total Orders" value={totalOrd} icon={ShoppingBag} color="text-blue-600" />
         <StatCard title="New Users" value={totalNewUsers} icon={Users} color="text-purple-600" />
-        <StatCard title="Commission" value={formatINR(totalComm)} icon={Award} color="text-amber-600" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -4428,6 +4441,8 @@ interface ApiCategory {
   description?: string;
   isActive: boolean;
   commissionRate: number;
+  emoji?: string;
+  color?: string;
   createdAt: string;
 }
 
@@ -4439,7 +4454,7 @@ function CategoriesTab() {
   const [editRate, setEditRate] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", slug: "", description: "", commissionRate: "5" });
+  const [createForm, setCreateForm] = useState({ name: "", slug: "", description: "", commissionRate: "5", emoji: "", color: "#f59e0b" });
   const [creating, setCreating] = useState(false);
   const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all");
 
@@ -4509,9 +4524,11 @@ function CategoriesTab() {
         description: createForm.description.trim(),
         commissionRate: rate,
         isActive: true,
+        emoji: createForm.emoji.trim() || "🛍️",
+        color: createForm.color || "#f59e0b",
       });
       setCats(prev => [data.category, ...prev]);
-      setCreateForm({ name: "", slug: "", description: "", commissionRate: "5" });
+      setCreateForm({ name: "", slug: "", description: "", commissionRate: "5", emoji: "", color: "#f59e0b" });
       setShowCreate(false);
       toast.success("Category created");
     } catch {
@@ -4544,16 +4561,32 @@ function CategoriesTab() {
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Name *</label>
               <Input value={createForm.name}
-                onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
+                onChange={e => setCreateForm(f => ({ ...f, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-") }))}
                 placeholder="e.g. Electronics"
                 className="h-9 neu-inset border-none bg-background" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Slug * (used as category key)</label>
+              <label className="text-xs text-muted-foreground">Slug * (auto-generated)</label>
               <Input value={createForm.slug}
                 onChange={e => setCreateForm(f => ({ ...f, slug: e.target.value }))}
                 placeholder="e.g. electronics"
                 className="h-9 neu-inset border-none bg-background" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Emoji (shown on customer page)</label>
+              <Input value={createForm.emoji}
+                onChange={e => setCreateForm(f => ({ ...f, emoji: e.target.value }))}
+                placeholder="e.g. 📱"
+                className="h-9 neu-inset border-none bg-background" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Color (bubble background)</label>
+              <div className="flex gap-2 items-center">
+                <input type="color" value={createForm.color}
+                  onChange={e => setCreateForm(f => ({ ...f, color: e.target.value }))}
+                  className="w-9 h-9 rounded-lg cursor-pointer border-none bg-transparent" />
+                <span className="text-xs text-muted-foreground font-mono">{createForm.color}</span>
+              </div>
             </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Commission Rate (%)</label>
@@ -4600,6 +4633,9 @@ function CategoriesTab() {
         <div className="space-y-3">
           {displayed.map(cat => (
             <div key={cat._id} className="neu-card rounded-2xl p-4 flex items-center gap-4 flex-wrap">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-xl" style={{ backgroundColor: cat.color ? `${cat.color}22` : 'hsl(var(--muted))' }}>
+                {cat.emoji || "🛍️"}
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-sm text-foreground">{cat.name}</span>

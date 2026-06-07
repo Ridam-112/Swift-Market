@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -45,21 +46,57 @@ import Admin from "@/pages/Admin";
 
 const queryClient = new QueryClient();
 
-import { categories } from "@/data/categories";
-import { CategoryBubble } from "@/components/CategoryBubble";
+import { CategoryBubble, type DisplayCategory } from "@/components/CategoryBubble";
 import { SectionHeader } from "@/components/SectionHeader";
+import { api } from "@/lib/api";
+
+const DEFAULT_COLORS = [
+  "hsl(35,90%,55%)", "hsl(140,60%,45%)", "hsl(200,70%,55%)", "hsl(20,90%,55%)",
+  "hsl(210,80%,55%)", "hsl(45,90%,50%)", "hsl(0,65%,50%)", "hsl(330,70%,60%)",
+  "hsl(280,60%,60%)", "hsl(170,60%,45%)", "hsl(260,55%,55%)", "hsl(200,80%,50%)",
+  "hsl(350,80%,60%)", "hsl(160,60%,40%)", "hsl(230,60%,55%)", "hsl(250,55%,55%)",
+];
 
 function Categories() {
+  const [apiCategories, setApiCategories] = useState<DisplayCategory[]>([]);
+  const [catLoading, setCatLoading] = useState(true);
+
+  useEffect(() => {
+    api.get<{ success: boolean; categories: Array<{ _id: string; name: string; slug: string; emoji?: string; color?: string }> }>('/categories')
+      .then(d => {
+        setApiCategories((d.categories ?? []).map((c, i) => ({
+          id: c.slug,
+          name: c.name,
+          emoji: c.emoji ?? "🛍️",
+          color: c.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+        })));
+      })
+      .catch(() => {})
+      .finally(() => setCatLoading(false));
+  }, []);
+
   return (
     <div className="pb-24 pt-4 px-4 max-w-7xl mx-auto space-y-6">
       <SectionHeader title="All Categories" />
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-        {categories.map((category) => (
-          <div key={category.id} className="flex justify-center">
-            <CategoryBubble category={category} />
-          </div>
-        ))}
-      </div>
+      {catLoading ? (
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+          {[1,2,3,4,5,6,7,8,9].map(i => (
+            <div key={i} className="flex justify-center">
+              <div className="w-16 h-16 rounded-2xl bg-muted animate-pulse" />
+            </div>
+          ))}
+        </div>
+      ) : apiCategories.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No categories available.</p>
+      ) : (
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+          {apiCategories.map((category) => (
+            <div key={category.id} className="flex justify-center">
+              <CategoryBubble category={category} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

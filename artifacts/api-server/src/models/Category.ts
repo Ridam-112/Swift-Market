@@ -6,6 +6,8 @@ export interface ICategory extends Document {
   shopTypes: string[];
   isActive: boolean;
   commissionRate?: number;
+  emoji?: string;
+  color?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,6 +19,8 @@ const CategorySchema = new Schema<ICategory>(
     shopTypes: [String],
     isActive: { type: Boolean, default: true },
     commissionRate: { type: Number, min: 0, max: 100 },
+    emoji: { type: String, trim: true },
+    color: { type: String, trim: true },
   },
   { timestamps: true }
 );
