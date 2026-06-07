@@ -1,0 +1,154 @@
+Implement Vendor Compliance & Verification System.
+
+Do NOT add unrelated features.
+Do NOT redesign existing customer flows.
+
+Requirements:
+
+1. Vendor Registration / Shop Application
+
+Every vendor must upload:
+
+* Shop Logo (mandatory)
+
+Note:
+The uploaded shop logo will be used throughout SwiftMart as:
+
+* Shop profile image
+* Shop card image
+* Shop listing thumbnail
+* Search result image
+* Vendor dashboard branding image
+
+No separate logo field is needed.
+The uploaded shop image becomes the official shop logo.
+
+2. Category-Based Compliance Documents
+
+If the vendor selects one of these categories:
+
+Food
+Restaurant
+Cloud Kitchen
+Home Food
+Sweet Shop
+Bakery
+Grocery
+Kirana
+Packaged Food
+Meat & Fish
+Dairy
+
+Then require:
+
+* FSSAI License Upload
+* FSSAI License Number
+* Expiry Date
+
+If the vendor selects:
+
+Medicine
+Pharmacy
+Healthcare
+
+Then require:
+
+* Drug License Upload
+* Drug License Number
+* Expiry Date
+
+For all other categories:
+
+Fashion
+Gift Shop
+Electronics
+Stationery
+Books
+Sports
+Mobile Accessories
+Handmade Products
+Jewelry
+Crafts
+
+Documents are optional.
+
+3. Bank Verification (Mandatory for all vendors)
+
+Collect:
+
+* Account Holder Name
+* Bank Account Number
+* IFSC Code
+* UPI ID (optional)
+
+Vendor cannot receive payouts until bank details are submitted.
+
+4. Database
+
+Store:
+
+* shopLogo
+* certificateType
+* certificateNumber
+* certificateExpiryDate
+* certificateFile
+* certificateStatus
+* certificateRejectReason
+* bankDetails
+* verificationStatus
+
+Status values:
+
+pending
+verified
+rejected
+
+5. Admin Panel
+
+Admin must be able to:
+
+* View shop logo
+* View certificate
+* View bank details
+* View certificate number
+* View expiry date
+
+Admin actions:
+
+* Verify vendor
+* Reject vendor
+* Reject certificate
+* Add rejection reason
+
+6. Vendor Experience
+
+If required certificate is missing:
+
+* Vendor cannot submit application
+
+If certificate is rejected:
+
+* Show rejection reason
+* Allow re-upload
+
+If vendor is pending:
+
+* Show "Verification Under Review"
+
+If verified:
+
+* Allow shop operations normally
+
+7. Testing
+
+Verify:
+
+* Food shop requires FSSAI
+* Medicine shop requires Drug License
+* Normal shops can register without certificates
+* Shop logo upload is mandatory
+* Shop logo appears across all shop listings
+* Admin can verify/reject vendors
+* Vendor can re-upload rejected documents
+
+Generate implementation report only after completion.

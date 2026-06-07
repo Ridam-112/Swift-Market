@@ -6,7 +6,7 @@ import { uploadToCloudinary } from "../../lib/cloudinary.js";
 
 const router = Router();
 
-const upload = multer({
+const imageUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
@@ -17,10 +17,21 @@ const upload = multer({
   },
 });
 
+const certificateUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) cb(null, true);
+    else cb(new Error("Only jpg, jpeg, png, webp, pdf files are allowed"));
+  },
+});
+
 router.post(
   "/product-image",
   authenticate,
-  upload.single("image"),
+  imageUpload.single("image"),
   async (req: Request, res: Response): Promise<void> => {
     if (!req.file) {
       res.status(400).json({ success: false, message: "No file uploaded" });
@@ -34,7 +45,7 @@ router.post(
 router.post(
   "/banner-image",
   authenticate,
-  upload.single("image"),
+  imageUpload.single("image"),
   async (req: Request, res: Response): Promise<void> => {
     if (!req.file) {
       res.status(400).json({ success: false, message: "No file uploaded" });
@@ -48,7 +59,7 @@ router.post(
 router.post(
   "/shop-image",
   authenticate,
-  upload.single("image"),
+  imageUpload.single("image"),
   async (req: Request, res: Response): Promise<void> => {
     if (!req.file) {
       res.status(400).json({ success: false, message: "No file uploaded" });
@@ -56,6 +67,20 @@ router.post(
     }
     const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/shops");
     res.json({ success: true, imageUrl: url });
+  },
+);
+
+router.post(
+  "/certificate",
+  authenticate,
+  certificateUpload.single("file"),
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.file) {
+      res.status(400).json({ success: false, message: "No file uploaded" });
+      return;
+    }
+    const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/certificates");
+    res.json({ success: true, fileUrl: url });
   },
 );
 

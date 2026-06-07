@@ -163,9 +163,17 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
       image: body["image"] ? String(body["image"]) : undefined,
       banner: body["banner"] ? String(body["banner"]) : undefined,
       panNumber: String(body["panNumber"] ?? ""),
+      gstNumber: body["gstNumber"] ? String(body["gstNumber"]) : undefined,
+      bankAccountHolderName: body["bankAccountHolderName"] ? String(body["bankAccountHolderName"]) : undefined,
       bankAccountNumber: String(body["bankAccountNumber"] ?? ""),
       bankIfscCode: String(body["bankIfscCode"] ?? ""),
-      upiId: String(body["upiId"] ?? ""),
+      upiId: body["upiId"] ? String(body["upiId"]) : undefined,
+      certificateType: body["certificateType"] ? String(body["certificateType"]) : undefined,
+      certificateNumber: body["certificateNumber"] ? String(body["certificateNumber"]) : undefined,
+      certificateExpiryDate: body["certificateExpiryDate"] ? String(body["certificateExpiryDate"]) : undefined,
+      certificateFile: body["certificateFile"] ? String(body["certificateFile"]) : undefined,
+      certificateStatus: body["certificateFile"] ? "pending" : undefined,
+      verificationStatus: "pending",
       status: "pending",
     }).returning();
     await tx.update(users).set({ vendorStatus: "pending" }).where(eq(users.id, req.user!.userId));
@@ -173,6 +181,62 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
   });
 
   res.status(201).json({ success: true, shop: mi(shop) });
+});
+
+// PATCH /api/shops/my/certificate — vendor re-uploads rejected certificate
+router.patch("/my/certificate", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const body = req.body as Record<string, unknown>;
+  if (!body["certificateFile"]) {
+    res.status(400).json({ success: false, message: "certificateFile is required" });
+    return;
+  }
+  const update: Record<string, unknown> = {
+    certificateFile: String(body["certificateFile"]),
+    certificateStatus: "pending",
+    certificateRejectReason: null,
+  };
+  if (body["certificateNumber"]) update["certificateNumber"] = String(body["certificateNumber"]);
+  if (body["certificateExpiryDate"]) update["certificateExpiryDate"] = String(body["certificateExpiryDate"]);
+  const [updated] = await db.update(shops).set(update).where(eq(shops.ownerId, req.user!.userId)).returning();
+  if (!updated) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+  res.json({ success: true, shop: mi(updated) });
+});
+
+// POST /api/shops/:id/verify — admin verifies vendor compliance
+router.post("/:id/verify", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const [shop] = await db.update(shops)
+    .set({ verificationStatus: "verified", certificateStatus: "verified" })
+    .where(eq(shops.id, req.params["id"]!))
+    .returning();
+  if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+  void createNotificationLimited(shop.ownerId, {
+    type: "system",
+    title: "Vendor Verified",
+    message: "Your shop compliance has been verified. You can now access all vendor features.",
+  });
+  res.json({ success: true, shop: mi(shop) });
+});
+
+// POST /api/shops/:id/reject-certificate — admin rejects the certificate
+router.post("/:id/reject-certificate", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { reason } = req.body as { reason?: string };
+  const [shop] = await db.update(shops)
+    .set({
+      certificateStatus: "rejected",
+      certificateRejectReason: reason ?? null,
+      verificationStatus: "pending",
+    })
+    .where(eq(shops.id, req.params["id"]!))
+    .returning();
+  if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+  void createNotificationLimited(shop.ownerId, {
+    type: "system",
+    title: "Compliance Document Rejected",
+    message: reason
+      ? `Your compliance document was rejected: ${reason}. Please re-upload.`
+      : "Your compliance document was rejected. Please re-upload a valid document.",
+  });
+  res.json({ success: true, shop: mi(shop) });
 });
 
 // PATCH /api/shops/my/profile — vendor updates their own shop profile (safe fields only)

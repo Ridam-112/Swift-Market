@@ -1,3 +1,4 @@
 - [Pincode & Notifications implementation](pincode-notifications.md) — Two-feature implementation: pincode-based shop/product filtering + full notification system
 - [Commission & Payout system](commission-payout.md) — Commission rules (multi-level, percentage/fixed), payout auto-creation on orders, admin tabs
 - [Web Push Notifications](web-push.md) — VAPID-based push on top of existing in-app notification system; api.delete has no body support
+- [Vendor Compliance & Verification](vendor-compliance.md) — FSSAI/Drug License/optional cert docs, shop logo mandatory, bankAccountHolderName, admin verify/reject-certificate, vendor re-upload

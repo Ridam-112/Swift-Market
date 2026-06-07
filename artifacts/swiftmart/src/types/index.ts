@@ -18,9 +18,15 @@ export interface VendorApplication {
   storePincode?: string;
   panNumber: string;
   gstNumber: string;
+  bankAccountHolderName?: string;
   bankAccountNumber: string;
   bankIfscCode: string;
   upiId: string;
+  shopLogoUrl?: string;
+  certificateType?: string;
+  certificateNumber?: string;
+  certificateExpiryDate?: string;
+  certificateFile?: string;
   submittedAt: string;
   status: VendorStatus;
   rejectionReason?: string;

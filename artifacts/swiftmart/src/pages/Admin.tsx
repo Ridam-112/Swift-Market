@@ -28,13 +28,22 @@ interface ApiShop {
   phone: string;
   shopType: string;
   description?: string;
+  image?: string;
   panNumber: string;
   gstNumber?: string;
+  bankAccountHolderName?: string;
   bankAccountNumber: string;
   bankIfscCode: string;
-  upiId: string;
+  upiId?: string;
   status: 'pending' | 'approved' | 'rejected' | 'banned';
   rejectionReason?: string;
+  certificateType?: string;
+  certificateNumber?: string;
+  certificateExpiryDate?: string;
+  certificateFile?: string;
+  certificateStatus?: string;
+  certificateRejectReason?: string;
+  verificationStatus?: string;
   createdAt: string;
   totalOrders: number;
   totalRevenue: number;
@@ -493,12 +502,20 @@ function StatCard({ title, value, icon: Icon, color }: any) {
 // SHOP REQUESTS SECTION
 // ============================================================================
 
+const CERT_NAMES: Record<string, string> = {
+  fssai: "FSSAI License",
+  drug_license: "Drug License",
+};
+
 function ShopRequestsTab() {
   const [shops, setShops] = useState<ApiShop[]>([]);
   const [loadingShops, setLoadingShops] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [certRejectingId, setCertRejectingId] = useState<string | null>(null);
+  const [certRejectReason, setCertRejectReason] = useState("");
 
   const fetchShops = () => {
     setLoadingShops(true);
@@ -554,6 +571,32 @@ function ShopRequestsTab() {
       fetchShops();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to reject");
+    }
+  };
+
+  const handleVerify = async (id: string) => {
+    setVerifyingId(id);
+    try {
+      await api.post(`/shops/${id}/verify`);
+      toast.success("Vendor compliance verified");
+      fetchShops();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to verify");
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
+  const handleRejectCert = async (id: string) => {
+    if (!certRejectReason.trim()) { toast.error("Please provide a rejection reason"); return; }
+    try {
+      await api.post(`/shops/${id}/reject-certificate`, { reason: certRejectReason });
+      setCertRejectingId(null);
+      setCertRejectReason("");
+      toast.success("Certificate rejected — vendor notified");
+      fetchShops();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to reject certificate");
     }
   };
 
@@ -614,28 +657,40 @@ function ShopRequestsTab() {
             <p>No applications found</p>
           </div>
         ) : (
-          filteredApplications.map(app => (
+          filteredApplications.map(app => {
+            const rawShop = shops.find(s => s._id === app.id);
+            const certName = rawShop?.certificateType ? (CERT_NAMES[rawShop.certificateType] ?? "Certificate") : null;
+            return (
             <div key={app.id} className="bg-card p-6 rounded-3xl neu-card space-y-4">
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-xl text-foreground">{app.storeName}</h3>
-                    <Badge variant="secondary" className="bg-background neu-inset text-xs border-none capitalize">
-                      {app.storeCategory.replace('-', ' ')}
-                    </Badge>
+                <div className="flex items-start gap-3">
+                  {rawShop?.image ? (
+                    <img src={rawShop.image} alt={app.storeName} className="w-14 h-14 rounded-2xl object-cover bg-muted shrink-0 neu-card" />
+                  ) : (
+                    <div className="w-14 h-14 rounded-2xl bg-muted neu-inset flex items-center justify-center shrink-0 text-2xl">🏪</div>
+                  )}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-xl text-foreground">{app.storeName}</h3>
+                      <Badge variant="secondary" className="bg-background neu-inset text-xs border-none capitalize">
+                        {app.storeCategory.replace('-', ' ')}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <User className="w-4 h-4" /> {app.ownerName}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Applied: {new Date(app.submittedAt).toLocaleDateString()}
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <User className="w-4 h-4" /> {app.ownerName}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Applied: {new Date(app.submittedAt).toLocaleDateString()}
-                  </p>
                 </div>
                 
-                <div>
+                <div className="flex flex-col gap-1.5 items-end">
                   {app.status === 'pending' && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 neu-inset border-none px-3 py-1"><Clock className="w-3 h-3 mr-1" /> Pending</Badge>}
                   {app.status === 'approved' && <Badge className="bg-green-100 text-green-800 hover:bg-green-100 neu-inset border-none px-3 py-1"><CheckCircle className="w-3 h-3 mr-1" /> Approved</Badge>}
                   {app.status === 'rejected' && <Badge className="bg-red-100 text-red-800 hover:bg-red-100 neu-inset border-none px-3 py-1"><XCircle className="w-3 h-3 mr-1" /> Rejected</Badge>}
+                  {rawShop?.verificationStatus === 'verified' && <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 neu-inset border-none px-3 py-1 text-xs"><Shield className="w-3 h-3 mr-1" /> Verified</Badge>}
+                  {rawShop?.verificationStatus === 'pending' && app.status === 'approved' && <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100 neu-inset border-none px-3 py-1 text-xs"><Clock className="w-3 h-3 mr-1" /> Unverified</Badge>}
                 </div>
               </div>
 
@@ -658,16 +713,96 @@ function ShopRequestsTab() {
                 
                 <div className="space-y-2">
                   <div className="text-sm font-semibold flex items-center gap-2 text-foreground">
-                    <CreditCard className="w-4 h-4" /> Payment Details
+                    <CreditCard className="w-4 h-4" /> Bank Details
                   </div>
                   <div className="text-sm grid grid-cols-[80px_1fr] gap-1">
-                    <span className="text-muted-foreground">UPI:</span>
-                    <span className="text-foreground">{app.upiId}</span>
+                    {rawShop?.bankAccountHolderName && (
+                      <>
+                        <span className="text-muted-foreground">Holder:</span>
+                        <span className="text-foreground font-medium">{rawShop.bankAccountHolderName}</span>
+                      </>
+                    )}
                     <span className="text-muted-foreground">Bank:</span>
                     <span className="font-mono text-foreground">{app.bankAccountNumber}</span>
+                    <span className="text-muted-foreground">IFSC:</span>
+                    <span className="font-mono text-foreground">{app.bankIfscCode}</span>
+                    {app.upiId && (
+                      <>
+                        <span className="text-muted-foreground">UPI:</span>
+                        <span className="text-foreground">{app.upiId}</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {rawShop?.certificateType && (
+                <div className="bg-background p-4 rounded-2xl neu-inset space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                      <FileText className="w-4 h-4" /> {certName}
+                    </div>
+                    {rawShop.certificateStatus === 'verified' && <Badge className="bg-green-100 text-green-800 text-xs border-none neu-inset px-2 py-0.5"><CheckCircle className="w-3 h-3 mr-1 inline" />Verified</Badge>}
+                    {rawShop.certificateStatus === 'pending' && <Badge className="bg-amber-100 text-amber-800 text-xs border-none neu-inset px-2 py-0.5"><Clock className="w-3 h-3 mr-1 inline" />Pending review</Badge>}
+                    {rawShop.certificateStatus === 'rejected' && <Badge className="bg-red-100 text-red-800 text-xs border-none neu-inset px-2 py-0.5"><XCircle className="w-3 h-3 mr-1 inline" />Rejected</Badge>}
+                  </div>
+                  <div className="text-sm grid grid-cols-[80px_1fr] gap-1">
+                    {rawShop.certificateNumber && (
+                      <>
+                        <span className="text-muted-foreground">Number:</span>
+                        <span className="font-mono text-foreground">{rawShop.certificateNumber}</span>
+                      </>
+                    )}
+                    {rawShop.certificateExpiryDate && (
+                      <>
+                        <span className="text-muted-foreground">Expiry:</span>
+                        <span className="text-foreground">{new Date(rawShop.certificateExpiryDate).toLocaleDateString()}</span>
+                      </>
+                    )}
+                  </div>
+                  {rawShop.certificateFile && (
+                    <a href={rawShop.certificateFile} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline">
+                      <Eye className="w-3.5 h-3.5" /> View Document
+                    </a>
+                  )}
+                  {rawShop.certificateStatus === 'pending' && (
+                    <div className="pt-2 flex gap-2">
+                      {certRejectingId === app.id ? (
+                        <div className="w-full space-y-2 bg-red-50/50 dark:bg-red-950/10 p-3 rounded-xl">
+                          <Textarea
+                            placeholder="Reason for rejection..."
+                            value={certRejectReason}
+                            onChange={e => setCertRejectReason(e.target.value)}
+                            className="bg-background neu-inset border-red-200 dark:border-red-900 resize-none h-16 text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => { setCertRejectingId(null); setCertRejectReason(""); }} className="flex-1 rounded-xl text-xs">Cancel</Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleRejectCert(app.id)} className="flex-1 bg-red-600 hover:bg-red-700 shadow-none neu-card text-white rounded-xl text-xs">Confirm Reject</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <Button size="sm" onClick={() => handleVerify(app.id)} disabled={verifyingId === app.id} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-none neu-card text-xs">
+                            {verifyingId === app.id ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Verifying…</> : <><CheckCircle className="w-3 h-3 mr-1" />Verify Certificate</>}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setCertRejectingId(app.id)} className="flex-1 text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-900/30 rounded-xl shadow-none neu-inset bg-background text-xs">
+                            <XCircle className="w-3 h-3 mr-1" />Reject Doc
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!rawShop?.certificateType && app.status === 'approved' && rawShop?.verificationStatus !== 'verified' && (
+                <div className="flex">
+                  <Button size="sm" onClick={() => handleVerify(app.id)} disabled={verifyingId === app.id} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-none neu-card text-xs">
+                    {verifyingId === app.id ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Verifying…</> : <><CheckCircle className="w-3 h-3 mr-1" />Mark Vendor Verified</>}
+                  </Button>
+                </div>
+              )}
 
               {app.status === 'pending' && (
                 <div className="pt-2 border-t border-border flex flex-col md:flex-row gap-3">
@@ -708,7 +843,8 @@ function ShopRequestsTab() {
                 </div>
               )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
@@ -781,9 +917,12 @@ function CustomersList() {
           orders: customerOrders.map(o => ({
             id: `#${o._id.slice(-6).toUpperCase()}`,
             placedAt: o.createdAt,
+            vendorId: o.shopId ?? '',
             vendorName: o.shopName ?? 'Shop',
-            items: o.items.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
+            items: o.items.map(i => ({ name: i.name, qty: i.qty, price: i.price, category: '' })),
             total: o.netAmount ?? o.subtotal ?? o.items.reduce((s, i) => s + i.price * i.qty, 0),
+            status: (o.status ?? 'placed') as 'placed' | 'packed' | 'out_for_delivery' | 'delivered',
+            paymentMethod: (o.paymentMethod ?? 'COD') as 'UPI' | 'Card' | 'COD',
           })),
         };
       }));
