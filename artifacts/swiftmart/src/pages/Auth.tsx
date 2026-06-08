@@ -44,7 +44,15 @@ export default function Auth() {
   const areaName = getServiceAreaName(pincode);
 
   useEffect(() => {
-    if (user && step !== 'onboarding') setLocation("/");
+    if (!user) return;
+    // New users are created with name "User" — if this default hasn't been replaced yet
+    // the user hasn't completed onboarding. Restore the onboarding step on refresh (L6).
+    const needsOnboarding = !user.name || user.name === "User";
+    if (needsOnboarding) {
+      if (step === 'login') setStep('onboarding');
+      return;
+    }
+    if (step !== 'onboarding' && step !== 'address') setLocation("/");
   }, [user, step, setLocation]);
 
   useEffect(() => {

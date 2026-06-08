@@ -4,6 +4,7 @@ import { seedSuperAdmins } from "./utils/seedAdmins.js";
 import { seedShopTypes } from "./utils/seedShopTypes.js";
 import { seedCategories } from "./utils/seedCategories.js";
 import { clearDemoData } from "./utils/seedDemoData.js";
+import { cleanupAbandonedOrders } from "./utils/orderCleanup.js";
 
 const rawPort = process.env["PORT"];
 if (!rawPort) throw new Error("PORT environment variable is required but was not provided.");
@@ -30,6 +31,19 @@ async function main() {
   } catch (err) {
     logger.error({ err }, "Seed error (non-fatal)");
   }
+
+  // Background job: cancel online-payment orders stuck pending > 15 min (C5)
+  // Run once on startup, then every 10 minutes
+  const runCleanup = async () => {
+    try {
+      const count = await cleanupAbandonedOrders();
+      if (count > 0) logger.info({ count }, "Cleaned up abandoned payment orders");
+    } catch (err) {
+      logger.error({ err }, "cleanupAbandonedOrders error (non-fatal)");
+    }
+  };
+  void runCleanup();
+  setInterval(runCleanup, 10 * 60 * 1000);
 }
 
 main().catch((err) => {

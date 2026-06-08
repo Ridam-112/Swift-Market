@@ -5,6 +5,7 @@ import { db, orders, products, coupons } from "@workspace/db";
 import { eq, inArray, and } from "drizzle-orm";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
 import { mi } from "../../utils/mapId.js";
+import { cancelOrderAndRestoreStock } from "../../utils/orderCleanup.js";
 
 const router = Router();
 
@@ -173,10 +174,15 @@ router.post("/webhook", async (req: Request & { rawBody?: Buffer }, res: Respons
   if (event.event === "payment.failed") {
     const razorpayOrderId = event.payload?.payment?.entity?.order_id;
     if (razorpayOrderId) {
-      await db.update(orders)
-        .set({ paymentStatus: "failed" })
+      // Cancel the order and restore stock when Razorpay confirms payment failure (C5/M6)
+      const [affected] = await db.select({ id: orders.id })
+        .from(orders)
         .where(eq(orders.razorpayOrderId, razorpayOrderId))
-        .catch(() => {});
+        .limit(1)
+        .catch(() => []);
+      if (affected) {
+        await cancelOrderAndRestoreStock(affected.id, "Payment failed via Razorpay.").catch(() => {});
+      }
     }
   }
 

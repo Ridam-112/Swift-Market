@@ -4,6 +4,7 @@ import { eq, and, ilike, or, gte, ne, desc, count, sql } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { resolveCommission, calculateCommissionAmount } from "../../utils/commission.js";
 import { createNotificationLimited } from "../../utils/notification.js";
+import { logger } from "../../lib/logger.js";
 import { mi, miArr } from "../../utils/mapId.js";
 
 const router = Router();
@@ -242,7 +243,20 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
           ordersIncluded: [order!.id],
         });
       }
-    } catch { /* non-fatal — payout can be created manually */ }
+    } catch (payoutErr) {
+      // Payout creation failed — log clearly and notify all super-admins so they can create it manually (M8)
+      logger.error({ err: payoutErr, orderId: order!.id, vendorPayable }, "Payout creation FAILED — manual intervention required");
+      db.select({ id: users.id }).from(users).where(eq(users.role, "super_admin")).limit(10)
+        .then(admins => Promise.all(admins.map(a =>
+          createNotificationLimited(a.id, {
+            type: "system",
+            title: "⚠️ Payout Creation Failed",
+            message: `Order #${order!.id.slice(-6).toUpperCase()} — payout of ₹${vendorPayable} for shop ${String(body["shopName"] ?? shopId ?? "")} could not be created automatically. Please create it manually.`,
+            data: { orderId: order!.id },
+          }).catch(() => {})
+        )))
+        .catch(() => {});
+    }
 
     // Increment coupon usedCount
     const couponCode = order!.couponCode;

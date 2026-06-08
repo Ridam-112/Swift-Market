@@ -108,6 +108,8 @@ export default function Checkout() {
       const data = await api.post<CouponValidateResponse>("/coupons/validate", {
         code,
         orderTotal: orderTotalForCoupon,
+        shopId: items[0]?.product.vendorId,
+        categories: [...new Set(items.map(i => i.product.category))],
       });
       setCouponApplied({ code: data.coupon.code, discount: data.discount });
       setCouponInput("");

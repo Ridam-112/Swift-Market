@@ -1,4 +1,4 @@
-import { db, commissionRules } from "@workspace/db";
+import { db, commissionRules, categories, shopTypes } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 export interface ResolvedCommission {
@@ -29,10 +29,22 @@ export async function resolveCommission(opts: {
   if (opts.categorySlug) {
     const r = find("category", opts.categorySlug);
     if (r) return { rate: r.rate, type: (r.type ?? "percentage") as "percentage" | "fixed", level: "category" };
+    // Fall back to the commissionRate stored directly on the category row (L8)
+    const [cat] = await db.select({ commissionRate: categories.commissionRate })
+      .from(categories).where(eq(categories.slug, opts.categorySlug)).limit(1);
+    if (cat?.commissionRate != null) {
+      return { rate: cat.commissionRate, type: "percentage", level: "category" };
+    }
   }
   if (opts.shopTypeSlug) {
     const r = find("shop_type", opts.shopTypeSlug);
     if (r) return { rate: r.rate, type: (r.type ?? "percentage") as "percentage" | "fixed", level: "shop_type" };
+    // Fall back to the commissionRate stored directly on the shop type row (L8)
+    const [st] = await db.select({ commissionRate: shopTypes.commissionRate })
+      .from(shopTypes).where(eq(shopTypes.slug, opts.shopTypeSlug)).limit(1);
+    if (st?.commissionRate != null) {
+      return { rate: st.commissionRate, type: "percentage", level: "shop_type" };
+    }
   }
   const global = find("global");
   if (global) return { rate: global.rate, type: (global.type ?? "percentage") as "percentage" | "fixed", level: "global" };

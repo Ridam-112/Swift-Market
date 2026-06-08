@@ -14,7 +14,12 @@ router.get("/", authenticate, A, async (_req: Request, res: Response): Promise<v
 
 // POST /validate — validate a coupon code against an order total
 router.post("/validate", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { code, orderTotal } = req.body as { code: string; orderTotal: number };
+  const { code, orderTotal, shopId, categories: cartCategories } = req.body as {
+    code: string;
+    orderTotal: number;
+    shopId?: string;
+    categories?: string[];
+  };
   const [coupon] = await db.select().from(coupons)
     .where(and(eq(coupons.code, code.toUpperCase()), eq(coupons.isActive, true)))
     .limit(1);
@@ -27,6 +32,21 @@ router.post("/validate", authenticate, async (req: AuthRequest, res: Response): 
   if (orderTotal < coupon.minimumOrder) {
     res.status(400).json({ success: false, message: `Minimum order ₹${coupon.minimumOrder} required` });
     return;
+  }
+
+  // Enforce shop / category scope (M7)
+  if (coupon.appliesTo === "shop" && coupon.targetId) {
+    if (!shopId || shopId !== coupon.targetId) {
+      res.status(400).json({ success: false, message: "This coupon is only valid for a specific shop" });
+      return;
+    }
+  }
+  if (coupon.appliesTo === "category" && coupon.targetId) {
+    const validCategory = Array.isArray(cartCategories) && cartCategories.includes(coupon.targetId);
+    if (!validCategory) {
+      res.status(400).json({ success: false, message: "This coupon is only valid for specific product categories" });
+      return;
+    }
   }
 
   // Enforce per-user limit (M4)
