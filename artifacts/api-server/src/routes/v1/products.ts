@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { db, products, shops, categories } from "@workspace/db";
 import { eq, and, ilike, inArray, desc, count, gt, sql } from "drizzle-orm";
-import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
+import { authenticate, requireRole, optionalAuth, type AuthRequest } from "../../middlewares/auth.js";
 import { deleteFromCloudinary } from "../../lib/cloudinary.js";
 import { createNotificationLimited } from "../../utils/notification.js";
 import { mi, miArr } from "../../utils/mapId.js";
@@ -11,9 +11,16 @@ const A = requireRole("admin", "super_admin");
 const V = requireRole("vendor", "admin", "super_admin");
 
 // GET /api/products
-router.get("/", async (req: Request, res: Response): Promise<void> => {
-  const { shopId, category, status = "active", search, page = "1", limit = "20", pincode } =
+router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  const authReq = req as AuthRequest;
+  const isPrivileged = authReq.user?.role === "admin" || authReq.user?.role === "super_admin" || authReq.user?.role === "vendor";
+
+  const { shopId, category, search, page = "1", limit = "20", pincode } =
     req.query as Record<string, string>;
+
+  // status=all is restricted to authenticated vendor/admin users — prevent customer bypass of active/stock filters
+  const rawStatus = (req.query as Record<string, string>)["status"];
+  const status = rawStatus === "all" && !isPrivileged ? "active" : (rawStatus ?? "active");
 
   const pg = parseInt(page), lm = parseInt(limit);
   const conditions = [];

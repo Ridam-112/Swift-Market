@@ -27,7 +27,15 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
 });
 
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const [cat] = await db.update(categories).set(req.body as Record<string, unknown>).where(eq(categories.id, req.params["id"]!)).returning();
+  const body = req.body as Record<string, unknown>;
+  const update: Record<string, unknown> = {};
+  if (body["name"] !== undefined) update["name"] = String(body["name"]);
+  if (body["shopTypes"] !== undefined) update["shopTypes"] = Array.isArray(body["shopTypes"]) ? body["shopTypes"] : [];
+  if (body["commissionRate"] !== undefined) update["commissionRate"] = Number(body["commissionRate"]);
+  if (body["emoji"] !== undefined) update["emoji"] = body["emoji"] ? String(body["emoji"]) : null;
+  if (body["color"] !== undefined) update["color"] = body["color"] ? String(body["color"]) : null;
+  if (body["isActive"] !== undefined) update["isActive"] = Boolean(body["isActive"]);
+  const [cat] = await db.update(categories).set(update).where(eq(categories.id, req.params["id"]!)).returning();
   if (!cat) { res.status(404).json({ success: false, message: "Not found" }); return; }
   res.json({ success: true, category: mi(cat) });
 });

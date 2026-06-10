@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, doublePrecision, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, doublePrecision, integer, jsonb, index } from "drizzle-orm/pg-core";
 
 export const products = pgTable("products", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -20,7 +20,12 @@ export const products = pgTable("products", {
   trending: boolean("trending").default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => [
+  index("products_shop_id_idx").on(t.shopId),
+  index("products_category_idx").on(t.category),
+  index("products_status_idx").on(t.status),
+  index("products_shop_id_status_idx").on(t.shopId, t.status),
+]);
 
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = typeof products.$inferInsert;

@@ -133,26 +133,30 @@ router.post("/verify", authenticate, async (req: AuthRequest, res: Response): Pr
 
 // POST /api/v1/payments/webhook
 // Razorpay webhook — reconciles payments when browser closes before verify (M6)
-// Set RAZORPAY_WEBHOOK_SECRET env var (from Razorpay dashboard) to enable signature verification
+// RAZORPAY_WEBHOOK_SECRET must be set in env (from Razorpay dashboard) — requests without a valid signature are rejected
 router.post("/webhook", async (req: Request & { rawBody?: Buffer }, res: Response): Promise<void> => {
   const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-  if (webhookSecret) {
-    const signature = req.headers["x-razorpay-signature"] as string | undefined;
-    if (!signature) {
-      res.status(400).json({ success: false, message: "Missing webhook signature" });
-      return;
-    }
-    const rawBody = req.rawBody;
-    if (!rawBody) {
-      res.status(400).json({ success: false, message: "Cannot verify signature" });
-      return;
-    }
-    const expected = crypto.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
-    if (expected !== signature) {
-      res.status(400).json({ success: false, message: "Invalid webhook signature" });
-      return;
-    }
+  if (!webhookSecret) {
+    // Webhook secret not configured — reject all incoming webhook calls to prevent spoofing
+    res.status(503).json({ success: false, message: "Webhook not configured on this server" });
+    return;
+  }
+
+  const signature = req.headers["x-razorpay-signature"] as string | undefined;
+  if (!signature) {
+    res.status(400).json({ success: false, message: "Missing webhook signature" });
+    return;
+  }
+  const rawBody = req.rawBody;
+  if (!rawBody) {
+    res.status(400).json({ success: false, message: "Cannot verify signature" });
+    return;
+  }
+  const expected = crypto.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
+  if (expected !== signature) {
+    res.status(400).json({ success: false, message: "Invalid webhook signature" });
+    return;
   }
 
   const event = req.body as {

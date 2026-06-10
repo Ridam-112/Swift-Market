@@ -8,6 +8,8 @@ const router = Router();
 const SA = requireRole("super_admin");
 const A = requireRole("admin", "super_admin");
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // GET /api/admin/stats
 router.get("/stats", authenticate, A, async (_req, res: Response): Promise<void> => {
   const [
@@ -78,6 +80,10 @@ router.post("/admins", authenticate, SA, async (req: AuthRequest, res: Response)
 
 // PATCH /api/admin/admins/:id
 router.patch("/admins/:id", authenticate, SA, async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!UUID_RE.test(req.params["id"]!)) {
+    res.status(400).json({ success: false, message: "Invalid admin ID" });
+    return;
+  }
   const { role, status } = req.body as { role?: "admin" | "super_admin"; status?: "active" | "suspended" };
   const update: Record<string, unknown> = {};
   if (role) update.role = role;
@@ -89,6 +95,10 @@ router.patch("/admins/:id", authenticate, SA, async (req: AuthRequest, res: Resp
 
 // DELETE /api/admin/admins/:id
 router.delete("/admins/:id", authenticate, SA, async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!UUID_RE.test(req.params["id"]!)) {
+    res.status(400).json({ success: false, message: "Invalid admin ID" });
+    return;
+  }
   await db.delete(admins).where(eq(admins.id, req.params["id"]!));
   res.json({ success: true, message: "Admin removed" });
 });

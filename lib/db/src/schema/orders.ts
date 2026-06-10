@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, doublePrecision, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, doublePrecision, jsonb, index } from "drizzle-orm/pg-core";
 
 export const orders = pgTable("orders", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -28,7 +28,13 @@ export const orders = pgTable("orders", {
   cancelReason: text("cancel_reason"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => [
+  index("orders_customer_id_idx").on(t.customerId),
+  index("orders_shop_id_idx").on(t.shopId),
+  index("orders_status_idx").on(t.status),
+  index("orders_payment_status_idx").on(t.paymentStatus),
+  index("orders_created_at_idx").on(t.createdAt),
+]);
 
 export type Order = typeof orders.$inferSelect;
 export type InsertOrder = typeof orders.$inferInsert;

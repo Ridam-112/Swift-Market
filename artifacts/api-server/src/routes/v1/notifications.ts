@@ -47,7 +47,9 @@ router.patch("/read-all", authenticate, async (req: AuthRequest, res: Response):
 
 // PATCH /api/notifications/:id/read
 router.patch("/:id/read", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, req.params["id"]!));
+  await db.update(notifications)
+    .set({ isRead: true })
+    .where(and(eq(notifications.id, req.params["id"]!), eq(notifications.userId, req.user!.userId)));
   res.json({ success: true });
 });
 

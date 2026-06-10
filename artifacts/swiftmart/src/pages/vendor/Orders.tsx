@@ -113,7 +113,11 @@ export default function VendorOrders() {
 
   useEffect(() => {
     if (!shopId) return;
-    const id = setInterval(() => pollOrders(shopId), 5000);
+    const id = setInterval(() => {
+      // Skip polling when the tab is hidden — saves battery/data and avoids unnecessary requests
+      if (document.visibilityState === "hidden") return;
+      pollOrders(shopId);
+    }, 5000);
     return () => clearInterval(id);
   }, [shopId, pollOrders]);
 

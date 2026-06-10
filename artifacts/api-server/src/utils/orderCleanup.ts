@@ -9,18 +9,6 @@ import { createNotificationLimited } from "./notification.js";
 
 type OrderItem = { productId: string; qty: number };
 
-async function restoreStock(items: OrderItem[]): Promise<void> {
-  await Promise.all(items.map(async item => {
-    const [updated] = await db.update(products)
-      .set({ stock: sql`${products.stock} + ${item.qty}` })
-      .where(eq(products.id, item.productId))
-      .returning({ stock: products.stock, status: products.status });
-    if (updated && updated.stock > 0 && updated.status === "out_of_stock") {
-      await db.update(products).set({ status: "active" }).where(eq(products.id, item.productId));
-    }
-  }));
-}
-
 /**
  * Cancel an order (if not already terminal) and reverse all associated financials.
  * Safe to call multiple times — idempotent due to terminal state guard.
@@ -30,29 +18,37 @@ export async function cancelOrderAndRestoreStock(orderId: string, reason: string
   if (!current) return;
   if (current.status === "cancelled" || current.status === "refunded") return;
 
-  await db.update(orders)
-    .set({ status: "cancelled", cancelReason: reason, paymentStatus: "failed" })
-    .where(eq(orders.id, orderId));
+  // Wrap all DB mutations in a transaction so a mid-way crash cannot leave partial state
+  // (e.g. order cancelled but stock not restored, or payout not cancelled)
+  await db.transaction(async (tx) => {
+    await tx.update(orders)
+      .set({ status: "cancelled", cancelReason: reason, paymentStatus: "failed" })
+      .where(eq(orders.id, orderId));
 
-  if (Array.isArray(current.items) && current.items.length > 0) {
-    await restoreStock(current.items as OrderItem[]).catch(() => {});
-  }
+    if (Array.isArray(current.items) && current.items.length > 0) {
+      await Promise.all((current.items as OrderItem[]).map(async item => {
+        const [updated] = await tx.update(products)
+          .set({ stock: sql`${products.stock} + ${item.qty}` })
+          .where(eq(products.id, item.productId))
+          .returning({ stock: products.stock, status: products.status });
+        if (updated && updated.stock > 0 && updated.status === "out_of_stock") {
+          await tx.update(products).set({ status: "active" }).where(eq(products.id, item.productId));
+        }
+      }));
+    }
 
-  // Cancel associated payout
-  await db.update(payouts)
-    .set({ status: "cancelled" })
-    .where(sql`${payouts.ordersIncluded} @> ${JSON.stringify([orderId])}::jsonb`)
-    .catch(() => {});
+    await tx.update(payouts)
+      .set({ status: "cancelled" })
+      .where(sql`${payouts.ordersIncluded} @> ${JSON.stringify([orderId])}::jsonb`);
 
-  // Decrement coupon usedCount
-  if (current.couponCode) {
-    await db.update(coupons)
-      .set({ usedCount: sql`GREATEST(${coupons.usedCount} - 1, 0)` })
-      .where(eq(coupons.code, current.couponCode))
-      .catch(() => {});
-  }
+    if (current.couponCode) {
+      await tx.update(coupons)
+        .set({ usedCount: sql`GREATEST(${coupons.usedCount} - 1, 0)` })
+        .where(eq(coupons.code, current.couponCode));
+    }
+  });
 
-  // Notify customer
+  // Notification is a side effect — runs outside the transaction (non-fatal)
   if (current.customerId) {
     await createNotificationLimited(current.customerId, {
       type: "order_update",

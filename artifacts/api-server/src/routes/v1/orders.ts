@@ -173,8 +173,12 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
       commissionLevel: string;
     }> = [];
 
+    // Build a map of DB prices for commission calculation — never use client-supplied price
+    const dbPriceMap = new Map(reducedProducts.map(r => [r.productId, r.dbPrice]));
+
     for (const item of items) {
-      const lineTotal = item.price * item.qty;
+      const dbPrice = dbPriceMap.get(item.productId) ?? 0;
+      const lineTotal = dbPrice * item.qty;
       const itemResolved = await resolveCommission({
         productId: item.productId,
         vendorId,
@@ -185,6 +189,7 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
       totalCommissionAmount += itemCommission;
       enrichedItems.push({
         ...item,
+        price: dbPrice,
         commissionType: itemResolved.type,
         commissionRate: itemResolved.rate,
         commissionAmount: +itemCommission.toFixed(2),

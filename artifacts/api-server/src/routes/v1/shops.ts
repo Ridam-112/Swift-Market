@@ -10,6 +10,14 @@ const router = Router();
 const A = requireRole("admin", "super_admin");
 const ADMIN_ROLES = new Set(["admin", "super_admin"]);
 
+const SENSITIVE_FIELDS = ["panNumber", "gstNumber", "bankAccountHolderName", "bankAccountNumber", "bankIfscCode", "upiId"] as const;
+
+function stripSensitiveFields(shop: Record<string, unknown>): Record<string, unknown> {
+  const safe = { ...shop };
+  for (const field of SENSITIVE_FIELDS) delete safe[field];
+  return safe;
+}
+
 // GET /api/shops
 router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void> => {
   const authReq = req as AuthRequest;
@@ -56,7 +64,9 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     db.select({ total: count() }).from(shops).where(where),
   ]);
 
-  res.json({ success: true, shops: miArr(result), total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
+  const mapped = miArr(result);
+  const sanitised = isAdmin ? mapped : mapped.map(s => stripSensitiveFields(s as Record<string, unknown>));
+  res.json({ success: true, shops: sanitised, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
 });
 
 // GET /api/shops/:id/details — admin: shop + products + recent orders + owner
@@ -80,10 +90,13 @@ router.get("/:id/details", authenticate, A, async (req: AuthRequest, res: Respon
 });
 
 // GET /api/shops/:id
-router.get("/:id", async (req: Request, res: Response): Promise<void> => {
+router.get("/:id", optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  const authReq = req as AuthRequest;
+  const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
   const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"]!)).limit(1);
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
-  res.json({ success: true, shop: mi(shop) });
+  const mapped = mi(shop) as Record<string, unknown>;
+  res.json({ success: true, shop: isAdmin ? mapped : stripSensitiveFields(mapped) });
 });
 
 // POST /api/shops/admin-create
