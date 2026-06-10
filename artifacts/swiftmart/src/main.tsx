@@ -4,11 +4,11 @@ import App from "./App";
 import "./index.css";
 
 async function bootstrap() {
-  let googleClientId = "";
+  let googleClientId = "placeholder";
   try {
     const res = await fetch("/api/auth/config");
     const data = await res.json() as { success: boolean; googleClientId?: string };
-    googleClientId = data.googleClientId ?? "";
+    googleClientId = data.googleClientId || "placeholder";
   } catch {
     // non-fatal — Google login will be unavailable
   }
