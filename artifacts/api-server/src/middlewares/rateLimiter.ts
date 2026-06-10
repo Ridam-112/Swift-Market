@@ -41,13 +41,13 @@ function makeRateLimiter(opts: { windowMs: number; max: number; keyFn: (req: Req
   };
 }
 
-// Per-phone: 3 OTP requests per 15 minutes in production.
+// Per-phone: 2 OTP requests per 10 minutes in production.
 // In dev, raised to 20 per minute so testing isn't blocked.
 export const otpPhoneLimiter = makeRateLimiter({
-  windowMs: isDev ? 60 * 1000 : 15 * 60 * 1000,
-  max: isDev ? 20 : 3,
+  windowMs: isDev ? 60 * 1000 : 10 * 60 * 1000,
+  max: isDev ? 20 : 2,
   keyFn: (req) => `otp:phone:${(req.body as { phone?: string })?.phone ?? "unknown"}`,
-  message: "Too many OTP requests for this number. Please wait before trying again.",
+  message: "Too many OTP requests for this number. Please wait 10 minutes before trying again.",
 });
 
 // Per-IP: 10 OTP requests per 15 minutes (catches multi-phone abuse from one device).

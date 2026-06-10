@@ -276,7 +276,7 @@ export default function Auth() {
               <div className="text-center space-y-1">
                 <h2 className="text-xl font-bold">Verification</h2>
                 <p className="text-muted-foreground text-sm">
-                  Enter 6-digit OTP sent to +91 {phone.slice(0, 2)}XXXXX{phone.slice(-3)}
+                  You will receive a voice call on +91 {phone.slice(0, 2)}XXXXX{phone.slice(-3)} with your OTP
                 </p>
               </div>
 
