@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 
 export const otpSessions = pgTable("otp_sessions", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -6,6 +6,7 @@ export const otpSessions = pgTable("otp_sessions", {
   otp: text("otp").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
   verified: boolean("verified").notNull().default(false),
+  attempts: integer("attempts").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

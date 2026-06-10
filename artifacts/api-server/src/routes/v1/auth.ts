@@ -1,15 +1,18 @@
 import { Router, type Request, type Response } from "express";
 import { OAuth2Client } from "google-auth-library";
 import { db, users, shops, otpSessions } from "@workspace/db";
-import { eq, or, and, lt } from "drizzle-orm";
+import { eq, or, and } from "drizzle-orm";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt.js";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
 import { mi } from "../../utils/mapId.js";
 import { otpPhoneLimiter, otpIpLimiter } from "../../middlewares/rateLimiter.js";
+import { sendOtpSms } from "../../lib/sms.js";
 
 const googleClient = new OAuth2Client(process.env["GOOGLE_CLIENT_ID"]);
 const router = Router();
+const IS_PRODUCTION = process.env["NODE_ENV"] === "production";
 const DEMO_OTP = process.env["OTP_DEMO_CODE"] ?? "123456";
+const MAX_VERIFY_ATTEMPTS = 5;
 
 function formatUser(u: typeof users.$inferSelect) {
   return {
@@ -90,10 +93,27 @@ router.post("/send-otp", otpIpLimiter, otpPhoneLimiter, async (req: Request, res
     return;
   }
   try {
-    await db.delete(otpSessions).where(eq(otpSessions.phone, phone));
+    // Generate random 6-digit OTP in production; use demo code in dev/test
+    const otp = IS_PRODUCTION
+      ? String(Math.floor(100000 + Math.random() * 900000))
+      : DEMO_OTP;
+
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-    await db.insert(otpSessions).values({ phone, otp: DEMO_OTP, expiresAt });
-    req.log.info({ phone }, "OTP sent (demo)");
+
+    if (IS_PRODUCTION) {
+      const result = await sendOtpSms(phone, otp);
+      if (!result.success) {
+        req.log.error({ phone, error: result.error }, "Fast2SMS send failed");
+        res.status(502).json({ success: false, message: result.error ?? "Failed to send OTP via SMS. Please try again." });
+        return;
+      }
+    }
+
+    // Delete any existing sessions for this phone before creating a new one
+    await db.delete(otpSessions).where(eq(otpSessions.phone, phone));
+    await db.insert(otpSessions).values({ phone, otp, expiresAt });
+
+    req.log.info({ phone, mode: IS_PRODUCTION ? "sms" : "demo" }, "OTP sent");
     res.json({ success: true, message: "OTP sent successfully" });
   } catch {
     res.status(500).json({ success: false, message: "Failed to send OTP. Please try again." });
@@ -110,10 +130,30 @@ router.post("/verify-otp", async (req: Request, res: Response): Promise<void> =>
       .orderBy(otpSessions.createdAt)
       .limit(1);
 
-    if (!session || session.otp !== otp || session.expiresAt < new Date()) {
+    // No session or already expired
+    if (!session || session.expiresAt < new Date()) {
       res.status(400).json({ success: false, message: "Invalid or expired OTP" });
       return;
     }
+
+    // Wrong OTP — track attempts and lock out after MAX_VERIFY_ATTEMPTS
+    if (session.otp !== otp) {
+      const newAttempts = session.attempts + 1;
+      if (newAttempts >= MAX_VERIFY_ATTEMPTS) {
+        // 5th wrong attempt — delete session immediately (no more tries)
+        await db.delete(otpSessions).where(eq(otpSessions.id, session.id));
+        res.status(400).json({ success: false, message: "Too many incorrect attempts. Please request a new OTP." });
+      } else {
+        await db.update(otpSessions)
+          .set({ attempts: newAttempts })
+          .where(eq(otpSessions.id, session.id));
+        const remaining = MAX_VERIFY_ATTEMPTS - newAttempts;
+        res.status(400).json({ success: false, message: `Invalid OTP. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.` });
+      }
+      return;
+    }
+
+    // Correct — delete session immediately (one-time use)
     await db.delete(otpSessions).where(eq(otpSessions.id, session.id));
 
     let [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);

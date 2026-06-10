@@ -311,9 +311,6 @@ export default function Auth() {
                   </div>
                 )}
 
-                <p className="text-xs text-muted-foreground text-center">
-                  Use <strong className="text-foreground">123456</strong> for demo
-                </p>
               </div>
 
               <div className="text-center">
