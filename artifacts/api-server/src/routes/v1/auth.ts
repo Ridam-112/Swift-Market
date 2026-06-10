@@ -6,7 +6,7 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
 import { mi } from "../../utils/mapId.js";
 import { otpPhoneLimiter, otpIpLimiter } from "../../middlewares/rateLimiter.js";
-import { sendOtpSms, OTP_MODE } from "../../lib/sms.js";
+import { sendOtpSms, verify2FactorOtp, OTP_MODE } from "../../lib/sms.js";
 
 const googleClient = new OAuth2Client(process.env["GOOGLE_CLIENT_ID"]);
 const router = Router();
@@ -92,25 +92,28 @@ router.post("/send-otp", otpIpLimiter, otpPhoneLimiter, async (req: Request, res
     return;
   }
   try {
-    // OTP_MODE=real → random 6-digit OTP via Fast2SMS
-    // OTP_MODE=demo → fixed demo code (local dev only)
-    const otp = OTP_MODE === "real"
-      ? String(Math.floor(100000 + Math.random() * 900000))
-      : DEMO_OTP;
-
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    // Always call sendOtpSms — it handles mode internally and will fail loudly if OTP_MODE=real and key is missing
-    const smsResult = await sendOtpSms(phone, otp);
-    if (!smsResult.success) {
-      req.log.error({ phone, error: smsResult.error }, "Fast2SMS send failed");
-      res.status(502).json({ success: false, message: smsResult.error ?? "Failed to send OTP via SMS. Please try again." });
-      return;
+    // OTP_MODE=real  → 2Factor AUTOGEN: they generate + SMS the OTP, we store their sessionId
+    // OTP_MODE=demo  → store fixed demo code for local testing
+    let otpToStore: string;
+
+    if (OTP_MODE === "real") {
+      const smsResult = await sendOtpSms(phone);
+      if (!smsResult.success) {
+        req.log.error({ phone, error: smsResult.error }, "2Factor send failed");
+        res.status(502).json({ success: false, message: smsResult.error ?? "Failed to send OTP via SMS. Please try again." });
+        return;
+      }
+      // Store as "2fa:<sessionId>" so verify-otp knows to call 2Factor verify API
+      otpToStore = `2fa:${smsResult.sessionId}`;
+    } else {
+      otpToStore = DEMO_OTP;
     }
 
     // Delete any existing sessions for this phone before creating a new one
     await db.delete(otpSessions).where(eq(otpSessions.phone, phone));
-    await db.insert(otpSessions).values({ phone, otp, expiresAt });
+    await db.insert(otpSessions).values({ phone, otp: otpToStore, expiresAt });
 
     req.log.info({ phone, mode: OTP_MODE }, "OTP sent");
     res.json({ success: true, message: "OTP sent successfully" });
@@ -135,11 +138,26 @@ router.post("/verify-otp", async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    // Determine if this session was created via 2Factor AUTOGEN (real mode)
+    const is2Factor = session.otp.startsWith("2fa:");
+
+    // Check OTP correctness — via 2Factor API (real) or string compare (demo)
+    let otpCorrect = false;
+    let otpError: string | undefined;
+
+    if (is2Factor) {
+      const sessionId = session.otp.slice(4); // strip "2fa:" prefix
+      const result = await verify2FactorOtp(sessionId, otp);
+      otpCorrect = result.success;
+      otpError = result.error;
+    } else {
+      otpCorrect = session.otp === otp;
+    }
+
     // Wrong OTP — track attempts and lock out after MAX_VERIFY_ATTEMPTS
-    if (session.otp !== otp) {
+    if (!otpCorrect) {
       const newAttempts = session.attempts + 1;
       if (newAttempts >= MAX_VERIFY_ATTEMPTS) {
-        // 5th wrong attempt — delete session immediately (no more tries)
         await db.delete(otpSessions).where(eq(otpSessions.id, session.id));
         res.status(400).json({ success: false, message: "Too many incorrect attempts. Please request a new OTP." });
       } else {
@@ -147,7 +165,10 @@ router.post("/verify-otp", async (req: Request, res: Response): Promise<void> =>
           .set({ attempts: newAttempts })
           .where(eq(otpSessions.id, session.id));
         const remaining = MAX_VERIFY_ATTEMPTS - newAttempts;
-        res.status(400).json({ success: false, message: `Invalid OTP. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.` });
+        const msg = otpError
+          ? `Invalid OTP. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`
+          : `Invalid OTP. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`;
+        res.status(400).json({ success: false, message: msg });
       }
       return;
     }
