@@ -24,7 +24,8 @@ export async function sendOtpSms(phone: string, otp: string): Promise<SmsResult>
   }
 
   try {
-    const url = `https://2factor.in/API/V1/${TWO_FACTOR_API_KEY}/SMS/${phone}/${otp}`;
+    // 2Factor requires full number with country code — prefix 91 for India
+    const url = `https://2factor.in/API/V1/${TWO_FACTOR_API_KEY}/SMS/91${phone}/${otp}`;
     const res = await fetch(url);
 
     const raw = await res.text();
