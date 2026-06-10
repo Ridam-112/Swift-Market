@@ -1,11 +1,11 @@
-// OTP_MODE=real  → always call Fast2SMS (even in Replit preview/dev)
-// OTP_MODE=demo  → use 123456 demo code, never call Fast2SMS
+// OTP_MODE=real  → always call 2Factor (even in Replit preview/dev)
+// OTP_MODE=demo  → use 123456 demo code, never call 2Factor
 // Default (unset) → demo
 
 export const OTP_MODE: "real" | "demo" =
   process.env["OTP_MODE"] === "real" ? "real" : "demo";
 
-const FAST2SMS_API_KEY = process.env["FAST2SMS_API_KEY"];
+const TWO_FACTOR_API_KEY = process.env["TWO_FACTOR_API_KEY"];
 
 export interface SmsResult {
   success: boolean;
@@ -18,43 +18,30 @@ export async function sendOtpSms(phone: string, otp: string): Promise<SmsResult>
     return { success: true };
   }
 
-  // OTP_MODE=real — must call Fast2SMS, no fallback
-  if (!FAST2SMS_API_KEY) {
-    return { success: false, error: "OTP_MODE=real but FAST2SMS_API_KEY is not set. Add it to Replit Secrets." };
+  // OTP_MODE=real — must call 2Factor, no fallback
+  if (!TWO_FACTOR_API_KEY) {
+    return { success: false, error: "OTP_MODE=real but TWO_FACTOR_API_KEY is not set. Add it to Replit Secrets." };
   }
 
   try {
-    const res = await fetch("https://www.fast2sms.com/dev/bulkV2", {
-      method: "POST",
-      headers: {
-        Authorization: FAST2SMS_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        route: "otp",
-        variables_values: otp,
-        numbers: phone,
-      }),
-    });
+    const url = `https://2factor.in/API/V1/${TWO_FACTOR_API_KEY}/SMS/${phone}/${otp}`;
+    const res = await fetch(url);
 
     const raw = await res.text();
-    let data: { return?: boolean; message?: string[] | string; request_id?: string };
+    let data: { Status?: string; Details?: string };
     try {
       data = JSON.parse(raw) as typeof data;
     } catch {
-      return { success: false, error: `Fast2SMS non-JSON response (HTTP ${res.status}): ${raw.slice(0, 200)}` };
+      return { success: false, error: `2Factor non-JSON response (HTTP ${res.status}): ${raw.slice(0, 200)}` };
     }
 
-    if (!res.ok || data.return === false) {
-      const msg = Array.isArray(data.message)
-        ? data.message.join("; ")
-        : (data.message ?? `HTTP ${res.status}`);
-      return { success: false, error: `Fast2SMS error: ${msg}` };
+    if (!res.ok || data.Status !== "Success") {
+      return { success: false, error: `2Factor error: ${data.Details ?? data.Status ?? `HTTP ${res.status}`}` };
     }
 
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { success: false, error: `Fast2SMS network error: ${msg}` };
+    return { success: false, error: `2Factor network error: ${msg}` };
   }
 }
