@@ -6,11 +6,10 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
 import { mi } from "../../utils/mapId.js";
 import { otpPhoneLimiter, otpIpLimiter } from "../../middlewares/rateLimiter.js";
-import { sendOtpSms } from "../../lib/sms.js";
+import { sendOtpSms, OTP_MODE } from "../../lib/sms.js";
 
 const googleClient = new OAuth2Client(process.env["GOOGLE_CLIENT_ID"]);
 const router = Router();
-const IS_PRODUCTION = process.env["NODE_ENV"] === "production";
 const DEMO_OTP = process.env["OTP_DEMO_CODE"] ?? "123456";
 const MAX_VERIFY_ATTEMPTS = 5;
 
@@ -93,27 +92,27 @@ router.post("/send-otp", otpIpLimiter, otpPhoneLimiter, async (req: Request, res
     return;
   }
   try {
-    // Generate random 6-digit OTP in production; use demo code in dev/test
-    const otp = IS_PRODUCTION
+    // OTP_MODE=real → random 6-digit OTP via Fast2SMS
+    // OTP_MODE=demo → fixed demo code (local dev only)
+    const otp = OTP_MODE === "real"
       ? String(Math.floor(100000 + Math.random() * 900000))
       : DEMO_OTP;
 
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    if (IS_PRODUCTION) {
-      const result = await sendOtpSms(phone, otp);
-      if (!result.success) {
-        req.log.error({ phone, error: result.error }, "Fast2SMS send failed");
-        res.status(502).json({ success: false, message: result.error ?? "Failed to send OTP via SMS. Please try again." });
-        return;
-      }
+    // Always call sendOtpSms — it handles mode internally and will fail loudly if OTP_MODE=real and key is missing
+    const smsResult = await sendOtpSms(phone, otp);
+    if (!smsResult.success) {
+      req.log.error({ phone, error: smsResult.error }, "Fast2SMS send failed");
+      res.status(502).json({ success: false, message: smsResult.error ?? "Failed to send OTP via SMS. Please try again." });
+      return;
     }
 
     // Delete any existing sessions for this phone before creating a new one
     await db.delete(otpSessions).where(eq(otpSessions.phone, phone));
     await db.insert(otpSessions).values({ phone, otp, expiresAt });
 
-    req.log.info({ phone, mode: IS_PRODUCTION ? "sms" : "demo" }, "OTP sent");
+    req.log.info({ phone, mode: OTP_MODE }, "OTP sent");
     res.json({ success: true, message: "OTP sent successfully" });
   } catch {
     res.status(500).json({ success: false, message: "Failed to send OTP. Please try again." });

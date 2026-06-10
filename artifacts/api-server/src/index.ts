@@ -5,6 +5,7 @@ import { seedShopTypes } from "./utils/seedShopTypes.js";
 import { seedCategories } from "./utils/seedCategories.js";
 import { clearDemoData } from "./utils/seedDemoData.js";
 import { cleanupAbandonedOrders } from "./utils/orderCleanup.js";
+import { OTP_MODE } from "./lib/sms.js";
 
 const rawPort = process.env["PORT"];
 if (!rawPort) throw new Error("PORT environment variable is required but was not provided.");
@@ -17,6 +18,10 @@ async function main() {
     app.listen(port, (err) => {
       if (err) { reject(err); return; }
       logger.info({ port }, "SwiftMart API Server listening");
+      logger.info(
+        { otpMode: OTP_MODE, fast2smsKeyPresent: !!process.env["FAST2SMS_API_KEY"] },
+        `OTP mode: ${OTP_MODE} | Fast2SMS key present: ${!!process.env["FAST2SMS_API_KEY"]}`
+      );
       resolve();
     });
   });
