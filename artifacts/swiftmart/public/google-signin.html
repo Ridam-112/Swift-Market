@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in with Google – SwiftMart</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #111;
+      color: #fff;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 24px;
+    }
+    img { height: 48px; width: auto; }
+    p { font-size: 14px; color: #aaa; }
+    #google-btn { min-height: 44px; }
+    #status { font-size: 13px; color: #888; min-height: 20px; }
+  </style>
+</head>
+<body>
+  <img src="/logo.png" alt="SwiftMart" />
+  <p>Sign in to continue to SwiftMart</p>
+  <div id="google-btn"></div>
+  <div id="status"></div>
+
+  <script>
+    var clientId = new URLSearchParams(window.location.search).get('client_id');
+
+    function setStatus(msg) {
+      document.getElementById('status').textContent = msg;
+    }
+
+    function onCredential(response) {
+      setStatus('Signing you in…');
+      var channel = new BroadcastChannel('swiftmart-google-auth');
+      channel.postMessage({ idToken: response.credential });
+      channel.close();
+      setTimeout(function() { window.close(); }, 300);
+    }
+
+    function initGIS() {
+      if (!clientId) {
+        setStatus('Configuration error — please close this window and try again.');
+        return;
+      }
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: onCredential,
+        auto_select: false,
+        cancel_on_tap_outside: false,
+        itp_support: true,
+      });
+      google.accounts.id.renderButton(
+        document.getElementById('google-btn'),
+        { theme: 'outline', size: 'large', width: 320, text: 'continue_with', logo_alignment: 'left', shape: 'pill' }
+      );
+    }
+
+    var script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.onload = initGIS;
+    script.onerror = function() { setStatus('Failed to load Google sign-in. Check your connection.'); };
+    document.head.appendChild(script);
+  </script>
+</body>
+</html>

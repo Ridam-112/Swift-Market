@@ -209,7 +209,8 @@
 /* ── Google Sign-In button dark overrides ────────────────── */
 .customer-theme .nsm7Bb-HzV7m-LgbsSe-MJoBVe,
 .customer-theme div[class*="nsm7Bb"][class*="MJoBVe"] {
-  background-color: #1e1e1e !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
   border-width: 10px !important;
   border-style: solid !important;
   border-color: #fff5f5fc !important;
@@ -231,7 +232,7 @@
 
 .customer-theme .nsm7Bb-HzV7m-LgbsSe-BPrWId,
 .customer-theme span[class*="nsm7Bb"][class*="BPrWId"] {
-  color: #ffffff !important;
+  color: #000308 !important;
 }
 
 @layer base {
