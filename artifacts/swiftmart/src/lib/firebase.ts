@@ -1,5 +1,11 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, type Auth } from "firebase/auth";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithRedirect,
+  getRedirectResult,
+  type Auth,
+} from "firebase/auth";
 
 interface FirebaseConfig {
   apiKey: string;
@@ -34,45 +40,47 @@ function getFirebaseAuth(): Auth {
 }
 
 /**
- * Opens a Firebase Google sign-in popup and returns the Google ID token.
- * The ID token is sent to POST /api/auth/google for server-side verification.
- * Domain-safe: works on any domain added to Firebase Authorized Domains.
+ * Initiates Google sign-in via a full-page redirect.
+ * Works in all environments including Replit iframes where signInWithPopup
+ * fails because window.opener postMessage is blocked by the iframe proxy.
  *
- * IMPORTANT — if the popup closes immediately with no login:
- *   Add the app's hostname to Firebase Console → Authentication → Settings → Authorized domains.
- *   The current hostname is: window.location.hostname
+ * After Google authentication, the user is redirected back to the app.
+ * Call getGoogleRedirectResult() on page load to complete the sign-in.
  */
-export async function signInWithGoogle(): Promise<string> {
+export async function startGoogleSignIn(): Promise<void> {
   const auth = getFirebaseAuth();
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
+  await signInWithRedirect(auth, provider);
+}
 
+/**
+ * Called on page load to pick up the Google redirect result.
+ * Returns the Google ID token if the user just completed Google sign-in,
+ * or null if there is no pending redirect result.
+ */
+export async function getGoogleRedirectResult(): Promise<string | null> {
+  if (!isFirebaseConfigured()) return null;
   try {
-    const result = await signInWithPopup(auth, provider);
+    const auth = getFirebaseAuth();
+    const result = await getRedirectResult(auth);
+    if (!result) return null;
     const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.idToken) {
-      throw new Error("Google sign-in succeeded but no ID token was returned.");
-    }
+    if (!credential?.idToken) return null;
     // Sign out from Firebase immediately — we use our own JWT session, not Firebase sessions
     await auth.signOut();
     return credential.idToken;
   } catch (err: unknown) {
-    // Translate common Firebase error codes into actionable messages
     const code = (err as { code?: string })?.code ?? "";
     if (code === "auth/unauthorized-domain") {
       const domain = window.location.hostname;
       throw new Error(
-        `This domain is not authorized for Google sign-in.\n` +
-        `Go to Firebase Console → Authentication → Settings → Authorized domains and add:\n` +
-        `"${domain}"`
+        `This domain is not authorized for Google sign-in. ` +
+        `Add "${domain}" to Firebase Console → Authentication → Settings → Authorized domains.`
       );
     }
-    if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
-      throw new Error("Sign-in cancelled. Please try again.");
-    }
-    if (code === "auth/popup-blocked") {
-      throw new Error("Pop-up was blocked by your browser. Please allow pop-ups for this site and try again.");
-    }
+    // No pending redirect — treat as null (not an error)
+    if (code === "auth/no-auth-event" || code === "auth/null-user") return null;
     throw err;
   }
 }

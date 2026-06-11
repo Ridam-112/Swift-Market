@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { signInWithGoogle, isFirebaseConfigured } from "@/lib/firebase";
+import { startGoogleSignIn, getGoogleRedirectResult, isFirebaseConfigured } from "@/lib/firebase";
 import { showGoogleLogin, showOtpLogin } from "@/lib/authConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,38 @@ export default function Auth() {
   const pincodeValid = pincode.length === 6 && isServicePincode(pincode);
   const pincodeOutOfArea = pincode.length === 6 && !isServicePincode(pincode);
   const areaName = getServiceAreaName(pincode);
+
+  // On mount: pick up the Google redirect result if the user just returned from Google OAuth.
+  useEffect(() => {
+    let cancelled = false;
+    async function handleRedirect() {
+      try {
+        const idToken = await getGoogleRedirectResult();
+        if (!idToken || cancelled) return;
+        setIsGoogleLoading(true);
+        setAuthMethod('google');
+        const result = await loginWithGoogle(idToken, "credential");
+        if (cancelled) return;
+        if (result.isNewUser) {
+          setStep('onboarding');
+        } else if (!result.user?.addresses?.length) {
+          setStep('address');
+        } else {
+          toast.success("Welcome back!");
+          setLocation("/");
+        }
+      } catch (err) {
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : "Google sign-in failed";
+        toast.error(msg);
+      } finally {
+        if (!cancelled) setIsGoogleLoading(false);
+      }
+    }
+    void handleRedirect();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -93,23 +125,16 @@ export default function Auth() {
     }
     setIsGoogleLoading(true);
     try {
-      setAuthMethod('google');
-      const idToken = await signInWithGoogle();
-      const result = await loginWithGoogle(idToken, "credential");
-      if (result.isNewUser) {
-        setStep('onboarding');
-      } else if (!result.user?.addresses?.length) {
-        setStep('address');
-      } else {
-        toast.success("Welcome back!");
-        setLocation("/");
-      }
+      // startGoogleSignIn() redirects the page to Google — no return value.
+      // The result is handled on mount via getGoogleRedirectResult().
+      await startGoogleSignIn();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Google sign-in failed";
       toast.error(msg);
-    } finally {
       setIsGoogleLoading(false);
     }
+    // Do NOT clear isGoogleLoading here — the page is navigating away.
+    // If startGoogleSignIn throws, the finally above clears it.
   };
 
   const handleOtpChange = (index: number, value: string) => {
