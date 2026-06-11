@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { useGoogleLogin } from "@react-oauth/google";
+import { signInWithGoogle, isFirebaseConfigured } from "@/lib/firebase";
 import { showGoogleLogin, showOtpLogin } from "@/lib/authConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,11 +86,16 @@ export default function Auth() {
     }
   };
 
-  const handleGoogleAccessToken = async (token: string) => {
+  const handleGoogleSignIn = async () => {
+    if (!isFirebaseConfigured()) {
+      toast.error("Google sign-in is not configured yet.");
+      return;
+    }
     setIsGoogleLoading(true);
     try {
       setAuthMethod('google');
-      const result = await loginWithGoogle(token, "accessToken");
+      const idToken = await signInWithGoogle();
+      const result = await loginWithGoogle(idToken, "credential");
       if (result.isNewUser) {
         setStep('onboarding');
       } else if (!result.user?.addresses?.length) {
@@ -100,17 +105,12 @@ export default function Auth() {
         setLocation("/");
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Google login failed";
+      const msg = err instanceof Error ? err.message : "Google sign-in failed";
       toast.error(msg);
     } finally {
       setIsGoogleLoading(false);
     }
   };
-
-  const googleLogin = useGoogleLogin({
-    onSuccess: (tokenResponse) => void handleGoogleAccessToken(tokenResponse.access_token),
-    onError: () => toast.error("Google sign-in failed. Please try again."),
-  });
 
   const handleOtpChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -225,7 +225,7 @@ export default function Auth() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => googleLogin()}
+                      onClick={() => void handleGoogleSignIn()}
                       className="w-full flex items-center gap-3 bg-white text-gray-800 font-medium text-sm rounded-xl px-4 h-12 border border-gray-200 hover:bg-gray-50 active:bg-gray-100 transition-colors"
                     >
                       <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
