@@ -37,18 +37,42 @@ function getFirebaseAuth(): Auth {
  * Opens a Firebase Google sign-in popup and returns the Google ID token.
  * The ID token is sent to POST /api/auth/google for server-side verification.
  * Domain-safe: works on any domain added to Firebase Authorized Domains.
+ *
+ * IMPORTANT — if the popup closes immediately with no login:
+ *   Add the app's hostname to Firebase Console → Authentication → Settings → Authorized domains.
+ *   The current hostname is: window.location.hostname
  */
 export async function signInWithGoogle(): Promise<string> {
   const auth = getFirebaseAuth();
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
 
-  const result = await signInWithPopup(auth, provider);
-  const credential = GoogleAuthProvider.credentialFromResult(result);
-  if (!credential?.idToken) {
-    throw new Error("Google sign-in succeeded but no ID token was returned.");
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (!credential?.idToken) {
+      throw new Error("Google sign-in succeeded but no ID token was returned.");
+    }
+    // Sign out from Firebase immediately — we use our own JWT session, not Firebase sessions
+    await auth.signOut();
+    return credential.idToken;
+  } catch (err: unknown) {
+    // Translate common Firebase error codes into actionable messages
+    const code = (err as { code?: string })?.code ?? "";
+    if (code === "auth/unauthorized-domain") {
+      const domain = window.location.hostname;
+      throw new Error(
+        `This domain is not authorized for Google sign-in.\n` +
+        `Go to Firebase Console → Authentication → Settings → Authorized domains and add:\n` +
+        `"${domain}"`
+      );
+    }
+    if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+      throw new Error("Sign-in cancelled. Please try again.");
+    }
+    if (code === "auth/popup-blocked") {
+      throw new Error("Pop-up was blocked by your browser. Please allow pop-ups for this site and try again.");
+    }
+    throw err;
   }
-  // Sign out from Firebase immediately — we use our own JWT session, not Firebase sessions
-  await auth.signOut();
-  return credential.idToken;
 }

@@ -1,6 +1,5 @@
-import React, { createContext, useState, useEffect, useCallback, useContext } from "react";
+import React, { createContext, useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
-import { AuthContext } from "@/context/AuthContext";
 
 export interface ShopListing {
   id: string;
@@ -69,7 +68,6 @@ interface ShopsContextType {
 export const ShopsContext = createContext<ShopsContextType | null>(null);
 
 export function ShopsProvider({ children }: { children: React.ReactNode }) {
-  const auth = useContext(AuthContext);
   const [allShops, setAllShops] = useState<ShopListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,17 +91,10 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
     fetchShops();
   }, [fetchShops]);
 
-  const userPincode = auth?.user?.pincode;
-  const isAdmin = auth?.isAdmin;
-
-  const shops = (isAdmin || !userPincode)
-    ? allShops
-    : allShops.filter(s => !s.pincode || s.pincode === userPincode);
-
   const getShopById = (id: string) => allShops.find(s => s.id === id);
 
   return (
-    <ShopsContext.Provider value={{ shops, allShops, isLoading, error, refetch: fetchShops, getShopById }}>
+    <ShopsContext.Provider value={{ shops: allShops, allShops, isLoading, error, refetch: fetchShops, getShopById }}>
       {children}
     </ShopsContext.Provider>
   );

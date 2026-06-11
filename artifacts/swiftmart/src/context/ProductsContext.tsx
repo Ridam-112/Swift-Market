@@ -53,15 +53,12 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const userPincode = auth?.user?.pincode;
-  const isAdmin = auth?.isAdmin;
   const authLoading = auth?.isLoading ?? true;
 
-  const fetchProducts = (pincode?: string) => {
+  const fetchProducts = () => {
     setIsLoading(true);
     setError(null);
-    const pincodeParam = pincode && !isAdmin ? `&pincode=${encodeURIComponent(pincode)}` : "";
-    api.get<{ success: boolean; products: ApiProduct[] }>(`/products?limit=200${pincodeParam}`)
+    api.get<{ success: boolean; products: ApiProduct[] }>(`/products?limit=200`)
       .then(d => {
         setProducts(d.products.map(mapApiProduct));
       })
@@ -75,8 +72,8 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (authLoading) return;
-    fetchProducts(userPincode || undefined);
-  }, [authLoading, userPincode, isAdmin]);
+    fetchProducts();
+  }, [authLoading]);
 
   const addProduct = (product: Product) => {
     setProducts(prev => [product, ...prev]);
@@ -89,7 +86,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       description: product.description,
       stock: product.stock,
       shopId: product.vendorId,
-    }).then(() => fetchProducts(userPincode || undefined)).catch(() => {});
+    }).then(() => fetchProducts()).catch(() => {});
   };
 
   const updateProduct = (id: string, updates: Partial<Product>) => {
@@ -108,7 +105,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ProductsContext.Provider value={{ products, isLoading, error, addProduct, updateProduct, deleteProduct, refetch: () => fetchProducts(userPincode || undefined) }}>
+    <ProductsContext.Provider value={{ products, isLoading, error, addProduct, updateProduct, deleteProduct, refetch: () => fetchProducts() }}>
       {children}
     </ProductsContext.Provider>
   );

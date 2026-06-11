@@ -1,5 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import pinoHttp from "pino-http";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -23,6 +24,13 @@ app.use(
     },
   }),
 );
+
+// Security headers — applied before CORS so headers are always present
+app.use(helmet({
+  // Allow the frontend to embed the app in iframes on the same origin (Replit canvas)
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
 
 const allowedOrigins = process.env["ALLOWED_ORIGINS"]?.split(",").map(o => o.trim()).filter(Boolean) ?? [];
 app.use(cors({
