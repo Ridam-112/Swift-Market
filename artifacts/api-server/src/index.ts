@@ -7,6 +7,11 @@ import { clearDemoData } from "./utils/seedDemoData.js";
 import { cleanupAbandonedOrders } from "./utils/orderCleanup.js";
 import { OTP_MODE } from "./lib/sms.js";
 
+// AUTH_MODE controls which login methods are enabled (otp | google | both).
+// Default is "otp" — safe to run without a domain or Google OAuth credentials.
+type AuthMode = "otp" | "google" | "both";
+const AUTH_MODE: AuthMode = (process.env["AUTH_MODE"] as AuthMode | undefined) ?? "otp";
+
 const rawPort = process.env["PORT"];
 if (!rawPort) throw new Error("PORT environment variable is required but was not provided.");
 const port = Number(rawPort);
@@ -19,8 +24,8 @@ async function main() {
       if (err) { reject(err); return; }
       logger.info({ port }, "SwiftMart API Server listening");
       logger.info(
-        { otpMode: OTP_MODE, fast2smsKeyPresent: !!process.env["FAST2SMS_API_KEY"] },
-        `OTP mode: ${OTP_MODE} | Fast2SMS key present: ${!!process.env["FAST2SMS_API_KEY"]}`
+        { otpMode: OTP_MODE, authMode: AUTH_MODE, twoFactorKeyPresent: !!process.env["TWO_FACTOR_API_KEY"] },
+        `Auth mode: ${AUTH_MODE} | OTP mode: ${OTP_MODE} | 2Factor key present: ${!!process.env["TWO_FACTOR_API_KEY"]}`
       );
       resolve();
     });

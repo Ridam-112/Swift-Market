@@ -13,6 +13,28 @@ const router = Router();
 const DEMO_OTP = process.env["OTP_DEMO_CODE"] ?? "123456";
 const MAX_VERIFY_ATTEMPTS = 5;
 
+// ─── Auth Mode ───────────────────────────────────────────────────────────────
+// Controls which login methods are available to users.
+//
+//   AUTH_MODE=otp    → Phone OTP only (current default — safe before domain/OAuth is ready)
+//   AUTH_MODE=google → Google OAuth only (requires GOOGLE_CLIENT_ID + domain + redirect URL)
+//   AUTH_MODE=both   → Both methods enabled
+//
+// To enable Google Auth later:
+//   1. Buy & connect your domain.
+//   2. Register app at https://console.cloud.google.com → OAuth 2.0 credentials.
+//   3. Set Authorised redirect URI to: https://<yourdomain>/api/auth/google/callback
+//   4. Set env vars: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL
+//   5. Change AUTH_MODE=both (or =google if removing OTP).
+//
+// Future env vars needed for Google Auth:
+//   GOOGLE_CLIENT_ID      — from Google Cloud Console
+//   GOOGLE_CLIENT_SECRET  — from Google Cloud Console
+//   GOOGLE_CALLBACK_URL   — e.g. https://swiftmart.yourdomain.com/api/auth/google/callback
+// ─────────────────────────────────────────────────────────────────────────────
+type AuthMode = "otp" | "google" | "both";
+const AUTH_MODE: AuthMode = (process.env["AUTH_MODE"] as AuthMode | undefined) ?? "otp";
+
 function formatUser(u: typeof users.$inferSelect) {
   return {
     id: u.id,
@@ -29,12 +51,24 @@ function formatUser(u: typeof users.$inferSelect) {
 }
 
 // GET /api/auth/config
+// Returns runtime auth configuration consumed by the frontend.
+// authMode drives which login methods the UI shows — no frontend deploy needed to switch modes.
 router.get("/config", (_req: Request, res: Response): void => {
-  res.json({ success: true, googleClientId: process.env["GOOGLE_CLIENT_ID"] ?? "" });
+  res.json({
+    success: true,
+    authMode: AUTH_MODE,
+    googleClientId: AUTH_MODE !== "otp" ? (process.env["GOOGLE_CLIENT_ID"] ?? "") : "",
+  });
 });
 
 // POST /api/auth/google
+// Disabled when AUTH_MODE=otp. Enable by setting AUTH_MODE=google or AUTH_MODE=both
+// along with GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_CALLBACK_URL.
 router.post("/google", async (req: Request, res: Response): Promise<void> => {
+  if (AUTH_MODE === "otp") {
+    res.status(403).json({ success: false, message: "Google login is not enabled. Set AUTH_MODE=google or AUTH_MODE=both to enable it." });
+    return;
+  }
   const { credential, accessToken: googleAccessToken } = req.body as { credential?: string; accessToken?: string };
   if (!credential && !googleAccessToken) {
     res.status(400).json({ success: false, message: "Google credential token required" });
