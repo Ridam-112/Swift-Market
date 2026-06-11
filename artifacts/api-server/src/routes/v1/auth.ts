@@ -53,11 +53,20 @@ function formatUser(u: typeof users.$inferSelect) {
 // GET /api/auth/config
 // Returns runtime auth configuration consumed by the frontend.
 // authMode drives which login methods the UI shows — no frontend deploy needed to switch modes.
+// Firebase public config is served here so secrets never need to be exposed as VITE_* env vars.
 router.get("/config", (_req: Request, res: Response): void => {
+  const firebaseConfig = AUTH_MODE !== "otp" ? {
+    apiKey: process.env["VITE_FIREBASE_API_KEY"] ?? "",
+    authDomain: process.env["VITE_FIREBASE_AUTH_DOMAIN"] ?? "",
+    projectId: process.env["VITE_FIREBASE_PROJECT_ID"] ?? "",
+    appId: process.env["VITE_FIREBASE_APP_ID"] ?? "",
+  } : null;
+
   res.json({
     success: true,
     authMode: AUTH_MODE,
     googleClientId: AUTH_MODE !== "otp" ? (process.env["GOOGLE_CLIENT_ID"] ?? "") : "",
+    firebaseConfig,
   });
 });
 

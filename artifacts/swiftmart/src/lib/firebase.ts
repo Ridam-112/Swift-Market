@@ -1,26 +1,29 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, type Auth } from "firebase/auth";
 
-// Firebase public config — read from env vars only, never hardcoded.
-// These are intentionally public: Firebase security is enforced via
-// Authorized Domains in the Firebase console, not by keeping config secret.
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
-};
+interface FirebaseConfig {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  appId: string;
+}
 
-export const isFirebaseConfigured = (): boolean =>
-  !!(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId && firebaseConfig.appId);
-
+let _config: FirebaseConfig | null = null;
 let _app: FirebaseApp | null = null;
 let _auth: Auth | null = null;
 
+/** Called once at bootstrap with config fetched from /api/auth/config */
+export function initFirebase(config: FirebaseConfig): void {
+  _config = config;
+}
+
+export const isFirebaseConfigured = (): boolean =>
+  !!(_config?.apiKey && _config?.authDomain && _config?.projectId && _config?.appId);
+
 function getFirebaseApp(): FirebaseApp {
   if (_app) return _app;
-  if (!isFirebaseConfigured()) throw new Error("Firebase is not configured. Set VITE_FIREBASE_* env vars.");
-  _app = getApps().length > 0 ? getApps()[0]! : initializeApp(firebaseConfig);
+  if (!isFirebaseConfigured()) throw new Error("Firebase is not configured. Set VITE_FIREBASE_* env vars in Replit.");
+  _app = getApps().length > 0 ? getApps()[0]! : initializeApp(_config!);
   return _app;
 }
 
@@ -32,7 +35,7 @@ function getFirebaseAuth(): Auth {
 
 /**
  * Opens a Firebase Google sign-in popup and returns the Google ID token.
- * The ID token is then sent to POST /api/auth/google for server-side verification.
+ * The ID token is sent to POST /api/auth/google for server-side verification.
  * Domain-safe: works on any domain added to Firebase Authorized Domains.
  */
 export async function signInWithGoogle(): Promise<string> {
