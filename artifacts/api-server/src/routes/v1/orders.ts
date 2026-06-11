@@ -1,6 +1,6 @@
 import { Router, type Response } from "express";
 import { db, orders, products, shops, users, payouts, coupons } from "@workspace/db";
-import { eq, and, ilike, or, gte, ne, desc, count, sql } from "drizzle-orm";
+import { eq, and, ilike, or, gte, ne, desc, count, sql, inArray } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { resolveCommission, calculateCommissionAmount } from "../../utils/commission.js";
 import { createNotificationLimited } from "../../utils/notification.js";
@@ -72,10 +72,37 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<v
   const { status, shopId, page = "1", limit = "20", search } = req.query as Record<string, string>;
   const pg = parseInt(page), lm = parseInt(limit);
   const conditions = [];
+  const role = req.user!.role;
 
-  if (req.user!.role === "customer") conditions.push(eq(orders.customerId, req.user!.userId));
+  if (role === "customer") {
+    // Customers see only their own orders
+    conditions.push(eq(orders.customerId, req.user!.userId));
+  } else if (role === "vendor") {
+    // BUG#2 fix: vendors must only see orders for shops they own
+    const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq(shops.ownerId, req.user!.userId));
+    const vendorShopIds = vendorShops.map(s => s.id);
+
+    if (vendorShopIds.length === 0) {
+      res.json({ success: true, orders: [], total: 0, page: pg, pages: 0 });
+      return;
+    }
+
+    if (shopId) {
+      // If a specific shopId is requested, verify it belongs to this vendor
+      if (!vendorShopIds.includes(shopId)) {
+        res.status(403).json({ success: false, message: "Forbidden: you do not own this shop" });
+        return;
+      }
+      conditions.push(eq(orders.shopId, shopId));
+    } else {
+      conditions.push(inArray(orders.shopId, vendorShopIds));
+    }
+  } else {
+    // Admins/super_admins see all orders; optionally filtered by shopId
+    if (shopId) conditions.push(eq(orders.shopId, shopId));
+  }
+
   if (status) conditions.push(eq(orders.status, status));
-  if (shopId) conditions.push(eq(orders.shopId, shopId));
   if (search) {
     conditions.push(or(
       ilike(orders.customerName, `%${search}%`),
