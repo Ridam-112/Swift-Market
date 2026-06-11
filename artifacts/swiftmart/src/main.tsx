@@ -12,7 +12,8 @@ interface FirebaseConfig {
 }
 
 async function bootstrap() {
-  let authMode: AuthMode = "otp"; // safe default — OTP always works without domain/OAuth
+  let authMode: AuthMode = "otp";
+  let googleClientId = "";
 
   try {
     const res = await fetch("/api/auth/config");
@@ -23,9 +24,8 @@ async function bootstrap() {
       firebaseConfig?: FirebaseConfig | null;
     };
     authMode = data.authMode ?? "otp";
+    googleClientId = data.googleClientId ?? "";
 
-    // Init Firebase with config served from the backend (never from VITE_* build-time vars).
-    // This makes the setup domain-migration-safe — no frontend rebuild needed when switching domains.
     if (data.firebaseConfig?.apiKey) {
       initFirebase(data.firebaseConfig);
     }
@@ -33,7 +33,7 @@ async function bootstrap() {
     // non-fatal — falls back to OTP-only mode
   }
 
-  setAuthConfig(authMode, "");
+  setAuthConfig(authMode, googleClientId);
 
   createRoot(document.getElementById("root")!).render(<App />);
 }
