@@ -31,7 +31,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=5000 pnpm --filter @workspace/swiftmart run dev"
+args = "pnpm --filter @workspace/api-server run dev & PORT=5000 pnpm --filter @workspace/swiftmart run dev"
 waitForPort = 5000
 
 [agent]
@@ -88,4 +88,4 @@ JWT_SECRET_GENERATED = "ready"
 JWT_REFRESH_SECRET_GENERATED = "ready"
 OTP_MODE = "real"
 AUTH_MODE = "both"
-ALLOWED_ORIGINS = "https://1a343c7f-737e-4ef7-a878-6b3f26728b59-00-1scqb92lojd7x.sisko.replit.dev"
+ALLOWED_ORIGINS = "https://0c56de8d-15dd-44e6-9ea6-a0c44505e683-00-1rz0cfa48qbm2.sisko.replit.dev"
