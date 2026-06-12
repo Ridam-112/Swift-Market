@@ -255,12 +255,12 @@ router.patch("/:id", authenticate, V, async (req: AuthRequest, res: Response): P
   const isAdmin = req.user!.role === "admin" || req.user!.role === "super_admin";
   const body = req.body as Record<string, unknown>;
 
-  if (!isAdmin) {
-    // Verify the vendor owns this product's shop
-    const [existing] = await db.select({ shopId: products.shopId })
-      .from(products).where(eq(products.id, req.params["id"]!)).limit(1);
-    if (!existing) { res.status(404).json({ success: false, message: "Not found" }); return; }
+  // Fetch existing product upfront for ownership check + old image cleanup (M2)
+  const [existing] = await db.select({ shopId: products.shopId, images: products.images })
+    .from(products).where(eq(products.id, req.params["id"]!)).limit(1);
+  if (!existing) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
+  if (!isAdmin) {
     const [shop] = await db.select({ id: shops.id }).from(shops)
       .where(eq(shops.ownerId, req.user!.userId)).limit(1);
     if (!shop || shop.id !== existing.shopId) {
@@ -285,6 +285,17 @@ router.patch("/:id", authenticate, V, async (req: AuthRequest, res: Response): P
     .where(eq(products.id, req.params["id"]!))
     .returning();
   if (!product) { res.status(404).json({ success: false, message: "Not found" }); return; }
+
+  // M2: delete Cloudinary images that were removed from the images array
+  if ("images" in updateData) {
+    const oldImages = (existing.images as string[]) ?? [];
+    const newImages = (updateData["images"] as string[]) ?? [];
+    const removed = oldImages.filter(url => !newImages.includes(url));
+    if (removed.length > 0) {
+      void Promise.all(removed.map(url => deleteFromCloudinary(url)));
+    }
+  }
+
   res.json({ success: true, product: mi(product) });
 });
 

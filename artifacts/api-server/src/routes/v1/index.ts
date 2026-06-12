@@ -18,6 +18,7 @@ import heroBannersRouter from "./hero-banners.js";
 import paymentsRouter from "./payments.js";
 import pushRouter from "./push.js";
 import supportRouter from "./support.js";
+import analyticsRouter from "./analytics.js";
 
 const router = Router();
 
@@ -40,5 +41,6 @@ router.use("/hero-banners", heroBannersRouter);
 router.use("/payments", paymentsRouter);
 router.use("/push", pushRouter);
 router.use("/support", supportRouter);
+router.use("/admin/analytics", analyticsRouter);
 
 export default router;

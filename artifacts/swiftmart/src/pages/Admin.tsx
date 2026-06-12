@@ -89,7 +89,6 @@ interface AdminStats {
   totalCommission: number;
 }
 
-interface AnalyticsPoint { label: string; revenue: number; orders: number; newUsers: number; }
 
 function buildDaySeries(orders: ApiOrder[]) {
   const now = new Date();
@@ -105,52 +104,6 @@ function buildDaySeries(orders: ApiOrder[]) {
   });
 }
 
-function buildAnalyticsSeries(orders: ApiOrder[], period: 'Daily' | 'Weekly' | 'Monthly', signupDates: number[] = []): AnalyticsPoint[] {
-  const now = new Date();
-  const countSignups = (startMs: number, endMs: number) =>
-    signupDates.filter(t => t >= startMs && t <= endMs).length;
-  if (period === 'Daily') {
-    return buildDaySeries(orders).map((d, i) => {
-      const day = new Date(now); day.setDate(day.getDate() - (6 - i));
-      const startMs = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
-      return { label: d.date, revenue: d.revenue, orders: d.orders, newUsers: countSignups(startMs, startMs + 86400000 - 1) };
-    });
-  }
-  if (period === 'Weekly') {
-    return Array.from({ length: 4 }, (_, i) => {
-      const wEnd = new Date(now); wEnd.setDate(wEnd.getDate() - i * 7);
-      const wStart = new Date(wEnd); wStart.setDate(wEnd.getDate() - 6);
-      const wo = orders.filter(o => { const t = new Date(o.createdAt).getTime(); return t >= wStart.getTime() && t <= wEnd.getTime(); });
-      const revenue = wo.reduce((s, o) => s + (o.netAmount ?? o.subtotal ?? 0), 0);
-      return { label: `Week ${4 - i}`, revenue, orders: wo.length, newUsers: countSignups(wStart.getTime(), wEnd.getTime()) };
-    }).reverse();
-  }
-  return Array.from({ length: 6 }, (_, i) => {
-    const month = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-    const next = new Date(now.getFullYear(), now.getMonth() - (5 - i) + 1, 1);
-    const mo = orders.filter(o => { const t = new Date(o.createdAt).getTime(); return t >= month.getTime() && t < next.getTime(); });
-    const revenue = mo.reduce((s, o) => s + (o.netAmount ?? o.subtotal ?? 0), 0);
-    return { label: month.toLocaleDateString('en-US', { month: 'short' }), revenue, orders: mo.length, newUsers: countSignups(month.getTime(), next.getTime() - 1) };
-  });
-}
-
-function buildTopProducts(orders: ApiOrder[]) {
-  const map = new Map<string, { name: string; category: string; unitsSold: number; revenue: number; vendorName: string }>();
-  for (const order of orders) {
-    for (const item of order.items) {
-      const name = (item as { productName?: string; name?: string }).productName ?? (item as { name?: string }).name ?? 'Unknown';
-      const key = name.toLowerCase();
-      const qty = (item as { qty?: number }).qty ?? 1;
-      const price = (item as { price?: number }).price ?? 0;
-      const cat = (item as { category?: string }).category ?? 'other';
-      const ex = map.get(key);
-      if (ex) { ex.unitsSold += qty; ex.revenue += qty * price; }
-      else map.set(key, { name, category: cat, unitsSold: qty, revenue: qty * price, vendorName: order.shopName ?? 'Unknown' });
-    }
-  }
-  return [...map.entries()].map(([, v], i) => ({ id: `tp-${i}`, ...v, image: '' }))
-    .sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 5);
-}
 
 type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support';
 
@@ -1589,40 +1542,42 @@ function ReportsTab() {
 // ANALYTICS SECTION
 // ============================================================================
 
+interface AnalyticsData {
+  series: { label: string; revenue: number; orders: number; newUsers: number }[];
+  topProducts: { name: string; category: string; unitsSold: number; revenue: number }[];
+  topShops: { shopId: string; shopName: string; totalRevenue: number; totalOrders: number }[];
+}
+
 function AnalyticsTab() {
   const [period, setPeriod] = useState<'Daily' | 'Weekly' | 'Monthly'>('Daily');
-  const { shops } = useShops();
-  const [allOrders, setAllOrders] = useState<ApiOrder[]>([]);
-  const [signupTimestamps, setSignupTimestamps] = useState<number[]>([]);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
-  const loadAnalytics = useCallback(() => {
+  const loadAnalytics = useCallback((p: 'Daily' | 'Weekly' | 'Monthly') => {
     setAnalyticsLoading(true);
-    Promise.all([
-      api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=2000')
-        .then(d => setAllOrders(d.orders)).catch(() => {}),
-      api.get<{ success: boolean; dates: string[] }>('/admin/user-signups')
-        .then(d => setSignupTimestamps(d.dates.map(s => new Date(s).getTime()))).catch(() => {}),
-    ]).finally(() => setAnalyticsLoading(false));
+    api.get<{ success: boolean } & AnalyticsData>(`/admin/analytics?period=${p.toLowerCase()}`)
+      .then(d => setAnalyticsData({ series: d.series, topProducts: d.topProducts, topShops: d.topShops }))
+      .catch(() => {})
+      .finally(() => setAnalyticsLoading(false));
   }, []);
 
-  useEffect(() => { loadAnalytics(); }, [loadAnalytics]);
+  useEffect(() => { loadAnalytics(period); }, [period, loadAnalytics]);
 
-  const data = useMemo(() => buildAnalyticsSeries(allOrders, period, signupTimestamps), [allOrders, period, signupTimestamps]);
-  const computedTopProducts = useMemo(() => buildTopProducts(allOrders), [allOrders]);
+  const data = analyticsData?.series ?? [];
+  const topProducts = analyticsData?.topProducts ?? [];
+  const topShops = analyticsData?.topShops ?? [];
 
   const totalRev = data.reduce((sum, d) => sum + d.revenue, 0);
   const totalOrd = data.reduce((sum, d) => sum + d.orders, 0);
   const totalNewUsers = data.reduce((sum, d) => sum + d.newUsers, 0);
-
-  const maxUnits = computedTopProducts.length > 0 ? computedTopProducts[0].unitsSold : 1;
+  const maxUnits = topProducts.length > 0 ? topProducts[0].unitsSold : 1;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold text-foreground">Platform Analytics</h2>
-          <button onClick={loadAnalytics} disabled={analyticsLoading} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-card neu-card text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50">
+          <button onClick={() => loadAnalytics(period)} disabled={analyticsLoading} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-card neu-card text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50">
             <RefreshCw className={`w-4 h-4 ${analyticsLoading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
@@ -1708,13 +1663,13 @@ function AnalyticsTab() {
           </div>
           
           <div className="space-y-5">
-            {computedTopProducts.length === 0 ? (
+            {topProducts.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">
                 <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
                 No order data yet — top products will appear here once orders are placed.
               </div>
-            ) : computedTopProducts.map((p, i) => (
-              <div key={p.id} className="space-y-2">
+            ) : topProducts.map((p, i) => (
+              <div key={`${p.name}-${i}`} className="space-y-2">
                 <div className="flex items-center gap-3">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
                     i === 0 ? 'bg-amber-400 text-white' : i === 1 ? 'bg-slate-400 text-white' : i === 2 ? 'bg-amber-700 text-white' : 'bg-muted text-muted-foreground'
@@ -1726,12 +1681,9 @@ function AnalyticsTab() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate">{p.name}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 border-none bg-background neu-inset capitalize">
-                        {p.category.replace('-', ' ')}
-                      </Badge>
-                      <span className="text-[10px] text-muted-foreground truncate">{p.vendorName}</span>
-                    </div>
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 border-none bg-background neu-inset capitalize mt-0.5">
+                      {p.category.replace('-', ' ')}
+                    </Badge>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-bold text-foreground">{p.unitsSold} units</p>
@@ -1752,29 +1704,28 @@ function AnalyticsTab() {
         <div className="bg-card p-6 rounded-3xl neu-card space-y-6">
           <div>
             <h3 className="text-lg font-bold text-foreground">Top Shops</h3>
-            <p className="text-sm text-muted-foreground">By total revenue</p>
+            <p className="text-sm text-muted-foreground">By revenue this period</p>
           </div>
           
           <div className="space-y-4">
-            {[...shops].sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0)).slice(0, 5).map((shop) => (
-              <div key={shop.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-background neu-inset rounded-2xl">
+            {topShops.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                <Store className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                No order data yet — top shops will appear here once orders are placed.
+              </div>
+            ) : topShops.map((shop) => (
+              <div key={shop.shopId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-background neu-inset rounded-2xl">
                 <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <img src={shop.image} alt={shop.storeName} className="w-12 h-12 rounded-full object-cover bg-muted" />
-                    <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5">
-                      <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                    </div>
+                  <div className="w-10 h-10 rounded-full bg-muted neu-inset flex items-center justify-center shrink-0">
+                    <Store className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="font-semibold text-foreground">{shop.storeName}</p>
-                    <p className="text-xs text-muted-foreground">{shop.totalOrders} total orders</p>
+                    <p className="font-semibold text-foreground">{shop.shopName}</p>
+                    <p className="text-xs text-muted-foreground">{shop.totalOrders} orders</p>
                   </div>
                 </div>
                 <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 border-t sm:border-t-0 border-border/50 pt-2 sm:pt-0">
-                  <p className="font-bold text-foreground">{formatINR(shop.totalRevenue || 0)}</p>
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-none">
-                    Comm: {formatINR(Math.round((shop.totalRevenue || 0) * (shop.commissionRate || 5) / 100))}
-                  </Badge>
+                  <p className="font-bold text-foreground">{formatINR(shop.totalRevenue)}</p>
                 </div>
               </div>
             ))}

@@ -83,11 +83,22 @@ router.post("/:id/click", async (req: Request, res: Response): Promise<void> => 
 
 // PATCH /api/hero-banners/:id — admin, update banner
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const body = req.body as Record<string, unknown>;
+  // M2: fetch old imageUrl before update so we can clean up replaced Cloudinary asset
+  const [oldBanner] = await db.select({ imageUrl: heroBanners.imageUrl })
+    .from(heroBanners).where(eq(heroBanners.id, req.params["id"]!)).limit(1);
+
   const [banner] = await db.update(heroBanners)
-    .set(req.body as Record<string, unknown>)
+    .set(body)
     .where(eq(heroBanners.id, req.params["id"]!))
     .returning();
   if (!banner) { res.status(404).json({ success: false, message: "Banner not found" }); return; }
+
+  // Delete old Cloudinary image if imageUrl was replaced
+  if (oldBanner?.imageUrl && "imageUrl" in body && body["imageUrl"] !== oldBanner.imageUrl) {
+    void deleteFromCloudinary(oldBanner.imageUrl);
+  }
+
   res.json({ success: true, banner: mi(banner) });
 });
 

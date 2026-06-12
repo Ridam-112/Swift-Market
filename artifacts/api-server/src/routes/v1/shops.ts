@@ -267,8 +267,21 @@ router.patch("/my/profile", authenticate, async (req: AuthRequest, res: Response
   for (const key of allowed) {
     if (body[key] !== undefined) update[key] = body[key];
   }
+  // M2: fetch old image/banner before update so we can clean up replaced Cloudinary assets
+  const [oldShop] = await db.select({ image: shops.image, banner: shops.banner })
+    .from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
+
   const [updated] = await db.update(shops).set(update).where(eq(shops.ownerId, req.user!.userId)).returning();
   if (!updated) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+
+  // Delete old Cloudinary assets that were replaced
+  if (oldShop) {
+    const toDelete: string[] = [];
+    if ("image" in update && update["image"] !== oldShop.image && oldShop.image) toDelete.push(oldShop.image);
+    if ("banner" in update && update["banner"] !== oldShop.banner && oldShop.banner) toDelete.push(oldShop.banner);
+    if (toDelete.length > 0) void Promise.all(toDelete.map(url => deleteFromCloudinary(url)));
+  }
+
   res.json({ success: true, shop: mi(updated) });
 });
 
@@ -300,8 +313,20 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
     res.status(400).json({ success: false, message: "No valid fields provided. Allowed: " + [...SHOP_PATCH_ALLOWED].join(", ") });
     return;
   }
+  // M2: fetch old image/banner before update so we can clean up replaced Cloudinary assets
+  const [oldShop] = await db.select({ image: shops.image, banner: shops.banner })
+    .from(shops).where(eq(shops.id, req.params["id"] as string)).limit(1);
+
   const [shop] = await db.update(shops).set(update).where(eq(shops.id, req.params["id"] as string)).returning();
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+
+  if (oldShop) {
+    const toDelete: string[] = [];
+    if ("image" in update && update["image"] !== oldShop.image && oldShop.image) toDelete.push(oldShop.image);
+    if ("banner" in update && update["banner"] !== oldShop.banner && oldShop.banner) toDelete.push(oldShop.banner);
+    if (toDelete.length > 0) void Promise.all(toDelete.map(url => deleteFromCloudinary(url)));
+  }
+
   res.json({ success: true, shop: mi(shop) });
 });
 
