@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect } from "react";
 import { User, Address, VendorApplication, AdminCustomer, PlatformOrder, Report } from "@/types";
-
+import { toast } from "sonner";
 import { api, setTokens, clearTokens } from "@/lib/api";
 
 export type UserRole = 'customer' | 'vendor' | 'admin' | 'super_admin';
@@ -431,21 +431,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const banCustomer = (customerId: string) => {
-    api.patch(`/users/${customerId}/ban`).catch(() => {});
+    api.patch(`/users/${customerId}/ban`).catch((e: unknown) => {
+      toast.error(e instanceof Error ? e.message : "Failed to ban customer");
+    });
   };
 
   const unbanCustomer = (customerId: string) => {
-    api.patch(`/users/${customerId}/unban`).catch(() => {});
+    api.patch(`/users/${customerId}/unban`).catch((e: unknown) => {
+      toast.error(e instanceof Error ? e.message : "Failed to unban customer");
+    });
   };
 
   const banVendor = (vendorId: string) => {
     setBannedVendorIds(prev => [...new Set([...prev, vendorId])]);
-    api.post(`/shops/${vendorId}/ban`).catch(() => {});
+    api.post(`/shops/${vendorId}/ban`).catch((e: unknown) => {
+      setBannedVendorIds(prev => prev.filter(id => id !== vendorId));
+      toast.error(e instanceof Error ? e.message : "Failed to ban vendor");
+    });
   };
 
   const unbanVendor = (vendorId: string) => {
     setBannedVendorIds(prev => prev.filter(id => id !== vendorId));
-    api.post(`/shops/${vendorId}/unban`).catch(() => {});
+    api.post(`/shops/${vendorId}/unban`).catch((e: unknown) => {
+      setBannedVendorIds(prev => [...new Set([...prev, vendorId])]);
+      toast.error(e instanceof Error ? e.message : "Failed to unban vendor");
+    });
   };
 
   const removeVendor = (vendorId: string) => {
@@ -454,27 +464,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ? { ...app, status: 'rejected', rejectionReason: "Removed by admin" }
         : app
     ));
-    api.delete(`/shops/${vendorId}`).catch(() => {});
+    api.delete(`/shops/${vendorId}`).catch((e: unknown) => {
+      toast.error(e instanceof Error ? e.message : "Failed to remove vendor");
+    });
   };
 
   const updateOrderStatus = (orderId: string, status: PlatformOrder['status']) => {
-    api.patch(`/orders/${orderId}/status`, { status }).catch(() => {});
+    api.patch(`/orders/${orderId}/status`, { status }).catch((e: unknown) => {
+      toast.error(e instanceof Error ? e.message : "Failed to update order status");
+    });
   };
 
   const refundOrder = (orderId: string) => {
-    api.post(`/orders/${orderId}/refund`).catch(() => {});
+    api.post(`/orders/${orderId}/refund`).catch((e: unknown) => {
+      toast.error(e instanceof Error ? e.message : "Failed to process refund");
+    });
   };
 
   const resolveReport = (reportId: string) => {
     api.patch(`/reports/${reportId}/resolve`)
       .then(() => setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'resolved' as const } : r)))
-      .catch(() => {});
+      .catch((e: unknown) => {
+        toast.error(e instanceof Error ? e.message : "Failed to resolve report");
+      });
   };
 
   const ignoreReport = (reportId: string) => {
     api.patch(`/reports/${reportId}/ignore`)
       .then(() => setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'ignored' as const } : r)))
-      .catch(() => {});
+      .catch((e: unknown) => {
+        toast.error(e instanceof Error ? e.message : "Failed to ignore report");
+      });
   };
 
   return (

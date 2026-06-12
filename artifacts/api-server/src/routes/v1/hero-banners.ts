@@ -97,10 +97,11 @@ router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): 
     .from(heroBanners)
     .where(eq(heroBanners.id, req.params["id"]!))
     .limit(1);
-  if (banner?.imageUrl) {
-    await deleteFromCloudinary(banner.imageUrl);
-  }
+  // Delete from DB first — Cloudinary cleanup is non-blocking so a CDN failure never orphans the DB record
   await db.delete(heroBanners).where(eq(heroBanners.id, req.params["id"]!));
+  if (banner?.imageUrl) {
+    deleteFromCloudinary(banner.imageUrl).catch(() => {});
+  }
   res.json({ success: true, message: "Banner deleted" });
 });
 

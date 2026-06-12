@@ -81,15 +81,27 @@ router.post("/validate", authenticate, async (req: AuthRequest, res: Response): 
 
 router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body as Record<string, unknown>;
+  const code = String(body["code"] ?? "").trim().toUpperCase();
+  if (!code) { res.status(400).json({ success: false, message: "Coupon code is required" }); return; }
+  const parsedExpiry = new Date(String(body["expiryDate"] ?? ""));
+  if (isNaN(parsedExpiry.getTime())) { res.status(400).json({ success: false, message: "Invalid expiry date" }); return; }
+  const value = Number(body["value"] ?? 0);
+  const minimumOrder = Number(body["minimumOrder"] ?? 0);
+  const maximumDiscount = body["maximumDiscount"] != null ? Number(body["maximumDiscount"]) : undefined;
+  const usageLimit = Number(body["usageLimit"] ?? 0);
+  const perUserLimit = Number(body["perUserLimit"] ?? 0);
+  if (isNaN(value) || isNaN(minimumOrder) || isNaN(usageLimit) || isNaN(perUserLimit)) {
+    res.status(400).json({ success: false, message: "Invalid numeric field" }); return;
+  }
   const [coupon] = await db.insert(coupons).values({
-    code: String(body["code"] ?? "").toUpperCase(),
+    code,
     type: body["type"] ? String(body["type"]) : "percentage",
-    value: body["value"] != null ? Number(body["value"]) : 0,
-    minimumOrder: body["minimumOrder"] != null ? Number(body["minimumOrder"]) : 0,
-    maximumDiscount: body["maximumDiscount"] != null ? Number(body["maximumDiscount"]) : undefined,
-    expiryDate: new Date(String(body["expiryDate"] ?? "")),
-    usageLimit: body["usageLimit"] != null ? Number(body["usageLimit"]) : 0,
-    perUserLimit: body["perUserLimit"] != null ? Number(body["perUserLimit"]) : 0,
+    value,
+    minimumOrder,
+    maximumDiscount: (maximumDiscount != null && !isNaN(maximumDiscount)) ? maximumDiscount : undefined,
+    expiryDate: parsedExpiry,
+    usageLimit,
+    perUserLimit,
     isActive: body["isActive"] != null ? Boolean(body["isActive"]) : true,
     appliesTo: body["appliesTo"] ? String(body["appliesTo"]) : "all",
     targetId: body["targetId"] ? String(body["targetId"]) : undefined,

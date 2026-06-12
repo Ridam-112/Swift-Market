@@ -64,6 +64,10 @@ async function request<T>(path: string, options: RequestInit = {}, retry = true)
     throw new Error("Session expired");
   }
 
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    throw new Error(`Server error (${res.status}) — unexpected response format`);
+  }
   const data = (await res.json()) as T & { message?: string };
   if (!res.ok) throw new Error((data as { message?: string }).message ?? "Request failed");
   return data;

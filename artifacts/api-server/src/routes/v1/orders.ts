@@ -298,13 +298,13 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
         .where(eq(coupons.code, couponCode));
     }
 
-    // Notify customer
-    await createNotificationLimited(req.user!.userId, {
+    // Notify customer — fire-and-forget so a notification failure never blocks the 201
+    createNotificationLimited(req.user!.userId, {
       type: "order_update",
       title: "Order Placed Successfully",
       message: `Your order #${order!.id.slice(-6).toUpperCase()} has been placed. We'll keep you updated!`,
       data: { orderId: order!.id },
-    });
+    }).catch(() => {});
 
     // Notify vendor/shop owner
     try {

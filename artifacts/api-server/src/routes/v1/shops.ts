@@ -26,7 +26,8 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
   const { status, shopType, city, ownerId, pincode, page = "1", limit = "20", search, category } =
     req.query as Record<string, string>;
 
-  const pg = parseInt(page), lm = parseInt(limit);
+  const pg = Math.max(1, parseInt(page) || 1);
+  const lm = Math.min(200, Math.max(1, parseInt(limit) || 20));
   const conditions = [];
 
   if (status) conditions.push(eq(shops.status, status));
