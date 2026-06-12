@@ -3,6 +3,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://swiftmart-api-1d8w.onrender.com/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
