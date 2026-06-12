@@ -12,7 +12,7 @@ import {
   XCircle, Clock, Search, Shield, Star, ShoppingBag, Trash2, Eye, EyeOff,
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, Send,
-  ImageIcon, Plus, Edit2, Tag, Loader2
+  ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare
 } from "lucide-react";
 import { categories } from "@/data/categories";
 import { VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog, Vendor } from "@/types";
@@ -152,7 +152,7 @@ function buildTopProducts(orders: ApiOrder[]) {
     .sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 5);
 }
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support';
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -229,6 +229,7 @@ export default function Admin() {
               {activeSection === 'shop-types' && <ShopTypesTab />}
               {activeSection === 'categories' && <CategoriesTab />}
               {activeSection === 'payouts' && <PayoutsTab />}
+              {activeSection === 'support' && <SupportTicketsTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -269,6 +270,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'shop-types', label: 'Shop Types', icon: Building2 },
     { id: 'categories', label: 'Categories', icon: Tag },
     { id: 'payouts', label: 'Payouts', icon: CreditCard },
+    { id: 'support', label: 'Support Tickets', icon: HelpCircle },
   ];
 
   return (
@@ -5126,6 +5128,216 @@ function ProductApprovalsTab() {
               </Button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Support Tickets Tab ──────────────────────────────────────────────────────
+
+interface SupportTicket {
+  id: string;
+  userId: string;
+  userPhone: string;
+  userName: string;
+  category: string;
+  subject: string;
+  message: string;
+  status: string;
+  adminNote?: string;
+  resolvedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function SupportTicketsTab() {
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'open' | 'resolved' | 'closed'>('all');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [noteInputs, setNoteInputs] = useState<Record<string, string>>({});
+  const [acting, setActing] = useState<string | null>(null);
+
+  const fetchTickets = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api.get<{ success: boolean; tickets: SupportTicket[] }>("/support");
+      if (data.success) setTickets(data.tickets);
+    } catch {
+      toast.error("Failed to load support tickets");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void fetchTickets(); }, [fetchTickets]);
+
+  const filtered = tickets.filter(t => filter === 'all' || t.status === filter);
+  const openCount = tickets.filter(t => t.status === 'open').length;
+  const resolvedCount = tickets.filter(t => t.status === 'resolved').length;
+  const closedCount = tickets.filter(t => t.status === 'closed').length;
+
+  const categoryLabel: Record<string, string> = {
+    general: 'General', order: 'Order', payment: 'Payment',
+    delivery: 'Delivery', product: 'Product', vendor: 'Vendor',
+    account: 'Account', other: 'Other',
+  };
+
+  const statusColor = (s: string) => {
+    if (s === 'open') return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300';
+    if (s === 'resolved') return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300';
+    return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+  };
+
+  const categoryColor = (c: string) => {
+    const map: Record<string, string> = {
+      order: 'bg-blue-100 text-blue-800',
+      payment: 'bg-purple-100 text-purple-800',
+      delivery: 'bg-amber-100 text-amber-800',
+      product: 'bg-teal-100 text-teal-800',
+      vendor: 'bg-orange-100 text-orange-800',
+      account: 'bg-pink-100 text-pink-800',
+    };
+    return map[c] ?? 'bg-slate-100 text-slate-800';
+  };
+
+  const handleAction = async (id: string, action: 'resolve' | 'close') => {
+    setActing(id + action);
+    try {
+      await api.patch<{ success: boolean }>(`/support/${id}/${action}`, { adminNote: noteInputs[id] ?? '' });
+      toast.success(action === 'resolve' ? 'Ticket marked as resolved' : 'Ticket closed');
+      setExpandedId(null);
+      await fetchTickets();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Action failed');
+    } finally {
+      setActing(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold">Support Tickets</h2>
+          <div className="flex gap-2">
+            <Badge className="bg-red-100 text-red-800 border-none">{openCount} Open</Badge>
+            <Badge className="bg-green-100 text-green-800 border-none hidden sm:inline-flex">{resolvedCount} Resolved</Badge>
+            <Badge className="bg-slate-100 text-slate-700 border-none hidden sm:inline-flex">{closedCount} Closed</Badge>
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => void fetchTickets()} className="text-primary">
+          <RefreshCw className="w-4 h-4 mr-1" /> Refresh
+        </Button>
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        {(['all', 'open', 'resolved', 'closed'] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-4 py-2 rounded-xl text-sm font-medium capitalize whitespace-nowrap transition-all ${
+              filter === f ? 'bg-primary text-primary-foreground neu-card' : 'bg-background text-muted-foreground neu-inset'
+            }`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center p-16 bg-card rounded-3xl neu-inset text-muted-foreground">
+          <HelpCircle className="w-12 h-12 mx-auto mb-4 opacity-20" />
+          <p>No {filter === 'all' ? '' : filter} tickets</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filtered.map(ticket => (
+            <div key={ticket.id} className="bg-card rounded-3xl neu-card overflow-hidden">
+              {/* Header row */}
+              <button
+                type="button"
+                onClick={() => setExpandedId(expandedId === ticket.id ? null : ticket.id)}
+                className="w-full p-5 flex items-start gap-4 text-left"
+              >
+                <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0 mt-0.5">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-foreground truncate">{ticket.subject}</span>
+                    <Badge className={`${statusColor(ticket.status)} border-none text-xs px-2 py-0.5 capitalize`}>
+                      {ticket.status}
+                    </Badge>
+                    <Badge className={`${categoryColor(ticket.category)} border-none text-xs px-2 py-0.5`}>
+                      {categoryLabel[ticket.category] ?? ticket.category}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                    <User className="w-3 h-3" />
+                    <span>{ticket.userName || 'Unknown'}</span>
+                    <span>·</span>
+                    <span>{ticket.userPhone}</span>
+                    <span>·</span>
+                    <span>{new Date(ticket.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                </div>
+                {expandedId === ticket.id ? <ChevronUp className="w-5 h-5 text-muted-foreground flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-muted-foreground flex-shrink-0" />}
+              </button>
+
+              {/* Expanded content */}
+              {expandedId === ticket.id && (
+                <div className="px-5 pb-5 space-y-4 border-t border-border pt-4">
+                  <div className="bg-background p-4 rounded-2xl neu-inset text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                    {ticket.message}
+                  </div>
+
+                  {ticket.adminNote && (
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 rounded-2xl text-sm">
+                      <p className="text-xs font-semibold text-green-700 dark:text-green-400 mb-1">Admin Note</p>
+                      <p className="text-green-800 dark:text-green-300">{ticket.adminNote}</p>
+                    </div>
+                  )}
+
+                  {ticket.status === 'open' && (
+                    <div className="space-y-3">
+                      <textarea
+                        value={noteInputs[ticket.id] ?? ''}
+                        onChange={e => setNoteInputs(prev => ({ ...prev, [ticket.id]: e.target.value }))}
+                        placeholder="Optional admin note / response to user…"
+                        rows={2}
+                        className="w-full bg-background neu-inset border-none rounded-2xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      <div className="flex gap-3">
+                        <Button
+                          onClick={() => void handleAction(ticket.id, 'resolve')}
+                          disabled={acting === ticket.id + 'resolve'}
+                          className="flex-1 rounded-xl shadow-none neu-card bg-green-600 text-white hover:bg-green-700"
+                          size="sm"
+                        >
+                          {acting === ticket.id + 'resolve' ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle className="w-4 h-4 mr-1.5" /> Mark Resolved</>}
+                        </Button>
+                        <Button
+                          onClick={() => void handleAction(ticket.id, 'close')}
+                          disabled={acting === ticket.id + 'close'}
+                          variant="outline"
+                          className="flex-1 rounded-xl shadow-none neu-inset border-none"
+                          size="sm"
+                        >
+                          {acting === ticket.id + 'close' ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4 mr-1.5" /> Close</>}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
