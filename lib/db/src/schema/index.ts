@@ -15,3 +15,4 @@ export * from "./notifications";
 export * from "./pushSubscriptions";
 export * from "./heroBanners";
 export * from "./deliveryPartners";
+export * from "./supportTickets";

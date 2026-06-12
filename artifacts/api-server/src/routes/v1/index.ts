@@ -17,6 +17,7 @@ import uploadRouter from "./upload.js";
 import heroBannersRouter from "./hero-banners.js";
 import paymentsRouter from "./payments.js";
 import pushRouter from "./push.js";
+import supportRouter from "./support.js";
 
 const router = Router();
 
@@ -38,5 +39,6 @@ router.use("/upload", uploadRouter);
 router.use("/hero-banners", heroBannersRouter);
 router.use("/payments", paymentsRouter);
 router.use("/push", pushRouter);
+router.use("/support", supportRouter);
 
 export default router;

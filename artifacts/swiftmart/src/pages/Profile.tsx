@@ -11,7 +11,9 @@ import { AddressCard } from "@/components/AddressCard";
 import { AddressForm } from "@/components/AddressForm";
 import { PincodeSelector } from "@/components/PincodeSelector";
 import { toast } from "sonner";
-import { LogOut, MapPin, Store, Clock, XCircle, Shield } from "lucide-react";
+import { LogOut, MapPin, Store, Clock, XCircle, Shield, HelpCircle, ChevronDown, ChevronUp, Send } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 
 const SUPPORTED_PINCODES = [
@@ -28,6 +30,11 @@ export default function Profile() {
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [showPincodeSelector, setShowPincodeSelector] = useState(false);
+  const [showHelpForm, setShowHelpForm] = useState(false);
+  const [helpCategory, setHelpCategory] = useState("general");
+  const [helpSubject, setHelpSubject] = useState("");
+  const [helpMessage, setHelpMessage] = useState("");
+  const [isSubmittingHelp, setIsSubmittingHelp] = useState(false);
 
   if (!user) {
     return null;
@@ -43,6 +50,32 @@ export default function Profile() {
   };
 
   const currentPincodeInfo = SUPPORTED_PINCODES.find(p => p.code === user.pincode);
+
+  const handleSubmitHelp = async () => {
+    if (!helpSubject.trim() || !helpMessage.trim()) {
+      toast.error("Please fill in both subject and message");
+      return;
+    }
+    setIsSubmittingHelp(true);
+    try {
+      const res = await fetch("/api/v1/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token")}` },
+        body: JSON.stringify({ subject: helpSubject.trim(), message: helpMessage.trim(), category: helpCategory, userName: user.name }),
+      });
+      const data = await res.json() as { success: boolean; message?: string };
+      if (!data.success) throw new Error(data.message ?? "Failed");
+      toast.success("Your complaint has been submitted. We'll get back to you shortly.");
+      setHelpSubject("");
+      setHelpMessage("");
+      setHelpCategory("general");
+      setShowHelpForm(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to submit complaint");
+    } finally {
+      setIsSubmittingHelp(false);
+    }
+  };
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-2xl mx-auto space-y-8">
@@ -264,6 +297,73 @@ export default function Profile() {
           </Link>
         </section>
       )}
+
+      {/* Help & Complaints */}
+      <section className="bg-card p-5 rounded-3xl neu-card space-y-4">
+        <button
+          type="button"
+          className="flex items-center justify-between w-full text-left"
+          onClick={() => setShowHelpForm(!showHelpForm)}
+        >
+          <h3 className="font-bold text-lg flex items-center gap-2">
+            <HelpCircle className="w-5 h-5 text-primary" /> Help &amp; Complaints
+          </h3>
+          {showHelpForm ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+        </button>
+
+        {showHelpForm && (
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select value={helpCategory} onValueChange={setHelpCategory}>
+                <SelectTrigger className="bg-background neu-inset border-none rounded-xl">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">General Enquiry</SelectItem>
+                  <SelectItem value="order">Order Issue</SelectItem>
+                  <SelectItem value="payment">Payment Problem</SelectItem>
+                  <SelectItem value="delivery">Delivery Complaint</SelectItem>
+                  <SelectItem value="product">Product Quality</SelectItem>
+                  <SelectItem value="vendor">Vendor Complaint</SelectItem>
+                  <SelectItem value="account">Account / Login</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Subject</Label>
+              <Input
+                value={helpSubject}
+                onChange={e => setHelpSubject(e.target.value)}
+                placeholder="Brief description of your issue"
+                className="bg-background neu-inset border-none rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Message</Label>
+              <Textarea
+                value={helpMessage}
+                onChange={e => setHelpMessage(e.target.value)}
+                placeholder="Describe your issue in detail..."
+                rows={4}
+                className="bg-background neu-inset border-none rounded-xl resize-none"
+              />
+            </div>
+
+            <Button
+              onClick={handleSubmitHelp}
+              disabled={isSubmittingHelp}
+              className="w-full rounded-xl shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              {isSubmittingHelp ? "Submitting..." : "Submit Complaint"}
+            </Button>
+          </div>
+        )}
+      </section>
 
       <Button 
         variant="destructive" 
