@@ -216,7 +216,10 @@ export default function Checkout() {
         });
 
         if (!window.Razorpay) {
-          toast.error("Payment gateway failed to load. Please refresh and try again.");
+          toast.error("Payment gateway failed to load", {
+            description: "This is often caused by an ad-blocker. Disable it for this site, then refresh the page and try again.",
+            duration: 8000,
+          });
           setPlacing(false);
           return;
         }

@@ -1,9 +1,10 @@
 import { db, notifications, pushSubscriptions } from "@workspace/db";
-import { eq, count, asc, inArray } from "drizzle-orm";
+import { eq, count, asc, inArray, and, not } from "drizzle-orm";
 import { webpush } from "../lib/webpush.js";
 
-// Increased from 10 to 50 so broadcast notifications don't wipe order history (L7)
 const NOTIFICATION_LIMIT = 50;
+// These types are never trimmed first — older non-critical notifications are removed preferentially
+const CRITICAL_TYPES = ["order_update", "delivery_update"] as const;
 
 type NotificationPayload = {
   type: "order_update" | "shop_approval" | "delivery_update" | "coupon" | "promo" | "system";
@@ -55,14 +56,22 @@ export async function createNotificationLimited(
   const total = Number(cnt);
   if (total > NOTIFICATION_LIMIT) {
     const excessCount = total - NOTIFICATION_LIMIT;
-    const excess = await db
+    // M3 fix: trim non-critical notifications first so order/delivery updates are never dropped
+    const nonCritical = await db
       .select({ id: notifications.id })
       .from(notifications)
-      .where(eq(notifications.userId, userId))
+      .where(and(eq(notifications.userId, userId), not(inArray(notifications.type, [...CRITICAL_TYPES]))))
       .orderBy(asc(notifications.createdAt))
       .limit(excessCount);
-    if (excess.length > 0) {
-      await db.delete(notifications).where(inArray(notifications.id, excess.map((n) => n.id)));
+    const toDelete = nonCritical.length >= excessCount
+      ? nonCritical
+      : await db.select({ id: notifications.id })
+          .from(notifications)
+          .where(eq(notifications.userId, userId))
+          .orderBy(asc(notifications.createdAt))
+          .limit(excessCount);
+    if (toDelete.length > 0) {
+      await db.delete(notifications).where(inArray(notifications.id, toDelete.map((n) => n.id)));
     }
   }
 

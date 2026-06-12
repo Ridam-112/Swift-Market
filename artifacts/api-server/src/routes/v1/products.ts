@@ -10,6 +10,15 @@ const router = Router();
 const A = requireRole("admin", "super_admin");
 const V = requireRole("vendor", "admin", "super_admin");
 
+// M6 fix: validate that each image value is a well-formed URL (prevents XSS / broken images)
+function sanitizeImages(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((u): u is string => {
+    if (typeof u !== "string") return false;
+    try { new URL(u); return true; } catch { return false; }
+  });
+}
+
 // GET /api/products
 router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void> => {
   const authReq = req as AuthRequest;
@@ -126,10 +135,18 @@ router.get("/admin-review", authenticate, A, async (req: AuthRequest, res: Respo
 });
 
 // GET /api/products/:id
-router.get("/:id", async (req: Request, res: Response): Promise<void> => {
-  const [product] = await db.select().from(products).where(eq(products.id, req.params["id"]!)).limit(1);
+// L4 fix: strip admin-only fields (rejectionReason, commissionRate) for public/non-admin callers
+router.get("/:id", optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  const authReq = req as AuthRequest;
+  const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
+  const [product] = await db.select().from(products).where(eq(products.id, req.params["id"] as string)).limit(1);
   if (!product) { res.status(404).json({ success: false, message: "Not found" }); return; }
-  res.json({ success: true, product: mi(product) });
+  const mapped = mi(product) as Record<string, unknown>;
+  if (!isAdmin) {
+    delete mapped["rejectionReason"];
+    delete mapped["commissionRate"];
+  }
+  res.json({ success: true, product: mapped });
 });
 
 // POST /api/products
@@ -149,7 +166,7 @@ router.post("/", authenticate, V, async (req: AuthRequest, res: Response): Promi
       category: String(body["category"] ?? ""),
       subcategory: body["subcategory"] ? String(body["subcategory"]) : undefined,
       shopId: String(body["shopId"]),
-      images: Array.isArray(body["images"]) ? (body["images"] as string[]) : [],
+      images: sanitizeImages(body["images"]),
       stock: Math.max(0, Number(body["stock"] ?? 0) || 0),
       sku: body["sku"] ? String(body["sku"]) : undefined,
       unit: body["unit"] ? String(body["unit"]) : undefined,
@@ -174,7 +191,7 @@ router.post("/", authenticate, V, async (req: AuthRequest, res: Response): Promi
     category: String(safeBody["category"] ?? ""),
     subcategory: safeBody["subcategory"] ? String(safeBody["subcategory"]) : undefined,
     shopId: shop.id,
-    images: Array.isArray(safeBody["images"]) ? (safeBody["images"] as string[]) : [],
+    images: sanitizeImages(safeBody["images"]),
     stock: Math.max(0, Number(safeBody["stock"] ?? 0) || 0),
     sku: safeBody["sku"] ? String(safeBody["sku"]) : undefined,
     unit: safeBody["unit"] ? String(safeBody["unit"]) : undefined,
@@ -257,6 +274,10 @@ router.patch("/:id", authenticate, V, async (req: AuthRequest, res: Response): P
     // Vendor edits must go through re-approval — force status back to pending
     updateData["status"] = "pending";
     delete updateData["rejectionReason"];
+  }
+  // M6 fix: sanitize image URLs on update too
+  if ("images" in updateData) {
+    updateData["images"] = sanitizeImages(updateData["images"]);
   }
 
   const [product] = await db.update(products)

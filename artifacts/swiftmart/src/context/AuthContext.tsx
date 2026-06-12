@@ -199,7 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [isAdmin, isLoading]);
 
   const login = (_phone: string, _name: string) => {
-    console.warn("login() is a stub — use verifyOtp() or loginWithGoogle() for real auth.");
+    throw new Error("login() is not implemented — use verifyOtp() or loginWithGoogle()");
   };
 
   const logout = async () => {

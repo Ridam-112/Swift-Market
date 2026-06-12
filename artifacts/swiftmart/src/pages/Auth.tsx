@@ -66,7 +66,16 @@ export default function Auth() {
         setLocation("/");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Google sign-in failed");
+      const msg = err instanceof Error ? err.message : "Google sign-in failed";
+      const isPopupBlocked = /popup|blocked|window.*open/i.test(msg);
+      if (isPopupBlocked) {
+        toast.error("Popup blocked by your browser", {
+          description: "Allow popups for this site in your browser settings, then try again.",
+          duration: 7000,
+        });
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setIsGoogleLoading(false);
     }

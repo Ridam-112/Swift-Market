@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { OAuth2Client } from "google-auth-library";
 import { db, users, shops, otpSessions } from "@workspace/db";
-import { eq, or, and } from "drizzle-orm";
+import { eq, or, and, lt } from "drizzle-orm";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt.js";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
 import { mi } from "../../utils/mapId.js";
@@ -129,11 +129,22 @@ router.post("/google", async (req: Request, res: Response): Promise<void> => {
 
 // POST /api/auth/send-otp
 router.post("/send-otp", otpIpLimiter, otpPhoneLimiter, async (req: Request, res: Response): Promise<void> => {
+  // L3 fix: demo mode must never run in production
+  if (OTP_MODE === "demo" && process.env["NODE_ENV"] === "production") {
+    req.log.error("CRITICAL: OTP_MODE=demo in production — refusing to send OTP");
+    res.status(500).json({ success: false, message: "Server misconfiguration: OTP demo mode is not allowed in production. Contact the administrator." });
+    return;
+  }
+
   const { phone } = req.body as { phone?: string };
   if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
     res.status(400).json({ success: false, message: "Valid 10-digit phone number required" });
     return;
   }
+
+  // H5 fix: clean up globally expired sessions (best-effort, non-blocking)
+  void db.delete(otpSessions).where(lt(otpSessions.expiresAt, new Date()));
+
   try {
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 

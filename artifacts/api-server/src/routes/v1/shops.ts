@@ -284,9 +284,23 @@ router.patch("/my/toggle-open", authenticate, async (req: AuthRequest, res: Resp
   res.json({ success: true, isOpen: updated!.isOpen, shop: mi(updated!) });
 });
 
-// PATCH /api/shops/:id — admin updates any shop field
+// PATCH /api/shops/:id — admin updates shop fields (allowlist-validated to prevent arbitrary injection)
+const SHOP_PATCH_ALLOWED = new Set([
+  "shopName", "ownerName", "phone", "address", "shopType", "category", "subcategory",
+  "description", "image", "banner", "timings", "commissionRate", "status", "isOpen",
+  "panNumber", "gstNumber", "bankAccountHolderName", "bankAccountNumber", "bankIfscCode", "upiId",
+]);
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const [shop] = await db.update(shops).set(req.body as Record<string, unknown>).where(eq(shops.id, req.params["id"]!)).returning();
+  const body = req.body as Record<string, unknown>;
+  const update: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(body)) {
+    if (SHOP_PATCH_ALLOWED.has(k)) update[k] = v;
+  }
+  if (Object.keys(update).length === 0) {
+    res.status(400).json({ success: false, message: "No valid fields provided. Allowed: " + [...SHOP_PATCH_ALLOWED].join(", ") });
+    return;
+  }
+  const [shop] = await db.update(shops).set(update).where(eq(shops.id, req.params["id"] as string)).returning();
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
   res.json({ success: true, shop: mi(shop) });
 });

@@ -2,4 +2,4 @@
 - [Commission & Payout system](commission-payout.md) — Commission rules (multi-level, percentage/fixed), payout auto-creation on orders, admin tabs
 - [Web Push Notifications](web-push.md) — VAPID-based push on top of existing in-app notification system; api.delete has no body support
 - [Vendor Compliance & Verification](vendor-compliance.md) — FSSAI/Drug License/optional cert docs, shop logo mandatory, bankAccountHolderName, admin verify/reject-certificate, vendor re-upload
-- [Launch Audit Fixes](launch-audit-fixes.md) — All 21 audit bugs fixed across C1-C4, H1-H5, M1-M6, L1-L6; Drizzle TS2769 errors are pre-existing and non-blocking
+- [Launch Audit Fixes](launch-audit-fixes.md) — All audit bugs fixed (C1-C4, H1-H5, M1-M7, L1-L4); TS2769 Express 5 req.params errors are pre-existing and non-blocking

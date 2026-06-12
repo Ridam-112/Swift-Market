@@ -1,4 +1,5 @@
 import { Router, type Response } from "express";
+import Razorpay from "razorpay";
 import { db, orders, products, shops, users, payouts, coupons } from "@workspace/db";
 import { eq, and, ilike, or, gte, ne, desc, count, sql, inArray } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
@@ -9,6 +10,13 @@ import { mi, miArr } from "../../utils/mapId.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
+
+function getRazorpay(): Razorpay | null {
+  const keyId = process.env["RAZORPAY_KEY_ID"];
+  const keySecret = process.env["RAZORPAY_KEY_SECRET"];
+  if (!keyId || !keySecret) return null;
+  return new Razorpay({ key_id: keyId, key_secret: keySecret });
+}
 
 type OrderItem = {
   productId: string;
@@ -379,18 +387,39 @@ router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response
 
 // POST /api/orders/:id/refund
 router.post("/:id/refund", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  // Fetch current state to avoid double-reversals
-  const [current] = await db.select({ status: orders.status })
-    .from(orders).where(eq(orders.id, req.params["id"]!)).limit(1);
+  const orderId = req.params["id"] as string;
+
+  // Fetch full order first — need paymentId, method, and amount for Razorpay call
+  const [current] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!current) { res.status(404).json({ success: false, message: "Order not found" }); return; }
+
+  // H1 fix: call Razorpay Refund API for online-payment orders before marking refunded in DB
+  let razorpayWarning: string | null = null;
+  if (current.paymentMethod !== "COD" && current.razorpayPaymentId) {
+    const rzp = getRazorpay();
+    if (rzp) {
+      try {
+        await rzp.payments.refund(current.razorpayPaymentId, {
+          amount: Math.round(current.netAmount * 100), // paise
+          speed: "normal",
+          notes: { orderId, reason: "Admin initiated refund via SwiftMart dashboard" },
+        });
+      } catch (rzpErr) {
+        logger.error({ orderId, razorpayPaymentId: current.razorpayPaymentId, err: rzpErr }, "Razorpay refund API call failed");
+        razorpayWarning = "Razorpay API call failed — order marked refunded in DB but you must issue the payment refund manually from the Razorpay dashboard.";
+      }
+    } else {
+      razorpayWarning = "Razorpay credentials not configured — order marked refunded in DB but you must issue the payment refund manually.";
+    }
+  }
 
   const [order] = await db.update(orders)
     .set({ status: "refunded", paymentStatus: "refunded", refundedAt: new Date() })
-    .where(eq(orders.id, req.params["id"]!))
+    .where(eq(orders.id, orderId))
     .returning();
   if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
-  const wasAlreadyTerminal = current && STOCK_RESTORE_STATUSES.has(current.status);
-
+  const wasAlreadyTerminal = STOCK_RESTORE_STATUSES.has(current.status);
   if (!wasAlreadyTerminal) {
     if (Array.isArray(order.items) && order.items.length) {
       await restoreStock(order.items as OrderItem[]);
@@ -409,7 +438,7 @@ router.post("/:id/refund", authenticate, A, async (req: AuthRequest, res: Respon
     }
   } catch { /* ignore */ }
 
-  res.json({ success: true, order: mi(order) });
+  res.json({ success: true, order: mi(order), ...(razorpayWarning ? { warning: razorpayWarning } : {}) });
 });
 
 export default router;
