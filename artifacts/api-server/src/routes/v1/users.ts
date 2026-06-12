@@ -26,14 +26,14 @@ router.get("/", authenticate, A, async (req: AuthRequest, res: Response): Promis
 
 // PATCH /api/users/:id/ban
 router.patch("/:id/ban", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const [user] = await db.update(users).set({ status: "banned" }).where(eq(users.id, req.params["id"]!)).returning();
+  const [user] = await db.update(users).set({ status: "banned" }).where(eq(users.id, req.params["id"] as string)).returning();
   if (!user) { res.status(404).json({ success: false, message: "User not found" }); return; }
   res.json({ success: true, user: mi(user) });
 });
 
 // PATCH /api/users/:id/unban
 router.patch("/:id/unban", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const [user] = await db.update(users).set({ status: "active" }).where(eq(users.id, req.params["id"]!)).returning();
+  const [user] = await db.update(users).set({ status: "active" }).where(eq(users.id, req.params["id"] as string)).returning();
   if (!user) { res.status(404).json({ success: false, message: "User not found" }); return; }
   res.json({ success: true, user: mi(user) });
 });

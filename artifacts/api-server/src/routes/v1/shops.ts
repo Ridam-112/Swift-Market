@@ -293,8 +293,28 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
 
 // POST /api/shops/:id/approve
 router.post("/:id/approve", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const shopId = req.params["id"] as string;
+
+  // C1 fix: if compliance docs have been uploaded they must be verified before the shop can go live.
+  // A shop with certificateFile set but certificateStatus !== "verified" is blocked until an admin
+  // runs POST /api/shops/:id/verify.
+  const [existing] = await db.select({
+    certificateFile: shops.certificateFile,
+    certificateStatus: shops.certificateStatus,
+  }).from(shops).where(eq(shops.id, shopId)).limit(1);
+
+  if (!existing) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+
+  if (existing.certificateFile && existing.certificateStatus !== "verified") {
+    res.status(422).json({
+      success: false,
+      message: "Cannot approve shop: compliance document is uploaded but not yet verified. Please verify or reject the certificate first (POST /api/shops/:id/verify).",
+    });
+    return;
+  }
+
   const shop = await db.transaction(async (tx) => {
-    const [shop] = await tx.update(shops).set({ status: "approved", isOpen: true }).where(eq(shops.id, req.params["id"]!)).returning();
+    const [shop] = await tx.update(shops).set({ status: "approved", isOpen: true }).where(eq(shops.id, shopId)).returning();
     if (!shop) return null;
     const [owner] = await tx.select({ role: users.role }).from(users).where(eq(users.phone, shop.phone)).limit(1);
     if (owner) {
@@ -400,7 +420,7 @@ router.patch("/:id/owner", authenticate, A, async (req: AuthRequest, res: Respon
       ownerId: newOwner.id,
       phone,
       ownerName: ownerName ?? newOwner.name,
-    }).where(eq(shops.id, req.params["id"]!)).returning();
+    }).where(eq(shops.id, req.params["id"] as string)).returning();
 
     return { newOwner, updatedShop: updatedShop! };
   });
@@ -410,7 +430,7 @@ router.patch("/:id/owner", authenticate, A, async (req: AuthRequest, res: Respon
 
 // DELETE /api/shops/:id
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"]!)).limit(1);
+  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"] as string)).limit(1);
   if (!shop) { res.json({ success: true, message: "Shop deleted" }); return; }
 
   // Fetch images for Cloudinary cleanup before the transaction

@@ -1,17 +1,18 @@
 import jwt from "jsonwebtoken";
 
-const _ACCESS_SECRET = process.env["JWT_SECRET"];
-const _REFRESH_SECRET = process.env["JWT_REFRESH_SECRET"];
-
-if (!_ACCESS_SECRET || !_REFRESH_SECRET) {
-  if (process.env["NODE_ENV"] === "production") {
-    throw new Error("JWT_SECRET and JWT_REFRESH_SECRET must be set in production");
+function requireEnv(name: string): string {
+  const val = process.env[name];
+  if (!val) {
+    throw new Error(
+      `${name} environment variable is required.\n` +
+      `Run: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))" and add the result to Replit Secrets.`
+    );
   }
-  console.warn("[jwt] WARNING: JWT secrets not set — using insecure fallback. Set JWT_SECRET and JWT_REFRESH_SECRET.");
+  return val;
 }
 
-const ACCESS_SECRET = _ACCESS_SECRET ?? "fallback-dev-secret-change-me";
-const REFRESH_SECRET = _REFRESH_SECRET ?? "fallback-refresh-secret-change-me";
+const ACCESS_SECRET: string = requireEnv("JWT_SECRET");
+const REFRESH_SECRET: string = requireEnv("JWT_REFRESH_SECRET");
 const ACCESS_EXPIRY = "15m";
 const REFRESH_EXPIRY = "30d";
 

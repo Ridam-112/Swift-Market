@@ -47,7 +47,7 @@ router.patch("/:id/resolve", authenticate, A, async (req: AuthRequest, res: Resp
   const { adminNote } = req.body as { adminNote?: string };
   const [ticket] = await db.update(supportTickets)
     .set({ status: "resolved", resolvedBy: req.user!.userId, adminNote: adminNote ?? null, updatedAt: new Date() })
-    .where(eq(supportTickets.id, req.params["id"]!))
+    .where(eq(supportTickets.id, req.params["id"] as string))
     .returning();
   if (!ticket) { res.status(404).json({ success: false, message: "Ticket not found" }); return; }
   res.json({ success: true, ticket: mi(ticket) });
@@ -56,7 +56,7 @@ router.patch("/:id/resolve", authenticate, A, async (req: AuthRequest, res: Resp
 router.patch("/:id/close", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const [ticket] = await db.update(supportTickets)
     .set({ status: "closed", resolvedBy: req.user!.userId, updatedAt: new Date() })
-    .where(eq(supportTickets.id, req.params["id"]!))
+    .where(eq(supportTickets.id, req.params["id"] as string))
     .returning();
   if (!ticket) { res.status(404).json({ success: false, message: "Ticket not found" }); return; }
   res.json({ success: true, ticket: mi(ticket) });
