@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SwiftMart</string>
+    <string name="title_activity_main">SwiftMart</string>
+    <string name="package_name">com.swiftmart.app</string>
+    <string name="custom_url_scheme">com.swiftmart.app</string>
+</resources>
