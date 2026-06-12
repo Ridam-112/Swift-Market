@@ -19,55 +19,104 @@
       padding: 24px;
     }
     img { height: 48px; width: auto; }
-    p { font-size: 14px; color: #aaa; }
+    p { font-size: 14px; color: #aaa; text-align: center; }
     #google-btn { min-height: 44px; }
-    #status { font-size: 13px; color: #888; min-height: 20px; }
+    #status { font-size: 13px; color: #888; min-height: 20px; text-align: center; }
+    #error-box { display: none; background: #330; border: 1px solid #a00; border-radius: 8px; padding: 12px 16px; font-size: 12px; color: #f88; max-width: 320px; word-break: break-all; text-align: left; }
   </style>
 </head>
 <body>
-  <img src="/logo.png" alt="SwiftMart" />
+  <img src="/logo.png" alt="SwiftMart" onerror="this.style.display='none'" />
   <p>Sign in to continue to SwiftMart</p>
   <div id="google-btn"></div>
-  <div id="status"></div>
+  <div id="status">Loading…</div>
+  <div id="error-box"></div>
 
   <script>
-    var clientId = new URLSearchParams(window.location.search).get('client_id');
+    var params   = new URLSearchParams(window.location.search);
+    var clientId = params.get('client_id');
+    var origin   = params.get('origin') || (window.opener && document.referrer ? new URL(document.referrer).origin : window.location.origin);
 
-    function setStatus(msg) {
-      document.getElementById('status').textContent = msg;
+    function setStatus(msg) { document.getElementById('status').textContent = msg; }
+
+    function showError(msg) {
+      setStatus('');
+      var box = document.getElementById('error-box');
+      box.textContent = msg;
+      box.style.display = 'block';
+    }
+
+    function sendResult(payload) {
+      var sent = false;
+
+      // Try window.opener.postMessage first (most reliable in Replit iframe setup)
+      if (window.opener && !window.opener.closed) {
+        try {
+          window.opener.postMessage(payload, origin);
+          sent = true;
+        } catch (e) {
+          console.warn('opener.postMessage failed:', e);
+        }
+      }
+
+      // BroadcastChannel as fallback
+      try {
+        var ch = new BroadcastChannel('swiftmart-google-auth');
+        ch.postMessage(payload);
+        ch.close();
+        sent = true;
+      } catch (e) {
+        console.warn('BroadcastChannel failed:', e);
+      }
+
+      if (!sent) {
+        showError('Could not communicate with the app window. Please close this window and try again.');
+        return;
+      }
+
+      setStatus('Signing you in…');
+      setTimeout(function() { window.close(); }, 400);
     }
 
     function onCredential(response) {
-      setStatus('Signing you in…');
-      var channel = new BroadcastChannel('swiftmart-google-auth');
-      channel.postMessage({ idToken: response.credential });
-      channel.close();
-      setTimeout(function() { window.close(); }, 300);
+      sendResult({ swiftmartGoogle: true, idToken: response.credential });
     }
 
     function initGIS() {
       if (!clientId) {
-        setStatus('Configuration error — please close this window and try again.');
+        showError('Configuration error: missing client_id. Please close this window and try again.');
         return;
       }
-      google.accounts.id.initialize({
-        client_id: clientId,
-        callback: onCredential,
-        auto_select: false,
-        cancel_on_tap_outside: false,
-        itp_support: true,
-      });
-      google.accounts.id.renderButton(
-        document.getElementById('google-btn'),
-        { theme: 'outline', size: 'large', width: 320, text: 'continue_with', logo_alignment: 'left', shape: 'pill' }
-      );
+      setStatus('');
+      try {
+        google.accounts.id.initialize({
+          client_id: clientId,
+          callback: onCredential,
+          auto_select: false,
+          cancel_on_tap_outside: false,
+          itp_support: true,
+          use_fedcm_for_prompt: false,
+        });
+        google.accounts.id.renderButton(
+          document.getElementById('google-btn'),
+          { theme: 'outline', size: 'large', width: 320, text: 'continue_with', logo_alignment: 'left', shape: 'pill' }
+        );
+      } catch (e) {
+        showError('Google sign-in failed to initialise: ' + (e && e.message ? e.message : String(e)));
+      }
     }
 
-    var script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.onload = initGIS;
-    script.onerror = function() { setStatus('Failed to load Google sign-in. Check your connection.'); };
-    document.head.appendChild(script);
+    if (!clientId) {
+      showError('No client_id in URL. Close this window and try again.');
+    } else {
+      var script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = initGIS;
+      script.onerror = function() { showError('Failed to load Google sign-in library. Check your internet connection.'); };
+      document.head.appendChild(script);
+    }
   </script>
 </body>
 </html>
