@@ -61,3 +61,14 @@ export const otpIpLimiter = isDev
       keyFn: (req) => `otp:ip:${req.ip ?? req.socket.remoteAddress ?? "unknown"}`,
       message: "Too many OTP requests from your network. Please wait 10 minutes before trying again.",
     });
+
+// Global API limiter — broad abuse protection across all endpoints.
+// 300 requests per 15 minutes per IP in production; effectively unlimited in dev.
+export const globalApiLimiter = isDev
+  ? (_req: Request, _res: Response, next: NextFunction): void => next()
+  : makeRateLimiter({
+      windowMs: 15 * 60 * 1000,
+      max: 300,
+      keyFn: (req) => `api:ip:${req.ip ?? req.socket.remoteAddress ?? "unknown"}`,
+      message: "Too many requests. Please slow down and try again in a few minutes.",
+    });

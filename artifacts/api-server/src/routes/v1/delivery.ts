@@ -28,14 +28,14 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const [partner] = await db.update(deliveryPartners)
     .set(req.body as Record<string, unknown>)
-    .where(eq(deliveryPartners.id, req.params["id"]!))
+    .where(eq(deliveryPartners.id, req.params["id"] as string))
     .returning();
   if (!partner) { res.status(404).json({ success: false, message: "Not found" }); return; }
   res.json({ success: true, partner: mi(partner) });
 });
 
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  await db.delete(deliveryPartners).where(eq(deliveryPartners.id, req.params["id"]!));
+  await db.delete(deliveryPartners).where(eq(deliveryPartners.id, req.params["id"] as string));
   res.json({ success: true, message: "Deleted" });
 });
 

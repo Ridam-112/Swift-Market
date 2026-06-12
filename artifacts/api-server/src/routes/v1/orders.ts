@@ -3,6 +3,7 @@ import Razorpay from "razorpay";
 import { db, orders, products, shops, users, payouts, coupons } from "@workspace/db";
 import { eq, and, ilike, or, gte, ne, desc, count, sql, inArray } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
+import { validateUuidParams } from "../../middlewares/validateUuid.js";
 import { resolveCommission, calculateCommissionAmount } from "../../utils/commission.js";
 import { createNotificationLimited } from "../../utils/notification.js";
 import { logger } from "../../lib/logger.js";
@@ -130,8 +131,8 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<v
 });
 
 // GET /api/orders/:id
-router.get("/:id", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const [order] = await db.select().from(orders).where(eq(orders.id, req.params["id"]!)).limit(1);
+router.get("/:id", authenticate, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const [order] = await db.select().from(orders).where(eq(orders.id, req.params["id"] as string)).limit(1);
   if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
   if (req.user!.role === "customer" && order.customerId !== req.user!.userId) {
     res.status(403).json({ success: false, message: "Forbidden" });
@@ -338,7 +339,8 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
 });
 
 // PATCH /api/orders/:id/status
-router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const orderId = req.params["id"] as string;
   const { status, cancelReason } = req.body as { status: string; cancelReason?: string };
 
   // Validate status is a known value (L1)
@@ -347,9 +349,45 @@ router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response
     return;
   }
 
+  const role = req.user!.role;
+  const userId = req.user!.userId;
+
+  // RBAC: restrict which roles can set which statuses
+  if (role === "customer") {
+    // Customers can only cancel their own orders
+    if (status !== "cancelled") {
+      res.status(403).json({ success: false, message: "Customers can only cancel orders" });
+      return;
+    }
+    const [customerOrder] = await db.select({ customerId: orders.customerId })
+      .from(orders).where(eq(orders.id, orderId)).limit(1);
+    if (!customerOrder) { res.status(404).json({ success: false, message: "Not found" }); return; }
+    if (customerOrder.customerId !== userId) {
+      res.status(403).json({ success: false, message: "Forbidden" });
+      return;
+    }
+  } else if (role === "vendor") {
+    // Vendors cannot issue refunds — admin only
+    if (status === "refunded") {
+      res.status(403).json({ success: false, message: "Only admins can issue refunds" });
+      return;
+    }
+    // Vendors can only update orders for their own shops
+    const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq(shops.ownerId, userId));
+    const vendorShopIds = new Set(vendorShops.map(s => s.id));
+    const [vendorOrder] = await db.select({ shopId: orders.shopId })
+      .from(orders).where(eq(orders.id, orderId)).limit(1);
+    if (!vendorOrder) { res.status(404).json({ success: false, message: "Not found" }); return; }
+    if (!vendorShopIds.has(vendorOrder.shopId)) {
+      res.status(403).json({ success: false, message: "Forbidden: you do not own this shop" });
+      return;
+    }
+  }
+  // Admins/super_admins may set any valid status — no extra check needed
+
   // Fetch current order to guard against double-reversals
   const [current] = await db.select({ status: orders.status, couponCode: orders.couponCode })
-    .from(orders).where(eq(orders.id, req.params["id"]!)).limit(1);
+    .from(orders).where(eq(orders.id, orderId)).limit(1);
   if (!current) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
   const update: Record<string, unknown> = { status };
@@ -357,7 +395,7 @@ router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response
 
   const [order] = await db.update(orders)
     .set(update)
-    .where(eq(orders.id, req.params["id"]!))
+    .where(eq(orders.id, orderId))
     .returning();
   if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
@@ -386,7 +424,7 @@ router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response
 });
 
 // POST /api/orders/:id/refund
-router.post("/:id/refund", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post("/:id/refund", authenticate, A, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
   const orderId = req.params["id"] as string;
 
   // Fetch full order first — need paymentId, method, and amount for Razorpay call

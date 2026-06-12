@@ -40,7 +40,7 @@ export function openGoogleSigninWindow(clientId: string): Promise<string> {
       channel.close();
       clearInterval(pollClosed);
       clearTimeout(timeout);
-      if (!popup.closed) popup.close();
+      if (popup && !popup.closed) popup.close();
     }
 
     function handlePayload(data: unknown) {

@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
+import { globalApiLimiter } from "./middlewares/rateLimiter.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -53,7 +54,7 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/uploads", express.static(path.join(__dirname, "..", "uploads")));
-app.use("/api", router);
+app.use("/api", globalApiLimiter, router);
 
 // In production: serve the built React frontend and handle SPA routing
 if (process.env.NODE_ENV === "production") {

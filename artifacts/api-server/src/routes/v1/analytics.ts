@@ -8,14 +8,14 @@ const A = requireRole("admin", "super_admin");
 
 type Period = "daily" | "weekly" | "monthly";
 
-function periodConfig(period: Period): { intervals: number; truncUnit: string; labelFn: (d: Date) => string; intervalMs: number; pgInterval: string; } {
+function periodConfig(period: Period): { intervals: number; truncUnit: string; labelFn: (d: Date, i: number) => string; intervalMs: number; pgInterval: string; } {
   switch (period) {
     case "daily":
-      return { intervals: 7, truncUnit: "day", labelFn: d => d.toLocaleDateString("en-US", { weekday: "short" }), intervalMs: 86400000, pgInterval: "7 days" };
+      return { intervals: 7, truncUnit: "day", labelFn: (d: Date, _i: number) => d.toLocaleDateString("en-US", { weekday: "short" }), intervalMs: 86400000, pgInterval: "7 days" };
     case "weekly":
-      return { intervals: 4, truncUnit: "week", labelFn: (_, i) => `Week ${i + 1}`, intervalMs: 7 * 86400000, pgInterval: "28 days" };
+      return { intervals: 4, truncUnit: "week", labelFn: (_d: Date, i: number) => `Week ${i + 1}`, intervalMs: 7 * 86400000, pgInterval: "28 days" };
     case "monthly":
-      return { intervals: 6, truncUnit: "month", labelFn: d => d.toLocaleDateString("en-US", { month: "short" }), intervalMs: 0, pgInterval: "6 months" };
+      return { intervals: 6, truncUnit: "month", labelFn: (d: Date, _i: number) => d.toLocaleDateString("en-US", { month: "short" }), intervalMs: 0, pgInterval: "6 months" };
   }
 }
 

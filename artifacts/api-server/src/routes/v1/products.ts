@@ -219,7 +219,7 @@ router.patch("/:id/approval", authenticate, A, async (req: AuthRequest, res: Res
     ? { status: "active", rejectionReason: null as string | null }
     : { status: "rejected", rejectionReason: rejectionReason!.trim() };
 
-  const [product] = await db.update(products).set(updatePayload).where(eq(products.id, req.params["id"]!)).returning();
+  const [product] = await db.update(products).set(updatePayload).where(eq(products.id, req.params["id"] as string)).returning();
   if (!product) { res.status(404).json({ success: false, message: "Product not found" }); return; }
 
   // Notify the vendor who owns this product
@@ -257,7 +257,7 @@ router.patch("/:id", authenticate, V, async (req: AuthRequest, res: Response): P
 
   // Fetch existing product upfront for ownership check + old image cleanup (M2)
   const [existing] = await db.select({ shopId: products.shopId, images: products.images })
-    .from(products).where(eq(products.id, req.params["id"]!)).limit(1);
+    .from(products).where(eq(products.id, req.params["id"] as string)).limit(1);
   if (!existing) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
   if (!isAdmin) {
@@ -282,7 +282,7 @@ router.patch("/:id", authenticate, V, async (req: AuthRequest, res: Response): P
 
   const [product] = await db.update(products)
     .set(updateData)
-    .where(eq(products.id, req.params["id"]!))
+    .where(eq(products.id, req.params["id"] as string))
     .returning();
   if (!product) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
@@ -301,11 +301,11 @@ router.patch("/:id", authenticate, V, async (req: AuthRequest, res: Response): P
 
 // DELETE /api/products/:id
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const [product] = await db.select({ images: products.images }).from(products).where(eq(products.id, req.params["id"]!)).limit(1);
+  const [product] = await db.select({ images: products.images }).from(products).where(eq(products.id, req.params["id"] as string)).limit(1);
   if (product?.images && (product.images as string[]).length > 0) {
     await Promise.all((product.images as string[]).map(url => deleteFromCloudinary(url)));
   }
-  await db.delete(products).where(eq(products.id, req.params["id"]!));
+  await db.delete(products).where(eq(products.id, req.params["id"] as string));
   res.json({ success: true, message: "Deleted" });
 });
 

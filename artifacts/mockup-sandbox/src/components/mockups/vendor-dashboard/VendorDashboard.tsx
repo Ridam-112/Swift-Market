@@ -117,7 +117,7 @@ export function VendorDashboard() {
         </div>
 
         {/* Shop Open Banner */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderRadius: 20, ...neu(), border: "1.5px solid rgba(16,185,129,.3)", background: "rgba(16,185,129,.06)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", ...neu(), borderRadius: 20, border: "1.5px solid rgba(16,185,129,.3)", background: "rgba(16,185,129,.06)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ width: 40, height: 40, borderRadius: "50%", background: "rgba(16,185,129,.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Power size={18} color="#10b981" />

@@ -81,7 +81,7 @@ router.post("/admins", authenticate, SA, async (req: AuthRequest, res: Response)
 
 // PATCH /api/admin/admins/:id
 router.patch("/admins/:id", authenticate, SA, async (req: AuthRequest, res: Response): Promise<void> => {
-  if (!UUID_RE.test(req.params["id"]!)) {
+  if (!UUID_RE.test(req.params["id"] as string)) {
     res.status(400).json({ success: false, message: "Invalid admin ID" });
     return;
   }
@@ -89,18 +89,18 @@ router.patch("/admins/:id", authenticate, SA, async (req: AuthRequest, res: Resp
   const update: Record<string, unknown> = {};
   if (role) update.role = role;
   if (status) update.status = status;
-  const [admin] = await db.update(admins).set(update).where(eq(admins.id, req.params["id"]!)).returning();
+  const [admin] = await db.update(admins).set(update).where(eq(admins.id, req.params["id"] as string)).returning();
   if (!admin) { res.status(404).json({ success: false, message: "Admin not found" }); return; }
   res.json({ success: true, admin: mi(admin) });
 });
 
 // DELETE /api/admin/admins/:id
 router.delete("/admins/:id", authenticate, SA, async (req: AuthRequest, res: Response): Promise<void> => {
-  if (!UUID_RE.test(req.params["id"]!)) {
+  if (!UUID_RE.test(req.params["id"] as string)) {
     res.status(400).json({ success: false, message: "Invalid admin ID" });
     return;
   }
-  await db.delete(admins).where(eq(admins.id, req.params["id"]!));
+  await db.delete(admins).where(eq(admins.id, req.params["id"] as string));
   res.json({ success: true, message: "Admin removed" });
 });
 

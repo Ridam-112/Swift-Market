@@ -68,7 +68,7 @@ router.post("/batch-view", async (req: Request, res: Response): Promise<void> =>
 
 // POST /api/hero-banners/:id/click — public, rate-limited to 1 click per IP per banner per hour
 router.post("/:id/click", async (req: Request, res: Response): Promise<void> => {
-  const id = req.params["id"]!;
+  const id = req.params["id"] as string;
   const ip = req.ip ?? "unknown";
   const key = `${ip}:${id}`;
   if (!clickedRecently.has(key)) {
@@ -86,11 +86,11 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
   const body = req.body as Record<string, unknown>;
   // M2: fetch old imageUrl before update so we can clean up replaced Cloudinary asset
   const [oldBanner] = await db.select({ imageUrl: heroBanners.imageUrl })
-    .from(heroBanners).where(eq(heroBanners.id, req.params["id"]!)).limit(1);
+    .from(heroBanners).where(eq(heroBanners.id, req.params["id"] as string)).limit(1);
 
   const [banner] = await db.update(heroBanners)
     .set(body)
-    .where(eq(heroBanners.id, req.params["id"]!))
+    .where(eq(heroBanners.id, req.params["id"] as string))
     .returning();
   if (!banner) { res.status(404).json({ success: false, message: "Banner not found" }); return; }
 
@@ -106,10 +106,10 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const [banner] = await db.select({ imageUrl: heroBanners.imageUrl })
     .from(heroBanners)
-    .where(eq(heroBanners.id, req.params["id"]!))
+    .where(eq(heroBanners.id, req.params["id"] as string))
     .limit(1);
   // Delete from DB first — Cloudinary cleanup is non-blocking so a CDN failure never orphans the DB record
-  await db.delete(heroBanners).where(eq(heroBanners.id, req.params["id"]!));
+  await db.delete(heroBanners).where(eq(heroBanners.id, req.params["id"] as string));
   if (banner?.imageUrl) {
     deleteFromCloudinary(banner.imageUrl).catch(() => {});
   }

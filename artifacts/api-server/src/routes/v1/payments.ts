@@ -1,11 +1,13 @@
 import { Router, type Request, type Response } from "express";
 import Razorpay from "razorpay";
 import crypto from "crypto";
+import { z } from "zod";
 import { db, orders, products, coupons } from "@workspace/db";
 import { eq, inArray, and } from "drizzle-orm";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
 import { mi } from "../../utils/mapId.js";
 import { cancelOrderAndRestoreStock } from "../../utils/orderCleanup.js";
+import { logger } from "../../lib/logger.js";
 
 const router = Router();
 
@@ -16,21 +18,34 @@ function getRazorpay() {
   return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
 
+const createOrderSchema = z.object({
+  items: z.array(z.object({
+    productId: z.string().uuid("productId must be a valid UUID"),
+    qty: z.number().int().positive("qty must be a positive integer"),
+  })).min(1, "At least one item is required"),
+  deliveryCharge: z.number().min(0).optional(),
+  couponCode: z.string().max(50).optional(),
+  currency: z.string().length(3).optional(),
+  receipt: z.string().max(40).optional(),
+});
+
+const verifySchema = z.object({
+  razorpay_order_id: z.string().min(1, "razorpay_order_id is required"),
+  razorpay_payment_id: z.string().min(1, "razorpay_payment_id is required"),
+  razorpay_signature: z.string().min(1, "razorpay_signature is required"),
+  orderId: z.string().uuid("orderId must be a valid UUID"),
+});
+
 // POST /api/v1/payments/create-order
 // Server computes amount from DB prices — prevents client-side amount tampering (C3)
 router.post("/create-order", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { items, deliveryCharge = 0, couponCode, currency = "INR", receipt } = req.body as {
-    items: Array<{ productId: string; qty: number }>;
-    deliveryCharge?: number;
-    couponCode?: string;
-    currency?: string;
-    receipt?: string;
-  };
-
-  if (!Array.isArray(items) || items.length === 0) {
-    res.status(400).json({ success: false, message: "items array is required" });
+  const parsed = createOrderSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, message: parsed.error.errors[0]?.message ?? "Invalid request body" });
     return;
   }
+
+  const { items, deliveryCharge = 0, couponCode, currency = "INR", receipt } = parsed.data;
 
   try {
     const keyId = process.env.RAZORPAY_KEY_ID!;
@@ -79,7 +94,8 @@ router.post("/create-order", authenticate, async (req: AuthRequest, res: Respons
       receipt: receipt ?? `rcpt_${Date.now()}`,
     });
     res.json({ success: true, order, keyId, serverTotal: total, couponDiscount: +couponDiscount.toFixed(2) });
-  } catch {
+  } catch (err) {
+    logger.error({ err }, "Razorpay create-order failed");
     res.status(502).json({ success: false, message: "Payment gateway error. Please try again." });
   }
 });
@@ -87,12 +103,13 @@ router.post("/create-order", authenticate, async (req: AuthRequest, res: Respons
 // POST /api/v1/payments/verify
 // Verifies Razorpay payment signature and marks our order as paid
 router.post("/verify", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId } = req.body as {
-    razorpay_order_id: string;
-    razorpay_payment_id: string;
-    razorpay_signature: string;
-    orderId: string;
-  };
+  const parsed = verifySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, message: parsed.error.errors[0]?.message ?? "Invalid request body" });
+    return;
+  }
+
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId } = parsed.data;
 
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keySecret) {
@@ -111,6 +128,24 @@ router.post("/verify", authenticate, async (req: AuthRequest, res: Response): Pr
   }
 
   try {
+    // Fetch order first to verify ownership before updating
+    const [existing] = await db.select({ id: orders.id, customerId: orders.customerId })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+
+    if (!existing) {
+      res.status(404).json({ success: false, message: "Order not found" });
+      return;
+    }
+
+    // Only the order's customer (or an admin) may verify payment
+    const role = req.user!.role;
+    if (role !== "admin" && role !== "super_admin" && existing.customerId !== req.user!.userId) {
+      res.status(403).json({ success: false, message: "Forbidden" });
+      return;
+    }
+
     const [order] = await db.update(orders)
       .set({
         paymentStatus: "success",
@@ -126,7 +161,8 @@ router.post("/verify", authenticate, async (req: AuthRequest, res: Response): Pr
     }
 
     res.json({ success: true, order: mi(order) });
-  } catch {
+  } catch (err) {
+    logger.error({ err, orderId }, "Payment verify DB update failed");
     res.status(500).json({ success: false, message: "Failed to confirm payment. Contact support." });
   }
 });
@@ -171,7 +207,7 @@ router.post("/webhook", async (req: Request & { rawBody?: Buffer }, res: Respons
       await db.update(orders)
         .set({ paymentStatus: "success", razorpayPaymentId: razorpayPaymentId })
         .where(eq(orders.razorpayOrderId, razorpayOrderId))
-        .catch(() => {});
+        .catch((err) => { logger.error({ err, razorpayOrderId }, "Webhook: failed to update order on payment.captured"); });
     }
   }
 
@@ -183,9 +219,10 @@ router.post("/webhook", async (req: Request & { rawBody?: Buffer }, res: Respons
         .from(orders)
         .where(eq(orders.razorpayOrderId, razorpayOrderId))
         .limit(1)
-        .catch(() => []);
+        .catch((err) => { logger.error({ err, razorpayOrderId }, "Webhook: failed to fetch order on payment.failed"); return []; });
       if (affected) {
-        await cancelOrderAndRestoreStock(affected.id, "Payment failed via Razorpay.").catch(() => {});
+        await cancelOrderAndRestoreStock(affected.id, "Payment failed via Razorpay.")
+          .catch((err) => { logger.error({ err, orderId: affected.id }, "Webhook: cancelOrderAndRestoreStock failed"); });
       }
     }
   }

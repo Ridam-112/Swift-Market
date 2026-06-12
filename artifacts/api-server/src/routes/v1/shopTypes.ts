@@ -25,13 +25,13 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
 });
 
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const [st] = await db.update(shopTypes).set(req.body as Record<string, unknown>).where(eq(shopTypes.id, req.params["id"]!)).returning();
+  const [st] = await db.update(shopTypes).set(req.body as Record<string, unknown>).where(eq(shopTypes.id, req.params["id"] as string)).returning();
   if (!st) { res.status(404).json({ success: false, message: "Not found" }); return; }
   res.json({ success: true, shopType: mi(st) });
 });
 
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  await db.delete(shopTypes).where(eq(shopTypes.id, req.params["id"]!));
+  await db.delete(shopTypes).where(eq(shopTypes.id, req.params["id"] as string));
   res.json({ success: true, message: "Deleted" });
 });
 

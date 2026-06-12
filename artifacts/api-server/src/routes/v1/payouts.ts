@@ -43,7 +43,7 @@ router.patch("/:id/status", authenticate, A, async (req: AuthRequest, res: Respo
   if (status === "paid") updatePayload["paidAt"] = new Date();
   const [payout] = await db.update(payouts)
     .set(updatePayload)
-    .where(eq(payouts.id, req.params["id"]!))
+    .where(eq(payouts.id, req.params["id"] as string))
     .returning();
   if (!payout) { res.status(404).json({ success: false, message: "Not found" }); return; }
   res.json({ success: true, payout: mi(payout) });

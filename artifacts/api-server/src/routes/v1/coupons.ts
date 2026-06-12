@@ -112,14 +112,14 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const [coupon] = await db.update(coupons)
     .set(req.body as Record<string, unknown>)
-    .where(eq(coupons.id, req.params["id"]!))
+    .where(eq(coupons.id, req.params["id"] as string))
     .returning();
   if (!coupon) { res.status(404).json({ success: false, message: "Not found" }); return; }
   res.json({ success: true, coupon: mi(coupon) });
 });
 
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  await db.delete(coupons).where(eq(coupons.id, req.params["id"]!));
+  await db.delete(coupons).where(eq(coupons.id, req.params["id"] as string));
   res.json({ success: true, message: "Deleted" });
 });
 

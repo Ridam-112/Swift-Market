@@ -1,0 +1,68 @@
+We are preparing SwiftMart for public launch.
+
+Important business decisions:
+
+* Razorpay will stay enabled.
+* Use Razorpay TEST keys now.
+* The payment architecture must be production-ready so that later I can simply replace TEST keys with LIVE keys in secrets and everything works without code changes.
+* Delivery partner dashboard is NOT required now.
+* Vendor payouts will remain manual for now.
+* Focus only on launch hardening, security, stability, and production readiness.
+
+Tasks:
+
+1. Razorpay Production Readiness
+
+   * Verify the payment flow works correctly with Razorpay test keys.
+   * Ensure no hardcoded Razorpay credentials exist anywhere.
+   * Ensure all Razorpay credentials come only from environment secrets.
+   * Ensure switching from TEST keys to LIVE keys requires only secret replacement.
+   * Verify payment verification logic.
+   * Verify webhook verification logic.
+   * Verify order creation, payment success, payment failure, and stock rollback.
+
+2. Security Hardening (target 10/10)
+
+   * Add a global API rate limiter.
+   * Keep OTP-specific rate limits.
+   * Add UUID validation middleware for route params.
+   * Add strict request validation (Zod) on risky auth, order, payment, product, and admin routes.
+   * Remove silent catch blocks and replace with proper logging.
+   * Verify Helmet configuration.
+   * Verify CORS configuration.
+   * Verify JWT security.
+   * Verify refresh token security.
+   * Verify role-based access controls.
+   * Verify vendor ownership checks.
+   * Verify admin-only routes.
+   * Verify no customer can access another customer's data.
+   * Verify no vendor can access another vendor's data.
+
+3. Stability
+
+   * Fix any build failures.
+   * Fix TypeScript errors.
+   * Ensure pnpm build passes.
+   * Ensure typecheck passes.
+   * Ensure production build starts successfully.
+
+4. Launch Audit
+   Re-run a complete audit and provide:
+
+   * Launch readiness percentage
+   * Critical issues
+   * High issues
+   * Medium issues
+   * Security score out of 10
+   * Exact remaining launch blockers
+
+Do NOT:
+
+* Build delivery partner frontend
+* Add new features
+* Add Razorpay X payouts
+* Change UI design
+* Change business logic unnecessarily
+
+Goal:
+SwiftMart should be launch-ready, secure, and able to move from Razorpay TEST mode to LIVE mode simply by replacing environment secrets.

@@ -32,7 +32,7 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
 router.patch("/:id/resolve", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const [report] = await db.update(reports)
     .set({ status: "resolved", resolvedBy: req.user!.userId })
-    .where(eq(reports.id, req.params["id"]!))
+    .where(eq(reports.id, req.params["id"] as string))
     .returning();
   if (!report) { res.status(404).json({ success: false, message: "Not found" }); return; }
   res.json({ success: true, report: mi(report) });
@@ -41,7 +41,7 @@ router.patch("/:id/resolve", authenticate, A, async (req: AuthRequest, res: Resp
 router.patch("/:id/ignore", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const [report] = await db.update(reports)
     .set({ status: "ignored", resolvedBy: req.user!.userId })
-    .where(eq(reports.id, req.params["id"]!))
+    .where(eq(reports.id, req.params["id"] as string))
     .returning();
   if (!report) { res.status(404).json({ success: false, message: "Not found" }); return; }
   res.json({ success: true, report: mi(report) });

@@ -78,7 +78,7 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
 
 // GET /api/shops/:id/details — admin: shop + products + recent orders + owner
 router.get("/:id/details", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"]!)).limit(1);
+  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"] as string)).limit(1);
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
 
   const [shopProducts, shopOrders, ownerArr] = await Promise.all([
@@ -100,7 +100,7 @@ router.get("/:id/details", authenticate, A, async (req: AuthRequest, res: Respon
 router.get("/:id", optionalAuth, async (req: Request, res: Response): Promise<void> => {
   const authReq = req as AuthRequest;
   const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
-  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"]!)).limit(1);
+  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"] as string)).limit(1);
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
   const mapped = mi(shop) as Record<string, unknown>;
   res.json({ success: true, shop: isAdmin ? mapped : stripSensitiveFields(mapped) });
@@ -226,7 +226,7 @@ router.patch("/my/certificate", authenticate, async (req: AuthRequest, res: Resp
 router.post("/:id/verify", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const [shop] = await db.update(shops)
     .set({ verificationStatus: "verified", certificateStatus: "verified" })
-    .where(eq(shops.id, req.params["id"]!))
+    .where(eq(shops.id, req.params["id"] as string))
     .returning();
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
   void createNotificationLimited(shop.ownerId, {
@@ -246,7 +246,7 @@ router.post("/:id/reject-certificate", authenticate, A, async (req: AuthRequest,
       certificateRejectReason: reason ?? null,
       verificationStatus: "pending",
     })
-    .where(eq(shops.id, req.params["id"]!))
+    .where(eq(shops.id, req.params["id"] as string))
     .returning();
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
   void createNotificationLimited(shop.ownerId, {
@@ -373,7 +373,7 @@ router.post("/:id/reject", authenticate, A, async (req: AuthRequest, res: Respon
   const shop = await db.transaction(async (tx) => {
     const [shop] = await tx.update(shops)
       .set({ status: "rejected", rejectionReason: reason ?? null })
-      .where(eq(shops.id, req.params["id"]!))
+      .where(eq(shops.id, req.params["id"] as string))
       .returning();
     if (!shop) return null;
     await tx.update(users).set({ vendorStatus: "rejected" }).where(eq(users.phone, shop.phone));
@@ -386,7 +386,7 @@ router.post("/:id/reject", authenticate, A, async (req: AuthRequest, res: Respon
 // POST /api/shops/:id/ban
 router.post("/:id/ban", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const shop = await db.transaction(async (tx) => {
-    const [shop] = await tx.update(shops).set({ status: "banned", isOpen: false }).where(eq(shops.id, req.params["id"]!)).returning();
+    const [shop] = await tx.update(shops).set({ status: "banned", isOpen: false }).where(eq(shops.id, req.params["id"] as string)).returning();
     if (!shop) return null;
     const [owner] = await tx.select({ role: users.role }).from(users).where(eq(users.id, shop.ownerId)).limit(1);
     const updates: Record<string, string> = { vendorStatus: "rejected" };
@@ -406,7 +406,7 @@ router.post("/:id/ban", authenticate, A, async (req: AuthRequest, res: Response)
 // POST /api/shops/:id/unban
 router.post("/:id/unban", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const shop = await db.transaction(async (tx) => {
-    const [shop] = await tx.update(shops).set({ status: "approved", isOpen: true }).where(eq(shops.id, req.params["id"]!)).returning();
+    const [shop] = await tx.update(shops).set({ status: "approved", isOpen: true }).where(eq(shops.id, req.params["id"] as string)).returning();
     if (!shop) return null;
     const [owner] = await tx.select({ role: users.role }).from(users).where(eq(users.id, shop.ownerId)).limit(1);
     const updates: Record<string, string> = { vendorStatus: "approved" };
@@ -420,7 +420,7 @@ router.post("/:id/unban", authenticate, A, async (req: AuthRequest, res: Respons
 
 // PATCH /api/shops/:id/toggle-open — admin opens or closes any shop
 router.patch("/:id/toggle-open", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"]!)).limit(1);
+  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"] as string)).limit(1);
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
   if (shop.status !== "approved") {
     res.status(400).json({ success: false, message: "Only approved shops can change open status" });
@@ -435,7 +435,7 @@ router.patch("/:id/owner", authenticate, A, async (req: AuthRequest, res: Respon
   const { phone, ownerName } = req.body as { phone: string; ownerName?: string };
   if (!phone) { res.status(400).json({ success: false, message: "Phone is required" }); return; }
 
-  const [existingShop] = await db.select().from(shops).where(eq(shops.id, req.params["id"]!)).limit(1);
+  const [existingShop] = await db.select().from(shops).where(eq(shops.id, req.params["id"] as string)).limit(1);
   if (!existingShop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
 
   // User upsert + shop owner reassignment must be atomic

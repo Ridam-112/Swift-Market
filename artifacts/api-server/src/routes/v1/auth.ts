@@ -122,6 +122,7 @@ router.post("/google", async (req: Request, res: Response): Promise<void> => {
     const tokenPayload = { userId: updated.id, phone: updated.phone, role: updated.role as any, tokenVersion: updated.tokenVersion ?? 1 };
     res.json({ success: true, isNewUser, accessToken: signAccessToken(tokenPayload), refreshToken: signRefreshToken(tokenPayload), user: formatUser(updated) });
   } catch (err) {
+    req.log.error({ err }, "Google auth failed");
     const msg = err instanceof Error ? err.message : "Google authentication failed";
     res.status(401).json({ success: false, message: msg });
   }
@@ -171,7 +172,8 @@ router.post("/send-otp", otpIpLimiter, otpPhoneLimiter, async (req: Request, res
 
     req.log.info({ phone, mode: OTP_MODE }, "OTP sent");
     res.json({ success: true, message: "OTP sent successfully" });
-  } catch {
+  } catch (err) {
+    req.log.error({ err, phone }, "send-otp handler failed");
     res.status(500).json({ success: false, message: "Failed to send OTP. Please try again." });
   }
 });
@@ -180,6 +182,9 @@ router.post("/send-otp", otpIpLimiter, otpPhoneLimiter, async (req: Request, res
 router.post("/verify-otp", async (req: Request, res: Response): Promise<void> => {
   const { phone, otp } = req.body as { phone?: string; otp?: string };
   if (!phone || !otp) { res.status(400).json({ success: false, message: "Phone and OTP required" }); return; }
+  if (!/^[6-9]\d{9}$/.test(phone)) { res.status(400).json({ success: false, message: "Valid 10-digit phone number required" }); return; }
+  if (!/^\d{4,8}$/.test(otp)) { res.status(400).json({ success: false, message: "OTP must be 4–8 digits" }); return; }
+
   try {
     const [session] = await db.select().from(otpSessions)
       .where(and(eq(otpSessions.phone, phone), eq(otpSessions.verified, false)))
@@ -240,7 +245,8 @@ router.post("/verify-otp", async (req: Request, res: Response): Promise<void> =>
 
     const payload = { userId: updated.id, phone: updated.phone, role: updated.role as any, tokenVersion: updated.tokenVersion ?? 1 };
     res.json({ success: true, isNewUser, accessToken: signAccessToken(payload), refreshToken: signRefreshToken(payload), user: formatUser(updated) });
-  } catch {
+  } catch (err) {
+    req.log.error({ err, phone }, "verify-otp handler failed");
     res.status(500).json({ success: false, message: "Login failed. Please try again." });
   }
 });
@@ -260,7 +266,8 @@ router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
     }
     const newPayload = { userId: user.id, phone: user.phone, role: user.role as any, tokenVersion: user.tokenVersion ?? 1 };
     res.json({ success: true, accessToken: signAccessToken(newPayload), refreshToken: signRefreshToken(newPayload) });
-  } catch {
+  } catch (err) {
+    req.log.error({ err }, "Token refresh failed");
     res.status(401).json({ success: false, message: "Invalid refresh token" });
   }
 });
@@ -289,7 +296,8 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response): Promise
     }
 
     res.json({ success: true, user: { ...formatUser(user), addresses: (user.addresses as unknown[]) ?? [], vendorProfile } });
-  } catch {
+  } catch (err) {
+    req.log.error({ err }, "GET /me failed");
     res.status(500).json({ success: false, message: "Failed to fetch profile." });
   }
 });
@@ -304,8 +312,9 @@ router.post("/logout", authenticate, async (req: AuthRequest, res: Response): Pr
       .where(eq(users.id, userId));
     req.log.info({ userId }, "User logged out — tokens revoked");
     res.json({ success: true, message: "Logged out successfully" });
-  } catch {
-    res.json({ success: true, message: "Logged out" });
+  } catch (err) {
+    req.log.error({ err, userId: req.user?.userId }, "Logout DB update failed — tokens may not be revoked");
+    res.status(500).json({ success: false, message: "Logout failed. Please try again." });
   }
 });
 

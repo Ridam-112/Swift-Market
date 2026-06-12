@@ -72,14 +72,14 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
   if (body["isActive"] !== undefined) update["isActive"] = Boolean(body["isActive"]);
   const [rule] = await db.update(commissionRules)
     .set(update)
-    .where(eq(commissionRules.id, req.params["id"]!))
+    .where(eq(commissionRules.id, req.params["id"] as string))
     .returning();
   if (!rule) { res.status(404).json({ success: false, message: "Not found" }); return; }
   res.json({ success: true, rule: mi(rule) });
 });
 
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  await db.delete(commissionRules).where(eq(commissionRules.id, req.params["id"]!));
+  await db.delete(commissionRules).where(eq(commissionRules.id, req.params["id"] as string));
   res.json({ success: true, message: "Deleted" });
 });
 

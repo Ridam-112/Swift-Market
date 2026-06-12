@@ -35,13 +35,13 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
   if (body["emoji"] !== undefined) update["emoji"] = body["emoji"] ? String(body["emoji"]) : null;
   if (body["color"] !== undefined) update["color"] = body["color"] ? String(body["color"]) : null;
   if (body["isActive"] !== undefined) update["isActive"] = Boolean(body["isActive"]);
-  const [cat] = await db.update(categories).set(update).where(eq(categories.id, req.params["id"]!)).returning();
+  const [cat] = await db.update(categories).set(update).where(eq(categories.id, req.params["id"] as string)).returning();
   if (!cat) { res.status(404).json({ success: false, message: "Not found" }); return; }
   res.json({ success: true, category: mi(cat) });
 });
 
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  await db.delete(categories).where(eq(categories.id, req.params["id"]!));
+  await db.delete(categories).where(eq(categories.id, req.params["id"] as string));
   res.json({ success: true, message: "Deleted" });
 });
 
