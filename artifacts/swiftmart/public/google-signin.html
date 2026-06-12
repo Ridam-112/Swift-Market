@@ -23,11 +23,17 @@
     #google-btn { min-height: 44px; }
     #status { font-size: 13px; color: #888; min-height: 20px; text-align: center; }
     #error-box { display: none; background: #330; border: 1px solid #a00; border-radius: 8px; padding: 12px 16px; font-size: 12px; color: #f88; max-width: 320px; word-break: break-all; text-align: left; }
+    #origin-box { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 10px 14px; font-size: 11px; color: #aaa; max-width: 340px; word-break: break-all; text-align: center; }
+    #origin-box strong { color: #ffcc44; font-size: 12px; display: block; margin-bottom: 4px; }
   </style>
 </head>
 <body>
   <img src="/logo.png" alt="SwiftMart" onerror="this.style.display='none'" />
   <p>Sign in to continue to SwiftMart</p>
+  <div id="origin-box">
+    <strong>This window's origin (add this to Google Cloud Console):</strong>
+    <span id="origin-display"></span>
+  </div>
   <div id="google-btn"></div>
   <div id="status">Loading…</div>
   <div id="error-box"></div>
@@ -35,7 +41,8 @@
   <script>
     var params   = new URLSearchParams(window.location.search);
     var clientId = params.get('client_id');
-    var origin   = params.get('origin') || (window.opener && document.referrer ? new URL(document.referrer).origin : window.location.origin);
+    var origin   = window.location.origin; // always use the real current origin
+    document.getElementById('origin-display').textContent = origin;
 
     function setStatus(msg) { document.getElementById('status').textContent = msg; }
 

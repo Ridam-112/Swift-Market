@@ -58,7 +58,7 @@ export default function Profile() {
     }
     setIsSubmittingHelp(true);
     try {
-      const res = await fetch("/api/v1/support", {
+      const res = await fetch("/api/support", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token")}` },
         body: JSON.stringify({ subject: helpSubject.trim(), message: helpMessage.trim(), category: helpCategory, userName: user.name }),
