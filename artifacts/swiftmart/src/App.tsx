@@ -33,6 +33,12 @@ import Auth from "@/pages/Auth";
 import NotFound from "@/pages/not-found";
 import Notifications from "@/pages/Notifications";
 
+import Privacy from "@/pages/legal/Privacy";
+import Terms from "@/pages/legal/Terms";
+import RefundCancellation from "@/pages/legal/RefundCancellation";
+import ContactSupport from "@/pages/legal/ContactSupport";
+import DeleteAccount from "@/pages/legal/DeleteAccount";
+
 import VendorDashboard from "@/pages/vendor/Dashboard";
 import VendorProducts from "@/pages/vendor/Products";
 import AddProduct from "@/pages/vendor/AddProduct";
@@ -188,6 +194,13 @@ function Router() {
     <ThemedShell>
       <Switch>
         <Route path="/auth" component={Auth} />
+
+        {/* Public legal / support pages — no auth required */}
+        <Route path="/privacy"             component={Privacy} />
+        <Route path="/terms"               component={Terms} />
+        <Route path="/refund-cancellation" component={RefundCancellation} />
+        <Route path="/contact-support"     component={ContactSupport} />
+        <Route path="/delete-account"      component={DeleteAccount} />
 
         <Route path="/">
           <ProtectedLayout><Home /></ProtectedLayout>

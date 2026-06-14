@@ -15,6 +15,7 @@ import { LogOut, MapPin, Store, Clock, XCircle, Shield, HelpCircle, ChevronDown,
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
+import { cn } from "@/lib/utils";
 
 const SUPPORTED_PINCODES = [
   { code: "733101", city: "Balurghat" },
@@ -363,6 +364,35 @@ export default function Profile() {
             </Button>
           </div>
         )}
+      </section>
+
+      {/* Legal & Support links */}
+      <section className="bg-card p-5 rounded-3xl neu-card space-y-1">
+        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground/60 pb-2">
+          Legal &amp; Support
+        </p>
+        {([
+          { href: "/contact-support",    label: "Contact Support",        icon: "💬" },
+          { href: "/refund-cancellation",label: "Refund & Cancellation",  icon: "↩️" },
+          { href: "/privacy",            label: "Privacy Policy",          icon: "🔒" },
+          { href: "/terms",              label: "Terms of Service",         icon: "📄" },
+          { href: "/delete-account",     label: "Delete Account",           icon: "🗑️", danger: true },
+        ] as const).map(item => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex items-center gap-3 py-2.5 text-sm font-medium transition-colors border-b border-border/30 last:border-0",
+              "danger" in item && item.danger
+                ? "text-destructive hover:text-destructive/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <span className="w-5 text-center">{item.icon}</span>
+            {item.label}
+            <span className="ml-auto text-muted-foreground/30 text-base">›</span>
+          </Link>
+        ))}
       </section>
 
       <Button 

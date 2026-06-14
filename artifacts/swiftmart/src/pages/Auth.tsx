@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { openGoogleSigninWindow } from "@/lib/googleGIS";
 import { showGoogleLogin, showOtpLogin, getGoogleClientId } from "@/lib/authConfig";
@@ -574,6 +574,23 @@ export default function Auth() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      {/* Legal footer — always visible, no auth required */}
+      <div className="relative z-10 mt-5 flex flex-col items-center gap-1.5 pb-2">
+        <p className="text-[11px] text-muted-foreground/70 text-center">
+          By continuing you agree to our{" "}
+          <Link href="/terms" className="underline hover:text-foreground transition-colors">Terms</Link>
+          {" & "}
+          <Link href="/privacy" className="underline hover:text-foreground transition-colors">Privacy Policy</Link>
+        </p>
+        <div className="flex items-center gap-2 text-[10px]">
+          <Link href="/refund-cancellation" className="text-muted-foreground/50 hover:text-muted-foreground transition-colors">Refunds</Link>
+          <span className="text-border">·</span>
+          <Link href="/contact-support" className="text-muted-foreground/50 hover:text-muted-foreground transition-colors">Support</Link>
+          <span className="text-border">·</span>
+          <Link href="/delete-account" className="text-muted-foreground/50 hover:text-muted-foreground transition-colors">Delete Account</Link>
+        </div>
       </div>
     </div>
   );

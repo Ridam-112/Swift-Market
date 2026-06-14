@@ -97,10 +97,10 @@ Download SwiftMart and experience your neighbourhood, made instant.
 
 | Field | Value |
 |---|---|
-| **Support email** | support@swiftmart.app *(update this)* |
-| **Website** | https://swiftmart.app *(update this)* |
-| **Privacy Policy URL** | https://swiftmart.app/privacy *(update — required by Play Store)* |
-| **Terms of Service URL** | https://swiftmart.app/terms *(update — required by Play Store)* |
+| **Support email** | support@swiftmart.co.in |
+| **Website** | https://your-app.replit.app *(replace with your deployed URL)* |
+| **Privacy Policy URL** | https://your-app.replit.app/privacy *(replace `your-app` with your deployed subdomain — required by Play Store)* |
+| **Terms of Service URL** | https://your-app.replit.app/terms *(replace `your-app` with your deployed subdomain — required by Play Store)* |
 
 > Play Store requires a live, publicly accessible Privacy Policy URL before your app can be published.
 > It must be hosted on a real domain (not localhost or Replit dev URL).
