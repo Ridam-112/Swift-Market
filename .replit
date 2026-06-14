@@ -90,6 +90,6 @@ VAPID_PUBLIC_KEY = "BEb0xCJIp6IUhfimZgyespLcp1WPNH5xtu3RifhfkI2UJM089iGwbGP5vFLp
 VAPID_SUBJECT = "mailto:admin@swiftmart.com"
 JWT_SECRET_GENERATED = "ready"
 JWT_REFRESH_SECRET_GENERATED = "ready"
-OTP_MODE = "real"
+OTP_MODE = "demo"
 AUTH_MODE = "both"
 ALLOWED_ORIGINS = "https://dd40d353-b21e-4a93-8581-64376df407e2-00-2kd1qyqrsi2yd.pike.replit.dev"
