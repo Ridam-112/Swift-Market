@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1920" viewBox="0 0 1080 1920"
+     xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1920" fill="#1e1e1e"/>
+  
+  <!-- Status bar -->
+  <rect x="0" y="0" width="1080" height="100" fill="#1e1e1e"/>
+  <text x="54" y="32" font-family="system-ui,sans-serif" font-size="24"
+        fill="#94a3b8" font-weight="400">9:41</text>
+  <text x="1026" y="32" font-family="system-ui,sans-serif" font-size="24"
+        fill="#94a3b8" text-anchor="end">●●● ᵥₒₗ 🔋</text>
+
+  <!-- App header bar -->
+  <rect x="0" y="100" width="1080" height="120" fill="#1e1e1e"/>
+  <text x="54" y="172" font-family="system-ui,sans-serif" font-size="52"
+        fill="#ffffff" font-weight="700">SwiftMart</text>
+  <text x="54" y="208" font-family="system-ui,sans-serif" font-size="30"
+        fill="#22c55e" font-weight="500">⚡ Delivery in 10 min</text>
+  <!-- Search bar -->
+  <rect x="54" y="230" width="972" height="70" rx="14" fill="#1e2327"/>
+  <text x="90" y="275" font-family="system-ui,sans-serif" font-size="30"
+        fill="#94a3b8">🔍  Search groceries, medicines...</text>
+
+  <!-- Shop header card -->
+  <rect x="54" y="330" width="972" height="75" rx="16" fill="#1e2327"/>
+  <text x="90" y="378" font-family="system-ui,sans-serif" font-size="34"
+        fill="#ffffff" font-weight="700">🏪 Ram Kirana Store</text>
+  <text x="990" y="365" font-family="system-ui,sans-serif" font-size="28"
+        fill="#f59e0b" text-anchor="end">★ 4.8</text>
+  <text x="990" y="395" font-family="system-ui,sans-serif" font-size="24"
+        fill="#94a3b8" text-anchor="end">⚡ 8 min</text>
+
+  
+    <rect x="54" y="420" width="480" height="350" rx="20" fill="#1e2327"/>
+    <rect x="54" y="420" width="480" height="220" rx="20" fill="#1a2820"/>
+    <text x="294" y="555" font-family="system-ui,sans-serif" font-size="110"
+          text-anchor="middle">🥦</text>
+    <text x="78" y="682" font-family="system-ui,sans-serif" font-size="30"
+          fill="#ffffff" font-weight="600">Broccoli</text>
+    <text x="78" y="718" font-family="system-ui,sans-serif" font-size="26"
+          fill="#94a3b8">500g</text>
+    <text x="78" y="758" font-family="system-ui,sans-serif" font-size="34"
+          fill="#ffffff" font-weight="700">₹45</text>
+    <circle cx="494" cy="738" r="28" fill="#22c55e"/>
+    <text x="494" y="748" font-family="system-ui,sans-serif" font-size="36"
+          fill="#ffffff" text-anchor="middle" dominant-baseline="middle" font-weight="700">+</text>
+    
+    <rect x="564" y="420" width="480" height="350" rx="20" fill="#1e2327"/>
+    <rect x="564" y="420" width="480" height="220" rx="20" fill="#1a2820"/>
+    <text x="804" y="555" font-family="system-ui,sans-serif" font-size="110"
+          text-anchor="middle">🍅</text>
+    <text x="588" y="682" font-family="system-ui,sans-serif" font-size="30"
+          fill="#ffffff" font-weight="600">Tomatoes</text>
+    <text x="588" y="718" font-family="system-ui,sans-serif" font-size="26"
+          fill="#94a3b8">1 kg</text>
+    <text x="588" y="758" font-family="system-ui,sans-serif" font-size="34"
+          fill="#ffffff" font-weight="700">₹38</text>
+    <circle cx="1004" cy="738" r="28" fill="#22c55e"/>
+    <text x="1004" y="748" font-family="system-ui,sans-serif" font-size="36"
+          fill="#ffffff" text-anchor="middle" dominant-baseline="middle" font-weight="700">+</text>
+    
+    <rect x="54" y="810" width="480" height="350" rx="20" fill="#1e2327"/>
+    <rect x="54" y="810" width="480" height="220" rx="20" fill="#1a2820"/>
+    <text x="294" y="945" font-family="system-ui,sans-serif" font-size="110"
+          text-anchor="middle">🥛</text>
+    <text x="78" y="1072" font-family="system-ui,sans-serif" font-size="30"
+          fill="#ffffff" font-weight="600">Full Cream Milk</text>
+    <text x="78" y="1108" font-family="system-ui,sans-serif" font-size="26"
+          fill="#94a3b8">500ml</text>
+    <text x="78" y="1148" font-family="system-ui,sans-serif" font-size="34"
+          fill="#ffffff" font-weight="700">₹28</text>
+    <circle cx="494" cy="1128" r="28" fill="#22c55e"/>
+    <text x="494" y="1138" font-family="system-ui,sans-serif" font-size="36"
+          fill="#ffffff" text-anchor="middle" dominant-baseline="middle" font-weight="700">+</text>
+    
+    <rect x="564" y="810" width="480" height="350" rx="20" fill="#1e2327"/>
+    <rect x="564" y="810" width="480" height="220" rx="20" fill="#1a2820"/>
+    <text x="804" y="945" font-family="system-ui,sans-serif" font-size="110"
+          text-anchor="middle">🧄</text>
+    <text x="588" y="1072" font-family="system-ui,sans-serif" font-size="30"
+          fill="#ffffff" font-weight="600">Garlic</text>
+    <text x="588" y="1108" font-family="system-ui,sans-serif" font-size="26"
+          fill="#94a3b8">250g</text>
+    <text x="588" y="1148" font-family="system-ui,sans-serif" font-size="34"
+          fill="#ffffff" font-weight="700">₹22</text>
+    <circle cx="1004" cy="1128" r="28" fill="#22c55e"/>
+    <text x="1004" y="1138" font-family="system-ui,sans-serif" font-size="36"
+          fill="#ffffff" text-anchor="middle" dominant-baseline="middle" font-weight="700">+</text>
+    
+    <rect x="54" y="1200" width="480" height="350" rx="20" fill="#1e2327"/>
+    <rect x="54" y="1200" width="480" height="220" rx="20" fill="#1a2820"/>
+    <text x="294" y="1335" font-family="system-ui,sans-serif" font-size="110"
+          text-anchor="middle">💊</text>
+    <text x="78" y="1462" font-family="system-ui,sans-serif" font-size="30"
+          fill="#ffffff" font-weight="600">Paracetamol</text>
+    <text x="78" y="1498" font-family="system-ui,sans-serif" font-size="26"
+          fill="#94a3b8">10 tab</text>
+    <text x="78" y="1538" font-family="system-ui,sans-serif" font-size="34"
+          fill="#ffffff" font-weight="700">₹18</text>
+    <circle cx="494" cy="1518" r="28" fill="#22c55e"/>
+    <text x="494" y="1528" font-family="system-ui,sans-serif" font-size="36"
+          fill="#ffffff" text-anchor="middle" dominant-baseline="middle" font-weight="700">+</text>
+    
+    <rect x="564" y="1200" width="480" height="350" rx="20" fill="#1e2327"/>
+    <rect x="564" y="1200" width="480" height="220" rx="20" fill="#1a2820"/>
+    <text x="804" y="1335" font-family="system-ui,sans-serif" font-size="110"
+          text-anchor="middle">🍋</text>
+    <text x="588" y="1462" font-family="system-ui,sans-serif" font-size="30"
+          fill="#ffffff" font-weight="600">Lemons</text>
+    <text x="588" y="1498" font-family="system-ui,sans-serif" font-size="26"
+          fill="#94a3b8">6 pcs</text>
+    <text x="588" y="1538" font-family="system-ui,sans-serif" font-size="34"
+          fill="#ffffff" font-weight="700">₹30</text>
+    <circle cx="1004" cy="1518" r="28" fill="#22c55e"/>
+    <text x="1004" y="1528" font-family="system-ui,sans-serif" font-size="36"
+          fill="#ffffff" text-anchor="middle" dominant-baseline="middle" font-weight="700">+</text>
+    
+
+  <!-- Cart footer -->
+  <rect x="0" y="1820" width="1080" height="100" fill="#22c55e"/>
+  <text x="90" y="1882" font-family="system-ui,sans-serif" font-size="34"
+        fill="#ffffff" font-weight="600">🛒  3 items</text>
+  <text x="990" y="1882" font-family="system-ui,sans-serif" font-size="36"
+        fill="#ffffff" text-anchor="end" font-weight="700">View Cart  →</text>
+
+  <!-- Caption band -->
+  <rect x="0" y="1720" width="1080" height="100" fill="#22c55e" fill-opacity="0.12"/>
+  <text x="540" y="1782" font-family="system-ui,sans-serif" font-size="38"
+        fill="#22c55e" text-anchor="middle" font-weight="700">Fresh from your neighbourhood</text>
+</svg>

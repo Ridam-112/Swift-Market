@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1920" viewBox="0 0 1080 1920"
+     xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1920" fill="#1e1e1e"/>
+  
+  <!-- Status bar -->
+  <rect x="0" y="0" width="1080" height="100" fill="#1e1e1e"/>
+  <text x="54" y="32" font-family="system-ui,sans-serif" font-size="24"
+        fill="#94a3b8" font-weight="400">9:41</text>
+  <text x="1026" y="32" font-family="system-ui,sans-serif" font-size="24"
+        fill="#94a3b8" text-anchor="end">●●● ᵥₒₗ 🔋</text>
+
+  <!-- App header bar -->
+  <rect x="0" y="100" width="1080" height="120" fill="#1e1e1e"/>
+  <text x="54" y="172" font-family="system-ui,sans-serif" font-size="52"
+        fill="#ffffff" font-weight="700">Track Order</text>
+  <text x="54" y="208" font-family="system-ui,sans-serif" font-size="30"
+        fill="#22c55e" font-weight="500">⚡ Arriving in 8 minutes</text>
+  <!-- Search bar -->
+  <rect x="54" y="230" width="972" height="70" rx="14" fill="#1e2327"/>
+  <text x="90" y="275" font-family="system-ui,sans-serif" font-size="30"
+        fill="#94a3b8">🔍  Search groceries, medicines...</text>
+
+  <!-- ETA card -->
+  <rect x="54" y="340" width="972" height="220" rx="24" fill="#1e2327"/>
+  <text x="540" y="415" font-family="system-ui,sans-serif" font-size="36"
+        fill="#94a3b8" text-anchor="middle">Estimated Arrival</text>
+  <text x="540" y="490" font-family="system-ui,sans-serif" font-size="100"
+        fill="#22c55e" text-anchor="middle" font-weight="800">8 min</text>
+  <text x="540" y="535" font-family="system-ui,sans-serif" font-size="28"
+        fill="#94a3b8" text-anchor="middle">Ram Kirana Store → Your location</text>
+
+  <!-- Map placeholder -->
+  <rect x="54" y="580" width="972" height="280" rx="24" fill="#0f1a10"/>
+  <text x="540" y="680" font-family="system-ui,sans-serif" font-size="32"
+        fill="#22c55e" text-anchor="middle" fill-opacity="0.6">[ Live Map ]</text>
+  <!-- Route line -->
+  <line x1="200" y1="800" x2="880" y2="700" stroke="#22c55e" stroke-width="6"
+        stroke-dasharray="20 10"/>
+  <circle cx="200" cy="800" r="18" fill="#22c55e"/>
+  <text x="200" y="808" font-family="system-ui,sans-serif" font-size="20"
+        fill="#1e1e1e" text-anchor="middle" dominant-baseline="middle">🏪</text>
+  <circle cx="880" cy="700" r="18" fill="#ef4444"/>
+  <text x="880" y="708" font-family="system-ui,sans-serif" font-size="20"
+        fill="#ffffff" text-anchor="middle" dominant-baseline="middle">📍</text>
+  <!-- Delivery icon on route -->
+  <circle cx="600" cy="755" r="28" fill="#22c55e"/>
+  <text x="600" y="763" font-family="system-ui,sans-serif" font-size="28"
+        text-anchor="middle" dominant-baseline="middle">🛵</text>
+
+  <!-- Progress steps -->
+  <line x1="100" y1="900" x2="910" y2="900" stroke="#2d3748" stroke-width="3"/>
+  <line x1="100" y1="900" x2="640" y2="900" stroke="#22c55e" stroke-width="4"/>
+  
+    <circle cx="100" cy="900" r="28"
+            fill="#22c55e"
+            stroke="#22c55e" stroke-width="4"/>
+    <text x="100" y="910" font-family="system-ui,sans-serif" font-size="28"
+              fill="#ffffff" text-anchor="middle" dominant-baseline="middle">✓</text>
+    <text x="100" y="948" font-family="system-ui,sans-serif" font-size="24"
+          fill="#22c55e" text-anchor="middle">Order Placed</text>
+  
+    <circle cx="370" cy="900" r="28"
+            fill="#22c55e"
+            stroke="#22c55e" stroke-width="4"/>
+    <text x="370" y="910" font-family="system-ui,sans-serif" font-size="28"
+              fill="#ffffff" text-anchor="middle" dominant-baseline="middle">✓</text>
+    <text x="370" y="948" font-family="system-ui,sans-serif" font-size="24"
+          fill="#22c55e" text-anchor="middle">Picked Up</text>
+  
+    <circle cx="640" cy="900" r="28"
+            fill="#22c55e"
+            stroke="#22c55e" stroke-width="4"/>
+    <text x="640" y="910" font-family="system-ui,sans-serif" font-size="28"
+              fill="#ffffff" text-anchor="middle" dominant-baseline="middle">✓</text>
+    <text x="640" y="948" font-family="system-ui,sans-serif" font-size="24"
+          fill="#22c55e" text-anchor="middle">On the Way</text>
+  
+    <circle cx="910" cy="900" r="28"
+            fill="#1e2327"
+            stroke="#2d3748" stroke-width="4"/>
+    
+    <text x="910" y="948" font-family="system-ui,sans-serif" font-size="24"
+          fill="#94a3b8" text-anchor="middle">Delivered</text>
+  
+
+  <!-- Order summary -->
+  <text x="54" y="1055" font-family="system-ui,sans-serif" font-size="36"
+        fill="#ffffff" font-weight="700">Your Order</text>
+  <rect x="54" y="1070" width="972" height="250" rx="20" fill="#1e2327"/>
+  
+    <text x="80"  y="1100" font-family="system-ui,sans-serif" font-size="42">🍅</text>
+    <text x="145" y="1105" font-family="system-ui,sans-serif" font-size="32"
+          fill="#ffffff" font-weight="500">Tomatoes 500g</text>
+    <text x="1000" y="1105" font-family="system-ui,sans-serif" font-size="32"
+          fill="#22c55e" text-anchor="end" font-weight="600">₹28</text>
+  
+    <text x="80"  y="1170" font-family="system-ui,sans-serif" font-size="42">🧅</text>
+    <text x="145" y="1175" font-family="system-ui,sans-serif" font-size="32"
+          fill="#ffffff" font-weight="500">Onions 1kg</text>
+    <text x="1000" y="1175" font-family="system-ui,sans-serif" font-size="32"
+          fill="#22c55e" text-anchor="end" font-weight="600">₹35</text>
+  
+    <text x="80"  y="1240" font-family="system-ui,sans-serif" font-size="42">💊</text>
+    <text x="145" y="1245" font-family="system-ui,sans-serif" font-size="32"
+          fill="#ffffff" font-weight="500">Paracetamol 10s</text>
+    <text x="1000" y="1245" font-family="system-ui,sans-serif" font-size="32"
+          fill="#22c55e" text-anchor="end" font-weight="600">₹18</text>
+  
+  <line x1="80" y1="1290" x2="1000" y2="1290" stroke="#2d3748" stroke-width="1"/>
+  <text x="80"   y="1340" font-family="system-ui,sans-serif" font-size="34"
+        fill="#ffffff" font-weight="600">Total</text>
+  <text x="1000" y="1340" font-family="system-ui,sans-serif" font-size="34"
+        fill="#22c55e" text-anchor="end" font-weight="700">₹81</text>
+
+  <!-- Caption band -->
+  <rect x="0" y="1720" width="1080" height="100" fill="#22c55e" fill-opacity="0.12"/>
+  <text x="540" y="1782" font-family="system-ui,sans-serif" font-size="38"
+        fill="#22c55e" text-anchor="middle" font-weight="700">Track your delivery live</text>
+</svg>

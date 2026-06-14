@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1920" viewBox="0 0 1080 1920"
+     xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1920" fill="#1e1e1e"/>
+  
+  <!-- Status bar -->
+  <rect x="0" y="0" width="1080" height="100" fill="#1e1e1e"/>
+  <text x="54" y="32" font-family="system-ui,sans-serif" font-size="24"
+        fill="#94a3b8" font-weight="400">9:41</text>
+  <text x="1026" y="32" font-family="system-ui,sans-serif" font-size="24"
+        fill="#94a3b8" text-anchor="end">●●● ᵥₒₗ 🔋</text>
+
+  <!-- App header bar -->
+  <rect x="0" y="100" width="1080" height="120" fill="#1e1e1e"/>
+  <text x="54" y="172" font-family="system-ui,sans-serif" font-size="52"
+        fill="#ffffff" font-weight="700">SwiftMart</text>
+  <text x="54" y="208" font-family="system-ui,sans-serif" font-size="30"
+        fill="#22c55e" font-weight="500">⚡ Delivery in 10 min</text>
+  <!-- Search bar -->
+  <rect x="54" y="230" width="972" height="70" rx="14" fill="#1e2327"/>
+  <text x="90" y="275" font-family="system-ui,sans-serif" font-size="30"
+        fill="#94a3b8">🔍  Search groceries, medicines...</text>
+  
+    <rect x="54" y="340" width="220" height="200" rx="20" fill="#1e2327"/>
+    <text x="164" y="435" font-family="system-ui,sans-serif" font-size="72"
+          text-anchor="middle">🥦</text>
+    <text x="164" y="508" font-family="system-ui,sans-serif" font-size="28"
+          fill="#ffffff" text-anchor="middle" font-weight="500">Vegetables</text>
+  
+    <rect x="307" y="340" width="220" height="200" rx="20" fill="#1e2327"/>
+    <text x="417" y="435" font-family="system-ui,sans-serif" font-size="72"
+          text-anchor="middle">🍎</text>
+    <text x="417" y="508" font-family="system-ui,sans-serif" font-size="28"
+          fill="#ffffff" text-anchor="middle" font-weight="500">Fruits</text>
+  
+    <rect x="560" y="340" width="220" height="200" rx="20" fill="#1e2327"/>
+    <text x="670" y="435" font-family="system-ui,sans-serif" font-size="72"
+          text-anchor="middle">🥛</text>
+    <text x="670" y="508" font-family="system-ui,sans-serif" font-size="28"
+          fill="#ffffff" text-anchor="middle" font-weight="500">Dairy</text>
+  
+    <rect x="813" y="340" width="220" height="200" rx="20" fill="#1e2327"/>
+    <text x="923" y="435" font-family="system-ui,sans-serif" font-size="72"
+          text-anchor="middle">💊</text>
+    <text x="923" y="508" font-family="system-ui,sans-serif" font-size="28"
+          fill="#ffffff" text-anchor="middle" font-weight="500">Medicines</text>
+  
+  <!-- Section title -->
+  <text x="54" y="580" font-family="system-ui,sans-serif" font-size="36"
+        fill="#ffffff" font-weight="700">Shops Near You</text>
+  
+    <rect x="54" y="600" width="972" height="170" rx="20" fill="#1e2327"/>
+    <circle cx="127" cy="685" r="55" fill="#22c55e" fill-opacity="0.2"/>
+    <text x="127" cy="685" font-family="system-ui,sans-serif" font-size="50"
+          text-anchor="middle" dominant-baseline="middle" y="692">🏪</text>
+    <text x="210" y="660" font-family="system-ui,sans-serif" font-size="36"
+          fill="#ffffff" font-weight="600">Ram Kirana Store</text>
+    <text x="210" y="700" font-family="system-ui,sans-serif" font-size="28"
+          fill="#94a3b8">0.4 km away</text>
+    <rect x="210" y="715" width="120" height="36" rx="8" fill="#22c55e" fill-opacity="0.15"/>
+    <text x="270" y="739" font-family="system-ui,sans-serif" font-size="24"
+          fill="#22c55e" text-anchor="middle" font-weight="600">⚡ 8 min</text>
+    <text x="980" y="675" font-family="system-ui,sans-serif" font-size="28"
+          fill="#f59e0b" text-anchor="end">★ 4.8</text>
+    
+    <rect x="54" y="800" width="972" height="170" rx="20" fill="#1e2327"/>
+    <circle cx="127" cy="885" r="55" fill="#3b82f6" fill-opacity="0.2"/>
+    <text x="127" cy="885" font-family="system-ui,sans-serif" font-size="50"
+          text-anchor="middle" dominant-baseline="middle" y="892">🏪</text>
+    <text x="210" y="860" font-family="system-ui,sans-serif" font-size="36"
+          fill="#ffffff" font-weight="600">City Medical</text>
+    <text x="210" y="900" font-family="system-ui,sans-serif" font-size="28"
+          fill="#94a3b8">0.7 km away</text>
+    <rect x="210" y="915" width="120" height="36" rx="8" fill="#22c55e" fill-opacity="0.15"/>
+    <text x="270" y="939" font-family="system-ui,sans-serif" font-size="24"
+          fill="#22c55e" text-anchor="middle" font-weight="600">⚡ 11 min</text>
+    <text x="980" y="875" font-family="system-ui,sans-serif" font-size="28"
+          fill="#f59e0b" text-anchor="end">★ 4.6</text>
+    
+    <rect x="54" y="1000" width="972" height="170" rx="20" fill="#1e2327"/>
+    <circle cx="127" cy="1085" r="55" fill="#f59e0b" fill-opacity="0.2"/>
+    <text x="127" cy="1085" font-family="system-ui,sans-serif" font-size="50"
+          text-anchor="middle" dominant-baseline="middle" y="1092">🏪</text>
+    <text x="210" y="1060" font-family="system-ui,sans-serif" font-size="36"
+          fill="#ffffff" font-weight="600">Fresh Basket</text>
+    <text x="210" y="1100" font-family="system-ui,sans-serif" font-size="28"
+          fill="#94a3b8">1.1 km away</text>
+    <rect x="210" y="1115" width="120" height="36" rx="8" fill="#22c55e" fill-opacity="0.15"/>
+    <text x="270" y="1139" font-family="system-ui,sans-serif" font-size="24"
+          fill="#22c55e" text-anchor="middle" font-weight="600">⚡ 14 min</text>
+    <text x="980" y="1075" font-family="system-ui,sans-serif" font-size="28"
+          fill="#f59e0b" text-anchor="end">★ 4.9</text>
+    
+  <!-- Bottom nav bar -->
+  <rect x="0" y="1820" width="1080" height="100" fill="#1e2327"/>
+  <text x="135" y="1878" font-family="system-ui,sans-serif" font-size="32"
+        fill="#22c55e" text-anchor="middle" font-weight="600">🏠 Home</text>
+  <text x="405" y="1878" font-family="system-ui,sans-serif" font-size="32"
+        fill="#94a3b8" text-anchor="middle">🔍 Search</text>
+  <text x="675" y="1878" font-family="system-ui,sans-serif" font-size="32"
+        fill="#94a3b8" text-anchor="middle">📦 Orders</text>
+  <text x="945" y="1878" font-family="system-ui,sans-serif" font-size="32"
+        fill="#94a3b8" text-anchor="middle">👤 Account</text>
+  <!-- Screenshot caption band -->
+  <rect x="0" y="1720" width="1080" height="100" fill="#22c55e" fill-opacity="0.12"/>
+  <text x="540" y="1782" font-family="system-ui,sans-serif" font-size="38"
+        fill="#22c55e" text-anchor="middle" font-weight="700">Browse local shops near you</text>
+</svg>

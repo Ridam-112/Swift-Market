@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "JL2PSYJV_sA9WOMrH91B6"
@@ -30,3 +29,93 @@ id = "ge_I4CxV763Ielh23M9lG"
 uri = "file://artifacts/swiftmart/src/assets/cat-clothing.png"
 type = "image"
 title = "clothing category signature image"
+
+[[generated]]
+id = "prDFAyf7Tz9ATIABubQFz"
+uri = "file://play-store-assets/icon-512.png"
+type = "image"
+title = "SwiftMart app icon dark green cart"
+
+[[generated]]
+id = "3y-tYXe8NSOs8rQUfObgL"
+uri = "file://play-store-assets/feature-graphic.png"
+type = "image"
+title = "SwiftMart feature graphic banner"
+
+[[generated]]
+id = "1cyEF6BIrFzcsLH5xDxXl"
+uri = "file://play-store-assets/screenshot-home.png"
+type = "image"
+title = "SwiftMart home screen screenshot"
+
+[[generated]]
+id = "lSVJcvq9QuR2pSV1zJahI"
+uri = "file://play-store-assets/screenshot-tracking.png"
+type = "image"
+title = "SwiftMart order tracking screenshot"
+
+[[generated]]
+id = "Qo_yUnAgaAB2ZQNvt8_IM"
+uri = "file://play-store-assets/screenshot-shop.png"
+type = "image"
+title = "SwiftMart shop product screenshot"
+
+[[generated]]
+id = "c2yUOkiLfWjDxq4l77A0n"
+uri = "file://play-store-assets/promo-bg-grocery.png"
+type = "image"
+title = "SwiftMart grocery promo background"
+
+[[generated]]
+id = "XHyzBibsWm0zmRwBARR6F"
+uri = "file://play-store-assets/promo-bg-speed.png"
+type = "image"
+title = "SwiftMart speed delivery promo background"
+
+[[outputs]]
+id = "eJ8Q0LKlEw7g_fKgSUV5N"
+uri = "file://play-store-assets/icon-512.png"
+type = "image"
+title = "App Icon — 512×512"
+
+[[outputs]]
+id = "-o9yIeFXsoqwZvKxXLjjb"
+uri = "file://play-store-assets/feature-graphic.png"
+type = "image"
+title = "Feature Graphic — 1024×500"
+
+[[outputs]]
+id = "okY_M-ILIFnXn-K-HXMCw"
+uri = "file://play-store-assets/screenshot-home.png"
+type = "image"
+title = "Screenshot 1 — Home (Browse shops)"
+
+[[outputs]]
+id = "IW73EOC6mhvFmjRjt0Ktq"
+uri = "file://play-store-assets/screenshot-tracking.png"
+type = "image"
+title = "Screenshot 2 — Order Tracking"
+
+[[outputs]]
+id = "wjh2DDq-36RFa7sXvUeZx"
+uri = "file://play-store-assets/screenshot-shop.png"
+type = "image"
+title = "Screenshot 3 — Shop Products"
+
+[[outputs]]
+id = "ZSpR3vBC6_JiabEVlBlAl"
+uri = "file://play-store-assets/promo-bg-grocery.png"
+type = "image"
+title = "Promo Background — Grocery"
+
+[[outputs]]
+id = "eA_eTXtl3J6RHe05xbzHu"
+uri = "file://play-store-assets/promo-bg-speed.png"
+type = "image"
+title = "Promo Background — Speed Delivery"
+
+[[outputs]]
+id = "3an0p5HRP49d4s6C66FZQ"
+uri = "file://PLAYSTORE_LISTING.md"
+type = "text"
+title = "Play Store Listing Text"
