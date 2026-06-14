@@ -3,3 +3,4 @@
 - [Web Push Notifications](web-push.md) — VAPID-based push on top of existing in-app notification system; api.delete has no body support
 - [Vendor Compliance & Verification](vendor-compliance.md) — FSSAI/Drug License/optional cert docs, shop logo mandatory, bankAccountHolderName, admin verify/reject-certificate, vendor re-upload
 - [Launch Hardening & TS Fixes](launch-hardening.md) — Rate limiter, UUID validation, RBAC fixes, TS2769 req.params fix, full build passing
+- [Capacitor CORS fix](capacitor-cors.md) — Android WebView sends origin 'https://localhost'; must be whitelisted in prod CORS or all APK requests return 500

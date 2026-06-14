@@ -34,10 +34,17 @@ app.use(helmet({
 }));
 
 const allowedOrigins = process.env["ALLOWED_ORIGINS"]?.split(",").map(o => o.trim()).filter(Boolean) ?? [];
+
+// Capacitor (Android/iOS WebView) always uses these origins — they are internal
+// loopback addresses, not real internet origins, so whitelisting them is safe.
+const CAPACITOR_ORIGINS = new Set(["https://localhost", "capacitor://localhost", "http://localhost"]);
+
 app.use(cors({
   origin: (origin, cb) => {
     // Allow non-browser requests (server-to-server, curl) and all origins in dev
     if (!origin || process.env["NODE_ENV"] !== "production") return cb(null, true);
+    // Always allow Capacitor WebView origins (Android / iOS APK)
+    if (CAPACITOR_ORIGINS.has(origin)) return cb(null, true);
     if (allowedOrigins.includes(origin)) return cb(null, true);
     cb(new Error(`CORS: origin '${origin}' not allowed`));
   },
