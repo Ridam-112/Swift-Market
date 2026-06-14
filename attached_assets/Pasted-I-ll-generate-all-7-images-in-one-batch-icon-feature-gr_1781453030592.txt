@@ -1,0 +1,98 @@
+I'll generate all 7 images in one batch (icon, feature graphic, 3 screenshots, 2 promo backgrounds) while simultaneously writing the PLAYSTORE_LISTING.md and creating a phone-frame SVG template script.
+
+
+3 actions
+Now generating all 7 images in one batch call while writing the phone-frame template script simultaneously.
+
+
+2 actions
+All 7 images generated. Now running the SVG frame generator script and adding the generate-play-store-assets script to the root package.json.
+
+
+3 actions
+All SVGs generated. Let me add the script command to root package.json, then present all assets.
+
+
+2 actions
+Now let me present all the generated assets so you can see them.
+
+
+8 output files
+
+App Icon — 512×512
+Image
+
+Open
+icon-512.png
+
+Feature Graphic — 1024×500
+Image
+
+Open
+feature-graphic.png
+
+Screenshot 1 — Home (Browse shops)
+Image
+
+Open
+screenshot-home.png
+
+Screenshot 2 — Order Tracking
+Image
+
+Open
+screenshot-tracking.png
+
+Screenshot 3 — Shop Products
+Image
+
+Open
+screenshot-shop.png
+
+Promo Background — Grocery
+Image
+
+Open
+promo-bg-grocery.png
+
+Promo Background — Speed Delivery
+Image
+
+Open
+promo-bg-speed.png
+
+Play Store Listing Text
+Text
+
+Open
+# SwiftMart — Google Play Store Listing ---...
+
+Planning next steps
+Here's everything that was created:
+
+Play Store Assets (play-store-assets/)
+File	What it is
+icon-512.png	App icon — dark background, green lightning-bolt cart
+feature-graphic.png	1024×500 banner — fresh produce + phone mockup
+screenshot-home.png	AI screenshot — home screen, shop browsing
+screenshot-tracking.png	AI screenshot — live order tracking with map
+screenshot-shop.png	AI screenshot — product grid, vendor shop
+promo-bg-grocery.png	Background — photorealistic produce on dark
+promo-bg-speed.png	Background — green speed lines on dark
+frames/phone-frame.svg	Phone frame overlay — composite on real screenshots
+frames/screenshot-home.svg	Branded UI mockup — home screen layout
+frames/screenshot-tracking.svg	Branded UI mockup — tracking screen layout
+frames/screenshot-shop.svg	Branded UI mockup — shop product grid
+Other files
+File	What it is
+PLAYSTORE_LISTING.md	App name, short desc, full description, Data Safety table, ASO keywords, pre-launch checklist
+scripts/generate-screenshot-frames.mjs	Re-generates all SVG frames — run pnpm play-store:frames
+Regenerate frames anytime
+pnpm play-store:frames
+
+To use the SVG frames in Chrome for PNG export
+Open any play-store-assets/frames/*.svg → Ctrl+P → Save as PDF → convert with your PDF tool. Or install @resvg/resvg-js for CLI conversion.
+
+One thing to update in PLAYSTORE_LISTING.md before submitting: swap the placeholder URLs for a real hosted Privacy Policy and Terms of Service — Play Store rejects apps without a live public Privacy Policy URL.
+
+Next, I can create a Privacy Policy and Terms of Service page inside the SwiftMart web app itself (at /privacy and /terms routes), giving you valid public URLs to submit to Google Play immediately. Would you like me to do that?
