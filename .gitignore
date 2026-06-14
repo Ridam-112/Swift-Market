@@ -47,3 +47,31 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Environment / secrets — never commit these
+.env
+.env.local
+.env.*.local
+*.env
+
+# Android — signing keystores and build outputs (MUST NOT be committed)
+*.keystore
+*.jks
+artifacts/swiftmart/android/local.properties
+artifacts/swiftmart/android/.gradle/
+artifacts/swiftmart/android/app/build/
+artifacts/swiftmart/android/build/
+artifacts/swiftmart/android/captures/
+*.apk
+*.aab
+
+# Firebase / Google Services — keep out of version control
+# (even though google-services.json is public config, it should be provisioned per-environment)
+artifacts/swiftmart/android/app/google-services.json
+google-services.json
+GoogleService-Info.plist
+
+# Service account / admin SDK keys — NEVER commit
+service-account*.json
+firebase-adminsdk*.json
+*-firebase-adminsdk-*.json
