@@ -72,3 +72,41 @@ export const globalApiLimiter = isDev
       keyFn: (req) => `api:ip:${req.ip ?? req.socket.remoteAddress ?? "unknown"}`,
       message: "Too many requests. Please slow down and try again in a few minutes.",
     });
+
+// ─── OTP Verification limiter ────────────────────────────────────────────────
+// HTTP-layer defense for /verify-otp in addition to the DB-level attempt counter
+// (MAX_VERIFY_ATTEMPTS=5 deletes the session on 5th failure).
+// Keyed per-phone so bots can't hammer the endpoint across sessions.
+// 10 per 10 min = room for 2 OTP requests × 5 attempts each, plus some buffer.
+// In dev: relaxed to 50 per minute.
+export const verifyOtpLimiter = makeRateLimiter({
+  windowMs: isDev ? 60 * 1000 : 10 * 60 * 1000,
+  max: isDev ? 50 : 10,
+  keyFn: (req) => `verify:phone:${(req.body as { phone?: string })?.phone ?? "unknown"}`,
+  message: "Too many verification attempts for this number. Please wait 10 minutes.",
+});
+
+// ─── Google auth limiter ─────────────────────────────────────────────────────
+// Prevents token-spray attacks on /google (attacker tries many stolen Google tokens).
+// Per-IP: 20 per 15 minutes in production. Skipped in dev (shared Replit IP issue).
+export const googleAuthLimiter = isDev
+  ? (_req: Request, _res: Response, next: NextFunction): void => next()
+  : makeRateLimiter({
+      windowMs: 15 * 60 * 1000,
+      max: 20,
+      keyFn: (req) => `google:ip:${req.ip ?? req.socket.remoteAddress ?? "unknown"}`,
+      message: "Too many Google login attempts. Please wait 15 minutes before trying again.",
+    });
+
+// ─── Token refresh limiter ───────────────────────────────────────────────────
+// Prevents token-flooding on /refresh (attacker with stolen refresh token spams
+// the endpoint to keep a valid access token alive).
+// Per-IP: 30 per 15 minutes in production. Skipped in dev (shared Replit IP issue).
+export const tokenRefreshLimiter = isDev
+  ? (_req: Request, _res: Response, next: NextFunction): void => next()
+  : makeRateLimiter({
+      windowMs: 15 * 60 * 1000,
+      max: 30,
+      keyFn: (req) => `refresh:ip:${req.ip ?? req.socket.remoteAddress ?? "unknown"}`,
+      message: "Too many token refresh requests. Please wait 15 minutes.",
+    });

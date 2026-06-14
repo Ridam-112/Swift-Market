@@ -5,7 +5,7 @@ import { eq, or, and, lt } from "drizzle-orm";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt.js";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
 import { mi } from "../../utils/mapId.js";
-import { otpPhoneLimiter, otpIpLimiter } from "../../middlewares/rateLimiter.js";
+import { otpPhoneLimiter, otpIpLimiter, verifyOtpLimiter, googleAuthLimiter, tokenRefreshLimiter } from "../../middlewares/rateLimiter.js";
 import { sendOtpSms, verify2FactorOtp, OTP_MODE } from "../../lib/sms.js";
 
 const googleClient = new OAuth2Client(process.env["GOOGLE_CLIENT_ID"]);
@@ -73,7 +73,7 @@ router.get("/config", (_req: Request, res: Response): void => {
 // POST /api/auth/google
 // Disabled when AUTH_MODE=otp. Enable by setting AUTH_MODE=google or AUTH_MODE=both
 // along with GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_CALLBACK_URL.
-router.post("/google", async (req: Request, res: Response): Promise<void> => {
+router.post("/google", googleAuthLimiter, async (req: Request, res: Response): Promise<void> => {
   if (AUTH_MODE === "otp") {
     res.status(403).json({ success: false, message: "Google login is not enabled. Set AUTH_MODE=google or AUTH_MODE=both to enable it." });
     return;
@@ -179,7 +179,7 @@ router.post("/send-otp", otpIpLimiter, otpPhoneLimiter, async (req: Request, res
 });
 
 // POST /api/auth/verify-otp
-router.post("/verify-otp", async (req: Request, res: Response): Promise<void> => {
+router.post("/verify-otp", verifyOtpLimiter, async (req: Request, res: Response): Promise<void> => {
   const { phone, otp } = req.body as { phone?: string; otp?: string };
   if (!phone || !otp) { res.status(400).json({ success: false, message: "Phone and OTP required" }); return; }
   if (!/^[6-9]\d{9}$/.test(phone)) { res.status(400).json({ success: false, message: "Valid 10-digit phone number required" }); return; }
@@ -252,7 +252,7 @@ router.post("/verify-otp", async (req: Request, res: Response): Promise<void> =>
 });
 
 // POST /api/auth/refresh
-router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
+router.post("/refresh", tokenRefreshLimiter, async (req: Request, res: Response): Promise<void> => {
   const { refreshToken } = req.body as { refreshToken?: string };
   if (!refreshToken) { res.status(400).json({ success: false, message: "Refresh token required" }); return; }
   try {
