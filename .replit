@@ -1,4 +1,4 @@
-modules = ["web", "bash", "nodejs-24", "postgresql-16"]
+modules = ["nodejs-20", "web", "java-graalvm22.3"]
 
 [deployment]
 router = "application"
@@ -92,4 +92,4 @@ JWT_SECRET_GENERATED = "ready"
 JWT_REFRESH_SECRET_GENERATED = "ready"
 OTP_MODE = "real"
 AUTH_MODE = "both"
-ALLOWED_ORIGINS = "https://dd40d353-b21e-4a93-8581-64376df407e2-00-2kd1qyqrsi2yd.pike.replit.dev"
+ALLOWED_ORIGINS = "https://118f8b71-d32a-48a9-8505-d88b812edf5d-00-x629infcyzwn.pike.replit.dev"
