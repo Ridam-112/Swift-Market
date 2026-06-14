@@ -1,16 +1,24 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-// Development mode: load the web app directly from the Replit dev server.
-// This makes the APK behave like a browser — the Vite proxy handles /api → backend,
-// OTP and all API calls work without any extra config.
+// ─── Development vs Production mode ──────────────────────────────────────────
 //
-// Production APK build (before publishing to Play Store):
-//   1. Remove the server block below (or unset REPLIT_DEV_DOMAIN)
-//   2. Set VITE_API_URL=https://your-deployed-api.replit.app in env
-//   3. pnpm --filter @workspace/swiftmart run build
-//   4. npx cap copy android
-//   5. Build release APK in Android Studio
-const devDomain = process.env.REPLIT_DEV_DOMAIN;
+// DEV APK (testing on a device from Replit):
+//   The WebView loads directly from the live Replit dev server.
+//   API calls go through the Vite proxy → backend. Hot-reload works.
+//   This mode activates automatically when REPLIT_DEV_DOMAIN is set
+//   AND CAPACITOR_PRODUCTION is not "true".
+//
+// PRODUCTION APK (Play Store / release):
+//   Run: VITE_API_URL=https://your-app.replit.app pnpm android:prod:build
+//   The build script sets CAPACITOR_PRODUCTION=true and REPLIT_DEV_DOMAIN=""
+//   so server.url is omitted. The APK uses the self-contained bundled files
+//   in dist/public, and VITE_API_URL is baked into the JS bundle at build time.
+//   No live server required — works fully offline for the UI layer.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+const isProductionBuild = process.env.CAPACITOR_PRODUCTION === "true";
+const devDomain = !isProductionBuild ? process.env.REPLIT_DEV_DOMAIN : "";
 const devServerUrl = devDomain ? `https://${devDomain}` : undefined;
 
 const config: CapacitorConfig = {
@@ -18,8 +26,9 @@ const config: CapacitorConfig = {
   appName: 'SwiftMart',
   webDir: 'dist/public',
 
-  // In dev: point the APK WebView at the live Replit server so /api proxy works.
-  // In production: this block is absent and the APK uses bundled dist/public files.
+  // server.url is ONLY injected in dev mode (never in production builds).
+  // The build script (android-prod-build.mjs) ensures this block is absent
+  // in the capacitor.config.json written to Android assets.
   ...(devServerUrl
     ? {
         server: {
@@ -47,7 +56,8 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: false,
     captureInput: true,
-    webContentsDebuggingEnabled: true,
+    // Disable remote debugging in production — enabled only in dev for Chrome DevTools
+    webContentsDebuggingEnabled: !isProductionBuild,
   },
 };
 

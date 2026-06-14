@@ -8,8 +8,12 @@
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "android:sync": "npx cap sync android",
-    "android:open": "npx cap open android",
+
+    "android:prod:build": "node ../../scripts/android-prod-build.mjs --build",
+    "android:prod:sync":  "node ../../scripts/android-prod-build.mjs --sync",
+    "android:open":       "npx cap open android",
+
+    "android:sync":  "npx cap sync android",
     "android:build": "pnpm run build && npx cap sync android"
   },
   "devDependencies": {
