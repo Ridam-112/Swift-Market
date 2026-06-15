@@ -24,7 +24,7 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
   const authReq = req as AuthRequest;
   const isPrivileged = authReq.user?.role === "admin" || authReq.user?.role === "super_admin" || authReq.user?.role === "vendor";
 
-  const { shopId, category, search, page = "1", limit = "20", pincode } =
+  const { shopId, category, search, trending, page = "1", limit = "20", pincode } =
     req.query as Record<string, string>;
 
   // status=all is restricted to authenticated vendor/admin users — prevent customer bypass of active/stock filters
@@ -45,6 +45,7 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
 
   if (category) conditions.push(eq(products.category, category));
   if (search) conditions.push(ilike(products.name, `%${search}%`));
+  if (trending === "true") conditions.push(eq(products.trending, true));
 
   // For customer-facing active queries, restrict to active categories only
   if (status === "active") {

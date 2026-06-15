@@ -4,11 +4,13 @@ import { useProducts } from "@/hooks/useProducts";
 import { useShops } from "@/hooks/useShops";
 import { HeroBannerSlider } from "@/components/HeroBannerSlider";
 import { CategoryBubble, type DisplayCategory } from "@/components/CategoryBubble";
+import { ProductCard } from "@/components/ProductCard";
 import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SkeletonGrid } from "@/components/SkeletonGrid";
 import { api } from "@/lib/api";
-import { Star, ChevronRight } from "lucide-react";
+import { Star, ChevronRight, Flame } from "lucide-react";
+import type { Product } from "@/types";
 
 const VISIBLE_CATEGORIES = 8;
 
@@ -24,10 +26,19 @@ export default function Home() {
   const { shops, isLoading: shopsLoading } = useShops();
   const [loading, setLoading] = useState(true);
   const [apiCategories, setApiCategories] = useState<DisplayCategory[]>([]);
+  const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 300);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    api.get<{ success: boolean; products: Product[] }>('/products?trending=true&limit=10')
+      .then(d => setTrendingProducts(d.products ?? []))
+      .catch(() => {})
+      .finally(() => setTrendingLoading(false));
   }, []);
 
   useEffect(() => {
@@ -43,7 +54,6 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  const trendingProducts = products.filter(p => p.trending).slice(0, 4);
   const recentProducts = products.slice(0, 4);
   const popularShops = shops.slice(0, 8);
 
@@ -126,10 +136,43 @@ export default function Home() {
         )}
       </section>
 
-      <section>
-        <SectionHeader title="Trending in your area" />
-        {loading ? <SkeletonGrid count={4} /> : <ProductGrid products={trendingProducts} />}
-      </section>
+      {(trendingLoading || trendingProducts.length > 0) && (
+        <section>
+          <SectionHeader
+            title="Trending in Your Area"
+            action={
+              !trendingLoading && trendingProducts.length > 0 ? (
+                <div className="flex items-center gap-1 text-xs font-semibold text-orange-500">
+                  <Flame className="w-3.5 h-3.5" />
+                  {trendingProducts.length} hot picks
+                </div>
+              ) : undefined
+            }
+          />
+          {trendingLoading ? (
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-3 px-3 scrollbar-hide">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="shrink-0 w-44">
+                  <div className="bg-card rounded-2xl p-2.5 animate-pulse">
+                    <div className="aspect-square rounded-xl bg-muted mb-2" />
+                    <div className="h-2 bg-muted rounded w-3/4 mb-1.5" />
+                    <div className="h-2 bg-muted rounded w-1/2 mb-3" />
+                    <div className="h-7 bg-muted rounded-full w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
+              {trendingProducts.map((product, i) => (
+                <div key={product.id} className="snap-start shrink-0 w-44">
+                  <ProductCard product={product} index={i} />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       <section>
         <SectionHeader title="Your Daily Needs" />
