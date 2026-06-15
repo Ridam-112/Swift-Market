@@ -27,6 +27,9 @@ interface ApiProduct {
   shopId?: string;
   trending?: boolean;
   status?: string;
+  colors?: string[];
+  sizes?: string[];
+  colorImages?: Record<string, string>;
 }
 
 function mapApiProduct(p: ApiProduct): Product {
@@ -37,11 +40,15 @@ function mapApiProduct(p: ApiProduct): Product {
     price: p.price,
     unit: p.unit ?? "1 unit",
     image: p.images?.[0] ?? p.image ?? "/assets/product-placeholder.png",
+    images: p.images ?? (p.image ? [p.image] : []),
     description: p.description ?? "",
     stock: p.stock ?? 0,
     rating: p.rating ?? 0,
     vendorId: p.shopId ?? "",
     trending: p.trending ?? false,
+    colors: p.colors,
+    sizes: p.sizes,
+    colorImages: p.colorImages,
   };
 }
 

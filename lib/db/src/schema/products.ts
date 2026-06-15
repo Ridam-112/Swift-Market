@@ -18,6 +18,9 @@ export const products = pgTable("products", {
   status: text("status").notNull().default("pending"),
   rejectionReason: text("rejection_reason"),
   trending: boolean("trending").default(false),
+  colors: jsonb("colors"),
+  sizes: jsonb("sizes"),
+  colorImages: jsonb("color_images"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [

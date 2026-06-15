@@ -40,11 +40,15 @@ export interface Product {
   price: number;
   unit: string;
   image: string;
+  images?: string[];
   description: string;
   stock: number;
   rating: number;
   vendorId: string;
   trending?: boolean;
+  colors?: string[];
+  sizes?: string[];
+  colorImages?: Record<string, string>;
 }
 
 export interface CartItem {

@@ -10,6 +10,13 @@ import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { categories } from "@/data/categories";
 
+const COLOR_HEX: Record<string, string> = {
+  Red: "#ef4444", Blue: "#3b82f6", Green: "#22c55e", Yellow: "#eab308",
+  Black: "#1a1a1a", White: "#f3f4f6", Pink: "#ec4899", Purple: "#a855f7",
+  Orange: "#f97316", Navy: "#1e3a5f", Gray: "#6b7280", Grey: "#6b7280",
+  Brown: "#92400e", Maroon: "#800000",
+};
+
 export default function Product() {
   const [, params] = useRoute("/product/:id");
   const id = params?.id;
@@ -20,6 +27,14 @@ export default function Product() {
   const cartItem = items.find(item => item.product.id === id);
   const qty = cartItem?.qty || 0;
 
+  const allImages = product?.images?.filter(Boolean) ?? (product?.image ? [product.image] : []);
+  const hasColors = (product?.colors?.length ?? 0) > 0;
+  const hasSizes = (product?.sizes?.length ?? 0) > 0;
+
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+
   if (!product) return <div className="p-8 text-center">Product not found</div>;
 
   const isOutOfStock = product.stock === 0;
@@ -28,23 +43,57 @@ export default function Product() {
   const category = categories.find(c => c.id === product.category);
   const relatedProducts = products.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
 
+  const displayImage = selectedColor && product.colorImages?.[selectedColor]
+    ? product.colorImages[selectedColor]
+    : allImages[activeImageIndex] ?? product.image;
+
+  const handleColorSelect = (color: string) => {
+    setSelectedColor(prev => prev === color ? null : color);
+    if (product.colorImages?.[color]) {
+      const idx = allImages.indexOf(product.colorImages[color]);
+      if (idx >= 0) setActiveImageIndex(idx);
+    }
+  };
+
   return (
     <div className="pb-24 pt-4 px-4 max-w-4xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row gap-8">
         {/* Image Gallery */}
-        <div className="w-full md:w-1/2 aspect-square rounded-3xl bg-card neu-card p-8 flex items-center justify-center relative overflow-hidden group">
-          <div 
-            className="absolute inset-0 opacity-10 pointer-events-none"
-            style={{ background: `linear-gradient(135deg, ${category?.color || 'var(--primary)'}, transparent)` }}
-          />
-          <img src={product.image} alt={product.name} className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500" />
+        <div className="w-full md:w-1/2 space-y-3">
+          <div className="aspect-square rounded-3xl bg-card neu-card p-8 flex items-center justify-center relative overflow-hidden group">
+            <div
+              className="absolute inset-0 opacity-10 pointer-events-none"
+              style={{ background: `linear-gradient(135deg, ${category?.color || 'var(--primary)'}, transparent)` }}
+            />
+            <img
+              src={displayImage}
+              alt={product.name}
+              className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
+            />
+          </div>
+
+          {allImages.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {allImages.map((img, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => { setActiveImageIndex(idx); setSelectedColor(null); }}
+                  className={`shrink-0 w-14 h-14 rounded-xl overflow-hidden border-2 transition-all
+                    ${activeImageIndex === idx && !selectedColor ? "border-primary" : "border-transparent opacity-60 hover:opacity-90"}`}
+                >
+                  <img src={img} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Details */}
         <div className="w-full md:w-1/2 flex flex-col">
           <div className="text-sm font-medium text-muted-foreground mb-2">{category?.name}</div>
           <h1 className="text-2xl md:text-4xl font-bold leading-tight mb-2">{product.name}</h1>
-          
+
           <div className="flex items-center gap-4 mb-4">
             <div className="flex items-center gap-1 bg-background neu-inset px-2 py-1 rounded-md text-sm font-bold">
               <Star className="w-4 h-4 text-primary fill-primary" />
@@ -55,18 +104,70 @@ export default function Product() {
             </div>
           </div>
 
-          <div className="text-3xl font-bold text-primary mb-6">
+          <div className="text-3xl font-bold text-primary mb-4">
             {formatINR(product.price)}
           </div>
 
-          <div className="mb-8">
+          {/* Color selector */}
+          {hasColors && (
+            <div className="mb-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">Color</span>
+                {selectedColor && (
+                  <span className="text-sm text-muted-foreground">— {selectedColor}</span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {product.colors!.map(color => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => handleColorSelect(color)}
+                    title={color}
+                    className={`w-8 h-8 rounded-full border-2 transition-all shadow-sm hover:scale-110
+                      ${selectedColor === color ? "border-primary ring-2 ring-primary ring-offset-2" : "border-border"}`}
+                    style={{ backgroundColor: COLOR_HEX[color] ?? "#888" }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Size selector */}
+          {hasSizes && (
+            <div className="mb-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">Size</span>
+                {selectedSize && (
+                  <span className="text-sm text-muted-foreground">— {selectedSize}</span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {product.sizes!.map(size => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => setSelectedSize(prev => prev === size ? null : size)}
+                    className={`px-3 py-1.5 rounded-xl text-sm font-semibold border-2 transition-all
+                      ${selectedSize === size
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background text-foreground hover:border-primary/60"}`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mb-6">
             <h3 className="font-bold mb-2">Description</h3>
             <p className="text-muted-foreground leading-relaxed">
               {product.description || "Premium quality product guaranteed by SwiftMart."}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-card neu-card p-3 rounded-2xl flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-background neu-inset flex items-center justify-center">
                 <Clock className="w-5 h-5 text-primary" />
@@ -92,11 +193,8 @@ export default function Product() {
 
           <div className="mt-auto">
             {isOutOfStock ? (
-              <Button
-                size="lg"
-                disabled
-                className="w-full md:w-auto rounded-full text-lg font-bold shadow-none h-14 px-12 opacity-50 cursor-not-allowed"
-              >
+              <Button size="lg" disabled
+                className="w-full md:w-auto rounded-full text-lg font-bold shadow-none h-14 px-12 opacity-50 cursor-not-allowed">
                 Out of Stock
               </Button>
             ) : qty > 0 ? (
@@ -105,11 +203,9 @@ export default function Product() {
                 <div className="text-sm text-muted-foreground font-medium">Added to cart</div>
               </div>
             ) : (
-              <Button 
-                size="lg" 
+              <Button size="lg"
                 className="w-full md:w-auto rounded-full text-lg font-bold shadow-none neu-card h-14 px-12"
-                onClick={() => addToCart(product)}
-              >
+                onClick={() => addToCart(product)}>
                 Add to Cart
               </Button>
             )}

@@ -173,6 +173,9 @@ router.post("/", authenticate, V, async (req: AuthRequest, res: Response): Promi
       commissionRate: body["commissionRate"] != null ? (Number(body["commissionRate"]) || undefined) : undefined,
       trending: Boolean(body["trending"] ?? false),
       status: body["status"] ? String(body["status"]) : "pending",
+      colors: Array.isArray(body["colors"]) ? body["colors"] : undefined,
+      sizes: Array.isArray(body["sizes"]) ? body["sizes"] : undefined,
+      colorImages: (body["colorImages"] && typeof body["colorImages"] === "object" && !Array.isArray(body["colorImages"])) ? body["colorImages"] : undefined,
     }).returning();
     res.status(201).json({ success: true, product: mi(product!) });
     return;
@@ -198,6 +201,9 @@ router.post("/", authenticate, V, async (req: AuthRequest, res: Response): Promi
     commissionRate: safeBody["commissionRate"] != null ? (Number(safeBody["commissionRate"]) || undefined) : undefined,
     trending: Boolean(safeBody["trending"] ?? false),
     status: "pending",
+    colors: Array.isArray(safeBody["colors"]) ? safeBody["colors"] : undefined,
+    sizes: Array.isArray(safeBody["sizes"]) ? safeBody["sizes"] : undefined,
+    colorImages: (safeBody["colorImages"] && typeof safeBody["colorImages"] === "object" && !Array.isArray(safeBody["colorImages"])) ? safeBody["colorImages"] : undefined,
   }).returning();
   res.status(201).json({ success: true, product: mi(product!) });
 });
