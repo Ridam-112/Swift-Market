@@ -1,5 +1,4 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
-import cors from "cors";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
 import path from "path";
@@ -28,31 +27,83 @@ app.use(
 
 // Security headers — applied before CORS so headers are always present
 app.use(helmet({
-  // Allow the frontend to embed the app in iframes on the same origin (Replit canvas)
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
 }));
 
-const allowedOrigins = process.env["ALLOWED_ORIGINS"]?.split(",").map(o => o.trim()).filter(Boolean) ?? [];
+// ─── CORS ────────────────────────────────────────────────────────────────────
+// We implement CORS manually (instead of the `cors` package) so that the
+// origin callback has access to `req.headers` for the same-origin check.
+//
+// Allowed origins (in production):
+//   1. No Origin header  — server-to-server / curl, always OK
+//   2. Capacitor WebView — https://localhost or capacitor://localhost (APK)
+//   3. Same-origin       — the request's Origin matches this server's own host
+//                          (browser fetch from the deployed .replit.app page)
+//   4. ALLOWED_ORIGINS   — explicit comma-separated override env var
+//
+// In development every origin is allowed (avoids Replit proxy IP confusion).
+// ─────────────────────────────────────────────────────────────────────────────
+const configuredOrigins = (process.env["ALLOWED_ORIGINS"] ?? "")
+  .split(",").map(o => o.trim()).filter(Boolean);
 
-// Capacitor (Android/iOS WebView) always uses these origins — they are internal
-// loopback addresses, not real internet origins, so whitelisting them is safe.
-const CAPACITOR_ORIGINS = new Set(["https://localhost", "capacitor://localhost", "http://localhost"]);
+const CAPACITOR_ORIGINS = new Set([
+  "https://localhost",
+  "capacitor://localhost",
+  "http://localhost",
+]);
 
-app.use(cors({
-  origin: (origin, cb) => {
-    // Allow non-browser requests (server-to-server, curl) and all origins in dev
-    if (!origin || process.env["NODE_ENV"] !== "production") return cb(null, true);
-    // Always allow Capacitor WebView origins (Android / iOS APK)
-    if (CAPACITOR_ORIGINS.has(origin)) return cb(null, true);
-    if (allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error(`CORS: origin '${origin}' not allowed`));
-  },
-  credentials: true,
-}));
+const isProd = process.env["NODE_ENV"] === "production";
+
+app.use((req: Request, res: Response, next: NextFunction): void => {
+  const origin = req.headers.origin as string | undefined;
+
+  const resolveAllowed = (): string | null => {
+    // No Origin header → not a browser cross-origin request; allow
+    if (!origin) return "*";
+    // Dev → allow everything
+    if (!isProd) return origin;
+    // Capacitor APK WebView
+    if (CAPACITOR_ORIGINS.has(origin)) return origin;
+    // Same-origin: browser fetch from the page served by THIS server.
+    // The Replit reverse proxy forwards x-forwarded-host / x-forwarded-proto.
+    const host = ((req.headers["x-forwarded-host"] as string | undefined) ?? req.headers.host ?? "")
+      .split(",")[0]?.trim() ?? "";
+    const proto = ((req.headers["x-forwarded-proto"] as string | undefined) ?? "https")
+      .split(",")[0]?.trim() ?? "https";
+    if (host && origin === `${proto}://${host}`) return origin;
+    // Explicit allowlist override
+    if (configuredOrigins.includes(origin)) return origin;
+    return null;
+  };
+
+  const allowed = resolveAllowed();
+
+  if (allowed === null) {
+    // Log and reject — same behaviour as before
+    next(new Error(`CORS: origin '${origin}' not allowed`));
+    return;
+  }
+
+  res.setHeader("Access-Control-Allow-Origin", allowed);
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,Accept,X-Requested-With");
+  res.setHeader("Access-Control-Max-Age", "86400");
+
+  // Respond to preflight immediately
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
+
+  next();
+});
+
 app.use(express.json({
   verify: (req, _res, buf) => {
-    // Capture raw body for Razorpay webhook signature verification (M6)
+    // Capture raw body for Razorpay webhook signature verification
     if ((req as Request & { url?: string }).url?.includes("/payments/webhook")) {
       (req as Request & { rawBody?: Buffer }).rawBody = buf;
     }
