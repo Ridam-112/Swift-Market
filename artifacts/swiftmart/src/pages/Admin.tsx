@@ -12,7 +12,7 @@ import {
   XCircle, Clock, Search, Shield, Star, ShoppingBag, Trash2, Eye, EyeOff,
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, Send,
-  ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare
+  ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown
 } from "lucide-react";
 import { categories } from "@/data/categories";
 import { VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog, Vendor } from "@/types";
@@ -105,7 +105,7 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products';
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -178,6 +178,7 @@ export default function Admin() {
               {activeSection === 'hero-banners' && <HeroBannersTab />}
               {activeSection === 'coupons' && <CouponsTab />}
               {activeSection === 'product-approvals' && <ProductApprovalsTab />}
+              {activeSection === 'trending-products' && <TrendingProductsTab />}
               {activeSection === 'commissions' && <CommissionsTab />}
               {activeSection === 'shop-types' && <ShopTypesTab />}
               {activeSection === 'categories' && <CategoriesTab />}
@@ -219,6 +220,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'hero-banners', label: 'Hero Banners', icon: ImageIcon },
     { id: 'coupons', label: 'Coupons', icon: Tag },
     { id: 'product-approvals', label: 'Product Approvals', icon: Package },
+    { id: 'trending-products', label: 'Trending Manager', icon: Flame },
     { id: 'commissions', label: 'Commissions', icon: Award },
     { id: 'shop-types', label: 'Shop Types', icon: Building2 },
     { id: 'categories', label: 'Categories', icon: Tag },
@@ -5289,6 +5291,280 @@ function SupportTicketsTab() {
               )}
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Trending Products Manager Tab ───────────────────────────────────────────
+type TrendingProduct = {
+  _id: string;
+  name: string;
+  category: string;
+  shopName: string;
+  images: string[];
+  price: number;
+  stock: number;
+  status: string;
+  trending: boolean;
+  unitsSold: number;
+  revenue: number;
+};
+
+type SortKey = 'unitsSold' | 'revenue' | 'name' | 'stock';
+
+function TrendingProductsTab() {
+  const [products, setProducts] = useState<TrendingProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [subTab, setSubTab] = useState<'most-sold' | 'all'>('most-sold');
+  const [search, setSearch] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('unitsSold');
+  const [sortAsc, setSortAsc] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api.get<{ success: boolean; products: TrendingProduct[] }>('/products/trending-manager?status=all');
+      setProducts(data.products ?? []);
+    } catch {
+      toast.error('Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void fetchProducts(); }, [fetchProducts]);
+
+  const toggleTrending = async (product: TrendingProduct) => {
+    setTogglingId(product._id);
+    const newVal = !product.trending;
+    try {
+      await api.patch(`/products/${product._id}`, { trending: newVal });
+      setProducts(prev => prev.map(p => p._id === product._id ? { ...p, trending: newVal } : p));
+      toast.success(newVal ? `"${product.name}" added to Trending` : `"${product.name}" removed from Trending`);
+    } catch {
+      toast.error('Failed to update trending status');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const cycleSort = (key: SortKey) => {
+    if (sortKey === key) setSortAsc(p => !p);
+    else { setSortKey(key); setSortAsc(false); }
+  };
+
+  const displayList = useMemo(() => {
+    let list = subTab === 'most-sold'
+      ? [...products].filter(p => p.unitsSold > 0 || p.trending)
+      : [...products];
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        (p.shopName ?? '').toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
+      );
+    }
+
+    list.sort((a, b) => {
+      let diff = 0;
+      if (sortKey === 'unitsSold') diff = b.unitsSold - a.unitsSold;
+      else if (sortKey === 'revenue') diff = b.revenue - a.revenue;
+      else if (sortKey === 'name') diff = a.name.localeCompare(b.name);
+      else if (sortKey === 'stock') diff = b.stock - a.stock;
+      return sortAsc ? -diff : diff;
+    });
+
+    if (subTab === 'most-sold') list = list.slice(0, 50);
+    return list;
+  }, [products, subTab, search, sortKey, sortAsc]);
+
+  const trendingCount = products.filter(p => p.trending).length;
+  const totalSold = products.reduce((s, p) => s + p.unitsSold, 0);
+
+  const SortBtn = ({ col, label }: { col: SortKey; label: string }) => (
+    <button
+      onClick={() => cycleSort(col)}
+      className={`flex items-center gap-1 font-semibold transition-colors ${sortKey === col ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+    >
+      {label}
+      <ArrowUpDown className={`w-3 h-3 ${sortKey === col ? 'opacity-100' : 'opacity-40'}`} />
+    </button>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Flame className="w-6 h-6 text-orange-500" /> Trending Manager
+          </h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Control which products appear in the "Trending in Your Area" section
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="neu-inset rounded-xl px-4 py-2 text-center">
+            <div className="text-xl font-bold text-orange-500">{trendingCount}</div>
+            <div className="text-xs text-muted-foreground">Trending now</div>
+          </div>
+          <div className="neu-inset rounded-xl px-4 py-2 text-center">
+            <div className="text-xl font-bold text-primary">{totalSold.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground">Total sold</div>
+          </div>
+          <Button onClick={() => void fetchProducts()} variant="outline" size="sm" className="rounded-xl shadow-none neu-card" disabled={loading}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Sub-tabs */}
+      <div className="flex gap-2 p-1 neu-inset rounded-xl w-fit">
+        {(['most-sold', 'all'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => { setSubTab(tab); setSearch(''); }}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              subTab === tab ? 'bg-primary text-primary-foreground neu-card shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab === 'most-sold' ? '🔥 Most Sold' : '📦 All Products'}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by product name, shop or category…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="pl-9 rounded-xl neu-inset border-none shadow-none"
+        />
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : displayList.length === 0 ? (
+        <div className="text-center py-20 text-muted-foreground">
+          {search ? 'No products match your search.' : subTab === 'most-sold' ? 'No orders yet — all products will appear in the All Products tab.' : 'No products found.'}
+        </div>
+      ) : (
+        <div className="neu-card rounded-2xl overflow-hidden">
+          {/* Table header */}
+          <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-5 py-3 border-b border-border bg-muted/30 text-xs">
+            <SortBtn col="name" label="Product" />
+            <span className="text-muted-foreground font-semibold">Status</span>
+            <SortBtn col="unitsSold" label="Units Sold" />
+            <SortBtn col="revenue" label="Revenue" />
+            <SortBtn col="stock" label="Stock" />
+            <span className="text-muted-foreground font-semibold">Trending</span>
+          </div>
+
+          <div className="divide-y divide-border">
+            {displayList.map((product, idx) => (
+              <div
+                key={product._id}
+                className={`flex flex-col md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 items-start md:items-center px-5 py-4 transition-colors hover:bg-muted/20 ${
+                  product.trending ? 'bg-orange-500/5 border-l-4 border-l-orange-400' : ''
+                }`}
+              >
+                {/* Product info */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="relative flex-shrink-0">
+                    {subTab === 'most-sold' && idx < 3 && (
+                      <span className={`absolute -top-2 -left-2 z-10 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${
+                        idx === 0 ? 'bg-yellow-500' : idx === 1 ? 'bg-slate-400' : 'bg-amber-700'
+                      }`}>{idx + 1}</span>
+                    )}
+                    {product.images?.[0] ? (
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="w-12 h-12 rounded-xl object-cover neu-inset"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl neu-inset flex items-center justify-center">
+                        <Package className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm truncate">{product.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{product.shopName}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{product.category}</p>
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    product.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                    product.status === 'inactive' ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' :
+                    product.status === 'out_of_stock' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
+                    'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                  }`}>
+                    {product.status === 'out_of_stock' ? 'Out of Stock' : product.status}
+                  </span>
+                </div>
+
+                {/* Units sold */}
+                <div className="text-sm">
+                  <span className={`font-semibold ${product.unitsSold > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    {product.unitsSold.toLocaleString()}
+                  </span>
+                  {product.unitsSold > 0 && (
+                    <TrendingUp className="inline w-3.5 h-3.5 ml-1 text-green-500" />
+                  )}
+                </div>
+
+                {/* Revenue */}
+                <div className="text-sm font-medium text-foreground">
+                  {product.revenue > 0 ? formatINR(product.revenue) : <span className="text-muted-foreground">—</span>}
+                </div>
+
+                {/* Stock */}
+                <div className={`text-sm font-medium ${product.stock === 0 ? 'text-red-500' : product.stock < 10 ? 'text-yellow-600' : 'text-foreground'}`}>
+                  {product.stock}
+                </div>
+
+                {/* Trending toggle */}
+                <div className="flex items-center">
+                  <button
+                    onClick={() => void toggleTrending(product)}
+                    disabled={togglingId === product._id}
+                    title={product.trending ? 'Remove from Trending' : 'Add to Trending'}
+                    className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                      product.trending
+                        ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600 shadow-md'
+                        : 'bg-muted/50 text-muted-foreground border-border hover:border-orange-400 hover:text-orange-500 neu-inset'
+                    } disabled:opacity-50`}
+                  >
+                    {togglingId === product._id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Flame className={`w-3.5 h-3.5 ${product.trending ? 'text-white' : ''}`} />
+                    )}
+                    <span className="hidden sm:inline">{product.trending ? 'Trending' : 'Set Trending'}</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="px-5 py-3 border-t border-border bg-muted/20 text-xs text-muted-foreground">
+            Showing {displayList.length} product{displayList.length !== 1 ? 's' : ''}
+            {subTab === 'most-sold' && products.filter(p => p.unitsSold > 0 || p.trending).length > 50 && ' (top 50 by units sold)'}
+          </div>
         </div>
       )}
     </div>

@@ -134,6 +134,45 @@ router.get("/admin-review", authenticate, A, async (req: AuthRequest, res: Respo
   res.json({ success: true, products: enriched, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
 });
 
+// GET /api/products/trending-manager — admin: all products enriched with sales stats for trending management
+// IMPORTANT: defined before /:id to avoid route conflict
+router.get("/trending-manager", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { status } = req.query as Record<string, string>;
+
+  const where = status && status !== "all" ? eq(products.status, status) : undefined;
+  const allProducts = await db.select().from(products).where(where).orderBy(desc(products.createdAt)).limit(500);
+
+  // Sales stats by productId from orders JSONB
+  const salesRows = await db.execute(sql`
+    SELECT
+      item->>'productId' AS product_id,
+      SUM((item->>'qty')::int)::int AS units_sold,
+      SUM((item->>'qty')::int * (item->>'price')::float)::float AS revenue
+    FROM orders, jsonb_array_elements(items::jsonb) AS item
+    WHERE item->>'productId' IS NOT NULL
+    GROUP BY item->>'productId'
+  `);
+  const salesMap = new Map(
+    (salesRows.rows as { product_id: string; units_sold: number; revenue: number }[])
+      .map(r => [r.product_id, { unitsSold: Number(r.units_sold), revenue: Number(r.revenue) }])
+  );
+
+  const shopIds = [...new Set(allProducts.map(p => p.shopId))];
+  const shopRows = shopIds.length > 0
+    ? await db.select({ id: shops.id, shopName: shops.shopName }).from(shops).where(inArray(shops.id, shopIds))
+    : [];
+  const shopMap = Object.fromEntries(shopRows.map(s => [s.id, s.shopName]));
+
+  const enriched = allProducts.map(p => ({
+    ...mi(p),
+    shopName: shopMap[p.shopId] ?? "Unknown Shop",
+    unitsSold: salesMap.get(p.id)?.unitsSold ?? 0,
+    revenue: salesMap.get(p.id)?.revenue ?? 0,
+  }));
+
+  res.json({ success: true, products: enriched });
+});
+
 // GET /api/products/:id
 // L4 fix: strip admin-only fields (rejectionReason, commissionRate) for public/non-admin callers
 router.get("/:id", optionalAuth, async (req: Request, res: Response): Promise<void> => {
