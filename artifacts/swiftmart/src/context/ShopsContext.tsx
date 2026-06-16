@@ -1,5 +1,6 @@
-import React, { createContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useState, useEffect, useCallback, useContext } from "react";
 import { api } from "@/lib/api";
+import { AuthContext } from "@/context/AuthContext";
 
 export interface ShopListing {
   id: string;
@@ -68,6 +69,10 @@ interface ShopsContextType {
 export const ShopsContext = createContext<ShopsContextType | null>(null);
 
 export function ShopsProvider({ children }: { children: React.ReactNode }) {
+  const auth = useContext(AuthContext);
+  const authLoading = auth?.isLoading ?? true;
+  const userId = auth?.user?.id ?? null;
+
   const [allShops, setAllShops] = useState<ShopListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -87,9 +92,13 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
+  // Wait for auth to resolve, then re-fetch whenever the logged-in user changes
+  // (covers login, logout, and session restore — prevents stale unauthenticated data)
   useEffect(() => {
+    if (authLoading) return;
     fetchShops();
-  }, [fetchShops]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, userId]);
 
   const getShopById = (id: string) => allShops.find(s => s.id === id);
 

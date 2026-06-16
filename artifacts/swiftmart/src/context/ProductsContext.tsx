@@ -61,6 +61,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const authLoading = auth?.isLoading ?? true;
+  const userId = auth?.user?.id ?? null;
 
   const fetchProducts = () => {
     setIsLoading(true);
@@ -77,10 +78,12 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsLoading(false));
   };
 
+  // Re-fetch whenever auth resolves OR the logged-in user changes (login/logout)
   useEffect(() => {
     if (authLoading) return;
     fetchProducts();
-  }, [authLoading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, userId]);
 
   const addProduct = (product: Product) => {
     setProducts(prev => [product, ...prev]);
