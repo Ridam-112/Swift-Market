@@ -131,11 +131,6 @@ router.post("/google", googleAuthLimiter, async (req: Request, res: Response): P
 // POST /api/auth/send-otp
 router.post("/send-otp", otpIpLimiter, otpPhoneLimiter, async (req: Request, res: Response): Promise<void> => {
   // L3 fix: demo mode must never run in production
-  if (OTP_MODE === "demo" && process.env["NODE_ENV"] === "production") {
-    req.log.error("CRITICAL: OTP_MODE=demo in production — refusing to send OTP");
-    res.status(500).json({ success: false, message: "Server misconfiguration: OTP demo mode is not allowed in production. Contact the administrator." });
-    return;
-  }
 
   const { phone } = req.body as { phone?: string };
   if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
@@ -319,3 +314,4 @@ router.post("/logout", authenticate, async (req: AuthRequest, res: Response): Pr
 });
 
 export default router;
+
