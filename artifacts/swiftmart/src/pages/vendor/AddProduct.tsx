@@ -67,6 +67,7 @@ export default function AddProduct() {
   const [category, setCategory] = useState("");
   const [subcategory, setSubcategory] = useState("");
   const [price, setPrice] = useState("");
+  const [discountedPrice, setDiscountedPrice] = useState("");
   const [unit, setUnit] = useState("");
   const [stock, setStock] = useState("");
   const [description, setDescription] = useState("");
@@ -179,6 +180,7 @@ export default function AddProduct() {
         category,
         subcategory: subcategory || undefined,
         price: Number(price),
+        ...(discountedPrice ? { discountedPrice: Number(discountedPrice) } : {}),
         unit: unit.trim(),
         stock: Number(stock),
         description: description.trim(),
@@ -317,10 +319,37 @@ export default function AddProduct() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="price">Price (₹)*</Label>
+              <Label htmlFor="price">MRP / Real Price (₹)*</Label>
               <Input id="price" type="number" min="0" step="1" value={price} onChange={e => setPrice(e.target.value)}
                 className="bg-background neu-inset border-none" placeholder="0" required />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="discountedPrice">
+                Sale Price (₹)
+                <span className="ml-1 text-xs font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                id="discountedPrice"
+                type="number"
+                min="0"
+                step="1"
+                value={discountedPrice}
+                onChange={e => setDiscountedPrice(e.target.value)}
+                className="bg-background neu-inset border-none"
+                placeholder="Leave blank if no discount"
+              />
+            </div>
+            {discountedPrice && Number(discountedPrice) > 0 && Number(price) > 0 && Number(discountedPrice) < Number(price) && (
+              <div className="space-y-2">
+                <Label className="invisible">Discount</Label>
+                <div className="h-10 flex items-center px-3 rounded-md bg-green-500/10 text-green-600 text-sm font-semibold">
+                  {Math.round((1 - Number(discountedPrice) / Number(price)) * 100)}% off
+                </div>
+              </div>
+            )}
           </div>
 
           {selectedCat && (selectedCat.subcategories?.length ?? 0) > 0 && (

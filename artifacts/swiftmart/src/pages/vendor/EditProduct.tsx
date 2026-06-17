@@ -16,6 +16,7 @@ interface ApiProduct {
   name: string;
   description?: string;
   price: number;
+  discountedPrice?: number;
   category: string;
   subcategory?: string;
   unit?: string;
@@ -75,6 +76,7 @@ export default function EditProduct() {
   const [category, setCategory] = useState("");
   const [subcategory, setSubcategory] = useState("");
   const [price, setPrice] = useState("");
+  const [discountedPrice, setDiscountedPrice] = useState("");
   const [unit, setUnit] = useState("");
   const [stock, setStock] = useState("");
   const [saving, setSaving] = useState(false);
@@ -110,6 +112,7 @@ export default function EditProduct() {
         setCategory(p.category);
         setSubcategory(p.subcategory ?? "");
         setPrice(String(p.price));
+        setDiscountedPrice(p.discountedPrice ? String(p.discountedPrice) : "");
         setUnit(p.unit ?? "");
         setStock(String(p.stock ?? 0));
 
@@ -233,6 +236,7 @@ export default function EditProduct() {
         category,
         ...(subcategory ? { subcategory } : {}),
         price: Number(price),
+        ...(discountedPrice ? { discountedPrice: Number(discountedPrice) } : { discountedPrice: null }),
         unit: unit.trim(),
         stock: Number(stock),
         ...(validImages.length > 0 ? { images: validImages } : {}),
@@ -396,10 +400,37 @@ export default function EditProduct() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-price">Price (₹)*</Label>
+              <Label htmlFor="edit-price">MRP / Real Price (₹)*</Label>
               <Input id="edit-price" type="number" min="0" step="1" value={price} onChange={e => setPrice(e.target.value)}
                 className="bg-background neu-inset border-none" placeholder="0" required />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-discountedPrice">
+                Sale Price (₹)
+                <span className="ml-1 text-xs font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                id="edit-discountedPrice"
+                type="number"
+                min="0"
+                step="1"
+                value={discountedPrice}
+                onChange={e => setDiscountedPrice(e.target.value)}
+                className="bg-background neu-inset border-none"
+                placeholder="Leave blank if no discount"
+              />
+            </div>
+            {discountedPrice && Number(discountedPrice) > 0 && Number(price) > 0 && Number(discountedPrice) < Number(price) && (
+              <div className="space-y-2">
+                <Label className="invisible">Discount</Label>
+                <div className="h-10 flex items-center px-3 rounded-md bg-green-500/10 text-green-600 text-sm font-semibold">
+                  {Math.round((1 - Number(discountedPrice) / Number(price)) * 100)}% off
+                </div>
+              </div>
+            )}
           </div>
 
           {selectedCat && (selectedCat.subcategories?.length ?? 0) > 0 && (

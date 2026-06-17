@@ -16,7 +16,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { AdminGuard } from "@/components/AdminGuard";
 import { PincodeSelector } from "@/components/PincodeSelector";
 import { useAuth } from "@/hooks/useAuth";
-import { isServicePincode } from "@/lib/serviceArea";
+
 import { MapPinOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -157,7 +157,6 @@ function PincodeGuard({ children }: { children: React.ReactNode }) {
   if (isLoading) return null;
   if (!user || isAdmin || role !== 'customer') return <>{children}</>;
   if (!user.pincode) return <PincodeSelector />;
-  if (!isServicePincode(user.pincode)) return <ServiceUnavailable />;
   return <>{children}</>;
 }
 
