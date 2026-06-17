@@ -60,7 +60,7 @@ export default function Product() {
       <div className="flex flex-col md:flex-row gap-8">
         {/* Image Gallery */}
         <div className="w-full md:w-1/2 space-y-3">
-          <div className="aspect-square rounded-3xl bg-card neu-card p-8 flex items-center justify-center relative overflow-hidden group">
+          <div className="aspect-square rounded-3xl bg-card neu-card p-2 flex items-center justify-center relative overflow-hidden group">
             <div
               className="absolute inset-0 opacity-10 pointer-events-none"
               style={{ background: `linear-gradient(135deg, ${category?.color || 'var(--primary)'}, transparent)` }}
@@ -68,7 +68,7 @@ export default function Product() {
             <img
               src={displayImage}
               alt={product.name}
-              className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
+              className="w-full h-full object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500"
             />
           </div>
 
