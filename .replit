@@ -3,8 +3,8 @@ modules = ["web", "java-graalvm22.3", "nodejs-24"]
 [deployment]
 router = "application"
 deploymentTarget = "autoscale"
-run = ["bash", "-c", "NODE_ENV=production PORT=8080 node --enable-source-maps artifacts/api-server/dist/index.mjs"]
-build = ["bash", "-c", "pnpm --filter @workspace/swiftmart run build && pnpm --filter @workspace/api-server run build"]
+run = ["bash", "-c", "node --enable-source-maps artifacts/api-server/dist/index.mjs & pnpm --filter @workspace/swiftmart run serve"]
+build = ["bash", "-c", "pnpm run build"]
 
 [deployment.postBuild]
 args = ["pnpm", "store", "prune"]
