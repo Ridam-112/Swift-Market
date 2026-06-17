@@ -31,7 +31,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pnpm --filter @workspace/api-server run build && node --enable-source-maps artifacts/api-server/dist/index.mjs & fuser -k 5000/tcp 2>/dev/null; PORT=5000 pnpm --filter @workspace/swiftmart run dev"
+args = "fuser -k 5000/tcp 2>/dev/null; sleep 1; pnpm --filter @workspace/api-server run build && node --enable-source-maps artifacts/api-server/dist/index.mjs & PORT=5000 pnpm --filter @workspace/swiftmart run dev"
 waitForPort = 5000
 
 [agent]
@@ -49,10 +49,6 @@ externalPort = 3001
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 8081
-externalPort = 8081
 
 [[ports]]
 localPort = 8082
