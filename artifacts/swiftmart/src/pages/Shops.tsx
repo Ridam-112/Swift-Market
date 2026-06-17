@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Clock, SlidersHorizontal, X } from "lucide-react";
+import { Star, Clock, SlidersHorizontal, X, Search } from "lucide-react";
 import { useShops } from "@/hooks/useShops";
-import { SectionHeader } from "@/components/SectionHeader";
 
 function formatCategory(slug: string) {
   return slug
@@ -15,6 +14,7 @@ export default function Shops() {
   const { shops, isLoading } = useShops();
   const [openOnly, setOpenOnly] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   const categories = useMemo(() => {
     const seen = new Set<string>();
@@ -29,22 +29,34 @@ export default function Shops() {
   }, [shops]);
 
   const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
     let list = shops;
     if (openOnly) list = list.filter(s => s.isOpen);
     if (selectedCategory) list = list.filter(s => s.category === selectedCategory);
+    if (q) list = list.filter(s =>
+      s.storeName.toLowerCase().includes(q) ||
+      s.category?.toLowerCase().includes(q)
+    );
     return list;
-  }, [shops, openOnly, selectedCategory]);
+  }, [shops, openOnly, selectedCategory, query]);
 
-  const activeFilters = (openOnly ? 1 : 0) + (selectedCategory ? 1 : 0);
+  const activeFilters = (openOnly ? 1 : 0) + (selectedCategory ? 1 : 0) + (query ? 1 : 0);
+
+  const clearAll = () => {
+    setOpenOnly(false);
+    setSelectedCategory(null);
+    setQuery("");
+  };
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-7xl mx-auto space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-foreground">Shops Near You</h2>
         <div className="flex items-center gap-2">
           {activeFilters > 0 && (
             <button
-              onClick={() => { setOpenOnly(false); setSelectedCategory(null); }}
+              onClick={clearAll}
               className="flex items-center gap-1 px-3 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium"
             >
               <X className="w-3 h-3" /> Clear ({activeFilters})
@@ -62,6 +74,26 @@ export default function Shops() {
             Open Now
           </button>
         </div>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search shops…"
+          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-card neu-inset text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+        />
+        {query && (
+          <button
+            onClick={() => setQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Category filter chips */}
@@ -121,9 +153,12 @@ export default function Shops() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
+          <Search className="w-10 h-10 text-muted-foreground/40 mb-3" />
           <p className="text-lg font-semibold text-foreground">No shops found</p>
           <p className="text-sm text-muted-foreground mt-1">
-            {openOnly && selectedCategory
+            {query
+              ? `No shops matching "${query}"${selectedCategory ? ` in ${formatCategory(selectedCategory)}` : ""}${openOnly ? " that are open" : ""}.`
+              : openOnly && selectedCategory
               ? `No open ${formatCategory(selectedCategory)} shops right now.`
               : openOnly
               ? "No shops are currently open."
@@ -133,7 +168,7 @@ export default function Shops() {
           </p>
           {activeFilters > 0 && (
             <button
-              onClick={() => { setOpenOnly(false); setSelectedCategory(null); }}
+              onClick={clearAll}
               className="mt-3 text-sm text-primary font-medium hover:underline"
             >
               Clear all filters
@@ -143,7 +178,7 @@ export default function Shops() {
       ) : (
         <AnimatePresence mode="wait">
           <motion.div
-            key={`${selectedCategory ?? "all"}-${openOnly}`}
+            key={`${selectedCategory ?? "all"}-${openOnly}-${query}`}
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -177,7 +212,7 @@ export default function Shops() {
                         )}
                       </div>
 
-                      <div className="text-xs text-muted-foreground mb-2 truncate capitalize">
+                      <div className="text-xs text-muted-foreground mb-2 truncate">
                         {formatCategory(vendor.category)}
                       </div>
 
