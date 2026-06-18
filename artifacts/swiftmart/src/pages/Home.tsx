@@ -9,8 +9,9 @@ import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SkeletonGrid } from "@/components/SkeletonGrid";
 import { api } from "@/lib/api";
-import { Star, ChevronRight, Flame } from "lucide-react";
+import { Star, ChevronRight, Flame, Zap } from "lucide-react";
 import type { Product } from "@/types";
+import { useAuth } from "@/hooks/useAuth";
 
 const VISIBLE_CATEGORIES = 8;
 
@@ -22,6 +23,7 @@ const DEFAULT_COLORS = [
 ];
 
 export default function Home() {
+  const { user } = useAuth();
   const { products } = useProducts();
   const { shops, isLoading: shopsLoading } = useShops();
   const [loading, setLoading] = useState(true);
@@ -141,9 +143,17 @@ export default function Home() {
                     <div className="text-[10px] text-muted-foreground mb-1 truncate">
                       {shop.category}
                     </div>
-                    <div className="flex items-center gap-1 text-[11px] font-medium text-yellow-600">
-                      <Star className="w-3 h-3 fill-current" />
-                      {shop.rating > 0 ? shop.rating.toFixed(1) : "New"}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1 text-[11px] font-medium text-yellow-600">
+                        <Star className="w-3 h-3 fill-current" />
+                        {shop.rating > 0 ? shop.rating.toFixed(1) : "New"}
+                      </div>
+                      {user?.pincode && shop.pincode === user.pincode && (
+                        <div className="flex items-center gap-0.5 text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                          <Zap className="w-2.5 h-2.5 fill-current" />
+                          Quick
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Clock, SlidersHorizontal, X, Search } from "lucide-react";
+import { Star, Clock, SlidersHorizontal, X, Search, Zap } from "lucide-react";
 import { useShops } from "@/hooks/useShops";
+import { useAuth } from "@/hooks/useAuth";
 
 function formatCategory(slug: string) {
   return slug
@@ -12,6 +13,7 @@ function formatCategory(slug: string) {
 
 export default function Shops() {
   const { shops, isLoading } = useShops();
+  const { user } = useAuth();
   const [openOnly, setOpenOnly] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -216,7 +218,7 @@ export default function Shops() {
                         {formatCategory(vendor.category)}
                       </div>
 
-                      <div className="flex items-center gap-3 text-xs font-medium">
+                      <div className="flex items-center gap-2 flex-wrap text-xs font-medium">
                         <div className="flex items-center gap-1 text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 rounded-md">
                           <Star className="w-3 h-3 fill-current" />
                           {vendor.rating > 0 ? vendor.rating.toFixed(1) : "New"}
@@ -225,6 +227,12 @@ export default function Shops() {
                           <Clock className="w-3 h-3" />
                           {vendor.eta}
                         </div>
+                        {user?.pincode && vendor.pincode === user.pincode && (
+                          <div className="flex items-center gap-1 text-primary bg-primary/10 px-2 py-0.5 rounded-md font-semibold">
+                            <Zap className="w-3 h-3 fill-current" />
+                            Quick Delivery
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
