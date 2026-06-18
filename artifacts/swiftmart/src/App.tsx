@@ -3,6 +3,7 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 import { AuthProvider } from "@/context/AuthContext";
 import { ProductsProvider } from "@/context/ProductsContext";
@@ -15,7 +16,9 @@ import { RoleGuard } from "@/components/RoleGuard";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AdminGuard } from "@/components/AdminGuard";
 import { PincodeSelector } from "@/components/PincodeSelector";
+import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { useAuth } from "@/hooks/useAuth";
+import { setupPushMessageListener, playNotificationSound } from "@/lib/pushNotifications";
 
 import { MapPinOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -281,6 +284,28 @@ function Router() {
   );
 }
 
+/**
+ * Handles two things for logged-in users:
+ * 1. Shows the notification permission prompt after login (if not yet granted/dismissed).
+ * 2. Listens for push messages from the service worker and plays a sound + shows a
+ *    toast when a notification arrives while the app is in the foreground.
+ */
+function PushManager() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+    const cleanup = setupPushMessageListener((title, body) => {
+      playNotificationSound();
+      toast(title, { description: body, duration: 5000 });
+    });
+    return cleanup;
+  }, [user]);
+
+  if (!user) return null;
+  return <NotificationPrompt userId={user.id} />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -292,6 +317,7 @@ function App() {
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                 <Router />
               </WouterRouter>
+              <PushManager />
               <Toaster />
             </CartProvider>
             </ShopsProvider>

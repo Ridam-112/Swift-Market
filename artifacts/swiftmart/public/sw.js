@@ -1,11 +1,9 @@
-// ─── Lifecycle ───────────────────────────────────────────────────────────────
+// ─── Lifecycle ────────────────────────────────────────────────────────────────
 self.addEventListener("install", (event) => {
-  // Take over immediately — don't wait for the old SW to be released
   event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener("activate", (event) => {
-  // Claim all open tabs/windows so this SW controls them right away
   event.waitUntil(self.clients.claim());
 });
 
@@ -22,17 +20,34 @@ self.addEventListener("push", (event) => {
 
   const title = data.title ?? "SwiftMart";
   const options = {
-    body:               data.body    ?? data.message ?? "",
-    icon:               data.icon    ?? "/logo.png",
-    badge:              data.badge   ?? "/logo.png",
-    tag:                data.tag     ?? "swiftmart-notification",
-    data:               data.data    ?? {},
+    body:               data.body ?? data.message ?? "",
+    icon:               data.icon  ?? "/logo.png",
+    badge:              data.badge ?? "/logo.png",
+    tag:                data.tag   ?? "swiftmart-notification",
+    data:               data.data  ?? {},
     vibrate:            [200, 100, 200],
     requireInteraction: false,
     renotify:           true,
+    silent:             false,   // use OS default notification sound
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(title, options),
+      // Tell any open app windows to play a foreground sound
+      clients
+        .matchAll({ type: "window", includeUncontrolled: true })
+        .then((clientList) => {
+          clientList.forEach((client) =>
+            client.postMessage({
+              type: "PUSH_RECEIVED",
+              title,
+              body: options.body,
+            })
+          );
+        }),
+    ])
+  );
 });
 
 // ─── Notification click ───────────────────────────────────────────────────────
