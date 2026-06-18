@@ -33,6 +33,8 @@ type OrderItem = {
 
 const STATUS_MESSAGES: Record<string, { title: string; message: string }> = {
   placed:           { title: "Order Placed",       message: "Your order has been placed successfully!" },
+  accepted:         { title: "Order Accepted",      message: "Your order has been accepted by the shop! 🎉" },
+  preparing:        { title: "Order Being Prepared", message: "The shop is preparing your order." },
   confirmed:        { title: "Order Confirmed",     message: "Your order has been confirmed by the shop." },
   packed:           { title: "Order Packed",        message: "Your order is packed and ready for pickup." },
   out_for_delivery: { title: "Out for Delivery",    message: "Your order is on the way! 🚚" },
@@ -45,7 +47,7 @@ const STOCK_RESTORE_STATUSES = new Set(["cancelled", "refunded"]);
 
 // All valid order statuses — rejects arbitrary strings (L1)
 const VALID_STATUSES = new Set([
-  "placed", "confirmed", "packed", "out_for_delivery", "delivered", "cancelled", "refunded",
+  "placed", "accepted", "preparing", "confirmed", "packed", "out_for_delivery", "delivered", "cancelled", "refunded",
 ]);
 
 // Restore stock for a list of order items and re-activate any that had gone out_of_stock
