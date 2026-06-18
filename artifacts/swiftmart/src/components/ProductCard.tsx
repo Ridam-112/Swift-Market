@@ -40,7 +40,12 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           alt={product.name} 
           className={`w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? "opacity-40" : ""}`}
         />
-        {product.trending && !isOutOfStock && (
+        {product.discountedPrice && product.discountedPrice < product.price && !isOutOfStock && (
+          <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+            {Math.round((1 - product.discountedPrice / product.price) * 100)}% off
+          </div>
+        )}
+        {product.trending && !isOutOfStock && !(product.discountedPrice && product.discountedPrice < product.price) && (
           <div className="absolute top-2 left-2 bg-primary/90 text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
             Trending
           </div>
@@ -67,8 +72,15 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           {product.name}
         </Link>
         <div className="mt-auto flex items-center justify-between">
-          <div className="font-bold text-base text-primary">
-            {formatINR(product.price)}
+          <div className="flex flex-col">
+            <div className="font-bold text-base text-primary">
+              {formatINR(product.discountedPrice && product.discountedPrice < product.price ? product.discountedPrice : product.price)}
+            </div>
+            {product.discountedPrice && product.discountedPrice < product.price && (
+              <div className="text-[11px] text-muted-foreground line-through leading-tight">
+                {formatINR(product.price)}
+              </div>
+            )}
           </div>
           <div className="z-10">
             {isOutOfStock ? (

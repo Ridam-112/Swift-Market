@@ -38,6 +38,7 @@ export interface Product {
   category: CategoryId;
   subcategory?: string;
   price: number;
+  discountedPrice?: number;
   unit: string;
   image: string;
   images?: string[];

@@ -104,8 +104,22 @@ export default function Product() {
             </div>
           </div>
 
-          <div className="text-3xl font-bold text-primary mb-4">
-            {formatINR(product.price)}
+          <div className="flex items-end gap-3 mb-4">
+            <div className="text-3xl font-bold text-primary">
+              {formatINR(product.discountedPrice && product.discountedPrice < product.price
+                ? product.discountedPrice
+                : product.price)}
+            </div>
+            {product.discountedPrice && product.discountedPrice < product.price && (
+              <>
+                <div className="text-lg text-muted-foreground line-through mb-0.5">
+                  {formatINR(product.price)}
+                </div>
+                <div className="mb-0.5 bg-green-500/15 text-green-600 text-sm font-bold px-2 py-0.5 rounded-full">
+                  {Math.round((1 - product.discountedPrice / product.price) * 100)}% off
+                </div>
+              </>
+            )}
           </div>
 
           {/* Color selector */}

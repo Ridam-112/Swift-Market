@@ -18,6 +18,7 @@ interface ApiProduct {
   name: string;
   category: string;
   price: number;
+  discountedPrice?: number;
   unit?: string;
   image?: string;
   images?: string[];
@@ -38,6 +39,7 @@ function mapApiProduct(p: ApiProduct): Product {
     name: p.name,
     category: p.category as Product['category'],
     price: p.price,
+    discountedPrice: p.discountedPrice ?? undefined,
     unit: p.unit ?? "1 unit",
     image: p.images?.[0] ?? p.image ?? "/assets/product-placeholder.png",
     images: p.images ?? (p.image ? [p.image] : []),
