@@ -5,7 +5,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { api } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
-import { registerPushNotifications, unregisterPushNotifications, getPushPermissionState } from "@/lib/pushNotifications";
+import { registerPushNotifications, unregisterPushNotifications, getPushPermissionState, playNotificationSound } from "@/lib/pushNotifications";
 import { toast } from "sonner";
 
 interface Notification {
@@ -33,6 +33,7 @@ export default function Notifications() {
   const [markingAll, setMarkingAll] = useState(false);
   const [pushState, setPushState] = useState<"granted" | "denied" | "default" | "unsupported">("default");
   const [pushLoading, setPushLoading] = useState(false);
+  const [testLoading, setTestLoading] = useState(false);
 
   const fetchNotifications = () => {
     setLoading(true);
@@ -88,6 +89,23 @@ export default function Notifications() {
       toast.success("Push notifications disabled.");
     } finally {
       setPushLoading(false);
+    }
+  };
+
+  const handleTestPush = async () => {
+    setTestLoading(true);
+    try {
+      const res = await api.post<{ success: boolean; message: string }>("/push/test", {});
+      if (res.success) {
+        playNotificationSound();
+        toast.success(res.message ?? "Test push sent! Check your notification bar.");
+      } else {
+        toast.error(res.message ?? "Push test failed. Make sure notifications are enabled.");
+      }
+    } catch {
+      toast.error("Test failed — no subscription found. Try disabling and re-enabling notifications.");
+    } finally {
+      setTestLoading(false);
     }
   };
 
@@ -168,15 +186,24 @@ export default function Notifications() {
             </p>
           </div>
           {pushState === "granted" ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={pushLoading}
-              onClick={handleDisablePush}
-              className="shrink-0 text-xs text-muted-foreground hover:text-destructive"
-            >
-              Turn off
-            </Button>
+            <div className="flex flex-col gap-1 shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={testLoading}
+                onClick={handleTestPush}
+                className="text-xs h-7 px-2 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/40"
+              >
+                {testLoading ? "Sending…" : "Test Push"}
+              </Button>
+              <button
+                disabled={pushLoading}
+                onClick={handleDisablePush}
+                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors text-center"
+              >
+                Turn off
+              </button>
+            </div>
           ) : pushState === "default" ? (
             <Button
               size="sm"
