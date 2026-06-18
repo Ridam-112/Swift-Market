@@ -147,7 +147,7 @@ export function PincodeSelector({ onDone, compact = false }: PincodeSelectorProp
             {pincodeOutOfArea && (
               <div className="bg-destructive/10 text-destructive rounded-xl p-3 text-sm">
                 <p className="font-semibold">Not available in your area yet</p>
-                <p className="text-xs mt-1">SwiftMart currently serves 733101 (Balurghat) and 733103 (Gangarampur).</p>
+                <p className="text-xs mt-1">SwiftMart currently serves 733101 and 733103 (both Balurghat).</p>
               </div>
             )}
           </div>
@@ -162,7 +162,7 @@ export function PincodeSelector({ onDone, compact = false }: PincodeSelectorProp
         </Button>
 
         <p className="text-xs text-center text-muted-foreground">
-          Available areas: Balurghat (733101) · Gangarampur (733103)
+          Available areas: Balurghat (733101 · 733103)
         </p>
       </motion.div>
     </div>

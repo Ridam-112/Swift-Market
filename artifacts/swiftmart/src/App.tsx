@@ -129,7 +129,7 @@ function ServiceUnavailable() {
             Sorry, SwiftMart is not available in your area yet. You can buy from another available area.
           </p>
           <p className="text-xs text-muted-foreground mt-2">
-            Currently serving: <strong>Balurghat (733101)</strong> &amp; <strong>Gangarampur (733103)</strong>
+            Currently serving: <strong>Balurghat (733101 &amp; 733103)</strong>
           </p>
         </div>
         <div className="space-y-3">

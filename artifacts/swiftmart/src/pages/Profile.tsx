@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 const SUPPORTED_PINCODES = [
   { code: "733101", city: "Balurghat" },
-  { code: "733103", city: "Gangarampur" },
+  { code: "733103", city: "Balurghat" },
 ];
 
 export default function Profile() {
