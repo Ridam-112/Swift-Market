@@ -35,8 +35,25 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    api.get<{ success: boolean; products: Product[] }>('/products?trending=true&limit=10')
-      .then(d => setTrendingProducts(d.products ?? []))
+    api.get<{ success: boolean; products: Array<Record<string, unknown>> }>('/products?trending=true&limit=10')
+      .then(d => {
+        const mapped: Product[] = (d.products ?? []).map(p => ({
+          id: (p['id'] ?? p['_id'] ?? '') as string,
+          name: (p['name'] ?? '') as string,
+          category: (p['category'] ?? '') as Product['category'],
+          price: Number(p['price'] ?? 0),
+          discountedPrice: p['discountedPrice'] != null ? Number(p['discountedPrice']) : undefined,
+          unit: (p['unit'] ?? '1 unit') as string,
+          image: ((p['images'] as string[] | undefined)?.[0] ?? p['image'] ?? '/assets/product-placeholder.png') as string,
+          images: (p['images'] as string[] | undefined) ?? [],
+          description: (p['description'] ?? '') as string,
+          stock: Number(p['stock'] ?? 0),
+          rating: Number(p['rating'] ?? 0),
+          vendorId: (p['shopId'] ?? '') as string,
+          trending: Boolean(p['trending']),
+        }));
+        setTrendingProducts(mapped);
+      })
       .catch(() => {})
       .finally(() => setTrendingLoading(false));
   }, []);

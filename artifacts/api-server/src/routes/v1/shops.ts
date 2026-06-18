@@ -43,23 +43,13 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     )!);
   }
 
-  // BUG#1 fix: non-admin browsing without an explicit status filter must only see approved shops.
+  // Non-admin browsing without an explicit status filter must only see approved shops.
   // Vendors viewing their own shop (ownerId filter) are exempt so they can see pending/rejected too.
   if (!isAdmin && !status && !ownerId) {
     conditions.push(eq(shops.status, "approved"));
   }
 
-  if (!isAdmin && (status === "approved" || (!status && !ownerId))) {
-    const activeShopTypeRows = await db.select({ slug: shopTypes.slug }).from(shopTypes).where(eq(shopTypes.isActive, true));
-    if (activeShopTypeRows.length > 0) {
-      const activeSlugs = activeShopTypeRows.map(st => st.slug);
-      if (shopType) {
-        conditions.push(eq(shops.shopType, activeSlugs.includes(shopType) ? shopType : "__none__"));
-      } else {
-        conditions.push(inArray(shops.shopType, activeSlugs));
-      }
-    }
-  } else if (shopType) {
+  if (shopType) {
     conditions.push(eq(shops.shopType, shopType));
   }
 
