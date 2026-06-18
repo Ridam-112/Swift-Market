@@ -1,11 +1,13 @@
 import { Router, type Response } from "express";
-import { db, deliveryPartners } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { db, deliveryPartners, deliveryChargeRules, deliverySettings } from "@workspace/db";
+import { eq, desc, and } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { mi, miArr } from "../../utils/mapId.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
+
+// ─── Delivery Partners ────────────────────────────────────────────────────────
 
 router.get("/", authenticate, A, async (_req, res: Response): Promise<void> => {
   const partners = await db.select().from(deliveryPartners).orderBy(desc(deliveryPartners.createdAt));
@@ -26,17 +28,129 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
 });
 
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const id = req.params["id"] as string;
+  if (!id.match(/^[0-9a-f-]{36}$/i)) {
+    // not a UUID — skip to next handler
+    return;
+  }
   const [partner] = await db.update(deliveryPartners)
     .set(req.body as Record<string, unknown>)
-    .where(eq(deliveryPartners.id, req.params["id"] as string))
+    .where(eq(deliveryPartners.id, id))
     .returning();
   if (!partner) { res.status(404).json({ success: false, message: "Not found" }); return; }
   res.json({ success: true, partner: mi(partner) });
 });
 
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  await db.delete(deliveryPartners).where(eq(deliveryPartners.id, req.params["id"] as string));
+  const id = req.params["id"] as string;
+  if (!id.match(/^[0-9a-f-]{36}$/i)) {
+    return;
+  }
+  await db.delete(deliveryPartners).where(eq(deliveryPartners.id, id));
   res.json({ success: true, message: "Deleted" });
+});
+
+// ─── Delivery Charge Rules ────────────────────────────────────────────────────
+
+// GET /delivery/charges — public: returns all rules + rain mode status
+router.get("/charges", async (_req, res: Response): Promise<void> => {
+  const [rules, settingRow] = await Promise.all([
+    db.select().from(deliveryChargeRules).orderBy(desc(deliveryChargeRules.createdAt)),
+    db.select().from(deliverySettings).where(eq(deliverySettings.key, "rain_mode_active")),
+  ]);
+  const rainModeActive = settingRow[0]?.value === "true";
+  res.json({ success: true, rules: miArr(rules), rainModeActive });
+});
+
+// GET /delivery/charges/calculate — public: compute fee for a pincode pair
+router.get("/charges/calculate", async (req, res: Response): Promise<void> => {
+  const shopPincode = String(req.query["shopPincode"] ?? "");
+  const userPincode = String(req.query["userPincode"] ?? "");
+
+  if (shopPincode === userPincode) {
+    res.json({ success: true, crossAreaCharge: 0, rainSurcharge: 0, rainModeActive: false, total: 0 });
+    return;
+  }
+
+  const [ruleRows, settingRow] = await Promise.all([
+    db.select().from(deliveryChargeRules).where(
+      and(
+        eq(deliveryChargeRules.fromPincode, shopPincode),
+        eq(deliveryChargeRules.toPincode, userPincode),
+      )
+    ).limit(1),
+    db.select().from(deliverySettings).where(eq(deliverySettings.key, "rain_mode_active")),
+  ]);
+
+  const rule = ruleRows[0];
+  const rainModeActive = settingRow[0]?.value === "true";
+  const crossAreaCharge = rule?.baseCharge ?? 0;
+  const rainSurcharge = rainModeActive ? (rule?.rainSurcharge ?? 0) : 0;
+
+  res.json({
+    success: true,
+    crossAreaCharge,
+    rainSurcharge,
+    rainModeActive,
+    total: crossAreaCharge + rainSurcharge,
+  });
+});
+
+// POST /delivery/charges — admin: add rule
+router.post("/charges", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const body = req.body as Record<string, unknown>;
+  const [rule] = await db.insert(deliveryChargeRules).values({
+    fromPincode: String(body["fromPincode"] ?? ""),
+    toPincode: String(body["toPincode"] ?? ""),
+    baseCharge: Number(body["baseCharge"] ?? 0),
+    rainSurcharge: Number(body["rainSurcharge"] ?? 0),
+    label: body["label"] ? String(body["label"]) : null,
+  }).returning();
+  res.status(201).json({ success: true, rule: mi(rule!) });
+});
+
+// PATCH /delivery/charges/:id — admin: update rule
+router.patch("/charges/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const body = req.body as Record<string, unknown>;
+  const [rule] = await db.update(deliveryChargeRules).set({
+    fromPincode: body["fromPincode"] ? String(body["fromPincode"]) : undefined,
+    toPincode: body["toPincode"] ? String(body["toPincode"]) : undefined,
+    baseCharge: body["baseCharge"] != null ? Number(body["baseCharge"]) : undefined,
+    rainSurcharge: body["rainSurcharge"] != null ? Number(body["rainSurcharge"]) : undefined,
+    label: body["label"] != null ? String(body["label"]) : undefined,
+    updatedAt: new Date(),
+  }).where(eq(deliveryChargeRules.id, req.params["id"] as string)).returning();
+  if (!rule) { res.status(404).json({ success: false, message: "Rule not found" }); return; }
+  res.json({ success: true, rule: mi(rule) });
+});
+
+// DELETE /delivery/charges/:id — admin: delete rule
+router.delete("/charges/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  await db.delete(deliveryChargeRules).where(eq(deliveryChargeRules.id, req.params["id"] as string));
+  res.json({ success: true, message: "Rule deleted" });
+});
+
+// ─── Rain Mode ────────────────────────────────────────────────────────────────
+
+// POST /delivery/rain-mode — admin: toggle or set rain mode
+router.post("/rain-mode", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const body = req.body as Record<string, unknown>;
+  const active = Boolean(body["active"]);
+
+  // upsert the setting
+  const existing = await db.select().from(deliverySettings).where(eq(deliverySettings.key, "rain_mode_active"));
+  if (existing.length > 0) {
+    await db.update(deliverySettings)
+      .set({ value: active ? "true" : "false", updatedAt: new Date() })
+      .where(eq(deliverySettings.key, "rain_mode_active"));
+  } else {
+    await db.insert(deliverySettings).values({
+      key: "rain_mode_active",
+      value: active ? "true" : "false",
+    });
+  }
+
+  res.json({ success: true, rainModeActive: active });
 });
 
 export default router;

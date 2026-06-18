@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +9,7 @@ import { CartSummary } from "@/components/CartSummary";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Wallet, CreditCard, Banknote, Loader2, AlertCircle, Tag, X } from "lucide-react";
+import { Plus, Wallet, CreditCard, Banknote, Loader2, AlertCircle, Tag, X, CloudRain, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -68,6 +68,14 @@ interface CouponValidateResponse {
   message?: string;
 }
 
+interface DeliveryChargeResponse {
+  success: boolean;
+  crossAreaCharge: number;
+  rainSurcharge: number;
+  rainModeActive: boolean;
+  total: number;
+}
+
 export default function Checkout() {
   const [, setLocation] = useLocation();
   const { items, subtotal, clearCart } = useCart();
@@ -87,17 +95,50 @@ export default function Checkout() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState("");
 
+  const [crossAreaCharge, setCrossAreaCharge] = useState(0);
+  const [rainSurcharge, setRainSurcharge] = useState(0);
+  const [rainModeActive, setRainModeActive] = useState(false);
+  const [chargesLoading, setChargesLoading] = useState(false);
+
   if (items.length === 0) {
     setLocation("/cart");
     return null;
   }
 
-  const deliveryFee = deliverySlot === 'instant' ? 25 : 0;
   const address = user?.addresses.find(a => a.id === selectedAddress);
   const addressPincodeInvalid = address && !isServicePincode(address.pincode);
-  const orderTotalForCoupon = subtotal + deliveryFee;
+
+  const shopId = items[0]?.product.vendorId;
+  const shop = shops.find(s => s.id === shopId);
+  const shopPincode = shop?.pincode ?? "";
+  const isSamePincode = !!address && !!shopPincode && address.pincode === shopPincode;
+
+  // Fetch cross-area charge whenever address or shop changes
+  useEffect(() => {
+    if (!address?.pincode || !shopPincode) return;
+    if (address.pincode === shopPincode) {
+      setCrossAreaCharge(0);
+      setRainSurcharge(0);
+      setRainModeActive(false);
+      return;
+    }
+    setChargesLoading(true);
+    api.get<DeliveryChargeResponse>(
+      `/delivery/charges/calculate?shopPincode=${shopPincode}&userPincode=${address.pincode}`
+    ).then(data => {
+      setCrossAreaCharge(data.crossAreaCharge);
+      setRainSurcharge(data.rainSurcharge);
+      setRainModeActive(data.rainModeActive);
+    }).catch(() => {
+      // silently fall back to 0
+    }).finally(() => setChargesLoading(false));
+  }, [address?.pincode, shopPincode]);
+
+  const instantFee = deliverySlot === 'instant' ? 25 : 0;
+  const totalDeliveryFee = instantFee + crossAreaCharge + rainSurcharge;
+  const orderTotalForCoupon = subtotal + totalDeliveryFee;
   const couponDiscount = couponApplied?.discount ?? 0;
-  const totalAmount = subtotal + deliveryFee - couponDiscount;
+  const totalAmount = subtotal + totalDeliveryFee - couponDiscount;
 
   const handleApplyCoupon = async () => {
     const code = couponInput.trim().toUpperCase();
@@ -128,7 +169,7 @@ export default function Checkout() {
     setCouponInput("");
   };
 
-  const createOrderRecord = async (shopId: string, shopName: string, razorpayOrderId?: string) => {
+  const createOrderRecord = async (shopName: string, razorpayOrderId?: string) => {
     const paymentMethodApi = paymentMethod === 'Card' ? 'card' : paymentMethod;
     return api.post<ApiOrderResponse>("/orders", {
       shopId,
@@ -143,7 +184,7 @@ export default function Checkout() {
         category: item.product.category,
       })),
       subtotal,
-      deliveryCharge: deliveryFee,
+      deliveryCharge: totalDeliveryFee,
       couponDiscount,
       ...(couponApplied ? { couponCode: couponApplied.code } : {}),
       ...(razorpayOrderId ? { razorpayOrderId } : {}),
@@ -180,13 +221,11 @@ export default function Checkout() {
       return;
     }
 
-    const shopId = items[0]?.product.vendorId;
     if (!shopId) {
       toast.error("Could not determine shop for this order");
       return;
     }
 
-    const shop = shops.find(s => s.id === shopId);
     const shopName = shop?.storeName ?? "Unknown Shop";
 
     if (shop && !shop.isOpen) {
@@ -201,16 +240,14 @@ export default function Checkout() {
 
     try {
       if (paymentMethod === 'COD') {
-        // COD: create order directly
-        const data = await createOrderRecord(shopId, shopName);
+        const data = await createOrderRecord(shopName);
         toast.success("Order placed successfully!");
         clearCart();
         setLocation(`/order/success/${data.order._id}`);
       } else {
-        // Online payment: server computes amount from DB prices (prevents tampering)
         const rzpOrderData = await api.post<RazorpayOrderResponse>("/payments/create-order", {
           items: items.map(i => ({ productId: i.product.id, qty: i.qty })),
-          deliveryCharge: deliveryFee,
+          deliveryCharge: totalDeliveryFee,
           ...(couponApplied ? { couponCode: couponApplied.code } : {}),
           receipt: `order_${Date.now()}`,
         });
@@ -238,9 +275,7 @@ export default function Checkout() {
           theme: { color: "#16a34a" },
           handler: async (response: RazorpayResponse) => {
             try {
-              // Create order record in our DB — pass razorpayOrderId so webhook can reconcile if verify fails
-              const orderData = await createOrderRecord(shopId, shopName, rzpOrderData.order.id);
-              // Verify payment signature with backend
+              const orderData = await createOrderRecord(shopName, rzpOrderData.order.id);
               await api.post("/payments/verify", {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
@@ -337,6 +372,37 @@ export default function Checkout() {
               <p>SwiftMart currently delivers within Balurghat only (pincodes 733101 & 733103). Please use one of these pincodes.</p>
             </div>
           )}
+
+          {/* Cross-area delivery info banner */}
+          {address && shopPincode && !isSamePincode && !addressPincodeInvalid && (
+            <div className="mt-3 rounded-xl p-3 text-sm space-y-1 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300">
+              <div className="flex items-center gap-2 font-semibold">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                Cross-area delivery applies
+              </div>
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                This shop is in pincode <strong>{shopPincode}</strong> but your address is in <strong>{address.pincode}</strong>.
+                {chargesLoading
+                  ? " Calculating delivery charge…"
+                  : crossAreaCharge > 0
+                    ? ` A cross-area charge of ₹${crossAreaCharge}${rainModeActive && rainSurcharge > 0 ? ` + ₹${rainSurcharge} rain surcharge` : ""} has been added.`
+                    : " No extra charge configured for this route yet."}
+              </p>
+              {rainModeActive && rainSurcharge > 0 && (
+                <div className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 mt-1">
+                  <CloudRain className="w-3.5 h-3.5" /> Rain mode active — surcharge included
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Same pincode — quick delivery badge */}
+          {address && shopPincode && isSamePincode && (
+            <div className="mt-3 flex items-center gap-2 bg-primary/10 text-primary rounded-xl p-3 text-sm font-semibold">
+              <Zap className="w-4 h-4 fill-current" />
+              Quick Delivery available — this shop is in your area!
+            </div>
+          )}
         </section>
 
         <section>
@@ -360,7 +426,9 @@ export default function Checkout() {
               )}
             >
               <div className="font-bold">Schedule later</div>
-              <div className="text-xs text-muted-foreground mt-1">Free delivery</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {isSamePincode ? "Free delivery" : crossAreaCharge > 0 ? `Cross-area charge applies` : "Free delivery"}
+              </div>
             </div>
           </div>
         </section>
@@ -439,7 +507,10 @@ export default function Checkout() {
         <section className="pt-4 border-t border-border">
           <CartSummary
             subtotal={subtotal}
-            deliveryFee={deliveryFee}
+            deliveryFee={instantFee}
+            crossAreaCharge={crossAreaCharge}
+            rainSurcharge={rainSurcharge}
+            rainModeActive={rainModeActive}
             couponDiscount={couponApplied?.discount ?? 0}
             couponCode={couponApplied?.code}
           />
@@ -447,15 +518,20 @@ export default function Checkout() {
           <Button
             className="w-full mt-6 rounded-full h-14 text-lg font-bold shadow-none neu-card"
             onClick={handlePlaceOrder}
-            disabled={placing || !!addressPincodeInvalid}
+            disabled={placing || !!addressPincodeInvalid || chargesLoading}
           >
             {placing ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 {paymentMethod === 'COD' ? 'Placing Order…' : 'Opening Payment…'}
               </>
+            ) : chargesLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Calculating charges…
+              </>
             ) : (
-              paymentMethod === 'COD' ? 'Place Order' : `Pay ₹${totalAmount}`
+              paymentMethod === 'COD' ? 'Place Order' : `Pay ₹${Math.max(0, totalAmount)}`
             )}
           </Button>
         </section>

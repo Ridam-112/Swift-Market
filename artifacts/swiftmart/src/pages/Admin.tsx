@@ -105,7 +105,7 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges';
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -184,6 +184,7 @@ export default function Admin() {
               {activeSection === 'categories' && <CategoriesTab />}
               {activeSection === 'payouts' && <PayoutsTab />}
               {activeSection === 'support' && <SupportTicketsTab />}
+              {activeSection === 'delivery-charges' && <DeliveryChargesTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -226,6 +227,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'categories', label: 'Categories', icon: Tag },
     { id: 'payouts', label: 'Payouts', icon: CreditCard },
     { id: 'support', label: 'Support Tickets', icon: HelpCircle },
+  { id: 'delivery-charges', label: 'Delivery Charges', icon: Package },
   ];
 
   return (
@@ -5564,6 +5566,315 @@ function TrendingProductsTab() {
           <div className="px-5 py-3 border-t border-border bg-muted/20 text-xs text-muted-foreground">
             Showing {displayList.length} product{displayList.length !== 1 ? 's' : ''}
             {subTab === 'most-sold' && products.filter(p => p.unitsSold > 0 || p.trending).length > 50 && ' (top 50 by units sold)'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Delivery Charges Tab ─────────────────────────────────────────────────────
+
+interface DeliveryRule {
+  _id: string;
+  fromPincode: string;
+  toPincode: string;
+  baseCharge: number;
+  rainSurcharge: number;
+  label?: string;
+}
+
+interface DeliveryChargesApiResponse {
+  success: boolean;
+  rules: DeliveryRule[];
+  rainModeActive: boolean;
+}
+
+const EMPTY_RULE = { fromPincode: "", toPincode: "", baseCharge: 0, rainSurcharge: 0, label: "" };
+
+function DeliveryChargesTab() {
+  const [rules, setRules] = useState<DeliveryRule[]>([]);
+  const [rainModeActive, setRainModeActive] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [rainToggling, setRainToggling] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [form, setForm] = useState(EMPTY_RULE);
+  const [editForm, setEditForm] = useState(EMPTY_RULE);
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api.get<DeliveryChargesApiResponse>("/delivery/charges");
+      setRules(data.rules);
+      setRainModeActive(data.rainModeActive);
+    } catch {
+      toast.error("Failed to load delivery charges");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const handleToggleRain = async () => {
+    setRainToggling(true);
+    try {
+      await api.post("/delivery/rain-mode", { active: !rainModeActive });
+      setRainModeActive(v => !v);
+      toast.success(rainModeActive ? "Rain mode disabled" : "Rain mode enabled — surcharge active");
+    } catch {
+      toast.error("Failed to update rain mode");
+    } finally {
+      setRainToggling(false);
+    }
+  };
+
+  const handleAddRule = async () => {
+    if (!form.fromPincode || !form.toPincode) {
+      toast.error("Both pincodes are required");
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.post("/delivery/charges", {
+        fromPincode: form.fromPincode.trim(),
+        toPincode: form.toPincode.trim(),
+        baseCharge: Number(form.baseCharge),
+        rainSurcharge: Number(form.rainSurcharge),
+        label: form.label || null,
+      });
+      setForm(EMPTY_RULE);
+      setShowAddForm(false);
+      toast.success("Delivery rule added");
+      fetchAll();
+    } catch {
+      toast.error("Failed to add rule");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    setSaving(true);
+    try {
+      await api.patch(`/delivery/charges/${id}`, {
+        fromPincode: editForm.fromPincode.trim(),
+        toPincode: editForm.toPincode.trim(),
+        baseCharge: Number(editForm.baseCharge),
+        rainSurcharge: Number(editForm.rainSurcharge),
+        label: editForm.label || null,
+      });
+      setEditingId(null);
+      toast.success("Rule updated");
+      fetchAll();
+    } catch {
+      toast.error("Failed to update rule");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteRule = async (id: string) => {
+    if (!confirm("Delete this delivery rule?")) return;
+    try {
+      await api.delete(`/delivery/charges/${id}`);
+      toast.success("Rule deleted");
+      fetchAll();
+    } catch {
+      toast.error("Failed to delete rule");
+    }
+  };
+
+  const startEdit = (rule: DeliveryRule) => {
+    setEditingId(rule._id);
+    setEditForm({
+      fromPincode: rule.fromPincode,
+      toPincode: rule.toPincode,
+      baseCharge: rule.baseCharge,
+      rainSurcharge: rule.rainSurcharge,
+      label: rule.label ?? "",
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">Delivery Charges</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Manage cross-area delivery fees and rain surcharges
+          </p>
+        </div>
+        <Button onClick={() => { setShowAddForm(true); setForm(EMPTY_RULE); }} className="rounded-xl gap-2 neu-card shadow-none">
+          <Plus className="w-4 h-4" /> Add Rule
+        </Button>
+      </div>
+
+      {/* Rain Mode Toggle */}
+      <div className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${rainModeActive ? "border-blue-400 bg-blue-50 dark:bg-blue-900/20" : "border-border bg-card neu-inset"}`}>
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${rainModeActive ? "bg-blue-500 text-white" : "bg-muted text-muted-foreground"}`}>
+            <span className="text-lg">🌧️</span>
+          </div>
+          <div>
+            <div className="font-bold flex items-center gap-2">
+              Rain Mode
+              {rainModeActive && (
+                <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">ACTIVE</span>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              When active, rain surcharge is added on top of base delivery charges
+            </div>
+          </div>
+        </div>
+        <Button
+          onClick={handleToggleRain}
+          disabled={rainToggling}
+          variant={rainModeActive ? "default" : "outline"}
+          className="rounded-xl min-w-[100px]"
+        >
+          {rainToggling ? <Loader2 className="w-4 h-4 animate-spin" /> : rainModeActive ? "Disable" : "Enable"}
+        </Button>
+      </div>
+
+      {/* Add Rule Form */}
+      {showAddForm && (
+        <div className="bg-card border border-border rounded-2xl p-5 neu-card space-y-4">
+          <h3 className="font-bold text-base">New Delivery Rule</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground font-medium mb-1 block">From Pincode (shop area)</label>
+              <Input
+                value={form.fromPincode}
+                onChange={e => setForm(f => ({ ...f, fromPincode: e.target.value }))}
+                placeholder="e.g. 733101"
+                className="rounded-xl font-mono"
+                maxLength={6}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium mb-1 block">To Pincode (customer area)</label>
+              <Input
+                value={form.toPincode}
+                onChange={e => setForm(f => ({ ...f, toPincode: e.target.value }))}
+                placeholder="e.g. 733103"
+                className="rounded-xl font-mono"
+                maxLength={6}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium mb-1 block">Base Charge (₹)</label>
+              <Input
+                type="number"
+                value={form.baseCharge}
+                onChange={e => setForm(f => ({ ...f, baseCharge: Number(e.target.value) }))}
+                placeholder="0"
+                className="rounded-xl"
+                min={0}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium mb-1 block">🌧️ Rain Surcharge (₹)</label>
+              <Input
+                type="number"
+                value={form.rainSurcharge}
+                onChange={e => setForm(f => ({ ...f, rainSurcharge: Number(e.target.value) }))}
+                placeholder="0"
+                className="rounded-xl"
+                min={0}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground font-medium mb-1 block">Label (optional)</label>
+            <Input
+              value={form.label}
+              onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
+              placeholder="e.g. Balurghat cross-town"
+              className="rounded-xl"
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setShowAddForm(false)} className="rounded-xl">Cancel</Button>
+            <Button onClick={handleAddRule} disabled={saving} className="rounded-xl neu-card shadow-none">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Save Rule
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Rules Table */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="w-6 h-6 animate-spin mr-2" /> Loading rules…
+        </div>
+      ) : rules.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">No delivery rules yet</p>
+          <p className="text-sm mt-1">Click "Add Rule" to set cross-area delivery charges</p>
+        </div>
+      ) : (
+        <div className="bg-card rounded-2xl overflow-hidden neu-card">
+          <div className="grid grid-cols-[1fr_1fr_80px_80px_1fr_100px] text-xs font-semibold text-muted-foreground uppercase tracking-wide bg-muted/40 px-5 py-3 gap-3">
+            <div>From Pincode</div>
+            <div>To Pincode</div>
+            <div>Base (₹)</div>
+            <div>Rain (₹)</div>
+            <div>Label</div>
+            <div className="text-right">Actions</div>
+          </div>
+
+          {rules.map((rule, idx) => (
+            <div
+              key={rule._id}
+              className={`grid grid-cols-[1fr_1fr_80px_80px_1fr_100px] items-center gap-3 px-5 py-4 ${idx < rules.length - 1 ? "border-b border-border" : ""}`}
+            >
+              {editingId === rule._id ? (
+                <>
+                  <Input value={editForm.fromPincode} onChange={e => setEditForm(f => ({ ...f, fromPincode: e.target.value }))} className="rounded-lg font-mono text-sm h-8" maxLength={6} />
+                  <Input value={editForm.toPincode} onChange={e => setEditForm(f => ({ ...f, toPincode: e.target.value }))} className="rounded-lg font-mono text-sm h-8" maxLength={6} />
+                  <Input type="number" value={editForm.baseCharge} onChange={e => setEditForm(f => ({ ...f, baseCharge: Number(e.target.value) }))} className="rounded-lg text-sm h-8" min={0} />
+                  <Input type="number" value={editForm.rainSurcharge} onChange={e => setEditForm(f => ({ ...f, rainSurcharge: Number(e.target.value) }))} className="rounded-lg text-sm h-8" min={0} />
+                  <Input value={editForm.label} onChange={e => setEditForm(f => ({ ...f, label: e.target.value }))} className="rounded-lg text-sm h-8" placeholder="Label" />
+                  <div className="flex gap-1 justify-end">
+                    <button onClick={() => handleSaveEdit(rule._id)} disabled={saving} className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded-lg hover:opacity-90">
+                      {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}
+                    </button>
+                    <button onClick={() => setEditingId(null)} className="text-xs bg-muted text-foreground px-2 py-1 rounded-lg hover:opacity-90">
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="font-mono font-bold text-sm">{rule.fromPincode}</div>
+                  <div className="font-mono font-bold text-sm">{rule.toPincode}</div>
+                  <div className="font-semibold text-sm">₹{rule.baseCharge}</div>
+                  <div className={`font-semibold text-sm ${rule.rainSurcharge > 0 ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`}>
+                    {rule.rainSurcharge > 0 ? `₹${rule.rainSurcharge}` : "—"}
+                  </div>
+                  <div className="text-sm text-muted-foreground truncate">{rule.label || "—"}</div>
+                  <div className="flex gap-1 justify-end">
+                    <button onClick={() => startEdit(rule)} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleDeleteRule(rule._id)} className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+
+          <div className="px-5 py-3 border-t border-border bg-muted/20 text-xs text-muted-foreground">
+            {rules.length} rule{rules.length !== 1 ? "s" : ""} · Rain mode is {rainModeActive ? "ON 🌧️" : "OFF"}
           </div>
         </div>
       )}

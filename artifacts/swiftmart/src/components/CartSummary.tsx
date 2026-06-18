@@ -1,17 +1,24 @@
+import { CloudRain } from "lucide-react";
 import { formatINR } from "@/lib/currency";
 
 export function CartSummary({
   subtotal,
-  deliveryFee = 25,
+  deliveryFee = 0,
+  crossAreaCharge = 0,
+  rainSurcharge = 0,
+  rainModeActive = false,
   couponDiscount = 0,
   couponCode,
 }: {
   subtotal: number;
   deliveryFee?: number;
+  crossAreaCharge?: number;
+  rainSurcharge?: number;
+  rainModeActive?: boolean;
   couponDiscount?: number;
   couponCode?: string;
 }) {
-  const total = subtotal + deliveryFee - couponDiscount;
+  const total = subtotal + deliveryFee + crossAreaCharge + rainSurcharge - couponDiscount;
 
   return (
     <div className="bg-card p-4 rounded-2xl neu-card space-y-3 text-sm">
@@ -22,10 +29,35 @@ export function CartSummary({
         <span className="font-medium text-foreground">{formatINR(subtotal)}</span>
       </div>
 
-      <div className="flex justify-between text-muted-foreground">
-        <span>Delivery Fee (10 mins)</span>
-        <span className="font-medium text-foreground">{formatINR(deliveryFee)}</span>
-      </div>
+      {deliveryFee > 0 && (
+        <div className="flex justify-between text-muted-foreground">
+          <span>Instant Delivery (10 min)</span>
+          <span className="font-medium text-foreground">{formatINR(deliveryFee)}</span>
+        </div>
+      )}
+
+      {crossAreaCharge > 0 && (
+        <div className="flex justify-between text-muted-foreground">
+          <span>Cross-area Delivery</span>
+          <span className="font-medium text-foreground">{formatINR(crossAreaCharge)}</span>
+        </div>
+      )}
+
+      {rainModeActive && rainSurcharge > 0 && (
+        <div className="flex justify-between text-blue-600 dark:text-blue-400">
+          <span className="flex items-center gap-1">
+            <CloudRain className="w-3.5 h-3.5" /> Rain Surcharge
+          </span>
+          <span className="font-medium">{formatINR(rainSurcharge)}</span>
+        </div>
+      )}
+
+      {crossAreaCharge === 0 && deliveryFee === 0 && (
+        <div className="flex justify-between text-green-600 dark:text-green-400">
+          <span>Delivery Fee</span>
+          <span className="font-medium">Free</span>
+        </div>
+      )}
 
       {couponDiscount > 0 && (
         <div className="flex justify-between text-green-600 dark:text-green-400">
