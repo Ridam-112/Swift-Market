@@ -14,16 +14,24 @@ export async function registerPushNotifications(): Promise<boolean> {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return false;
 
-    const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-    await navigator.serviceWorker.ready;
+    // Register SW and wait for it to be fully active before using pushManager
+    await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    const reg = await navigator.serviceWorker.ready;
 
     const { publicKey } = await api.get<{ success: boolean; publicKey: string }>("/push/vapid-public-key");
     if (!publicKey) return false;
 
-    const subscription = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey).buffer as ArrayBuffer,
-    });
+    // Check for an existing subscription first — if key matches, reuse it
+    let subscription = await reg.pushManager.getSubscription();
+    const serverKey = urlBase64ToUint8Array(publicKey);
+
+    if (!subscription) {
+      // No existing subscription — create one
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: serverKey, // pass Uint8Array directly, not .buffer
+      });
+    }
 
     const subJson = subscription.toJSON() as {
       endpoint: string;
@@ -36,7 +44,8 @@ export async function registerPushNotifications(): Promise<boolean> {
     });
 
     return true;
-  } catch {
+  } catch (err) {
+    console.error("[Push] Registration failed:", err);
     return false;
   }
 }
