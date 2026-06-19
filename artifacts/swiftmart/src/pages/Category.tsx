@@ -4,8 +4,10 @@ import { useProducts } from "@/hooks/useProducts";
 import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SkeletonGrid } from "@/components/SkeletonGrid";
+import { EmptyState } from "@/components/EmptyState";
 import { categories } from "@/data/categories";
 import { Button } from "@/components/ui/button";
+import { ShoppingBag } from "lucide-react";
 
 export default function Category() {
   const [, params] = useRoute("/category/:slug");
@@ -61,7 +63,21 @@ export default function Category() {
         </Button>
       </div>
 
-      {loading ? <SkeletonGrid count={8} /> : <ProductGrid products={filteredProducts} />}
+      {loading ? (
+        <SkeletonGrid count={8} />
+      ) : filteredProducts.length === 0 ? (
+        <EmptyState
+          icon={ShoppingBag}
+          title="No products here"
+          description={
+            filter === "instock"
+              ? "No in-stock items right now — try showing All."
+              : "No products in this category yet."
+          }
+        />
+      ) : (
+        <ProductGrid products={filteredProducts} />
+      )}
     </div>
   );
 }

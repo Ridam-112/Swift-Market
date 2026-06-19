@@ -1,5 +1,6 @@
 import { Router, type Response } from "express";
 import Razorpay from "razorpay";
+import { z } from "zod";
 import { db, orders, products, shops, users, payouts, coupons } from "@workspace/db";
 import { eq, and, ilike, or, gte, ne, desc, count, sql, inArray } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
@@ -11,6 +12,35 @@ import { mi, miArr } from "../../utils/mapId.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
+
+// ─── Zod schema for POST /orders ────────────────────────────────────────────
+const OrderItemSchema = z.object({
+  productId:   z.string().uuid("productId must be a UUID"),
+  productName: z.string().min(1),
+  qty:         z.number().int().positive().max(100),
+  price:       z.number().nonnegative(),
+  category:    z.string().min(1),
+});
+
+const CreateOrderSchema = z.object({
+  shopId:        z.string().uuid("shopId must be a UUID"),
+  shopName:      z.string().min(1),
+  customerName:  z.string().min(1),
+  customerPhone: z.string().min(6).max(15),
+  items:         z.array(OrderItemSchema).min(1, "Order must have at least one item").max(50),
+  deliveryCharge: z.number().min(0).default(0),
+  couponDiscount: z.number().min(0).default(0),
+  paymentMethod: z.string().min(1),
+  address: z.object({
+    label:   z.string().default(""),
+    line1:   z.string().min(1),
+    city:    z.string().min(1),
+    pincode: z.string().min(4).max(10),
+  }),
+  couponCode:      z.string().optional(),
+  razorpayOrderId: z.string().optional(),
+  notes:           z.string().max(500).optional(),
+});
 
 function getRazorpay(): Razorpay | null {
   const keyId = process.env["RAZORPAY_KEY_ID"];
@@ -149,10 +179,16 @@ router.get("/:id", authenticate, validateUuidParams("id"), async (req: AuthReque
 
 // POST /api/orders
 router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const parsed = CreateOrderSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, message: "Invalid order data", errors: parsed.error.flatten().fieldErrors });
+    return;
+  }
+
   const body = req.body as Record<string, unknown>;
 
   type OrderItemInput = { productId: string; productName: string; qty: number; price: number; category: string };
-  const items = (body["items"] as OrderItemInput[]) ?? [];
+  const items = parsed.data.items as OrderItemInput[];
   const reducedProducts: Array<{ productId: string; qty: number; dbPrice: number }> = [];
 
   // Stock deduction — captured outside try so rollback helper can access it

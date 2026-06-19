@@ -108,12 +108,16 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       apiUpdates['images'] = [updates.image];
       delete apiUpdates['image'];
     }
-    api.patch(`/products/${id}`, apiUpdates).catch(() => {});
+    api.patch(`/products/${id}`, apiUpdates).catch((err: unknown) => {
+      console.error("[ProductsContext] updateProduct failed for", id, err);
+    });
   };
 
   const deleteProduct = (id: string) => {
     setProducts(prev => prev.filter(p => p.id !== id));
-    api.delete(`/products/${id}`).catch(() => {});
+    api.delete(`/products/${id}`).catch((err: unknown) => {
+      console.error("[ProductsContext] deleteProduct failed for", id, err);
+    });
   };
 
   return (

@@ -91,13 +91,14 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
       conditions.push(eq(products.shopId, shopId));
     }
   } else {
-    // No shopId, no pincode — restrict to products from approved shops
-    const approvedShops = await db.select({ id: shops.id }).from(shops).where(eq(shops.status, "approved"));
-    if (approvedShops.length === 0) {
-      res.json({ success: true, products: [], total: 0, page: pg, pages: 0 });
-      return;
-    }
-    conditions.push(inArray(products.shopId, approvedShops.map(s => s.id)));
+    // No shopId, no pincode — restrict to products from approved shops.
+    // Use a subquery so we never load the full approved-shops list into Node memory.
+    conditions.push(
+      inArray(
+        products.shopId,
+        db.select({ id: shops.id }).from(shops).where(eq(shops.status, "approved"))
+      )
+    );
   }
 
   const where = conditions.length ? and(...conditions) : undefined;

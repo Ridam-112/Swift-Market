@@ -26,15 +26,11 @@ export default function Home() {
   const { user } = useAuth();
   const { products } = useProducts();
   const { shops, isLoading: shopsLoading } = useShops();
-  const [loading, setLoading] = useState(true);
+  // Use real data-loading state instead of a hardcoded timeout
+  const loading = shopsLoading;
   const [apiCategories, setApiCategories] = useState<DisplayCategory[]>([]);
   const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     api.get<{ success: boolean; products: Array<Record<string, unknown>> }>('/products?trending=true&limit=10')
@@ -56,7 +52,9 @@ export default function Home() {
         }));
         setTrendingProducts(mapped);
       })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        console.error("[Home] Failed to load trending products:", err);
+      })
       .finally(() => setTrendingLoading(false));
   }, []);
 
