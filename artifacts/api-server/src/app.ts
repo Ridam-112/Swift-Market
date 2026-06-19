@@ -26,15 +26,22 @@ app.use(
 );
 
 // Security headers — applied before CORS so headers are always present.
-// This is an API-only server (all responses are JSON), so the CSP is intentionally
-// restrictive: no content is expected to render in a browser context.
+// The server also serves the React SPA static assets, so the CSP must
+// allow scripts, styles, fonts, and third-party resources used by the frontend.
 app.use(helmet({
   contentSecurityPolicy: {
     useDefaults: false,
     directives: {
-      defaultSrc:    ["'none'"],
-      frameAncestors:["'none'"],    // prevent clickjacking via framing
-      formAction:    ["'self'"],    // no cross-origin form submissions
+      defaultSrc:    ["'self'"],
+      scriptSrc:     ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com"],
+      styleSrc:      ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc:       ["'self'", "https://fonts.gstatic.com", "data:"],
+      imgSrc:        ["'self'", "data:", "blob:", "https:"],
+      connectSrc:    ["'self'", "https:", "wss:"],
+      manifestSrc:   ["'self'"],
+      workerSrc:     ["'self'", "blob:"],
+      frameAncestors:["'none'"],
+      formAction:    ["'self'"],
     },
   },
   crossOriginEmbedderPolicy: false,
