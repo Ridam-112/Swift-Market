@@ -77,8 +77,8 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchShops = useCallback(() => {
-    setIsLoading(true);
+  const fetchShops = useCallback((showLoading = false) => {
+    if (showLoading) setIsLoading(true);
     setError(null);
     api.get<{ success: boolean; shops: ApiShopItem[] }>("/shops?status=approved&limit=100")
       .then(d => {
@@ -87,17 +87,16 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
       .catch(err => {
         const msg = err instanceof Error ? err.message : "Failed to load shops";
         setError(msg.includes("buffering") ? "Database connecting…" : msg);
-        setAllShops([]);
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => { if (showLoading) setIsLoading(false); });
   }, []);
 
   // Wait for auth to resolve, then re-fetch whenever the logged-in user changes
   // (covers login, logout, and session restore — prevents stale unauthenticated data)
   useEffect(() => {
     if (authLoading) return;
-    fetchShops();
-    const interval = setInterval(fetchShops, 3000);
+    fetchShops(true);
+    const interval = setInterval(() => fetchShops(false), 3000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, userId]);

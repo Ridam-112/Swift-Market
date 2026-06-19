@@ -65,8 +65,8 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const authLoading = auth?.isLoading ?? true;
   const userId = auth?.user?.id ?? null;
 
-  const fetchProducts = () => {
-    setIsLoading(true);
+  const fetchProducts = (showLoading = false) => {
+    if (showLoading) setIsLoading(true);
     setError(null);
     api.get<{ success: boolean; products: ApiProduct[] }>(`/products?limit=200`)
       .then(d => {
@@ -75,16 +75,15 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       .catch(err => {
         const msg = err instanceof Error ? err.message : "Failed to load products";
         setError(msg.includes("buffering") ? "Database connecting…" : msg);
-        setProducts([]);
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => { if (showLoading) setIsLoading(false); });
   };
 
   // Re-fetch whenever auth resolves OR the logged-in user changes (login/logout)
   useEffect(() => {
     if (authLoading) return;
-    fetchProducts();
-    const interval = setInterval(fetchProducts, 3000);
+    fetchProducts(true);
+    const interval = setInterval(() => fetchProducts(false), 3000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, userId]);
