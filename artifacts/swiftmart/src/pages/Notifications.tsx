@@ -95,15 +95,29 @@ export default function Notifications() {
   const handleTestPush = async () => {
     setTestLoading(true);
     try {
-      const res = await api.post<{ success: boolean; message: string }>("/push/test", {});
-      if (res.success) {
+      // Attempt the test; if the server has no subscription on record, auto-resubscribe and retry
+      let res: { success: boolean; message: string } | null = null;
+      try {
+        res = await api.post<{ success: boolean; message: string }>("/push/test", {});
+      } catch {
+        // Likely 404 — subscription not in DB. Try re-registering the browser subscription.
+        const reRegistered = await registerPushNotifications();
+        if (!reRegistered) {
+          toast.error("Could not sync notification subscription. Try turning notifications off and on again.");
+          return;
+        }
+        // Retry after re-registering
+        res = await api.post<{ success: boolean; message: string }>("/push/test", {});
+      }
+
+      if (res?.success) {
         playNotificationSound();
         toast.success(res.message ?? "Test push sent! Check your notification bar.");
       } else {
-        toast.error(res.message ?? "Push test failed. Make sure notifications are enabled.");
+        toast.error(res?.message ?? "Push test failed. Make sure notifications are enabled.");
       }
     } catch {
-      toast.error("Test failed — no subscription found. Try disabling and re-enabling notifications.");
+      toast.error("Push delivery failed — check that your browser allows notifications for this site.");
     } finally {
       setTestLoading(false);
     }
