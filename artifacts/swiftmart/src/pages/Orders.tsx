@@ -5,13 +5,15 @@ import { formatINR } from "@/lib/currency";
 import { SectionHeader } from "@/components/SectionHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
+import { LiveOrderTracker } from "@/components/LiveOrderTracker";
 import {
   PackageX, Package, Truck, CheckCircle2, Clock, Loader2,
-  AlertCircle, RefreshCw, XCircle, Ban
+  AlertCircle, RefreshCw, XCircle, Ban, Radio,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 interface ApiOrderItem {
   productId?: string;
@@ -35,34 +37,27 @@ interface ApiOrder {
   createdAt: string;
 }
 
+const ACTIVE_STATUSES = new Set(["placed", "accepted", "preparing", "packed", "out_for_delivery"]);
+
 function getStatusDisplay(status: string) {
   switch (status) {
-    case 'placed':
-      return { label: 'Placed', icon: Clock, color: 'text-blue-500', bg: 'bg-blue-500/10' };
-    case 'accepted':
-      return { label: 'Accepted', icon: CheckCircle2, color: 'text-amber-500', bg: 'bg-amber-500/10' };
-    case 'preparing':
-      return { label: 'Preparing', icon: Package, color: 'text-orange-500', bg: 'bg-orange-500/10' };
-    case 'packed':
-      return { label: 'Packed', icon: Package, color: 'text-indigo-500', bg: 'bg-indigo-500/10' };
-    case 'out_for_delivery':
-      return { label: 'Out for Delivery', icon: Truck, color: 'text-indigo-500', bg: 'bg-indigo-500/10' };
-    case 'delivered':
-      return { label: 'Delivered', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' };
-    case 'cancelled':
-      return { label: 'Cancelled', icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/10' };
-    case 'refunded':
-      return { label: 'Refunded', icon: Ban, color: 'text-slate-500', bg: 'bg-slate-500/10' };
-    default:
-      return { label: status, icon: Clock, color: 'text-muted-foreground', bg: 'bg-background' };
+    case "placed":           return { label: "Placed",           icon: Clock,         color: "text-blue-500",    bg: "bg-blue-500/10"    };
+    case "accepted":         return { label: "Accepted",         icon: CheckCircle2,  color: "text-amber-500",   bg: "bg-amber-500/10"   };
+    case "preparing":        return { label: "Preparing",        icon: Package,       color: "text-orange-500",  bg: "bg-orange-500/10"  };
+    case "packed":           return { label: "Packed",           icon: Package,       color: "text-indigo-500",  bg: "bg-indigo-500/10"  };
+    case "out_for_delivery": return { label: "Out for Delivery", icon: Truck,         color: "text-indigo-500",  bg: "bg-indigo-500/10"  };
+    case "delivered":        return { label: "Delivered",        icon: CheckCircle2,  color: "text-emerald-500", bg: "bg-emerald-500/10" };
+    case "cancelled":        return { label: "Cancelled",        icon: XCircle,       color: "text-red-500",     bg: "bg-red-500/10"     };
+    case "refunded":         return { label: "Refunded",         icon: Ban,           color: "text-slate-500",   bg: "bg-slate-500/10"   };
+    default:                 return { label: status,             icon: Clock,         color: "text-muted-foreground", bg: "bg-background" };
   }
 }
 
 export default function Orders() {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<ApiOrder[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [orders, setOrders]       = useState<ApiOrder[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const fetchOrders = useCallback(() => {
@@ -70,7 +65,7 @@ export default function Orders() {
     setLoading(true);
     setError(null);
     api.get<{ success: boolean; orders: ApiOrder[] }>("/orders")
-      .then(d => { setOrders(d.orders); })
+      .then(d => setOrders(d.orders))
       .catch(err => {
         const msg = err instanceof Error ? err.message : "Failed to load orders";
         setError(msg.includes("buffering") || msg.includes("ECONNREFUSED")
@@ -85,14 +80,19 @@ export default function Orders() {
   const cancelOrder = async (orderId: string) => {
     setCancellingId(orderId);
     try {
-      await api.patch(`/orders/${orderId}/status`, { status: 'cancelled', cancelReason: 'Cancelled by customer' });
-      setOrders(prev => prev.map(o => o._id === orderId ? { ...o, status: 'cancelled' } : o));
+      await api.patch(`/orders/${orderId}/status`, { status: "cancelled", cancelReason: "Cancelled by customer" });
+      setOrders(prev => prev.map(o => o._id === orderId ? { ...o, status: "cancelled" } : o));
       toast.success("Order cancelled");
     } catch {
       toast.error("Could not cancel order");
     } finally {
       setCancellingId(null);
     }
+  };
+
+  // Called by LiveOrderTracker when polling detects a status change
+  const handleStatusChange = (orderId: string, newStatus: string) => {
+    setOrders(prev => prev.map(o => o._id === orderId ? { ...o, status: newStatus } : o));
   };
 
   if (loading) {
@@ -111,10 +111,7 @@ export default function Orders() {
         <div className="mt-6 flex flex-col items-center gap-3 p-8 bg-card rounded-2xl neu-inset text-center">
           <AlertCircle className="w-10 h-10 text-amber-500" />
           <p className="text-muted-foreground text-sm">{error}</p>
-          <button
-            onClick={fetchOrders}
-            className="text-primary text-sm font-medium flex items-center gap-1"
-          >
+          <button onClick={fetchOrders} className="text-primary text-sm font-medium flex items-center gap-1">
             <Loader2 className="w-4 h-4" /> Retry
           </button>
         </div>
@@ -123,54 +120,78 @@ export default function Orders() {
   }
 
   if (!user) {
-    return (
-      <EmptyState
-        icon={PackageX}
-        title="Sign in to see orders"
-        description="Please sign in to view your order history."
-      />
-    );
+    return <EmptyState icon={PackageX} title="Sign in to see orders" description="Please sign in to view your order history." />;
   }
 
   if (orders.length === 0) {
-    return (
-      <EmptyState
-        icon={PackageX}
-        title="No orders yet"
-        description="You haven't placed any orders yet. Start shopping!"
-      />
-    );
+    return <EmptyState icon={PackageX} title="No orders yet" description="You haven't placed any orders yet. Start shopping!" />;
   }
+
+  // Pin active orders to the top
+  const sorted = [
+    ...orders.filter(o => ACTIVE_STATUSES.has(o.status)),
+    ...orders.filter(o => !ACTIVE_STATUSES.has(o.status)),
+  ];
+
+  const activeCount = sorted.filter(o => ACTIVE_STATUSES.has(o.status)).length;
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <SectionHeader title="Your Orders" />
+        <div className="flex items-center gap-2">
+          <SectionHeader title="Your Orders" />
+          {activeCount > 0 && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+              <Radio className="w-2.5 h-2.5" />
+              {activeCount} live
+            </span>
+          )}
+        </div>
         <Button variant="ghost" size="sm" onClick={fetchOrders} className="text-muted-foreground">
           <RefreshCw className="w-4 h-4 mr-1" /> Refresh
         </Button>
       </div>
 
       <div className="space-y-4">
-        {orders.map(order => {
-          const statusInfo = getStatusDisplay(order.status);
-          const StatusIcon = statusInfo.icon;
-          const total = order.netAmount ?? order.subtotal ?? order.items.reduce((s, i) => s + i.price * i.qty, 0);
-          const canCancel = order.status === 'placed';
+        {sorted.map((order, i) => {
+          const statusInfo  = getStatusDisplay(order.status);
+          const StatusIcon  = statusInfo.icon;
+          const total       = order.netAmount ?? order.subtotal ?? order.items.reduce((s, it) => s + it.price * it.qty, 0);
+          const isActive    = ACTIVE_STATUSES.has(order.status);
+          const canCancel   = order.status === "placed";
           const isCancelling = cancellingId === order._id;
 
           return (
-            <div key={order._id} className="bg-card p-4 rounded-2xl neu-card space-y-4">
+            <motion.div
+              key={order._id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04 }}
+              className={cn(
+                "bg-card p-4 rounded-2xl neu-card space-y-4",
+                isActive && "ring-1 ring-primary/20"
+              )}
+            >
+              {/* Header row */}
               <div className="flex justify-between items-start border-b border-border pb-4">
                 <div>
-                  <div className="font-bold font-mono text-sm">#{order._id.slice(-8).toUpperCase()}</div>
-                  {order.shopName && (
-                    <div className="text-xs text-muted-foreground mt-0.5">{order.shopName}</div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold font-mono text-sm">#{order._id.slice(-8).toUpperCase()}</span>
+                    {isActive && (
+                      <span className="flex items-center gap-1 text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+                        </span>
+                        LIVE
+                      </span>
+                    )}
+                  </div>
+                  {order.shopName && <div className="text-xs text-muted-foreground mt-0.5">{order.shopName}</div>}
                   <div className="text-xs text-muted-foreground mt-1">
-                    {new Date(order.createdAt).toLocaleDateString('en-IN', {
-                      day: 'numeric', month: 'short', year: 'numeric',
-                      hour: '2-digit', minute: '2-digit',
+                    {new Date(order.createdAt).toLocaleDateString("en-IN", {
+                      day: "numeric", month: "short", year: "numeric",
+                      hour: "2-digit", minute: "2-digit",
                     })}
                   </div>
                 </div>
@@ -180,14 +201,23 @@ export default function Orders() {
                 </div>
               </div>
 
-              {/* Tracking bar for active orders */}
-              {!['delivered', 'cancelled', 'refunded'].includes(order.status) && (
-                <TrackingBar status={order.status} />
+              {/* Live tracker for active orders */}
+              {isActive && (
+                <div className="py-1">
+                  <LiveOrderTracker
+                    orderId={order._id}
+                    initialStatus={order.status}
+                    createdAt={order.createdAt}
+                    onStatusChange={(s) => handleStatusChange(order._id, s)}
+                    compact
+                  />
+                </div>
               )}
 
+              {/* Items */}
               <div className="space-y-3">
                 {order.items.map((item, idx) => {
-                  const name = item.productName ?? (item as ApiOrderItem & { name?: string }).name ?? 'Product';
+                  const name = item.productName ?? item.name ?? "Product";
                   return (
                     <div key={idx} className="flex justify-between items-center text-sm">
                       <div className="flex items-center gap-3">
@@ -207,7 +237,7 @@ export default function Orders() {
 
               {order.address && (
                 <div className="text-xs bg-background neu-inset p-2 rounded-xl text-muted-foreground">
-                  📍 {order.address.line1}, {order.address.city} - {order.address.pincode}
+                  📍 {order.address.line1}, {order.address.city} — {order.address.pincode}
                 </div>
               )}
 
@@ -230,55 +260,10 @@ export default function Orders() {
                   Cancel Order
                 </Button>
               )}
-            </div>
+            </motion.div>
           );
         })}
       </div>
-    </div>
-  );
-}
-
-const TRACK_STEPS = [
-  { key: 'placed',           label: 'Placed' },
-  { key: 'accepted',         label: 'Accepted' },
-  { key: 'preparing',        label: 'Preparing' },
-  { key: 'packed',           label: 'Packed' },
-  { key: 'out_for_delivery', label: 'On the way' },
-  { key: 'delivered',        label: 'Delivered' },
-];
-
-function TrackingBar({ status }: { status: string }) {
-  const currentIdx = TRACK_STEPS.findIndex(s => s.key === status);
-  if (currentIdx < 0) return null;
-
-  return (
-    <div className="flex items-center gap-0">
-      {TRACK_STEPS.map((step, idx) => {
-        const done = idx <= currentIdx;
-        const isLast = idx === TRACK_STEPS.length - 1;
-        return (
-          <div key={step.key} className="flex items-center flex-1">
-            <div className="flex flex-col items-center">
-              <div className={cn(
-                "w-2.5 h-2.5 rounded-full transition-colors",
-                done ? "bg-primary" : "bg-muted"
-              )} />
-              <span className={cn(
-                "text-[9px] mt-1 text-center leading-tight whitespace-nowrap",
-                idx === currentIdx ? "text-primary font-bold" : done ? "text-muted-foreground" : "text-muted"
-              )}>
-                {step.label}
-              </span>
-            </div>
-            {!isLast && (
-              <div className={cn(
-                "flex-1 h-0.5 mb-3 transition-colors",
-                idx < currentIdx ? "bg-primary" : "bg-muted"
-              )} />
-            )}
-          </div>
-        );
-      })}
     </div>
   );
 }
