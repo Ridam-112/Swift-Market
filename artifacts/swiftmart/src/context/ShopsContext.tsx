@@ -91,15 +91,22 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
       .finally(() => { if (showLoading) setIsLoading(false); });
   }, []);
 
-  // Wait for auth to resolve, then re-fetch whenever the logged-in user changes
-  // (covers login, logout, and session restore — prevents stale unauthenticated data)
+  // Shops are public — fetch immediately on mount without waiting for auth.
+  // This prevents a blank page while auth resolves on fresh PWA installs.
   useEffect(() => {
-    if (authLoading) return;
     fetchShops(true);
     const interval = setInterval(() => fetchShops(false), 30000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, userId]);
+  }, []);
+
+  // Silently refetch when the logged-in user changes (login / logout)
+  // so personalised fields stay fresh without re-showing the skeleton.
+  useEffect(() => {
+    if (authLoading) return;
+    fetchShops(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const getShopById = (id: string) => allShops.find(s => s.id === id);
 

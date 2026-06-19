@@ -79,14 +79,21 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
       .finally(() => { if (showLoading) setIsLoading(false); });
   };
 
-  // Re-fetch whenever auth resolves OR the logged-in user changes (login/logout)
+  // Products are public — fetch immediately on mount without waiting for auth.
+  // This prevents a blank page while auth resolves on fresh PWA installs.
   useEffect(() => {
-    if (authLoading) return;
     fetchProducts(true);
     const interval = setInterval(() => fetchProducts(false), 30000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, userId]);
+  }, []);
+
+  // Silently refetch when the logged-in user changes (login / logout).
+  useEffect(() => {
+    if (authLoading) return;
+    fetchProducts(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const addProduct = (product: Product) => {
     setProducts(prev => [product, ...prev]);
