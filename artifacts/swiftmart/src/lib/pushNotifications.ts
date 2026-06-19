@@ -68,6 +68,38 @@ export async function getPushPermissionState(): Promise<"granted" | "denied" | "
 }
 
 /**
+ * Plays three sharp urgent beeps — used for new vendor orders.
+ * Also vibrates the device if supported.
+ */
+export function playVendorAlert(): void {
+  try {
+    // Vibrate: 3 short pulses
+    if ("vibrate" in navigator) navigator.vibrate([300, 120, 300, 120, 300]);
+
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+
+    [0, 0.22, 0.44].forEach((startAt) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "square";
+      osc.frequency.setValueAtTime(880, ctx.currentTime + startAt);
+      gain.gain.setValueAtTime(0.28, ctx.currentTime + startAt);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startAt + 0.17);
+      osc.start(ctx.currentTime + startAt);
+      osc.stop(ctx.currentTime + startAt + 0.17);
+    });
+
+    setTimeout(() => ctx.close().catch(() => {}), 1000);
+  } catch { /* ignore */ }
+}
+
+/**
  * Plays a two-note notification chime using the Web Audio API.
  * Works even when the device is in silent mode for web audio (not ringer).
  */

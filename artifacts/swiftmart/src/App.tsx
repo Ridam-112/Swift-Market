@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
@@ -23,7 +24,7 @@ import { setupPushMessageListener, playNotificationSound } from "@/lib/pushNotif
 
 import { MapPinOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 import Home from "@/pages/Home";
 import Category from "@/pages/Category";
@@ -165,11 +166,23 @@ function PincodeGuard({ children }: { children: React.ReactNode }) {
 }
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  const [location] = useLocation();
   return (
     <AuthGuard>
       <PincodeGuard>
         <Header />
-        <main className="flex-1 w-full bg-background">{children}</main>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.main
+            key={location}
+            className="flex-1 w-full bg-background"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+          >
+            {children}
+          </motion.main>
+        </AnimatePresence>
         <BottomNav />
       </PincodeGuard>
     </AuthGuard>

@@ -1,13 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { formatINR } from "@/lib/currency";
 import { SectionHeader } from "@/components/SectionHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, Loader2, AlertCircle, CheckCircle2, XCircle, ChevronDown, Package, RefreshCw } from "lucide-react";
+import { ClipboardList, Loader2, AlertCircle, CheckCircle2, XCircle, ChevronDown, Package, RefreshCw, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { playVendorAlert } from "@/lib/pushNotifications";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ApiOrderItem {
   productId: string;
@@ -60,17 +62,25 @@ function statusColor(s: string) {
 export default function VendorOrders() {
   const { user, isLoading: authLoading } = useAuth();
 
-  const [shopId, setShopId] = useState<string | null>(null);
-  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [shopId, setShopId]   = useState<string | null>(null);
+  const [orders, setOrders]   = useState<ApiOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]     = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
+
+  // Track known order IDs so we can detect truly NEW orders on subsequent polls
+  const knownIds    = useRef<Set<string>>(new Set());
+  const initialLoad = useRef(true);
 
   const fetchOrders = useCallback(async (sid: string) => {
     setLoading(true);
     setError(null);
     try {
       const d = await api.get<{ success: boolean; orders: ApiOrder[] }>(`/orders?shopId=${sid}&limit=200`);
+      // Seed known IDs on first load — don't alert for existing orders
+      d.orders.forEach(o => knownIds.current.add(o._id));
+      initialLoad.current = false;
       setOrders(d.orders);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to load orders";
@@ -83,6 +93,24 @@ export default function VendorOrders() {
   const pollOrders = useCallback(async (sid: string) => {
     try {
       const d = await api.get<{ success: boolean; orders: ApiOrder[] }>(`/orders?shopId=${sid}&limit=200`);
+
+      if (!initialLoad.current) {
+        // Find orders that just arrived (new ID + placed status = unacknowledged)
+        const incoming = d.orders.filter(
+          o => o.status === "placed" && !knownIds.current.has(o._id)
+        );
+        if (incoming.length > 0) {
+          playVendorAlert();
+          setNewOrderIds(prev => new Set([...prev, ...incoming.map(o => o._id)]));
+          toast(`🆕 ${incoming.length} new order${incoming.length > 1 ? "s" : ""}!`, {
+            description: `From ${incoming[0].customerName} · ${formatINR(incoming[0].netAmount)}`,
+            duration: 8000,
+            icon: <Bell className="w-4 h-4 text-primary" />,
+          });
+        }
+      }
+
+      d.orders.forEach(o => knownIds.current.add(o._id));
       setOrders(d.orders);
     } catch {
       // silently ignore background poll errors
@@ -181,7 +209,13 @@ export default function VendorOrders() {
   }
 
   const activeOrders = orders.filter(o => !['delivered', 'cancelled', 'refunded'].includes(o.status));
-  const pastOrders = orders.filter(o => ['delivered', 'cancelled', 'refunded'].includes(o.status));
+  const pastOrders   = orders.filter(o =>  ['delivered', 'cancelled', 'refunded'].includes(o.status));
+
+  const handleUpdate = (orderId: string, newStatus: string) => {
+    // Clear new-order highlight when vendor acts on it
+    setNewOrderIds(prev => { const s = new Set(prev); s.delete(orderId); return s; });
+    updateStatus(orderId, newStatus);
+  };
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-4xl mx-auto space-y-6">
@@ -197,24 +231,42 @@ export default function VendorOrders() {
       {activeOrders.length > 0 && (
         <div className="space-y-4">
           <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Active Orders ({activeOrders.length})</h3>
-          {activeOrders.map(order => <OrderCard key={order._id} order={order} onUpdate={updateStatus} updatingId={updatingId} />)}
+          <AnimatePresence initial={false}>
+            {activeOrders.map(order => (
+              <motion.div
+                key={order._id}
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.97 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+              >
+                <OrderCard
+                  order={order}
+                  onUpdate={handleUpdate}
+                  updatingId={updatingId}
+                  isNew={newOrderIds.has(order._id)}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
 
       {pastOrders.length > 0 && (
         <div className="space-y-4">
           <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Past Orders ({pastOrders.length})</h3>
-          {pastOrders.map(order => <OrderCard key={order._id} order={order} onUpdate={updateStatus} updatingId={updatingId} />)}
+          {pastOrders.map(order => <OrderCard key={order._id} order={order} onUpdate={handleUpdate} updatingId={updatingId} isNew={false} />)}
         </div>
       )}
     </div>
   );
 }
 
-function OrderCard({ order, onUpdate, updatingId }: {
+function OrderCard({ order, onUpdate, updatingId, isNew }: {
   order: ApiOrder;
   onUpdate: (id: string, status: string) => void;
   updatingId: string | null;
+  isNew: boolean;
 }) {
   const isUpdating = updatingId === order._id;
   const flow = STATUS_FLOW[order.status];
@@ -226,7 +278,10 @@ function OrderCard({ order, onUpdate, updatingId }: {
   const isPlaced = order.status === 'placed';
 
   return (
-    <div className="bg-card p-5 rounded-2xl neu-card space-y-4">
+    <div className={cn(
+      "bg-card p-5 rounded-2xl neu-card space-y-4 transition-all",
+      isNew && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+    )}>
       <div className="flex flex-col sm:flex-row justify-between gap-4 border-b border-border pb-4">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
