@@ -48,7 +48,7 @@ function ImageUploadBox({ label, url, onUpload, uploading, required, accept = "i
   required?: boolean;
   accept?: string;
 }) {
-  const isPdf = url?.includes("cloudinary") && url?.includes("/raw/");
+  const isPdf = url === "__pdf__";
   return (
     <div className="space-y-2">
       <Label>{label}{required && <span className="text-destructive ml-1">*</span>}</Label>
@@ -118,11 +118,13 @@ export default function VendorRegister() {
   const [storeCity, setStoreCity] = useState("");
   const [storePincode, setStorePincode] = useState("");
 
-  const [shopLogoUrl, setShopLogoUrl] = useState<string | null>(null);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
+  // Files are stored locally and only uploaded to Cloudinary on final submit
+  // to prevent orphaned assets if the user abandons the form mid-way.
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  const [certFile, setCertFile] = useState<string | null>(null);
-  const [uploadingCert, setUploadingCert] = useState(false);
+  const [certFileObj, setCertFileObj] = useState<File | null>(null);
+  const [certPreview, setCertPreview] = useState<string | null>(null);
   const [certNumber, setCertNumber] = useState("");
   const [certExpiry, setCertExpiry] = useState("");
 
@@ -148,10 +150,10 @@ export default function VendorRegister() {
 
   const step1Valid =
     !!storeName && !!storeCategory && !!storeDescription && !!ownerName &&
-    !!storeAddress && !!storeArea && !!storeCity && pinValid && !!shopLogoUrl && !uploadingLogo;
+    !!storeAddress && !!storeArea && !!storeCity && pinValid && !!logoFile;
 
   const step2Valid = certRequired
-    ? (!!certFile && !uploadingCert && !!certNumber && !!certExpiry)
+    ? (!!certFileObj && !!certNumber && !!certExpiry)
     : true;
 
   const step3Valid = !!panNumber && panNumber.length === 10;
@@ -164,28 +166,16 @@ export default function VendorRegister() {
     exit: { x: -20, opacity: 0, transition: { duration: 0.2, ease: "easeIn" as const } },
   };
 
-  const handleLogoUpload = async (file: File) => {
-    setUploadingLogo(true);
-    try {
-      const url = await uploadFile(file, "/api/upload/shop-image", "image");
-      setShopLogoUrl(url);
-    } catch {
-      toast.error("Logo upload failed — please try again");
-    } finally {
-      setUploadingLogo(false);
-    }
+  // Store files locally for preview — actual upload happens on final submit only.
+  const handleLogoUpload = (file: File) => {
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
   };
 
-  const handleCertUpload = async (file: File) => {
-    setUploadingCert(true);
-    try {
-      const url = await uploadFile(file, "/api/upload/certificate", "file");
-      setCertFile(url);
-    } catch {
-      toast.error("Document upload failed — please try again");
-    } finally {
-      setUploadingCert(false);
-    }
+  const handleCertUpload = (file: File) => {
+    setCertFileObj(file);
+    // PDFs can't be previewed in an <img> tag — use a sentinel value to show the document icon
+    setCertPreview(file.type === "application/pdf" ? "__pdf__" : URL.createObjectURL(file));
   };
 
   const handleNext = () => {
@@ -200,6 +190,18 @@ export default function VendorRegister() {
 
     setSubmitting(true);
     try {
+      // Upload files now — deferred from selection to avoid orphaned Cloudinary assets
+      // if the user abandons the form before reaching the final submit step.
+      let uploadedLogoUrl: string | undefined;
+      let uploadedCertUrl: string | undefined;
+
+      if (logoFile) {
+        uploadedLogoUrl = await uploadFile(logoFile, "/api/upload/shop-image", "image");
+      }
+      if (certFileObj) {
+        uploadedCertUrl = await uploadFile(certFileObj, "/api/upload/certificate", "file");
+      }
+
       await submitVendorApplication({
         storeName,
         storeCategory,
@@ -215,12 +217,12 @@ export default function VendorRegister() {
         upiId,
         bankAccountNumber,
         bankIfscCode,
-        shopLogoUrl: shopLogoUrl ?? undefined,
+        shopLogoUrl: uploadedLogoUrl,
         bankAccountHolderName: bankHolderName,
         certificateType: certRequired ?? undefined,
         certificateNumber: certNumber || undefined,
         certificateExpiryDate: certExpiry || undefined,
-        certificateFile: certFile ?? undefined,
+        certificateFile: uploadedCertUrl,
       });
       setLocation("/vendor-status");
     } catch {
@@ -265,9 +267,9 @@ export default function VendorRegister() {
               <div className="space-y-4">
                 <ImageUploadBox
                   label="Shop Logo"
-                  url={shopLogoUrl}
+                  url={logoPreview}
                   onUpload={handleLogoUpload}
-                  uploading={uploadingLogo}
+                  uploading={submitting}
                   required
                 />
 
@@ -281,7 +283,7 @@ export default function VendorRegister() {
                   <div className="relative">
                     <select
                       value={storeCategory}
-                      onChange={e => { setStoreCategory(e.target.value); setStoreSubcategory(""); setCertFile(null); setCertNumber(""); setCertExpiry(""); }}
+                      onChange={e => { setStoreCategory(e.target.value); setStoreSubcategory(""); setCertFileObj(null); setCertPreview(null); setCertNumber(""); setCertExpiry(""); }}
                       className="w-full h-12 px-3 py-2 pr-10 rounded-xl bg-background neu-inset border-none text-sm focus:outline-none appearance-none text-foreground"
                     >
                       <option value="" disabled>Select Main Category</option>
@@ -393,9 +395,9 @@ export default function VendorRegister() {
 
                     <ImageUploadBox
                       label={`${certLabel?.name} Document`}
-                      url={certFile}
+                      url={certPreview}
                       onUpload={handleCertUpload}
-                      uploading={uploadingCert}
+                      uploading={submitting}
                       required
                       accept="image/jpeg,image/png,image/webp,application/pdf,.pdf"
                     />
@@ -432,13 +434,13 @@ export default function VendorRegister() {
 
                     <ImageUploadBox
                       label="Business Certificate (optional)"
-                      url={certFile}
+                      url={certPreview}
                       onUpload={handleCertUpload}
-                      uploading={uploadingCert}
+                      uploading={submitting}
                       accept="image/jpeg,image/png,image/webp,application/pdf,.pdf"
                     />
 
-                    {certFile && (
+                    {certPreview && (
                       <>
                         <div className="space-y-2">
                           <Label>Certificate Number <span className="text-xs text-muted-foreground">(optional)</span></Label>

@@ -30,11 +30,15 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
   const lm = Math.min(200, Math.max(1, parseInt(limit) || 20));
   const conditions = [];
 
+  // Sanitize JSONB query inputs — pincode must be numeric-only, city capped at 100 chars
+  const safeCity    = typeof city    === "string" ? city.trim().replace(/[%_\\]/g, "").slice(0, 100) : "";
+  const safePincode = typeof pincode === "string" ? pincode.replace(/\D/g, "").slice(0, 6)           : "";
+
   if (status) conditions.push(eq(shops.status, status));
   if (category) conditions.push(ilike(shops.category, `%${category}%`));
-  if (city) conditions.push(sql`${shops.address}->>'city' ILIKE ${"%" + city + "%"}`);
+  if (safeCity)    conditions.push(sql`${shops.address}->>'city' ILIKE ${"%" + safeCity + "%"}`);
   if (ownerId) conditions.push(eq(shops.ownerId, ownerId));
-  if (pincode) conditions.push(sql`${shops.address}->>'pincode' = ${pincode}`);
+  if (safePincode) conditions.push(sql`${shops.address}->>'pincode' = ${safePincode}`);
   if (search) {
     conditions.push(or(
       ilike(shops.shopName, `%${search}%`),

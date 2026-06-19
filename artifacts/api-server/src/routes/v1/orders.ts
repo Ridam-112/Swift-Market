@@ -68,13 +68,17 @@ async function reverseOrderFinancials(order: { id: string; shopId: string; coupo
   await db.update(payouts)
     .set({ status: "cancelled" })
     .where(sql`${payouts.ordersIncluded} @> ${JSON.stringify([order.id])}::jsonb`)
-    .catch(() => {});
+    .catch((err: unknown) => {
+      console.error(`[orders] reverseOrderFinancials: failed to cancel payout for order ${order.id}:`, err);
+    });
 
   if (order.couponCode) {
     await db.update(coupons)
       .set({ usedCount: sql`GREATEST(${coupons.usedCount} - 1, 0)` })
       .where(eq(coupons.code, order.couponCode))
-      .catch(() => {});
+      .catch((err: unknown) => {
+        console.error(`[orders] reverseOrderFinancials: failed to decrement coupon "${order.couponCode}" for order ${order.id}:`, err);
+      });
   }
 }
 
