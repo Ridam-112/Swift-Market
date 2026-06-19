@@ -84,6 +84,8 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (authLoading) return;
     fetchProducts();
+    const interval = setInterval(fetchProducts, 3000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, userId]);
 

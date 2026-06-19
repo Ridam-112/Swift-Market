@@ -72,7 +72,8 @@ export default function Home() {
   }, []);
 
   const recentProducts = products.slice(0, 4);
-  const popularShops = shops.slice(0, 8);
+  const SHOPS_PREVIEW = 4;
+  const popularShops = shops.slice(0, SHOPS_PREVIEW);
 
   return (
     <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto space-y-6 overflow-x-hidden">
@@ -107,7 +108,16 @@ export default function Home() {
       </section>
 
       <section>
-        <SectionHeader title="Popular Shops" />
+        <SectionHeader
+          title="Popular Shops"
+          action={
+            shops.length > SHOPS_PREVIEW ? (
+              <Link href="/shops" className="flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80 transition-opacity">
+                See more <ChevronRight className="w-4 h-4" />
+              </Link>
+            ) : undefined
+          }
+        />
         {shopsLoading ? (
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
             {[1, 2, 3].map(i => (
