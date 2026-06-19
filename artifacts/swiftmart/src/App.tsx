@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useLocation } from "wouter";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -26,34 +26,40 @@ import { MapPinOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 
-import Home from "@/pages/Home";
-import Category from "@/pages/Category";
-import Product from "@/pages/Product";
-import Cart from "@/pages/Cart";
-import Checkout from "@/pages/Checkout";
+// ── Critical customer path — eagerly bundled for fast first load ──────────────
+import Home         from "@/pages/Home";
+import Category     from "@/pages/Category";
+import Product      from "@/pages/Product";
+import Cart         from "@/pages/Cart";
+import Checkout     from "@/pages/Checkout";
 import OrderSuccess from "@/pages/OrderSuccess";
-import Orders from "@/pages/Orders";
-import Profile from "@/pages/Profile";
-import Auth from "@/pages/Auth";
-import NotFound from "@/pages/not-found";
-import Notifications from "@/pages/Notifications";
+import Orders       from "@/pages/Orders";
+import Auth         from "@/pages/Auth";
 
-import Privacy from "@/pages/legal/Privacy";
-import Terms from "@/pages/legal/Terms";
-import RefundCancellation from "@/pages/legal/RefundCancellation";
-import ContactSupport from "@/pages/legal/ContactSupport";
-import DeleteAccount from "@/pages/legal/DeleteAccount";
+// ── Lazy-loaded — split into separate chunks to shrink the initial bundle ──────
+const Profile        = lazy(() => import("@/pages/Profile"));
+const NotFound       = lazy(() => import("@/pages/not-found"));
+const Notifications  = lazy(() => import("@/pages/Notifications"));
+const Shops          = lazy(() => import("@/pages/Shops"));
+const ShopDetail     = lazy(() => import("@/pages/ShopDetail"));
+const Search         = lazy(() => import("@/pages/Search"));
 
-import VendorDashboard from "@/pages/vendor/Dashboard";
-import VendorProducts from "@/pages/vendor/Products";
-import AddProduct from "@/pages/vendor/AddProduct";
-import EditProduct from "@/pages/vendor/EditProduct";
-import VendorOrders from "@/pages/vendor/Orders";
-import VendorShopProfile from "@/pages/vendor/ShopProfile";
-import VendorRegister from "@/pages/VendorRegister";
-import VendorStatus from "@/pages/VendorStatus";
+const Privacy            = lazy(() => import("@/pages/legal/Privacy"));
+const Terms              = lazy(() => import("@/pages/legal/Terms"));
+const RefundCancellation = lazy(() => import("@/pages/legal/RefundCancellation"));
+const ContactSupport     = lazy(() => import("@/pages/legal/ContactSupport"));
+const DeleteAccount      = lazy(() => import("@/pages/legal/DeleteAccount"));
 
-import Admin from "@/pages/Admin";
+const VendorDashboard    = lazy(() => import("@/pages/vendor/Dashboard"));
+const VendorProducts     = lazy(() => import("@/pages/vendor/Products"));
+const AddProduct         = lazy(() => import("@/pages/vendor/AddProduct"));
+const EditProduct        = lazy(() => import("@/pages/vendor/EditProduct"));
+const VendorOrders       = lazy(() => import("@/pages/vendor/Orders"));
+const VendorShopProfile  = lazy(() => import("@/pages/vendor/ShopProfile"));
+const VendorRegister     = lazy(() => import("@/pages/VendorRegister"));
+const VendorStatus       = lazy(() => import("@/pages/VendorStatus"));
+
+const Admin = lazy(() => import("@/pages/Admin"));
 
 const queryClient = new QueryClient();
 
@@ -112,10 +118,6 @@ function Categories() {
   );
 }
 
-import Shops from "@/pages/Shops";
-import ShopDetail from "@/pages/ShopDetail";
-import Search from "@/pages/Search";
-
 function ServiceUnavailable() {
   const { updatePincode, logout } = useAuth();
   return (
@@ -165,6 +167,14 @@ function PincodeGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[50vh]">
+      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   return (
@@ -180,7 +190,9 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.16, ease: "easeOut" }}
           >
-            {children}
+            <Suspense fallback={<PageLoader />}>
+              {children}
+            </Suspense>
           </motion.main>
         </AnimatePresence>
         <BottomNav />
@@ -192,7 +204,9 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
-      {children}
+      <Suspense fallback={<PageLoader />}>
+        {children}
+      </Suspense>
     </AuthGuard>
   );
 }

@@ -11,12 +11,15 @@ function formatCategory(slug: string) {
     .replace(/\b\w/g, c => c.toUpperCase());
 }
 
+const PAGE_SIZE = 18;
+
 export default function Shops() {
   const { shops, isLoading } = useShops();
   const { user } = useAuth();
   const [openOnly, setOpenOnly] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
 
   const categories = useMemo(() => {
     const seen = new Set<string>();
@@ -48,6 +51,7 @@ export default function Shops() {
     setOpenOnly(false);
     setSelectedCategory(null);
     setQuery("");
+    setDisplayLimit(PAGE_SIZE);
   };
 
   return (
@@ -178,6 +182,7 @@ export default function Shops() {
           )}
         </div>
       ) : (
+        <>
         <AnimatePresence mode="wait">
           <motion.div
             key={`${selectedCategory ?? "all"}-${openOnly}-${query}`}
@@ -187,7 +192,7 @@ export default function Shops() {
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.18 }}
           >
-            {filtered.map((vendor, i) => (
+            {filtered.slice(0, displayLimit).map((vendor, i) => (
               <motion.div
                 key={vendor.id}
                 initial={{ opacity: 0, y: 16 }}
@@ -241,6 +246,22 @@ export default function Shops() {
             ))}
           </motion.div>
         </AnimatePresence>
+        {filtered.length > displayLimit && (
+          <div className="flex flex-col items-center gap-1 pt-2">
+            <button
+              onClick={() => setDisplayLimit(l => l + PAGE_SIZE)}
+              className="px-6 py-2.5 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm shadow-none neu-card hover:opacity-90 transition-opacity"
+            >
+              Load more ({filtered.length - displayLimit} remaining)
+            </button>
+          </div>
+        )}
+        {filtered.length > 0 && (
+          <p className="text-xs text-muted-foreground text-center pb-2">
+            Showing {Math.min(displayLimit, filtered.length)} of {filtered.length} shops
+          </p>
+        )}
+        </>
       )}
     </div>
   );

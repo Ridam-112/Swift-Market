@@ -25,9 +25,18 @@ app.use(
   }),
 );
 
-// Security headers — applied before CORS so headers are always present
+// Security headers — applied before CORS so headers are always present.
+// This is an API-only server (all responses are JSON), so the CSP is intentionally
+// restrictive: no content is expected to render in a browser context.
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc:    ["'none'"],
+      frameAncestors:["'none'"],    // prevent clickjacking via framing
+      formAction:    ["'self'"],    // no cross-origin form submissions
+    },
+  },
   crossOriginEmbedderPolicy: false,
 }));
 

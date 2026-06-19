@@ -12,7 +12,8 @@ import {
   XCircle, Clock, Search, Shield, Star, ShoppingBag, Trash2, Eye, EyeOff,
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, Send,
-  ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown
+  ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown,
+  type LucideIcon,
 } from "lucide-react";
 import { categories } from "@/data/categories";
 import { VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog, Vendor } from "@/types";
@@ -208,7 +209,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
       .catch(() => {});
   }, []);
 
-  const navItems: { id: AdminSection, label: string, icon: any, badge?: number }[] = [
+  const navItems: { id: AdminSection; label: string; icon: LucideIcon; badge?: number }[] = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'requests', label: 'Shop Requests', icon: FileText, badge: pendingRequests },
     { id: 'shops', label: 'Shops', icon: Store },
@@ -442,7 +443,13 @@ function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) 
   );
 }
 
-function StatCard({ title, value, icon: Icon, color }: any) {
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  icon: LucideIcon;
+  color: string;
+}
+function StatCard({ title, value, icon: Icon, color }: StatCardProps) {
   return (
     <div className="bg-card p-4 md:p-6 rounded-2xl md:rounded-3xl neu-card flex flex-col gap-2">
       <div className="flex justify-between items-start">
