@@ -96,7 +96,7 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (authLoading) return;
     fetchShops(true);
-    const interval = setInterval(() => fetchShops(false), 3000);
+    const interval = setInterval(() => fetchShops(false), 30000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, userId]);

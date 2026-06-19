@@ -41,11 +41,11 @@ function makeRateLimiter(opts: { windowMs: number; max: number; keyFn: (req: Req
   };
 }
 
-// Per-phone: 2 OTP requests per 10 minutes in production.
-// In dev, raised to 20 per minute so testing isn't blocked.
+// Per-phone: 5 OTP requests per 10 minutes in production.
+// In dev, raised to 50 per minute so testing isn't blocked.
 export const otpPhoneLimiter = makeRateLimiter({
   windowMs: isDev ? 60 * 1000 : 10 * 60 * 1000,
-  max: isDev ? 20 : 2,
+  max: isDev ? 50 : 5,
   keyFn: (req) => `otp:phone:${(req.body as { phone?: string })?.phone ?? "unknown"}`,
   message: "Too many OTP requests for this number. Please wait 10 minutes before trying again.",
 });
@@ -63,12 +63,14 @@ export const otpIpLimiter = isDev
     });
 
 // Global API limiter — broad abuse protection across all endpoints.
-// 300 requests per 15 minutes per IP in production; effectively unlimited in dev.
+// 2000 requests per 15 minutes per IP in production; effectively unlimited in dev.
+// NOTE: Replit proxies all traffic through a shared IP so the limit must be high
+// enough to cover all concurrent users, not just one.
 export const globalApiLimiter = isDev
   ? (_req: Request, _res: Response, next: NextFunction): void => next()
   : makeRateLimiter({
       windowMs: 15 * 60 * 1000,
-      max: 300,
+      max: 2000,
       keyFn: (req) => `api:ip:${req.ip ?? req.socket.remoteAddress ?? "unknown"}`,
       message: "Too many requests. Please slow down and try again in a few minutes.",
     });
