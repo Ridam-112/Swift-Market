@@ -17,6 +17,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { AdminGuard } from "@/components/AdminGuard";
 import { PincodeSelector } from "@/components/PincodeSelector";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { useAuth } from "@/hooks/useAuth";
 import { setupPushMessageListener, playNotificationSound } from "@/lib/pushNotifications";
 
@@ -318,6 +319,7 @@ function App() {
                 <Router />
               </WouterRouter>
               <PushManager />
+              <InstallPrompt />
               <Toaster />
             </CartProvider>
             </ShopsProvider>
