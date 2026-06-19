@@ -8,6 +8,8 @@ import { ShoppingCart, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 import { SectionHeader } from "@/components/SectionHeader";
 
+const MINIMUM_ORDER_AMOUNT = 80;
+
 export default function Cart() {
   const { items, subtotal } = useCart();
   const { shops } = useShops();
@@ -15,6 +17,8 @@ export default function Cart() {
   const cartShopId = items[0]?.product.vendorId;
   const cartShop = cartShopId ? shops.find(s => s.id === cartShopId) : null;
   const shopClosed = cartShop ? !cartShop.isOpen : false;
+  const belowMinimum = subtotal < MINIMUM_ORDER_AMOUNT;
+  const remaining = +(MINIMUM_ORDER_AMOUNT - subtotal).toFixed(2);
 
   if (items.length === 0) {
     return (
@@ -49,6 +53,16 @@ export default function Cart() {
         </div>
       )}
 
+      {belowMinimum && (
+        <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-300/40 text-amber-700 dark:text-amber-400 rounded-2xl p-4">
+          <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-bold text-sm">Minimum order ₹{MINIMUM_ORDER_AMOUNT}</p>
+            <p className="text-xs mt-0.5 opacity-80">Add ₹{remaining} more to proceed to checkout.</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row gap-6">
         <div className="flex-1 space-y-4">
           {items.map(item => (
@@ -62,6 +76,10 @@ export default function Cart() {
           {shopClosed ? (
             <Button disabled className="w-full rounded-full h-12 text-base font-bold shadow-none opacity-50 cursor-not-allowed">
               Shop Closed — Cannot Checkout
+            </Button>
+          ) : belowMinimum ? (
+            <Button disabled className="w-full rounded-full h-12 text-base font-bold shadow-none opacity-50 cursor-not-allowed">
+              Add ₹{remaining} more to checkout
             </Button>
           ) : (
             <Link href="/checkout">

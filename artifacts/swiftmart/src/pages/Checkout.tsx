@@ -198,7 +198,17 @@ export default function Checkout() {
     });
   };
 
+  const MINIMUM_ORDER_AMOUNT = 80;
+
   const handlePlaceOrder = async () => {
+    if (subtotal < MINIMUM_ORDER_AMOUNT) {
+      toast.error(`Minimum order amount is ₹${MINIMUM_ORDER_AMOUNT}`, {
+        description: `Your cart total is ₹${subtotal}. Add ₹${+(MINIMUM_ORDER_AMOUNT - subtotal).toFixed(2)} more to place an order.`,
+        duration: 4000,
+      });
+      return;
+    }
+
     if (!selectedAddress || !address) {
       toast.error("Please add your delivery address before placing order.", {
         description: "Tap 'Add New' to add your delivery address.",

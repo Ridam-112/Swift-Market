@@ -231,6 +231,17 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
     const subtotal = +reducedProducts
       .reduce((sum, r) => sum + r.dbPrice * r.qty, 0)
       .toFixed(2);
+
+    const MINIMUM_ORDER_AMOUNT = 80;
+    if (subtotal < MINIMUM_ORDER_AMOUNT) {
+      await rollbackStock();
+      res.status(400).json({
+        success: false,
+        message: `Minimum order amount is ₹${MINIMUM_ORDER_AMOUNT}. Your cart total is ₹${subtotal}.`,
+      });
+      return;
+    }
+
     const deliveryCharge = Number(body["deliveryCharge"] ?? 0);
     const couponDiscount = Number(body["couponDiscount"] ?? 0);
     const netAmount = subtotal + deliveryCharge - couponDiscount;
