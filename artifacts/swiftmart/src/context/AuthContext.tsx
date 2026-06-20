@@ -170,7 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (savedRole) setUserRole(savedRole as UserRole);
     if (savedDashRole) setRoleState(savedDashRole as 'customer' | 'vendor');
 
-    const { access } = api.getTokens();
+    const { access, refresh } = api.getTokens();
     if (access) {
       api.get<{ success: boolean; user: ApiUser }>("/auth/me")
         .then(d => {
@@ -182,14 +182,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (u.addresses?.length > 0) setSelectedDeliveryAddress(u.addresses[0]);
         })
         .catch(() => {
-          if (!savedUser) {
-            clearTokens();
-            setUser(null);
-          }
+          clearTokens();
+          setUser(null);
+          setUserRole('customer');
+        })
+        .finally(() => setIsLoading(false));
+    } else if (refresh) {
+      // Access token missing but refresh token present — try to get a new access token silently
+      api.get<{ success: boolean; user: ApiUser }>("/auth/me")
+        .then(d => {
+          const u = apiUserToFrontend(d.user);
+          setUser(u);
+          setUserRole(d.user.role);
+          localStorage.setItem("sm_user", JSON.stringify(u));
+          localStorage.setItem("sm_role", d.user.role);
+          if (u.addresses?.length > 0) setSelectedDeliveryAddress(u.addresses[0]);
+        })
+        .catch(() => {
+          clearTokens();
+          setUser(null);
+          setUserRole('customer');
         })
         .finally(() => setIsLoading(false));
     } else {
-      setTimeout(() => setIsLoading(false), 300);
+      // No tokens at all — clear any stale cached role/user from localStorage
+      // so role-gated UI (AdminGuard, etc.) doesn't render with no valid session
+      clearTokens();
+      setUser(null);
+      setUserRole('customer');
+      setIsLoading(false);
     }
   }, []);
 

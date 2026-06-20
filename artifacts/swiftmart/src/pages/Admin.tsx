@@ -1988,23 +1988,37 @@ function AdminNotificationsTab() {
   const [targetUserId, setTargetUserId] = useState("");
   const [sending, setSending] = useState(false);
   const [history, setHistory] = useState<BroadcastRecord[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [diagnostics, setDiagnostics] = useState<PushDiagnostics | null>(null);
+  const [diagError, setDiagError] = useState<string | null>(null);
   const [diagLoading, setDiagLoading] = useState(true);
 
   const fetchDiagnostics = () => {
     setDiagLoading(true);
+    setDiagError(null);
     api.get<{ success: boolean } & PushDiagnostics>("/push/diagnostics")
-      .then(d => setDiagnostics(d))
-      .catch(() => setDiagnostics(null))
+      .then(d => { setDiagnostics(d); setDiagError(null); })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[AdminNotifications] GET /push/diagnostics failed:", msg);
+        setDiagnostics(null);
+        setDiagError(msg);
+      })
       .finally(() => setDiagLoading(false));
   };
 
   const fetchHistory = () => {
     setLoadingHistory(true);
+    setHistoryError(null);
     api.get<{ success: boolean; broadcasts: BroadcastRecord[] }>("/notifications/broadcasts")
-      .then(d => setHistory(d.broadcasts))
-      .catch(() => setHistory([]))
+      .then(d => { setHistory(d.broadcasts ?? []); setHistoryError(null); })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[AdminNotifications] GET /notifications/broadcasts failed:", msg);
+        setHistory([]);
+        setHistoryError(msg);
+      })
       .finally(() => setLoadingHistory(false));
   };
 
@@ -2183,7 +2197,10 @@ function AdminNotificationsTab() {
             )}
           </>
         ) : (
-          <div className="p-5 text-center text-sm text-muted-foreground">Failed to load diagnostics</div>
+          <div className="p-5 text-center text-sm text-muted-foreground">
+            <p className="font-semibold text-red-500 mb-1">Failed to load diagnostics</p>
+            {diagError && <p className="text-xs font-mono bg-muted rounded px-2 py-1 mt-1 break-all">{diagError}</p>}
+          </div>
         )}
       </div>
 
@@ -2278,6 +2295,11 @@ function AdminNotificationsTab() {
             {[1, 2, 3].map(i => (
               <div key={i} className="h-16 bg-muted rounded-2xl animate-pulse" />
             ))}
+          </div>
+        ) : historyError ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            <p className="font-semibold text-red-500 mb-1">Failed to load broadcast history</p>
+            <p className="text-xs font-mono bg-muted rounded px-2 py-1 mt-1 break-all">{historyError}</p>
           </div>
         ) : history.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
