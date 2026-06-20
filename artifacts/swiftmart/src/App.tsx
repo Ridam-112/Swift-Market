@@ -74,6 +74,23 @@ const DEFAULT_COLORS = [
   "hsl(350,80%,60%)", "hsl(160,60%,40%)", "hsl(230,60%,55%)", "hsl(250,55%,55%)",
 ];
 
+const CATEGORY_PRIORITY: Record<string, number> = {
+  grocery: 1, "kirana-store": 2, "fruits-vegetables": 3, vegetables: 4, fruits: 5,
+  "sweet-shop": 6, bakery: 7, dairy: 8, snacks: 9, drinks: 10,
+  restaurant: 11, "cloud-kitchen": 12, "fast-food": 13, "meat-fish": 14, "meat-shop": 15, "fish-shop": 16,
+  medicine: 17, pharmacy: 18, cosmetics: 19, "personal-care": 20, beauty: 21,
+  clothing: 22, fashion: 23, handmade: 24, electronics: 25, "mobile-phone": 26,
+  toys: 27, household: 28, gifts: 29, gaming: 30, hardware: 31,
+};
+function sortCategories<T extends { id: string; name: string }>(cats: T[]): T[] {
+  return [...cats].sort((a, b) => {
+    const pa = CATEGORY_PRIORITY[a.id] ?? 999;
+    const pb = CATEGORY_PRIORITY[b.id] ?? 999;
+    if (pa !== pb) return pa - pb;
+    return a.name.localeCompare(b.name);
+  });
+}
+
 function Categories() {
   const [apiCategories, setApiCategories] = useState<DisplayCategory[]>([]);
   const [catLoading, setCatLoading] = useState(true);
@@ -81,12 +98,13 @@ function Categories() {
   useEffect(() => {
     api.get<{ success: boolean; categories: Array<{ _id: string; name: string; slug: string; emoji?: string; color?: string }> }>('/categories')
       .then(d => {
-        setApiCategories((d.categories ?? []).map((c, i) => ({
+        const mapped = (d.categories ?? []).map((c, i) => ({
           id: c.slug,
           name: c.name,
           emoji: c.emoji ?? "🛍️",
           color: c.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length],
-        })));
+        }));
+        setApiCategories(sortCategories(mapped));
       })
       .catch(() => {})
       .finally(() => setCatLoading(false));

@@ -15,6 +15,24 @@ import { useAuth } from "@/hooks/useAuth";
 
 const VISIBLE_CATEGORIES = 8;
 
+// Priority order: daily needs first, then food, then other categories
+const CATEGORY_PRIORITY: Record<string, number> = {
+  grocery: 1, "kirana-store": 2, "fruits-vegetables": 3, vegetables: 4, fruits: 5,
+  "sweet-shop": 6, bakery: 7, dairy: 8, snacks: 9, drinks: 10,
+  restaurant: 11, "cloud-kitchen": 12, "fast-food": 13, "meat-fish": 14, "meat-shop": 15, "fish-shop": 16,
+  medicine: 17, pharmacy: 18, cosmetics: 19, "personal-care": 20, "beauty": 21,
+  clothing: 22, fashion: 23, handmade: 24, electronics: 25, "mobile-phone": 26,
+  toys: 27, household: 28, gifts: 29, gaming: 30, hardware: 31,
+};
+function sortCategories<T extends { id: string; name: string }>(cats: T[]): T[] {
+  return [...cats].sort((a, b) => {
+    const pa = CATEGORY_PRIORITY[a.id] ?? 999;
+    const pb = CATEGORY_PRIORITY[b.id] ?? 999;
+    if (pa !== pb) return pa - pb;
+    return a.name.localeCompare(b.name);
+  });
+}
+
 const DEFAULT_COLORS = [
   "hsl(35,90%,55%)", "hsl(140,60%,45%)", "hsl(200,70%,55%)", "hsl(20,90%,55%)",
   "hsl(210,80%,55%)", "hsl(45,90%,50%)", "hsl(0,65%,50%)", "hsl(330,70%,60%)",
@@ -61,12 +79,13 @@ export default function Home() {
   useEffect(() => {
     api.get<{ success: boolean; categories: Array<{ _id: string; name: string; slug: string; emoji?: string; color?: string }> }>('/categories')
       .then(d => {
-        setApiCategories((d.categories ?? []).map((c, i) => ({
+        const mapped = (d.categories ?? []).map((c, i) => ({
           id: c.slug,
           name: c.name,
           emoji: c.emoji ?? "🛍️",
           color: c.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length],
-        })));
+        }));
+        setApiCategories(sortCategories(mapped));
       })
       .catch(() => {});
   }, []);

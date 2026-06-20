@@ -47,20 +47,15 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
   if (search) conditions.push(ilike(products.name, `%${search}%`));
   if (trending === "true") conditions.push(eq(products.trending, true));
 
-  // For customer-facing active queries, restrict to active categories only
-  if (status === "active") {
+  // For customer-facing active queries, restrict by category only when a specific
+  // category is requested — do NOT filter the general listing by active-category slugs
+  // because vendor products may use shop-type slugs that don't map 1:1 to customer categories.
+  if (status === "active" && category) {
     const activeCats = await db.select({ slug: categories.slug }).from(categories).where(eq(categories.isActive, true));
-    if (activeCats.length > 0) {
-      const activeSlugs = activeCats.map(c => c.slug);
-      if (category) {
-        if (!activeSlugs.includes(category)) {
-          res.json({ success: true, products: [], total: 0, page: 1, pages: 0 });
-          return;
-        }
-        // category is already a valid active slug — no extra condition needed
-      } else {
-        conditions.push(inArray(products.category, activeSlugs));
-      }
+    const activeSlugs = activeCats.map(c => c.slug);
+    if (activeSlugs.length > 0 && !activeSlugs.includes(category)) {
+      res.json({ success: true, products: [], total: 0, page: 1, pages: 0 });
+      return;
     }
   }
 
