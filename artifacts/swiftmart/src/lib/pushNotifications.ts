@@ -91,6 +91,27 @@ export async function getPushPermissionState(): Promise<"granted" | "denied" | "
 }
 
 /**
+ * Returns the REAL push state: checks both the browser permission AND whether
+ * an active push subscription exists. Use this for banner display so we don't
+ * show "Push notifications on" when permission is granted but no subscription
+ * was ever successfully created.
+ */
+export async function getActualPushState(): Promise<"subscribed" | "permission_only" | "denied" | "default" | "unsupported"> {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return "unsupported";
+  const permission = Notification.permission;
+  if (permission === "denied") return "denied";
+  if (permission !== "granted") return "default";
+  try {
+    const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+    if (!reg) return "permission_only";
+    const sub = await reg.pushManager.getSubscription();
+    return sub ? "subscribed" : "permission_only";
+  } catch {
+    return "permission_only";
+  }
+}
+
+/**
  * Plays three sharp urgent beeps — used for new vendor orders.
  * Also vibrates the device if supported.
  */

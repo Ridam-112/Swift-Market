@@ -5,7 +5,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { api } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
-import { registerPushNotifications, unregisterPushNotifications, getPushPermissionState, playNotificationSound } from "@/lib/pushNotifications";
+import { registerPushNotifications, unregisterPushNotifications, getActualPushState, playNotificationSound } from "@/lib/pushNotifications";
 import { toast } from "sonner";
 
 interface Notification {
@@ -27,11 +27,18 @@ const TYPE_ICONS: Record<string, { icon: React.ComponentType<{ className?: strin
   system:          { icon: Info,        color: "text-gray-600", bg: "bg-gray-50 dark:bg-gray-950/30" },
 };
 
+// "subscribed"      = permission granted AND active push subscription exists in browser
+// "permission_only" = permission granted BUT no subscription (subscription setup failed)
+// "denied"          = user blocked notifications
+// "default"         = not yet asked
+// "unsupported"     = browser doesn't support push
+type PushDisplayState = "subscribed" | "permission_only" | "denied" | "default" | "unsupported";
+
 export default function Notifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
-  const [pushState, setPushState] = useState<"granted" | "denied" | "default" | "unsupported">("default");
+  const [pushState, setPushState] = useState<PushDisplayState>("default");
   const [pushLoading, setPushLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
   const [refreshLoading, setRefreshLoading] = useState(false);
@@ -46,7 +53,7 @@ export default function Notifications() {
 
   useEffect(() => {
     fetchNotifications();
-    getPushPermissionState().then(setPushState);
+    getActualPushState().then(setPushState);
   }, []);
 
   const markAllRead = async () => {
@@ -68,13 +75,15 @@ export default function Notifications() {
     try {
       const success = await registerPushNotifications();
       if (success) {
-        setPushState("granted");
+        setPushState("subscribed");
         toast.success("Push notifications enabled! You'll get alerts even when the app is closed.");
       } else {
-        const state = await getPushPermissionState();
-        setPushState(state);
-        if (state === "denied") {
-          toast.error("Notifications blocked. Please allow them in your browser settings.");
+        const actual = await getActualPushState();
+        setPushState(actual);
+        if (actual === "denied") {
+          toast.error("Notifications blocked. Please allow them in your browser or app settings.");
+        } else {
+          toast.error("Could not register for push notifications. Please try Force refresh or use a different browser.");
         }
       }
     } finally {
@@ -99,10 +108,12 @@ export default function Notifications() {
       await unregisterPushNotifications();
       const ok = await registerPushNotifications();
       if (ok) {
-        setPushState("granted");
+        setPushState("subscribed");
         toast.success("Push subscription refreshed! Your device is now registered.");
       } else {
-        toast.error("Could not refresh subscription. Check browser notification permissions.");
+        const actual = await getActualPushState();
+        setPushState(actual);
+        toast.error("Could not refresh push subscription. Check browser notification permissions.");
       }
     } finally {
       setRefreshLoading(false);
@@ -115,26 +126,44 @@ export default function Notifications() {
       let res: { success: boolean; message: string } | null = null;
       try {
         res = await api.post<{ success: boolean; message: string }>("/push/test", {});
-      } catch {
-        // Subscription is missing from DB or stale — force a full unsubscribe + fresh resubscribe
-        await unregisterPushNotifications();
-        const reRegistered = await registerPushNotifications();
-        if (!reRegistered) {
-          toast.error("Could not enable notifications. Please turn notifications off then on again in the Notifications page.");
+      } catch (firstErr) {
+        const msg = firstErr instanceof Error ? firstErr.message : "";
+        const isNoSubscription =
+          msg.toLowerCase().includes("no push subscription") ||
+          msg.toLowerCase().includes("enable notifications first");
+
+        if (isNoSubscription) {
+          // Subscription missing from DB — re-register then retry once
+          await unregisterPushNotifications();
+          const reRegistered = await registerPushNotifications();
+          if (!reRegistered) {
+            const actual = await getActualPushState();
+            setPushState(actual);
+            toast.error("Push setup failed. Your browser may be blocking push notifications, or a network restriction is preventing registration.");
+            return;
+          }
+          setPushState("subscribed");
+          try {
+            res = await api.post<{ success: boolean; message: string }>("/push/test", {});
+          } catch {
+            toast.error("Push delivery failed after re-registering. Check that your browser allows notifications for this site.");
+            return;
+          }
+        } else {
+          // Push delivery failed (server-side or push service issue) — re-registering won't help
+          toast.error("Push delivery failed. Click \"Force refresh\" below to renew your subscription, then try again.");
           return;
         }
-        // Retry the test push after fresh registration
-        res = await api.post<{ success: boolean; message: string }>("/push/test", {});
       }
 
       if (res?.success) {
         playNotificationSound();
         toast.success(res.message ?? "Test push sent! Check your notification bar.");
       } else {
-        toast.error(res?.message ?? "Push test failed. Make sure notifications are enabled.");
+        toast.error(res?.message ?? "Push test failed.");
       }
     } catch {
-      toast.error("Push delivery failed — check that your browser allows notifications for this site.");
+      toast.error("Push test failed. Check that your browser allows notifications for this site.");
     } finally {
       setTestLoading(false);
     }
@@ -184,39 +213,47 @@ export default function Notifications() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           className={`flex items-center gap-3 p-4 rounded-2xl neu-card ${
-            pushState === "granted"
+            pushState === "subscribed"
               ? "bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800"
               : pushState === "denied"
               ? "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800"
+              : pushState === "permission_only"
+              ? "bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800"
               : "bg-primary/5 border border-primary/20"
           }`}
         >
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-            pushState === "granted" ? "bg-green-100 dark:bg-green-900/40" :
-            pushState === "denied"  ? "bg-red-100 dark:bg-red-900/40" : "bg-primary/10"
+            pushState === "subscribed"      ? "bg-green-100 dark:bg-green-900/40" :
+            pushState === "denied"         ? "bg-red-100 dark:bg-red-900/40" :
+            pushState === "permission_only" ? "bg-orange-100 dark:bg-orange-900/40" : "bg-primary/10"
           }`}>
-            {pushState === "granted"
+            {pushState === "subscribed"
               ? <BellRing className="w-5 h-5 text-green-600" />
               : pushState === "denied"
               ? <BellOff className="w-5 h-5 text-red-500" />
+              : pushState === "permission_only"
+              ? <Bell className="w-5 h-5 text-orange-500" />
               : <Bell className="w-5 h-5 text-primary" />
             }
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm text-foreground">
-              {pushState === "granted" ? "Push notifications on" :
-               pushState === "denied"  ? "Notifications blocked" :
+              {pushState === "subscribed"       ? "Push notifications on" :
+               pushState === "permission_only"  ? "Setup incomplete" :
+               pushState === "denied"           ? "Notifications blocked" :
                "Get notified instantly"}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {pushState === "granted"
+              {pushState === "subscribed"
                 ? "You'll receive alerts on this device even when the app is closed."
+                : pushState === "permission_only"
+                ? "Permission granted but subscription failed. Tap \"Setup\" to retry."
                 : pushState === "denied"
-                ? "Enable notifications in your browser settings to receive alerts."
-                : "Allow notifications to get order updates, offers and more — like Swiggy."}
+                ? "Enable notifications in your browser or app settings to receive alerts."
+                : "Allow notifications to get order updates, offers and more."}
             </p>
           </div>
-          {pushState === "granted" ? (
+          {pushState === "subscribed" ? (
             <div className="flex flex-col gap-1 shrink-0">
               <Button
                 size="sm"
@@ -242,6 +279,15 @@ export default function Notifications() {
                 Turn off
               </button>
             </div>
+          ) : pushState === "permission_only" ? (
+            <Button
+              size="sm"
+              disabled={refreshLoading}
+              onClick={handleForceRefresh}
+              className="shrink-0 text-xs bg-orange-500 text-white hover:bg-orange-600"
+            >
+              {refreshLoading ? "Setting up…" : "Setup"}
+            </Button>
           ) : pushState === "default" ? (
             <Button
               size="sm"
