@@ -48,6 +48,9 @@ export function LegalLayout({ title, subtitle, children }: LegalLayoutProps) {
         <div className="flex items-center justify-center gap-1.5">
           <img src="/logo.png" alt="SwiftMart" className="h-5 w-auto object-contain opacity-70" />
         </div>
+        <p className="text-xs text-muted-foreground font-medium">
+          Serving Balurghat, West Bengal
+        </p>
         <p className="text-xs text-muted-foreground">
           Questions? Email us at{" "}
           <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline font-medium">

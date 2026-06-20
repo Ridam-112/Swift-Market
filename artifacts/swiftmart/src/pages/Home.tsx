@@ -9,7 +9,7 @@ import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SkeletonGrid } from "@/components/SkeletonGrid";
 import { api } from "@/lib/api";
-import { Star, ChevronRight, Flame, Zap } from "lucide-react";
+import { Star, ChevronRight, Flame, Zap, MapPin } from "lucide-react";
 import type { Product } from "@/types";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -261,6 +261,31 @@ export default function Home() {
             )}
           </>
         )}
+      </section>
+
+      {/* About + Footer — SEO content, invisible to casual browsing, natural to read */}
+      <section aria-label="About SwiftMart" className="border-t border-border/30 pt-6 space-y-3">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          <MapPin className="w-3.5 h-3.5" />
+          About SwiftMart
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          SwiftMart is Balurghat's hyper-local online marketplace connecting customers with nearby
+          shops for fast delivery. From groceries and sweets to electronics and daily essentials,
+          order from trusted local vendors in Balurghat, West Bengal and get it delivered in minutes.
+        </p>
+        <p className="text-xs text-muted-foreground font-medium">
+          Serving Balurghat, West Bengal
+        </p>
+        <div className="flex items-center gap-3 flex-wrap text-xs pt-1">
+          <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy</Link>
+          <span className="text-border">·</span>
+          <Link href="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms</Link>
+          <span className="text-border">·</span>
+          <Link href="/refund-cancellation" className="text-muted-foreground hover:text-foreground transition-colors">Refunds</Link>
+          <span className="text-border">·</span>
+          <Link href="/contact-support" className="text-muted-foreground hover:text-foreground transition-colors">Support</Link>
+        </div>
       </section>
     </div>
   );
