@@ -2048,7 +2048,7 @@ function AdminNotificationsTab() {
               <Input
                 value={targetUserId}
                 onChange={e => setTargetUserId(e.target.value)}
-                placeholder="Paste MongoDB user _id"
+                placeholder="Paste user ID (UUID)"
                 className="bg-background neu-inset border-none font-mono text-sm"
               />
             </div>
