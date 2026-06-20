@@ -12,6 +12,8 @@ type NotificationPayload = {
   data?: Record<string, unknown>;
 };
 
+const APP_URL = process.env["APP_URL"] ?? process.env["VITE_APP_URL"] ?? "https://swift-market-x4qf.onrender.com";
+
 async function sendPush(userId: string, payload: NotificationPayload): Promise<void> {
   try {
     const subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
@@ -20,8 +22,8 @@ async function sendPush(userId: string, payload: NotificationPayload): Promise<v
     const pushPayload = JSON.stringify({
       title: payload.title,
       body:  payload.message,
-      icon:  "/logo.png",
-      badge: "/logo.png",
+      icon:  `${APP_URL}/logo.png`,
+      badge: `${APP_URL}/logo.png`,
       tag:   payload.type,
       data:  { url: "/notifications", ...payload.data },
     });
@@ -32,7 +34,8 @@ async function sendPush(userId: string, payload: NotificationPayload): Promise<v
         try {
           await webpush.sendNotification(
             { endpoint: sub.endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } },
-            pushPayload
+            pushPayload,
+            { TTL: 60, urgency: "high" }
           );
         } catch (err: unknown) {
           const e = err as { statusCode?: number; message?: string };
@@ -42,7 +45,6 @@ async function sendPush(userId: string, payload: NotificationPayload): Promise<v
             message: e.message,
             endpoint: sub.endpoint.slice(0, 60) + "…",
           });
-          // 404/410 = subscription expired or unsubscribed — clean it up
           if (e.statusCode === 404 || e.statusCode === 410) {
             await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
           }

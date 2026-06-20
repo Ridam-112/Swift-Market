@@ -1,4 +1,4 @@
-import { Router, type Response } from "express";
+import { Router, type Request, type Response } from "express";
 import { db, pushSubscriptions } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
@@ -23,7 +23,6 @@ router.post("/subscribe", authenticate, async (req: AuthRequest, res: Response):
     return;
   }
 
-  // Upsert: delete existing entry for this (user, endpoint) pair, then re-insert
   await db.delete(pushSubscriptions).where(
     and(eq(pushSubscriptions.userId, req.user!.userId), eq(pushSubscriptions.endpoint, endpoint))
   );
@@ -49,7 +48,7 @@ router.post("/unsubscribe", authenticate, async (req: AuthRequest, res: Response
 });
 
 // POST /api/push/test — send a real push to yourself to verify end-to-end setup
-router.post("/test", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post("/test", authenticate, async (req: AuthRequest & Request, res: Response): Promise<void> => {
   const userId = req.user!.userId;
   const subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
 
@@ -61,11 +60,14 @@ router.post("/test", authenticate, async (req: AuthRequest, res: Response): Prom
     return;
   }
 
+  // Use absolute URL for icon — relative paths don't work in Android push payloads
+  const appUrl = process.env["APP_URL"] ?? `${req.protocol}://${req.get("host")}`;
+
   const pushPayload = JSON.stringify({
     title: "🔔 Test Notification",
     body:  "Push is working! You'll get alerts for orders & updates even when the app is closed.",
-    icon:  "/logo.png",
-    badge: "/logo.png",
+    icon:  `${appUrl}/logo.png`,
+    badge: `${appUrl}/logo.png`,
     tag:   "test",
     data:  { url: "/notifications" },
   });
@@ -78,7 +80,8 @@ router.post("/test", authenticate, async (req: AuthRequest, res: Response): Prom
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } },
-        pushPayload
+        pushPayload,
+        { TTL: 60, urgency: "high" }
       );
       sent++;
     } catch (err: unknown) {

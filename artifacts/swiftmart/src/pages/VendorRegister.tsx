@@ -12,8 +12,12 @@ import { api } from "@/lib/api";
 import { isServicePincode, getServiceAreaName } from "@/lib/serviceArea";
 import { toast } from "sonner";
 
-const FSSAI_CATEGORIES = ["groceries", "vegetables", "dairy", "food-restaurant", "cloud-kitchen", "meat-fish", "local-brands"];
-const DRUG_LICENSE_CATEGORIES = ["medicine"];
+const FSSAI_CATEGORIES = [
+  "grocery", "kirana-store", "fruits-vegetables", "sweet-shop", "bakery",
+  "dairy", "food-restaurant", "restaurant", "cloud-kitchen", "fast-food",
+  "meat-fish", "meat-shop", "fish-shop", "local-brands", "local-services",
+];
+const DRUG_LICENSE_CATEGORIES = ["medicine", "pharmacy"];
 
 function getCertificateRequirement(category: string): "fssai" | "drug_license" | null {
   if (FSSAI_CATEGORIES.includes(category)) return "fssai";
