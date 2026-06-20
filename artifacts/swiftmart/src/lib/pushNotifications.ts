@@ -11,6 +11,25 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   return outputArray;
 }
 
+async function saveSubscriptionToServer(subscription: PushSubscription): Promise<void> {
+  const subJson = subscription.toJSON() as {
+    endpoint: string;
+    keys?: { p256dh?: string; auth?: string };
+  };
+
+  const p256dh = subJson.keys?.p256dh ?? "";
+  const auth   = subJson.keys?.auth   ?? "";
+
+  if (!subJson.endpoint || !p256dh || !auth) {
+    throw new Error("Push subscription is missing required fields (endpoint/p256dh/auth)");
+  }
+
+  await api.post("/push/subscribe", {
+    endpoint: subJson.endpoint,
+    keys: { p256dh, auth },
+  });
+}
+
 export async function registerPushNotifications(): Promise<boolean> {
   try {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
@@ -18,32 +37,36 @@ export async function registerPushNotifications(): Promise<boolean> {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return false;
 
-    // Register SW and wait until it is fully active before touching pushManager
     await navigator.serviceWorker.register("/sw.js", { scope: "/" });
     const reg = await navigator.serviceWorker.ready;
 
     const { publicKey } = await api.get<{ success: boolean; publicKey: string }>("/push/vapid-public-key");
     if (!publicKey) return false;
 
-    // Reuse an existing subscription rather than creating a new one every time
+    const applicationServerKey = urlBase64ToUint8Array(publicKey);
+
+    // Try reusing the existing browser subscription first
     let subscription = await reg.pushManager.getSubscription();
-    if (!subscription) {
-      subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey).buffer as ArrayBuffer,
-      });
+
+    if (subscription) {
+      try {
+        await saveSubscriptionToServer(subscription);
+        return true;
+      } catch (err) {
+        // Subscription is stale (VAPID key mismatch or missing fields) — clear it and start fresh
+        console.warn("[Push] Existing subscription invalid, clearing:", err);
+        await subscription.unsubscribe();
+        subscription = null;
+      }
     }
 
-    const subJson = subscription.toJSON() as {
-      endpoint: string;
-      keys?: { p256dh?: string; auth?: string };
-    };
-
-    await api.post("/push/subscribe", {
-      endpoint: subJson.endpoint,
-      keys: { p256dh: subJson.keys?.p256dh ?? "", auth: subJson.keys?.auth ?? "" },
+    // Create a fresh subscription with the current VAPID key
+    subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey,
     });
 
+    await saveSubscriptionToServer(subscription);
     return true;
   } catch (err) {
     console.error("[Push] Registration failed:", err);
@@ -73,7 +96,6 @@ export async function getPushPermissionState(): Promise<"granted" | "denied" | "
  */
 export function playVendorAlert(): void {
   try {
-    // Vibrate: 3 short pulses
     if ("vibrate" in navigator) navigator.vibrate([300, 120, 300, 120, 300]);
 
     const AudioCtx =
@@ -122,9 +144,8 @@ export function playNotificationSound(): void {
       osc.stop(ctx.currentTime + startAt + duration);
     };
 
-    // Two-note chime: G5 → B5
-    play(784,  0,    0.22); // G5
-    play(988,  0.14, 0.28); // B5
+    play(784,  0,    0.22);
+    play(988,  0.14, 0.28);
 
     setTimeout(() => ctx.close().catch(() => {}), 600);
   } catch { /* ignore — audio API unavailable */ }

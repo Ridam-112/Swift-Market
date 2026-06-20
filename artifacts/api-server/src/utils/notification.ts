@@ -12,7 +12,7 @@ type NotificationPayload = {
   data?: Record<string, unknown>;
 };
 
-const APP_URL = process.env["APP_URL"] ?? process.env["VITE_APP_URL"] ?? "https://swift-market-x4qf.onrender.com";
+const APP_URL = (process.env["APP_URL"] ?? "").replace(/\/+$/, "");
 
 async function sendPush(userId: string, payload: NotificationPayload): Promise<void> {
   try {
