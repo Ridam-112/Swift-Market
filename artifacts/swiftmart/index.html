@@ -3,7 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>SwiftMart</title>
+
+    <title>SwiftMart - Balurghat's Local Online Marketplace</title>
+    <meta name="description" content="Order groceries, sweets, dairy, gifts, electronics accessories and more from local shops in Balurghat with SwiftMart." />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SwiftMart" />
+    <meta property="og:title" content="SwiftMart - Balurghat's Local Online Marketplace" />
+    <meta property="og:description" content="Order groceries, sweets, dairy, gifts, electronics accessories and more from local shops in Balurghat with SwiftMart." />
+    <meta property="og:url" content="https://swiftmart.space/" />
+    <meta property="og:image" content="https://swiftmart.space/opengraph.jpg" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SwiftMart - Balurghat's Local Online Marketplace" />
+    <meta name="twitter:description" content="Order groceries, sweets, dairy, gifts, electronics accessories and more from local shops in Balurghat with SwiftMart." />
+    <meta name="twitter:image" content="https://swiftmart.space/opengraph.jpg" />
+
+    <!-- Canonical -->
+    <link rel="canonical" href="https://swiftmart.space/" />
+
+    <!-- Icons & PWA -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#f59e0b" />
@@ -11,10 +32,70 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SwiftMart" />
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Razorpay -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://swiftmart.space/#website",
+          "url": "https://swiftmart.space/",
+          "name": "SwiftMart",
+          "description": "Order groceries, sweets, dairy, gifts, electronics accessories and more from local shops in Balurghat with SwiftMart.",
+          "inLanguage": "en-IN"
+        },
+        {
+          "@type": ["LocalBusiness", "Store"],
+          "@id": "https://swiftmart.space/#business",
+          "name": "SwiftMart",
+          "url": "https://swiftmart.space/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://swiftmart.space/logo.png"
+          },
+          "image": "https://swiftmart.space/opengraph.jpg",
+          "description": "Hyper-local online marketplace delivering groceries, sweets, dairy, gifts, electronics accessories and more from local Balurghat shops in 10 minutes.",
+          "telephone": "+916296118949",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Balurghat",
+            "addressRegion": "West Bengal",
+            "addressCountry": "IN"
+          },
+          "areaServed": {
+            "@type": "City",
+            "name": "Balurghat",
+            "containedInPlace": {
+              "@type": "State",
+              "name": "West Bengal",
+              "containedInPlace": {
+                "@type": "Country",
+                "name": "India"
+              }
+            }
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+916296118949",
+            "contactType": "customer support",
+            "availableLanguage": ["English", "Bengali"]
+          },
+          "sameAs": [],
+          "priceRange": "₹"
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
