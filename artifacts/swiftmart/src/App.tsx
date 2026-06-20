@@ -59,7 +59,8 @@ const VendorShopProfile  = lazy(() => import("@/pages/vendor/ShopProfile"));
 const VendorRegister     = lazy(() => import("@/pages/VendorRegister"));
 const VendorStatus       = lazy(() => import("@/pages/VendorStatus"));
 
-const Admin = lazy(() => import("@/pages/Admin"));
+const Admin       = lazy(() => import("@/pages/Admin"));
+const AllProducts = lazy(() => import("@/pages/AllProducts"));
 
 const queryClient = new QueryClient();
 
@@ -264,6 +265,9 @@ function Router() {
         </Route>
         <Route path="/search">
           <ProtectedLayout><Search /></ProtectedLayout>
+        </Route>
+        <Route path="/products">
+          <ProtectedLayout><AllProducts /></ProtectedLayout>
         </Route>
         <Route path="/category/:slug">
           <ProtectedLayout><Category /></ProtectedLayout>

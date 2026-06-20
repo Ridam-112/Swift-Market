@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 import { Star, ChevronRight, Flame, Zap } from "lucide-react";
 import type { Product } from "@/types";
 import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 const VISIBLE_CATEGORIES = 8;
 
@@ -90,7 +91,8 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  const recentProducts = products.slice(0, 4);
+  const HOME_PRODUCTS = 8;
+  const homeProducts = products.slice(0, HOME_PRODUCTS);
   const SHOPS_PREVIEW = 4;
   const popularShops = shops.slice(0, SHOPS_PREVIEW);
 
@@ -229,8 +231,36 @@ export default function Home() {
       )}
 
       <section>
-        <SectionHeader title="Your Daily Needs" />
-        {loading ? <SkeletonGrid count={4} /> : <ProductGrid products={recentProducts} />}
+        <SectionHeader
+          title="Your Daily Needs"
+          action={
+            products.length > HOME_PRODUCTS ? (
+              <Link href="/products" className="flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80 transition-opacity">
+                See more <ChevronRight className="w-4 h-4" />
+              </Link>
+            ) : undefined
+          }
+        />
+        {loading ? (
+          <SkeletonGrid count={8} />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
+              {homeProducts.map((product, index) => (
+                <ProductCard key={product.id} product={product} index={index} />
+              ))}
+            </div>
+            {products.length > HOME_PRODUCTS && (
+              <div className="flex justify-center pt-4">
+                <Link href="/products">
+                  <Button variant="outline" className="rounded-full px-8 font-semibold neu-card border-none">
+                    See all {products.length} products
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </>
+        )}
       </section>
     </div>
   );
