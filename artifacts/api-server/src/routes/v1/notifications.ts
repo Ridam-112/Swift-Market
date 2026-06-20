@@ -2,7 +2,7 @@ import { Router, type Response } from "express";
 import { db, notifications, adminBroadcasts, users } from "@workspace/db";
 import { eq, and, desc, count } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
-import { createNotificationLimited } from "../../utils/notification.js";
+import { createNotificationLimited, sendPushToUsers } from "../../utils/notification.js";
 import { miArr } from "../../utils/mapId.js";
 
 const router = Router();
@@ -78,15 +78,19 @@ router.post("/broadcast", authenticate, A, async (req: AuthRequest, res: Respons
     const rows = await db.select({ id: users.id }).from(users).where(eq(users.role, "vendor"));
     recipientIds = rows.map(r => r.id);
   } else {
-    // "all" — every user
     const rows = await db.select({ id: users.id }).from(users);
     recipientIds = rows.map(r => r.id);
   }
 
-  // Use createNotificationLimited for each recipient to enforce the notification cap
+  const payload = { type: "system" as const, title, message };
+
+  // Save in-app notifications (noPush=true — we handle push separately to get counts)
   await Promise.all(recipientIds.map(id =>
-    createNotificationLimited(id, { type: "system", title, message })
+    createNotificationLimited(id, payload, { noPush: true })
   ));
+
+  // Send push notifications and collect delivery counts
+  const { sent: pushSent, failed: pushFailed } = await sendPushToUsers(recipientIds, payload);
 
   await db.insert(adminBroadcasts).values({
     title,
@@ -94,9 +98,13 @@ router.post("/broadcast", authenticate, A, async (req: AuthRequest, res: Respons
     targetAudience,
     targetUserId,
     sentCount: recipientIds.length,
+    pushSent,
+    pushFailed,
   });
 
-  res.json({ success: true, sentCount: recipientIds.length });
+  console.log(`[Broadcast] in-app=${recipientIds.length} pushSent=${pushSent} pushFailed=${pushFailed}`);
+
+  res.json({ success: true, sentCount: recipientIds.length, pushSent, pushFailed });
 });
 
 // GET /api/notifications/broadcasts — admin broadcast history

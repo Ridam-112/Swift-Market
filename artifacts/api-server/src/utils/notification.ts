@@ -5,7 +5,7 @@ import { webpush } from "../lib/webpush.js";
 const NOTIFICATION_LIMIT = 50;
 const CRITICAL_TYPES = ["order_update", "delivery_update"] as const;
 
-type NotificationPayload = {
+export type NotificationPayload = {
   type: "order_update" | "shop_approval" | "delivery_update" | "coupon" | "promo" | "system";
   title: string;
   message: string;
@@ -14,19 +14,23 @@ type NotificationPayload = {
 
 const APP_URL = (process.env["APP_URL"] ?? "").replace(/\/+$/, "");
 
+function buildPushPayload(payload: NotificationPayload): string {
+  return JSON.stringify({
+    title: payload.title,
+    body:  payload.message,
+    icon:  APP_URL ? `${APP_URL}/logo.png` : undefined,
+    badge: APP_URL ? `${APP_URL}/logo.png` : undefined,
+    tag:   payload.type,
+    data:  { url: "/notifications", ...payload.data },
+  });
+}
+
 async function sendPush(userId: string, payload: NotificationPayload): Promise<void> {
   try {
     const subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
     if (subs.length === 0) return;
 
-    const pushPayload = JSON.stringify({
-      title: payload.title,
-      body:  payload.message,
-      icon:  `${APP_URL}/logo.png`,
-      badge: `${APP_URL}/logo.png`,
-      tag:   payload.type,
-      data:  { url: "/notifications", ...payload.data },
-    });
+    const pushPayload = buildPushPayload(payload);
 
     await Promise.allSettled(
       subs.map(async (sub) => {
@@ -56,9 +60,69 @@ async function sendPush(userId: string, payload: NotificationPayload): Promise<v
   }
 }
 
+/**
+ * Sends a push notification to all registered devices for the given user IDs.
+ * Returns { sent, failed } counts.  Used by bulk admin broadcasts.
+ */
+export async function sendPushToUsers(
+  userIds: string[],
+  payload: NotificationPayload
+): Promise<{ sent: number; failed: number }> {
+  if (userIds.length === 0) return { sent: 0, failed: 0 };
+
+  try {
+    const subs = await db
+      .select()
+      .from(pushSubscriptions)
+      .where(inArray(pushSubscriptions.userId, userIds));
+
+    if (subs.length === 0) return { sent: 0, failed: 0 };
+
+    const pushPayload = buildPushPayload(payload);
+    let sent = 0;
+    let failed = 0;
+
+    const results = await Promise.allSettled(
+      subs.map(async (sub) => {
+        const keys = sub.keys as { p256dh: string; auth: string };
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } },
+          pushPayload,
+          { TTL: 60, urgency: "high" }
+        );
+        return sub.id;
+      })
+    );
+
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i];
+      if (r.status === "fulfilled") {
+        sent++;
+      } else {
+        failed++;
+        const e = (r as PromiseRejectedResult).reason as { statusCode?: number };
+        console.error("[Push] broadcast send failed:", {
+          status: e.statusCode,
+          endpoint: subs[i]!.endpoint.slice(0, 60) + "…",
+        });
+        if (e.statusCode === 404 || e.statusCode === 410) {
+          await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, subs[i]!.id));
+        }
+      }
+    }
+
+    console.log(`[Push] Broadcast: sent=${sent} failed=${failed} of ${subs.length} subscription(s)`);
+    return { sent, failed };
+  } catch (err) {
+    console.error("[Push] sendPushToUsers top-level error:", err);
+    return { sent: 0, failed: 0 };
+  }
+}
+
 export async function createNotificationLimited(
   userId: string,
-  payload: NotificationPayload
+  payload: NotificationPayload,
+  opts: { noPush?: boolean } = {}
 ): Promise<void> {
   await db.insert(notifications).values({ userId, ...payload });
 
@@ -92,5 +156,7 @@ export async function createNotificationLimited(
     }
   }
 
-  void sendPush(userId, payload);
+  if (!opts.noPush) {
+    void sendPush(userId, payload);
+  }
 }

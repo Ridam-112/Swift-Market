@@ -11,7 +11,7 @@ import {
   LayoutDashboard, Store, Users, FileText, TrendingUp, Ban, CheckCircle, 
   XCircle, Clock, Search, Shield, Star, ShoppingBag, Trash2, Eye, EyeOff,
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
-  Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, Send,
+  Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
   ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown,
   type LucideIcon,
 } from "lucide-react";
@@ -1961,7 +1961,24 @@ interface BroadcastRecord {
   message: string;
   targetAudience: string;
   sentCount: number;
+  pushSent: number;
+  pushFailed: number;
   createdAt: string;
+}
+
+interface PushDiagnostics {
+  totalUsers: number;
+  totalSubscriptions: number;
+  subsByRole: Record<string, number>;
+  lastBroadcast: {
+    title: string;
+    pushSent: number;
+    pushFailed: number;
+    sentCount: number;
+    createdAt: string;
+  } | null;
+  allTimePushSent: number;
+  allTimePushFailed: number;
 }
 
 function AdminNotificationsTab() {
@@ -1972,6 +1989,16 @@ function AdminNotificationsTab() {
   const [sending, setSending] = useState(false);
   const [history, setHistory] = useState<BroadcastRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [diagnostics, setDiagnostics] = useState<PushDiagnostics | null>(null);
+  const [diagLoading, setDiagLoading] = useState(true);
+
+  const fetchDiagnostics = () => {
+    setDiagLoading(true);
+    api.get<{ success: boolean } & PushDiagnostics>("/push/diagnostics")
+      .then(d => setDiagnostics(d))
+      .catch(() => setDiagnostics(null))
+      .finally(() => setDiagLoading(false));
+  };
 
   const fetchHistory = () => {
     setLoadingHistory(true);
@@ -1981,19 +2008,26 @@ function AdminNotificationsTab() {
       .finally(() => setLoadingHistory(false));
   };
 
-  useEffect(() => { fetchHistory(); }, []);
+  useEffect(() => {
+    fetchHistory();
+    fetchDiagnostics();
+  }, []);
 
   const handleSend = async () => {
     if (!title.trim() || !message.trim()) { toast.error("Title and message are required"); return; }
     if (targetAudience === "specific" && !targetUserId.trim()) { toast.error("Please enter a User ID"); return; }
     setSending(true);
     try {
-      const res = await api.post<{ success: boolean; sentCount: number }>("/notifications/broadcast", {
+      const res = await api.post<{ success: boolean; sentCount: number; pushSent: number; pushFailed: number }>("/notifications/broadcast", {
         title, message, targetAudience, targetUserId: targetAudience === "specific" ? targetUserId : undefined,
       });
-      toast.success(`Notification sent to ${res.sentCount} user${res.sentCount !== 1 ? "s" : ""}`);
+      toast.success(
+        `Saved to ${res.sentCount} user${res.sentCount !== 1 ? "s" : ""}` +
+        (res.pushSent > 0 ? ` · Push popup sent to ${res.pushSent} device${res.pushSent !== 1 ? "s" : ""}` : " · No active push devices")
+      );
       setTitle(""); setMessage(""); setTargetUserId("");
       fetchHistory();
+      fetchDiagnostics();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to send notification");
     } finally {
@@ -2010,6 +2044,149 @@ function AdminNotificationsTab() {
 
   return (
     <div className="space-y-6">
+
+      {/* ── Push Diagnostics ─────────────────────────────────────────── */}
+      <div className="bg-card rounded-3xl neu-card overflow-hidden">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <BellRing className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="font-bold text-sm text-foreground">Push Diagnostics</h2>
+              <p className="text-xs text-muted-foreground">Live health of push notification delivery</p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={fetchDiagnostics}
+            disabled={diagLoading}
+            className="text-xs h-8 px-3 text-muted-foreground hover:text-foreground"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${diagLoading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
+
+        {diagLoading ? (
+          <div className="p-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[1,2,3,4].map(i => <div key={i} className="h-16 rounded-2xl bg-muted animate-pulse" />)}
+          </div>
+        ) : diagnostics ? (
+          <>
+            {/* Row 1 — main counts */}
+            <div className="p-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+              {/* Total Users */}
+              <div className="bg-background rounded-2xl neu-inset p-4 flex flex-col gap-1">
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Total Users</span>
+                <span className="text-2xl font-bold text-foreground">{diagnostics.totalUsers}</span>
+              </div>
+
+              {/* Active Subscriptions */}
+              <div className={`rounded-2xl neu-inset p-4 flex flex-col gap-1 ${
+                diagnostics.totalSubscriptions === 0
+                  ? "bg-red-50 dark:bg-red-950/20"
+                  : "bg-green-50 dark:bg-green-950/20"
+              }`}>
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Active Devices</span>
+                <span className={`text-2xl font-bold ${diagnostics.totalSubscriptions === 0 ? "text-red-600" : "text-green-600"}`}>
+                  {diagnostics.totalSubscriptions}
+                </span>
+                <span className="text-[10px] text-muted-foreground">push registered</span>
+              </div>
+
+              {/* All-time sent */}
+              <div className="bg-background rounded-2xl neu-inset p-4 flex flex-col gap-1">
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">All-time Sent</span>
+                <span className="text-2xl font-bold text-green-600">{diagnostics.allTimePushSent}</span>
+                <span className="text-[10px] text-muted-foreground">push delivered</span>
+              </div>
+
+              {/* All-time failed */}
+              <div className="bg-background rounded-2xl neu-inset p-4 flex flex-col gap-1">
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">All-time Failed</span>
+                <span className="text-2xl font-bold text-red-500">{diagnostics.allTimePushFailed}</span>
+                <span className="text-[10px] text-muted-foreground">push undelivered</span>
+              </div>
+            </div>
+
+            {/* Row 2 — role breakdown + last delivery */}
+            <div className="px-5 pb-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* By role */}
+              <div className="bg-background rounded-2xl neu-inset p-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Devices by Role</p>
+                {Object.keys({ customer: 0, vendor: 0, admin: 0, ...diagnostics.subsByRole }).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No subscriptions yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {(["customer", "vendor", "admin"] as const).map(role => {
+                      const cnt = diagnostics.subsByRole[role] ?? 0;
+                      const max = Math.max(...Object.values(diagnostics.subsByRole), 1);
+                      return (
+                        <div key={role} className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground w-16 capitalize">{role}</span>
+                          <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded-full transition-all"
+                              style={{ width: `${(cnt / max) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-semibold text-foreground w-6 text-right">{cnt}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Last delivery */}
+              <div className="bg-background rounded-2xl neu-inset p-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Last Broadcast Result</p>
+                {diagnostics.lastBroadcast ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-foreground truncate">{diagnostics.lastBroadcast.title}</p>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                        <span className="text-xs text-foreground font-semibold">{diagnostics.lastBroadcast.pushSent}</span>
+                        <span className="text-xs text-muted-foreground">delivered</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                        <span className="text-xs text-foreground font-semibold">{diagnostics.lastBroadcast.pushFailed}</span>
+                        <span className="text-xs text-muted-foreground">failed</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                        <span className="text-xs text-foreground font-semibold">{diagnostics.lastBroadcast.sentCount}</span>
+                        <span className="text-xs text-muted-foreground">in-app</span>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {new Date(diagnostics.lastBroadcast.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No broadcasts yet</p>
+                )}
+              </div>
+            </div>
+
+            {diagnostics.totalSubscriptions === 0 && (
+              <div className="mx-5 mb-5 flex items-start gap-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-3">
+                <span className="text-amber-600 text-base shrink-0">⚠️</span>
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  <strong>No active push subscriptions.</strong> Users need to open the Notifications page and click "Enable" or "Force Refresh" to register their device. Push popups won't deliver until they do.
+                </p>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="p-5 text-center text-sm text-muted-foreground">Failed to load diagnostics</div>
+        )}
+      </div>
+
       {/* Compose */}
       <div className="bg-card p-6 rounded-3xl neu-card space-y-4">
         <div className="flex items-center gap-3 mb-2">
@@ -2126,13 +2303,26 @@ function AdminNotificationsTab() {
                       </Badge>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 mt-2">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
                     <span className="text-[11px] text-muted-foreground">
                       {new Date(b.createdAt).toLocaleString()}
                     </span>
-                    <span className="text-[11px] text-green-600 font-medium">
-                      ✓ Sent to {b.sentCount} user{b.sentCount !== 1 ? "s" : ""}
+                    <span className="text-[11px] text-blue-600 font-medium">
+                      📥 {b.sentCount} in-app
                     </span>
+                    {(b.pushSent ?? 0) > 0 && (
+                      <span className="text-[11px] text-green-600 font-medium">
+                        🔔 {b.pushSent} push sent
+                      </span>
+                    )}
+                    {(b.pushFailed ?? 0) > 0 && (
+                      <span className="text-[11px] text-red-500 font-medium">
+                        ✗ {b.pushFailed} push failed
+                      </span>
+                    )}
+                    {(b.pushSent ?? 0) === 0 && (b.pushFailed ?? 0) === 0 && (
+                      <span className="text-[11px] text-muted-foreground">no push devices</span>
+                    )}
                   </div>
                 </div>
               </div>

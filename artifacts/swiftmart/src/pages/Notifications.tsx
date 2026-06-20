@@ -34,6 +34,7 @@ export default function Notifications() {
   const [pushState, setPushState] = useState<"granted" | "denied" | "default" | "unsupported">("default");
   const [pushLoading, setPushLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
+  const [refreshLoading, setRefreshLoading] = useState(false);
 
   const fetchNotifications = () => {
     setLoading(true);
@@ -89,6 +90,22 @@ export default function Notifications() {
       toast.success("Push notifications disabled.");
     } finally {
       setPushLoading(false);
+    }
+  };
+
+  const handleForceRefresh = async () => {
+    setRefreshLoading(true);
+    try {
+      await unregisterPushNotifications();
+      const ok = await registerPushNotifications();
+      if (ok) {
+        setPushState("granted");
+        toast.success("Push subscription refreshed! Your device is now registered.");
+      } else {
+        toast.error("Could not refresh subscription. Check browser notification permissions.");
+      }
+    } finally {
+      setRefreshLoading(false);
     }
   };
 
@@ -210,6 +227,13 @@ export default function Notifications() {
               >
                 {testLoading ? "Sending…" : "Test Push"}
               </Button>
+              <button
+                disabled={refreshLoading || pushLoading}
+                onClick={handleForceRefresh}
+                className="text-[10px] text-muted-foreground hover:text-primary transition-colors text-center"
+              >
+                {refreshLoading ? "Refreshing…" : "Force refresh"}
+              </button>
               <button
                 disabled={pushLoading}
                 onClick={handleDisablePush}

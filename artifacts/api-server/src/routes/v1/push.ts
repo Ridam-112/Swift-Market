@@ -1,10 +1,11 @@
 import { Router, type Request, type Response } from "express";
-import { db, pushSubscriptions } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
-import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
+import { db, pushSubscriptions, users, adminBroadcasts } from "@workspace/db";
+import { eq, and, count, sum, desc, inArray } from "drizzle-orm";
+import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { vapidPublicKey, webpush } from "../../lib/webpush.js";
 
 const router = Router();
+const A = requireRole("admin", "super_admin");
 
 // GET /api/push/vapid-public-key — public, used by frontend to subscribe
 router.get("/vapid-public-key", (_req, res: Response): void => {
@@ -60,7 +61,6 @@ router.post("/test", authenticate, async (req: AuthRequest & Request, res: Respo
     return;
   }
 
-  // Use absolute URL for icon — relative paths don't work in Android push payloads
   const appUrl = process.env["APP_URL"] ?? `${req.protocol}://${req.get("host")}`;
 
   const pushPayload = JSON.stringify({
@@ -99,6 +99,68 @@ router.post("/test", authenticate, async (req: AuthRequest & Request, res: Respo
   } else {
     res.status(500).json({ success: false, message: "Push send failed — check server logs.", sent, failed });
   }
+});
+
+// GET /api/push/diagnostics — admin: push subscription health overview
+router.get("/diagnostics", authenticate, A, async (_req: AuthRequest, res: Response): Promise<void> => {
+  const [
+    [{ totalUsers }],
+    [{ totalSubs }],
+    subsByRoleRows,
+    lastBroadcastRows,
+    pushTotalsRows,
+  ] = await Promise.all([
+    db.select({ totalUsers: count() }).from(users),
+    db.select({ totalSubs: count() }).from(pushSubscriptions),
+
+    // Subscriptions per role — join push_subscriptions → users
+    db
+      .select({ role: users.role, cnt: count() })
+      .from(pushSubscriptions)
+      .innerJoin(users, eq(pushSubscriptions.userId, users.id))
+      .groupBy(users.role),
+
+    // Last broadcast that recorded push stats
+    db
+      .select()
+      .from(adminBroadcasts)
+      .orderBy(desc(adminBroadcasts.createdAt))
+      .limit(1),
+
+    // All-time push totals across all broadcasts
+    db
+      .select({
+        allTimeSent:   sum(adminBroadcasts.pushSent),
+        allTimeFailed: sum(adminBroadcasts.pushFailed),
+      })
+      .from(adminBroadcasts),
+  ]);
+
+  const subsByRole: Record<string, number> = {};
+  for (const row of subsByRoleRows) {
+    subsByRole[row.role] = Number(row.cnt);
+  }
+
+  const lastBroadcast = lastBroadcastRows[0] ?? null;
+  const totals = pushTotalsRows[0] ?? { allTimeSent: 0, allTimeFailed: 0 };
+
+  res.json({
+    success: true,
+    totalUsers: Number(totalUsers),
+    totalSubscriptions: Number(totalSubs),
+    subsByRole,
+    lastBroadcast: lastBroadcast
+      ? {
+          title:      lastBroadcast.title,
+          pushSent:   lastBroadcast.pushSent,
+          pushFailed: lastBroadcast.pushFailed,
+          sentCount:  lastBroadcast.sentCount,
+          createdAt:  lastBroadcast.createdAt,
+        }
+      : null,
+    allTimePushSent:   Number(totals.allTimeSent   ?? 0),
+    allTimePushFailed: Number(totals.allTimeFailed ?? 0),
+  });
 });
 
 export default router;
