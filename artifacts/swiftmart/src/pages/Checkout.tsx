@@ -9,7 +9,7 @@ import { CartSummary } from "@/components/CartSummary";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Wallet, CreditCard, Banknote, Loader2, AlertCircle, Tag, X, CloudRain, Zap } from "lucide-react";
+import { Plus, Wallet, Banknote, Loader2, AlertCircle, Tag, X, CloudRain, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -87,7 +87,7 @@ export default function Checkout() {
   );
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [deliverySlot, setDeliverySlot] = useState<'instant' | 'schedule'>('instant');
-  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Card' | 'COD'>('UPI');
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'COD'>('UPI');
   const [placing, setPlacing] = useState(false);
 
   const [couponInput, setCouponInput] = useState("");
@@ -170,7 +170,7 @@ export default function Checkout() {
   };
 
   const createOrderRecord = async (shopName: string, razorpayOrderId?: string) => {
-    const paymentMethodApi = paymentMethod === 'Card' ? 'card' : paymentMethod;
+    const paymentMethodApi = paymentMethod;
     return api.post<ApiOrderResponse>("/orders", {
       shopId,
       shopName,
@@ -320,9 +320,8 @@ export default function Checkout() {
   };
 
   const paymentOptions = [
-    { id: 'UPI', label: 'UPI', icon: Wallet },
-    { id: 'Card', label: 'Credit/Debit Card', icon: CreditCard },
-    { id: 'COD', label: 'Cash on Delivery', icon: Banknote }
+    { id: 'COD', label: 'Cash on Delivery', icon: Banknote },
+    { id: 'UPI', label: 'Pay on Delivery (UPI)', icon: Wallet },
   ] as const;
 
   return (
