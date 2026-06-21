@@ -97,13 +97,34 @@ export async function registerFcmToken(): Promise<FcmResult> {
   try {
     const messaging = getMessaging(app);
     token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: swReg });
-  } catch (err) {
-    console.error("[FCM] getToken failed:", err);
-    const msg = err instanceof Error ? err.message : "";
-    if (msg.includes("permission-blocked") || msg.includes("denied")) {
+  } catch (firstErr) {
+    console.warn("[FCM] getToken failed (first attempt):", firstErr);
+    const firstMsg = firstErr instanceof Error ? firstErr.message : String(firstErr);
+
+    // VAPID key mismatch: the browser push subscription was created with a different key.
+    // Clear the stale subscription and retry once.
+    const isKeyMismatch = firstMsg.includes("application server key") ||
+                          firstMsg.includes("applicationServerKey") ||
+                          firstMsg.includes("different") ||
+                          firstMsg.includes("push subscription");
+    if (isKeyMismatch) {
+      console.log("[FCM] VAPID key mismatch — clearing old push subscription and retrying…");
+      try {
+        const existingSub = await swReg.pushManager.getSubscription();
+        if (existingSub) await existingSub.unsubscribe();
+        const messaging = getMessaging(app);
+        token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: swReg });
+        console.log("[FCM] getToken succeeded after clearing old subscription");
+      } catch (retryErr) {
+        console.error("[FCM] getToken retry also failed:", retryErr);
+        return { success: false, error: "Could not renew push subscription. Try turning notifications off and on again." };
+      }
+    } else if (firstMsg.includes("permission-blocked") || firstMsg.includes("denied")) {
       return { success: false, error: "Notifications blocked. Please allow them in your browser settings." };
+    } else {
+      console.error("[FCM] getToken failed:", firstErr);
+      return { success: false, error: `Could not get FCM token: ${firstMsg}` };
     }
-    return { success: false, error: "Could not get FCM token. Check browser console for details." };
   }
 
   if (!token) {

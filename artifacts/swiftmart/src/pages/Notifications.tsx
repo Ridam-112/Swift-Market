@@ -48,7 +48,15 @@ export default function Notifications() {
 
   useEffect(() => {
     fetchNotifications();
-    getFcmState().then(setFcmState);
+    getFcmState().then(state => {
+      setFcmState(state);
+      // If browser already has permission, silently re-register to keep the server token fresh.
+      // This self-heals the case where the server token was cleared (e.g. after a redeploy or DB wipe)
+      // without requiring the user to toggle notifications off and on again.
+      if (state === "subscribed") {
+        registerFcmToken().catch(() => {});
+      }
+    });
   }, []);
 
   const markAllRead = async () => {
