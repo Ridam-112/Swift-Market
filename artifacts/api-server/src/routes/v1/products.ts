@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
-import { db, products, shops, categories } from "@workspace/db";
-import { eq, and, ilike, inArray, desc, count, gt, sql } from "drizzle-orm";
+import { db, products, shops, categories, users } from "@workspace/db";
+import { eq, and, ilike, inArray, desc, count, gt, sql, or } from "drizzle-orm";
 import { authenticate, requireRole, optionalAuth, type AuthRequest } from "../../middlewares/auth.js";
 import { deleteFromCloudinary } from "../../lib/cloudinary.js";
 import { createNotificationLimited } from "../../utils/notification.js";
@@ -241,6 +241,27 @@ router.post("/", authenticate, V, async (req: AuthRequest, res: Response): Promi
     sizes: Array.isArray(safeBody["sizes"]) ? safeBody["sizes"] : undefined,
     colorImages: (safeBody["colorImages"] && typeof safeBody["colorImages"] === "object" && !Array.isArray(safeBody["colorImages"])) ? safeBody["colorImages"] : undefined,
   }).returning();
+
+  // Notify all admins & super_admins that a new product is pending review
+  try {
+    const adminUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(or(eq(users.role, "admin"), eq(users.role, "super_admin")));
+    await Promise.all(
+      adminUsers.map(admin =>
+        createNotificationLimited(admin.id, {
+          type: "system",
+          title: "🛒 New Product Pending Review",
+          message: `A vendor submitted "${product!.name}" for approval. Review it in the admin panel.`,
+          data: { productId: product!.id },
+        })
+      )
+    );
+  } catch {
+    // Non-fatal — product was created; notification failure should not block response
+  }
+
   res.status(201).json({ success: true, product: mi(product!) });
 });
 

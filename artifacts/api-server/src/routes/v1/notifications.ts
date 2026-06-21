@@ -92,15 +92,26 @@ router.post("/broadcast", authenticate, A, async (req: AuthRequest, res: Respons
   // Send push notifications and collect delivery counts
   const { sent: pushSent, failed: pushFailed } = await sendPushToUsers(recipientIds, payload);
 
-  await db.insert(adminBroadcasts).values({
-    title,
-    message,
-    targetAudience,
-    targetUserId,
-    sentCount: recipientIds.length,
-    pushSent,
-    pushFailed,
-  });
+  try {
+    await db.insert(adminBroadcasts).values({
+      title,
+      message,
+      targetAudience,
+      targetUserId,
+      sentCount: recipientIds.length,
+      pushSent,
+      pushFailed,
+    });
+  } catch {
+    // Fallback for production DB not yet migrated (push_sent/push_failed columns may be missing)
+    await db.insert(adminBroadcasts).values({
+      title,
+      message,
+      targetAudience,
+      targetUserId,
+      sentCount: recipientIds.length,
+    });
+  }
 
   console.log(`[Broadcast] in-app=${recipientIds.length} pushSent=${pushSent} pushFailed=${pushFailed}`);
 

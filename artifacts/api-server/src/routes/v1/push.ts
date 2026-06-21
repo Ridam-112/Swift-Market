@@ -108,7 +108,6 @@ router.get("/diagnostics", authenticate, A, async (_req: AuthRequest, res: Respo
     [{ totalSubs }],
     subsByRoleRows,
     lastBroadcastRows,
-    pushTotalsRows,
   ] = await Promise.all([
     db.select({ totalUsers: count() }).from(users),
     db.select({ totalSubs: count() }).from(pushSubscriptions),
@@ -120,21 +119,27 @@ router.get("/diagnostics", authenticate, A, async (_req: AuthRequest, res: Respo
       .innerJoin(users, eq(pushSubscriptions.userId, users.id))
       .groupBy(users.role),
 
-    // Last broadcast that recorded push stats
+    // Last broadcast
     db
       .select()
       .from(adminBroadcasts)
       .orderBy(desc(adminBroadcasts.createdAt))
       .limit(1),
+  ]);
 
-    // All-time push totals across all broadcasts
-    db
+  // All-time push totals — may fail if push_sent/push_failed columns don't exist yet (pre-publish)
+  let allTimePushSent = 0;
+  let allTimePushFailed = 0;
+  try {
+    const [totals] = await db
       .select({
         allTimeSent:   sum(adminBroadcasts.pushSent),
         allTimeFailed: sum(adminBroadcasts.pushFailed),
       })
-      .from(adminBroadcasts),
-  ]);
+      .from(adminBroadcasts);
+    allTimePushSent   = Number(totals?.allTimeSent   ?? 0);
+    allTimePushFailed = Number(totals?.allTimeFailed ?? 0);
+  } catch { /* columns missing in production — returns 0 */ }
 
   const subsByRole: Record<string, number> = {};
   for (const row of subsByRoleRows) {
@@ -142,7 +147,6 @@ router.get("/diagnostics", authenticate, A, async (_req: AuthRequest, res: Respo
   }
 
   const lastBroadcast = lastBroadcastRows[0] ?? null;
-  const totals = pushTotalsRows[0] ?? { allTimeSent: 0, allTimeFailed: 0 };
 
   res.json({
     success: true,
@@ -152,14 +156,14 @@ router.get("/diagnostics", authenticate, A, async (_req: AuthRequest, res: Respo
     lastBroadcast: lastBroadcast
       ? {
           title:      lastBroadcast.title,
-          pushSent:   lastBroadcast.pushSent,
-          pushFailed: lastBroadcast.pushFailed,
+          pushSent:   lastBroadcast.pushSent ?? 0,
+          pushFailed: lastBroadcast.pushFailed ?? 0,
           sentCount:  lastBroadcast.sentCount,
           createdAt:  lastBroadcast.createdAt,
         }
       : null,
-    allTimePushSent:   Number(totals.allTimeSent   ?? 0),
-    allTimePushFailed: Number(totals.allTimeFailed ?? 0),
+    allTimePushSent,
+    allTimePushFailed,
   });
 });
 
