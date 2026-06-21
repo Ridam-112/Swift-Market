@@ -12,7 +12,7 @@ import {
   XCircle, Clock, Search, Shield, Star, ShoppingBag, Trash2, Eye, EyeOff,
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
-  ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown,
+  ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown, Home,
   type LucideIcon,
 } from "lucide-react";
 import { categories } from "@/data/categories";
@@ -127,8 +127,13 @@ export default function Admin() {
           <Menu className="w-6 h-6" />
         </button>
         <div className="font-bold text-foreground capitalize">{activeSection}</div>
-        <div className="flex items-center gap-1 font-bold text-primary">
-          SwiftMart <Shield className="w-4 h-4 text-primary" />
+        <div className="flex items-center gap-2">
+          <button onClick={() => setLocation("/")} className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" title="Go to main app">
+            <Home className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-1 font-bold text-primary">
+            <Shield className="w-4 h-4 text-primary" />
+          </div>
         </div>
       </div>
 
@@ -195,6 +200,7 @@ export default function Admin() {
 }
 
 function SidebarContent({ activeSection, setActiveSection, handleLogout }: { activeSection: AdminSection, setActiveSection: (s: AdminSection) => void, handleLogout: () => void }) {
+  const [, navigate] = useLocation();
   const [pendingRequests, setPendingRequests] = useState(0);
   const [pendingOrders, setPendingOrders] = useState(0);
   const { reports, user } = useAuth();
@@ -270,6 +276,9 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
         <div className="bg-muted/30 p-3 rounded-xl mb-4 flex items-center justify-center text-xs font-mono text-muted-foreground">
           ID: {user?.id ?? "—"}
         </div>
+        <Button variant="ghost" onClick={() => navigate("/")} className="w-full justify-start text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl mb-1">
+          <Home className="w-4 h-4 mr-2" /> Back to App
+        </Button>
         <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl">
           <LogOut className="w-4 h-4 mr-2" /> Logout
         </Button>
