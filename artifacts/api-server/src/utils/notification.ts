@@ -1,6 +1,6 @@
-import { db, notifications, pushSubscriptions } from "@workspace/db";
+import { db, notifications, fcmTokens } from "@workspace/db";
 import { eq, count, asc, inArray, and, not } from "drizzle-orm";
-import { webpush } from "../lib/webpush.js";
+import { getMessagingInstance } from "../lib/firebase-admin.js";
 
 const NOTIFICATION_LIMIT = 50;
 const CRITICAL_TYPES = ["order_update", "delivery_update"] as const;
@@ -14,110 +14,167 @@ export type NotificationPayload = {
 
 const APP_URL = (process.env["APP_URL"] ?? "").replace(/\/+$/, "");
 
-function buildPushPayload(payload: NotificationPayload): string {
-  return JSON.stringify({
-    title: payload.title,
-    body:  payload.message,
-    icon:  APP_URL ? `${APP_URL}/logo.png` : undefined,
-    badge: APP_URL ? `${APP_URL}/logo.png` : undefined,
-    tag:   payload.type,
-    data:  { url: "/notifications", ...payload.data },
-  });
-}
+// ─── FCM helpers ─────────────────────────────────────────────────────────────
 
-async function sendPush(userId: string, payload: NotificationPayload): Promise<void> {
+/**
+ * Sends an FCM push notification to a single user's active devices.
+ */
+async function sendFcm(userId: string, payload: NotificationPayload): Promise<void> {
   try {
-    const subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
-    if (subs.length === 0) return;
+    const tokens = await db
+      .select({ token: fcmTokens.token, id: fcmTokens.id })
+      .from(fcmTokens)
+      .where(and(eq(fcmTokens.userId, userId), eq(fcmTokens.isActive, true)));
 
-    const pushPayload = buildPushPayload(payload);
+    if (tokens.length === 0) return;
 
-    await Promise.allSettled(
-      subs.map(async (sub) => {
-        const keys = sub.keys as { p256dh: string; auth: string };
-        try {
-          await webpush.sendNotification(
-            { endpoint: sub.endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } },
-            pushPayload,
-            { TTL: 60, urgency: "high" }
-          );
-        } catch (err: unknown) {
-          const e = err as { statusCode?: number; message?: string };
-          console.error("[Push] sendNotification failed:", {
-            userId,
-            status: e.statusCode,
-            message: e.message,
-            endpoint: sub.endpoint.slice(0, 60) + "…",
-          });
-          if (e.statusCode === 404 || e.statusCode === 410) {
-            await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
-          }
-        }
-      })
-    );
+    const messaging = getMessagingInstance();
+    if (!messaging) return;
+
+    const targetUrl = String(payload.data?.url ?? "/notifications");
+    const iconUrl = APP_URL ? `${APP_URL}/logo.png` : undefined;
+
+    const { successCount, failureCount, responses } = await messaging.sendEachForMulticast({
+      tokens: tokens.map(t => t.token),
+      notification: {
+        title: payload.title,
+        body:  payload.message,
+        ...(iconUrl ? { imageUrl: iconUrl } : {}),
+      },
+      data: {
+        type:     payload.type,
+        url:      targetUrl,
+        title:    payload.title,
+        body:     payload.message,
+      },
+      webpush: {
+        notification: {
+          icon:  iconUrl,
+          badge: iconUrl,
+          requireInteraction: false,
+          tag: payload.type,
+        },
+        fcmOptions: { link: targetUrl },
+      },
+    });
+
+    console.log(`[FCM] sendFcm userId=${userId} sent=${successCount} failed=${failureCount}`);
+
+    // Deactivate tokens that Firebase says are invalid/expired
+    const toDeactivate: string[] = [];
+    for (let i = 0; i < responses.length; i++) {
+      const resp = responses[i];
+      if (!resp || resp.success) continue;
+      const code = resp.error?.code ?? "";
+      if (
+        code === "messaging/registration-token-not-registered" ||
+        code === "messaging/invalid-registration-token" ||
+        code === "messaging/invalid-argument"
+      ) {
+        const tokenId = tokens[i]?.id;
+        if (tokenId) toDeactivate.push(tokenId);
+      }
+    }
+    if (toDeactivate.length > 0) {
+      await db.update(fcmTokens).set({ isActive: false }).where(inArray(fcmTokens.id, toDeactivate));
+    }
   } catch (err) {
-    console.error("[Push] sendPush top-level error:", err);
+    console.error("[FCM] sendFcm top-level error:", err);
   }
 }
 
 /**
- * Sends a push notification to all registered devices for the given user IDs.
- * Returns { sent, failed } counts.  Used by bulk admin broadcasts.
+ * Sends FCM push notifications to multiple users' active devices.
+ * Returns { sent, failed } delivery counts.  Used by admin broadcasts.
  */
-export async function sendPushToUsers(
+export async function sendFcmToUsers(
   userIds: string[],
   payload: NotificationPayload
 ): Promise<{ sent: number; failed: number }> {
   if (userIds.length === 0) return { sent: 0, failed: 0 };
 
   try {
-    const subs = await db
-      .select()
-      .from(pushSubscriptions)
-      .where(inArray(pushSubscriptions.userId, userIds));
+    const rows = await db
+      .select({ token: fcmTokens.token, id: fcmTokens.id })
+      .from(fcmTokens)
+      .where(and(inArray(fcmTokens.userId, userIds), eq(fcmTokens.isActive, true)));
 
-    if (subs.length === 0) return { sent: 0, failed: 0 };
+    if (rows.length === 0) return { sent: 0, failed: 0 };
 
-    const pushPayload = buildPushPayload(payload);
-    let sent = 0;
-    let failed = 0;
+    const messaging = getMessagingInstance();
+    if (!messaging) return { sent: 0, failed: 0 };
 
-    const results = await Promise.allSettled(
-      subs.map(async (sub) => {
-        const keys = sub.keys as { p256dh: string; auth: string };
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } },
-          pushPayload,
-          { TTL: 60, urgency: "high" }
-        );
-        return sub.id;
-      })
-    );
+    const targetUrl = String(payload.data?.url ?? "/notifications");
+    const iconUrl = APP_URL ? `${APP_URL}/logo.png` : undefined;
 
-    for (let i = 0; i < results.length; i++) {
-      const r = results[i];
-      if (r.status === "fulfilled") {
-        sent++;
-      } else {
-        failed++;
-        const e = (r as PromiseRejectedResult).reason as { statusCode?: number };
-        console.error("[Push] broadcast send failed:", {
-          status: e.statusCode,
-          endpoint: subs[i]!.endpoint.slice(0, 60) + "…",
-        });
-        if (e.statusCode === 404 || e.statusCode === 410) {
-          await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, subs[i]!.id));
+    // Firebase multicast supports max 500 tokens per call — batch if needed
+    const BATCH_SIZE = 500;
+    let totalSent = 0;
+    let totalFailed = 0;
+    const toDeactivate: string[] = [];
+
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE);
+      const { responses } = await messaging.sendEachForMulticast({
+        tokens: batch.map(t => t.token),
+        notification: {
+          title: payload.title,
+          body:  payload.message,
+          ...(iconUrl ? { imageUrl: iconUrl } : {}),
+        },
+        data: {
+          type:  payload.type,
+          url:   targetUrl,
+          title: payload.title,
+          body:  payload.message,
+        },
+        webpush: {
+          notification: {
+            icon:  iconUrl,
+            badge: iconUrl,
+            requireInteraction: false,
+            tag: payload.type,
+          },
+          fcmOptions: { link: targetUrl },
+        },
+      });
+
+      for (let j = 0; j < responses.length; j++) {
+        const resp = responses[j];
+        if (!resp) continue;
+        if (resp.success) {
+          totalSent++;
+        } else {
+          totalFailed++;
+          const code = resp.error?.code ?? "";
+          if (
+            code === "messaging/registration-token-not-registered" ||
+            code === "messaging/invalid-registration-token" ||
+            code === "messaging/invalid-argument"
+          ) {
+            const tokenId = batch[j]?.id;
+            if (tokenId) toDeactivate.push(tokenId);
+          }
         }
       }
     }
 
-    console.log(`[Push] Broadcast: sent=${sent} failed=${failed} of ${subs.length} subscription(s)`);
-    return { sent, failed };
+    if (toDeactivate.length > 0) {
+      await db.update(fcmTokens).set({ isActive: false }).where(inArray(fcmTokens.id, toDeactivate));
+    }
+
+    console.log(`[FCM] Broadcast: sent=${totalSent} failed=${totalFailed} of ${rows.length} token(s)`);
+    return { sent: totalSent, failed: totalFailed };
   } catch (err) {
-    console.error("[Push] sendPushToUsers top-level error:", err);
+    console.error("[FCM] sendFcmToUsers top-level error:", err);
     return { sent: 0, failed: 0 };
   }
 }
+
+// Keep old export name so existing callers (notifications.ts broadcast route) don't break
+export const sendPushToUsers = sendFcmToUsers;
+
+// ─── Notification creation ────────────────────────────────────────────────────
 
 export async function createNotificationLimited(
   userId: string,
@@ -157,6 +214,6 @@ export async function createNotificationLimited(
   }
 
   if (!opts.noPush) {
-    void sendPush(userId, payload);
+    void sendFcm(userId, payload);
   }
 }

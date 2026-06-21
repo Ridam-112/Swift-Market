@@ -2,11 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { Bell, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { registerPushNotifications, getPushPermissionState } from "@/lib/pushNotifications";
+import { registerFcmToken, getFcmState } from "@/lib/fcm";
 import { toast } from "sonner";
 
 const DISMISSED_KEY = "swiftmart_notif_prompt_dismissed_at";
-const REMIND_AFTER_MS = 3 * 24 * 60 * 60 * 1000; // re-ask after 3 days
+const REMIND_AFTER_MS = 3 * 24 * 60 * 60 * 1000;
 
 export function NotificationPrompt({ userId }: { userId: string }) {
   const [visible, setVisible] = useState(false);
@@ -18,22 +18,18 @@ export function NotificationPrompt({ userId }: { userId: string }) {
     prompted.current = true;
 
     const check = async () => {
-      // Don't show if browser doesn't support push or permission already decided
-      const state = await getPushPermissionState();
+      const state = await getFcmState();
       if (state === "unsupported") return;
-      if (state === "granted") return;
-      if (state === "denied") return; // browser-level block, prompt can't help
+      if (state === "subscribed") return;
+      if (state === "denied") return;
 
-      // Re-ask after REMIND_AFTER_MS if dismissed before
       const dismissedAt = localStorage.getItem(`${DISMISSED_KEY}_${userId}`);
       if (dismissedAt) {
         const elapsed = Date.now() - parseInt(dismissedAt, 10);
         if (elapsed < REMIND_AFTER_MS) return;
-        // enough time passed — clear old key and show again
         localStorage.removeItem(`${DISMISSED_KEY}_${userId}`);
       }
 
-      // Small delay so the app fully renders before showing the sheet
       setTimeout(() => setVisible(true), 1800);
     };
 
@@ -48,12 +44,12 @@ export function NotificationPrompt({ userId }: { userId: string }) {
   const handleEnable = async () => {
     setLoading(true);
     try {
-      const result = await registerPushNotifications();
+      const result = await registerFcmToken();
       if (result.success) {
         toast.success("Notifications enabled! You'll get alerts even when the app is closed.");
         localStorage.removeItem(`${DISMISSED_KEY}_${userId}`);
       } else {
-        toast.error(result.error ?? "Could not enable notifications.");
+        toast.error(result.error);
       }
     } finally {
       setLoading(false);
@@ -65,7 +61,6 @@ export function NotificationPrompt({ userId }: { userId: string }) {
     <AnimatePresence>
       {visible && (
         <>
-          {/* Backdrop */}
           <motion.div
             key="backdrop"
             initial={{ opacity: 0 }}
@@ -74,8 +69,6 @@ export function NotificationPrompt({ userId }: { userId: string }) {
             className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm"
             onClick={dismiss}
           />
-
-          {/* Bottom sheet */}
           <motion.div
             key="sheet"
             initial={{ y: "100%", opacity: 0 }}
@@ -84,10 +77,7 @@ export function NotificationPrompt({ userId }: { userId: string }) {
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
             className="fixed bottom-0 left-0 right-0 z-[201] bg-card rounded-t-3xl p-6 pb-10 shadow-2xl max-w-lg mx-auto"
           >
-            {/* Drag handle */}
             <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-6" />
-
-            {/* Dismiss X */}
             <button
               onClick={dismiss}
               aria-label="Close"
@@ -95,9 +85,7 @@ export function NotificationPrompt({ userId }: { userId: string }) {
             >
               <X className="w-4 h-4" />
             </button>
-
             <div className="flex flex-col items-center text-center gap-4">
-              {/* Animated icon */}
               <motion.div
                 initial={{ scale: 0.7, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -106,14 +94,12 @@ export function NotificationPrompt({ userId }: { userId: string }) {
               >
                 <Bell className="w-8 h-8 text-primary" />
               </motion.div>
-
               <div className="space-y-1.5">
                 <h2 className="text-xl font-bold text-foreground">Stay in the loop</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
                   Get instant alerts for order updates, delivery status, and exclusive offers — even when the app is closed.
                 </p>
               </div>
-
               <div className="w-full space-y-3 mt-2">
                 <Button
                   className="w-full h-12 rounded-2xl font-bold text-base shadow-none"

@@ -17,3 +17,4 @@ export * from "./heroBanners";
 export * from "./deliveryPartners";
 export * from "./deliveryCharges";
 export * from "./supportTickets";
+export * from "./fcmTokens";

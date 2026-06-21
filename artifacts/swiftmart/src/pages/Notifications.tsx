@@ -5,7 +5,8 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { api } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
-import { registerPushNotifications, unregisterPushNotifications, getActualPushState, playNotificationSound } from "@/lib/pushNotifications";
+import { registerFcmToken, unregisterFcmToken, getFcmState } from "@/lib/fcm";
+import { playNotificationSound } from "@/lib/pushNotifications";
 import { toast } from "sonner";
 
 interface Notification {
@@ -27,21 +28,15 @@ const TYPE_ICONS: Record<string, { icon: React.ComponentType<{ className?: strin
   system:          { icon: Info,        color: "text-gray-600", bg: "bg-gray-50 dark:bg-gray-950/30" },
 };
 
-// "subscribed"      = permission granted AND active push subscription exists in browser
-// "permission_only" = permission granted BUT no subscription (subscription setup failed)
-// "denied"          = user blocked notifications
-// "default"         = not yet asked
-// "unsupported"     = browser doesn't support push
-type PushDisplayState = "subscribed" | "permission_only" | "denied" | "default" | "unsupported";
+type FcmDisplayState = "subscribed" | "denied" | "default" | "unsupported";
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
-  const [pushState, setPushState] = useState<PushDisplayState>("default");
+  const [fcmState, setFcmState] = useState<FcmDisplayState>("default");
   const [pushLoading, setPushLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
-  const [refreshLoading, setRefreshLoading] = useState(false);
 
   const fetchNotifications = () => {
     setLoading(true);
@@ -53,7 +48,7 @@ export default function Notifications() {
 
   useEffect(() => {
     fetchNotifications();
-    getActualPushState().then(setPushState);
+    getFcmState().then(setFcmState);
   }, []);
 
   const markAllRead = async () => {
@@ -70,96 +65,54 @@ export default function Notifications() {
     setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
   };
 
-  const handleEnablePush = async () => {
+  const handleEnableFcm = async () => {
     setPushLoading(true);
     try {
-      const result = await registerPushNotifications();
+      const result = await registerFcmToken();
       if (result.success) {
-        setPushState("subscribed");
+        setFcmState("subscribed");
         toast.success("Push notifications enabled! You'll get alerts even when the app is closed.");
       } else {
-        const actual = await getActualPushState();
-        setPushState(actual);
-        toast.error(result.error ?? "Could not register for push notifications.");
+        const actual = await getFcmState();
+        setFcmState(actual);
+        toast.error(result.error);
       }
     } finally {
       setPushLoading(false);
     }
   };
 
-  const handleDisablePush = async () => {
+  const handleDisableFcm = async () => {
     setPushLoading(true);
     try {
-      await unregisterPushNotifications();
-      setPushState("default");
+      await unregisterFcmToken();
+      setFcmState("default");
       toast.success("Push notifications disabled.");
     } finally {
       setPushLoading(false);
     }
   };
 
-  const handleForceRefresh = async () => {
-    setRefreshLoading(true);
-    try {
-      await unregisterPushNotifications();
-      const result = await registerPushNotifications();
-      if (result.success) {
-        setPushState("subscribed");
-        toast.success("Push subscription refreshed! Your device is now registered.");
-      } else {
-        const actual = await getActualPushState();
-        setPushState(actual);
-        toast.error(result.error ?? "Could not refresh push subscription.");
-      }
-    } finally {
-      setRefreshLoading(false);
-    }
-  };
-
   const handleTestPush = async () => {
     setTestLoading(true);
     try {
-      let res: { success: boolean; message: string } | null = null;
-      try {
-        res = await api.post<{ success: boolean; message: string }>("/push/test", {});
-      } catch (firstErr) {
-        const msg = firstErr instanceof Error ? firstErr.message : "";
-        const isNoSubscription =
-          msg.toLowerCase().includes("no push subscription") ||
-          msg.toLowerCase().includes("enable notifications first");
-
-        if (isNoSubscription) {
-          // Subscription missing from DB — re-register then retry once
-          await unregisterPushNotifications();
-          const reResult = await registerPushNotifications();
-          if (!reResult.success) {
-            const actual = await getActualPushState();
-            setPushState(actual);
-            toast.error(reResult.error ?? "Push setup failed.");
-            return;
-          }
-          setPushState("subscribed");
-          try {
-            res = await api.post<{ success: boolean; message: string }>("/push/test", {});
-          } catch {
-            toast.error("Push delivery failed after re-registering. Check that your browser allows notifications for this site.");
-            return;
-          }
-        } else {
-          // Push delivery failed (server-side or push service issue) — re-registering won't help
-          toast.error("Push delivery failed. Click \"Force refresh\" below to renew your subscription, then try again.");
-          return;
-        }
-      }
-
-      if (res?.success) {
+      const res = await api.post<{ success: boolean; message: string }>("/fcm/test", {});
+      if (res.success) {
         playNotificationSound();
         toast.success(res.message ?? "Test push sent! Check your notification bar.");
       } else {
-        toast.error(res?.message ?? "Push test failed.");
+        toast.error(res.message ?? "Push test failed.");
       }
-    } catch {
-      toast.error("Push test failed. Check that your browser allows notifications for this site.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.toLowerCase().includes("no active fcm") || msg.toLowerCase().includes("enable notifications")) {
+        toast.error("No device registered. Tap Enable to set up notifications first.");
+        setFcmState("default");
+      } else if (msg.toLowerCase().includes("fcm not configured")) {
+        toast.error("Push not configured on server yet. Add FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY secrets.");
+      } else {
+        toast.error("Push delivery failed. Check browser console for details.");
+      }
     } finally {
       setTestLoading(false);
     }
@@ -203,53 +156,45 @@ export default function Notifications() {
         )}
       </div>
 
-      {/* Push notification toggle banner */}
-      {pushState !== "unsupported" && (
+      {/* FCM push notification banner */}
+      {fcmState !== "unsupported" && (
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           className={`flex items-center gap-3 p-4 rounded-2xl neu-card ${
-            pushState === "subscribed"
+            fcmState === "subscribed"
               ? "bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800"
-              : pushState === "denied"
+              : fcmState === "denied"
               ? "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800"
-              : pushState === "permission_only"
-              ? "bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800"
               : "bg-primary/5 border border-primary/20"
           }`}
         >
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-            pushState === "subscribed"      ? "bg-green-100 dark:bg-green-900/40" :
-            pushState === "denied"         ? "bg-red-100 dark:bg-red-900/40" :
-            pushState === "permission_only" ? "bg-orange-100 dark:bg-orange-900/40" : "bg-primary/10"
+            fcmState === "subscribed" ? "bg-green-100 dark:bg-green-900/40" :
+            fcmState === "denied"    ? "bg-red-100 dark:bg-red-900/40" : "bg-primary/10"
           }`}>
-            {pushState === "subscribed"
+            {fcmState === "subscribed"
               ? <BellRing className="w-5 h-5 text-green-600" />
-              : pushState === "denied"
+              : fcmState === "denied"
               ? <BellOff className="w-5 h-5 text-red-500" />
-              : pushState === "permission_only"
-              ? <Bell className="w-5 h-5 text-orange-500" />
               : <Bell className="w-5 h-5 text-primary" />
             }
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm text-foreground">
-              {pushState === "subscribed"       ? "Push notifications on" :
-               pushState === "permission_only"  ? "Setup incomplete" :
-               pushState === "denied"           ? "Notifications blocked" :
+              {fcmState === "subscribed" ? "Push notifications on" :
+               fcmState === "denied"    ? "Notifications blocked" :
                "Get notified instantly"}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {pushState === "subscribed"
+              {fcmState === "subscribed"
                 ? "You'll receive alerts on this device even when the app is closed."
-                : pushState === "permission_only"
-                ? "Permission granted but subscription failed. Tap \"Setup\" to retry."
-                : pushState === "denied"
-                ? "Enable notifications in your browser or app settings to receive alerts."
-                : "Allow notifications to get order updates, offers and more."}
+                : fcmState === "denied"
+                ? "Enable notifications in your browser or app settings."
+                : "Allow notifications to get order updates, offers, and more."}
             </p>
           </div>
-          {pushState === "subscribed" ? (
+          {fcmState === "subscribed" ? (
             <div className="flex flex-col gap-1 shrink-0">
               <Button
                 size="sm"
@@ -261,34 +206,18 @@ export default function Notifications() {
                 {testLoading ? "Sending…" : "Test Push"}
               </Button>
               <button
-                disabled={refreshLoading || pushLoading}
-                onClick={handleForceRefresh}
-                className="text-[10px] text-muted-foreground hover:text-primary transition-colors text-center"
-              >
-                {refreshLoading ? "Refreshing…" : "Force refresh"}
-              </button>
-              <button
                 disabled={pushLoading}
-                onClick={handleDisablePush}
+                onClick={handleDisableFcm}
                 className="text-[10px] text-muted-foreground hover:text-destructive transition-colors text-center"
               >
                 Turn off
               </button>
             </div>
-          ) : pushState === "permission_only" ? (
-            <Button
-              size="sm"
-              disabled={refreshLoading}
-              onClick={handleForceRefresh}
-              className="shrink-0 text-xs bg-orange-500 text-white hover:bg-orange-600"
-            >
-              {refreshLoading ? "Setting up…" : "Setup"}
-            </Button>
-          ) : pushState === "default" ? (
+          ) : fcmState === "default" ? (
             <Button
               size="sm"
               disabled={pushLoading}
-              onClick={handleEnablePush}
+              onClick={handleEnableFcm}
               className="shrink-0 text-xs bg-primary text-white hover:bg-primary/90"
             >
               {pushLoading ? "Enabling…" : "Enable"}

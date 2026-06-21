@@ -17,6 +17,7 @@ import uploadRouter from "./upload.js";
 import heroBannersRouter from "./hero-banners.js";
 import paymentsRouter from "./payments.js";
 import pushRouter from "./push.js";
+import fcmRouter from "./fcm.js";
 import supportRouter from "./support.js";
 import analyticsRouter from "./analytics.js";
 
@@ -40,6 +41,7 @@ router.use("/upload", uploadRouter);
 router.use("/hero-banners", heroBannersRouter);
 router.use("/payments", paymentsRouter);
 router.use("/push", pushRouter);
+router.use("/fcm", fcmRouter);
 router.use("/support", supportRouter);
 router.use("/admin/analytics", analyticsRouter);
 

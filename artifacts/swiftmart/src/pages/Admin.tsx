@@ -1966,10 +1966,11 @@ interface BroadcastRecord {
   createdAt: string;
 }
 
-interface PushDiagnostics {
+interface FcmDiagnostics {
   totalUsers: number;
-  totalSubscriptions: number;
-  subsByRole: Record<string, number>;
+  activeTokens: number;
+  tokensByRole: Record<string, number>;
+  tokensByPlatform: Record<string, number>;
   lastBroadcast: {
     title: string;
     pushSent: number;
@@ -1990,18 +1991,18 @@ function AdminNotificationsTab() {
   const [history, setHistory] = useState<BroadcastRecord[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(true);
-  const [diagnostics, setDiagnostics] = useState<PushDiagnostics | null>(null);
+  const [diagnostics, setDiagnostics] = useState<FcmDiagnostics | null>(null);
   const [diagError, setDiagError] = useState<string | null>(null);
   const [diagLoading, setDiagLoading] = useState(true);
 
   const fetchDiagnostics = () => {
     setDiagLoading(true);
     setDiagError(null);
-    api.get<{ success: boolean } & PushDiagnostics>("/push/diagnostics")
+    api.get<{ success: boolean } & FcmDiagnostics>("/fcm/diagnostics")
       .then(d => { setDiagnostics(d); setDiagError(null); })
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error("[AdminNotifications] GET /push/diagnostics failed:", msg);
+        console.error("[AdminNotifications] GET /fcm/diagnostics failed:", msg);
         setDiagnostics(null);
         setDiagError(msg);
       })
@@ -2037,7 +2038,7 @@ function AdminNotificationsTab() {
       });
       toast.success(
         `Saved to ${res.sentCount} user${res.sentCount !== 1 ? "s" : ""}` +
-        (res.pushSent > 0 ? ` · Push popup sent to ${res.pushSent} device${res.pushSent !== 1 ? "s" : ""}` : " · No active push devices")
+        (res.pushSent > 0 ? ` · FCM push sent to ${res.pushSent} device${res.pushSent !== 1 ? "s" : ""}` : " · No active FCM devices")
       );
       setTitle(""); setMessage(""); setTargetUserId("");
       fetchHistory();
@@ -2059,7 +2060,7 @@ function AdminNotificationsTab() {
   return (
     <div className="space-y-6">
 
-      {/* ── Push Diagnostics ─────────────────────────────────────────── */}
+      {/* ── FCM Diagnostics ──────────────────────────────────────────── */}
       <div className="bg-card rounded-3xl neu-card overflow-hidden">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-3">
@@ -2067,8 +2068,8 @@ function AdminNotificationsTab() {
               <BellRing className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-bold text-sm text-foreground">Push Diagnostics</h2>
-              <p className="text-xs text-muted-foreground">Live health of push notification delivery</p>
+              <h2 className="font-bold text-sm text-foreground">Push Diagnostics (FCM)</h2>
+              <p className="text-xs text-muted-foreground">Firebase Cloud Messaging token health</p>
             </div>
           </div>
           <Button
@@ -2097,17 +2098,17 @@ function AdminNotificationsTab() {
                 <span className="text-2xl font-bold text-foreground">{diagnostics.totalUsers}</span>
               </div>
 
-              {/* Active Subscriptions */}
+              {/* Active FCM tokens */}
               <div className={`rounded-2xl neu-inset p-4 flex flex-col gap-1 ${
-                diagnostics.totalSubscriptions === 0
+                diagnostics.activeTokens === 0
                   ? "bg-red-50 dark:bg-red-950/20"
                   : "bg-green-50 dark:bg-green-950/20"
               }`}>
                 <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Active Devices</span>
-                <span className={`text-2xl font-bold ${diagnostics.totalSubscriptions === 0 ? "text-red-600" : "text-green-600"}`}>
-                  {diagnostics.totalSubscriptions}
+                <span className={`text-2xl font-bold ${diagnostics.activeTokens === 0 ? "text-red-600" : "text-green-600"}`}>
+                  {diagnostics.activeTokens}
                 </span>
-                <span className="text-[10px] text-muted-foreground">push registered</span>
+                <span className="text-[10px] text-muted-foreground">FCM tokens</span>
               </div>
 
               {/* All-time sent */}
@@ -2129,17 +2130,17 @@ function AdminNotificationsTab() {
             <div className="px-5 pb-5 grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* By role */}
               <div className="bg-background rounded-2xl neu-inset p-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Devices by Role</p>
-                {Object.keys({ customer: 0, vendor: 0, admin: 0, ...diagnostics.subsByRole }).length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No subscriptions yet</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Tokens by Role</p>
+                {Object.keys(diagnostics.tokensByRole).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No tokens registered yet</p>
                 ) : (
                   <div className="space-y-2">
-                    {(["customer", "vendor", "admin"] as const).map(role => {
-                      const cnt = diagnostics.subsByRole[role] ?? 0;
-                      const max = Math.max(...Object.values(diagnostics.subsByRole), 1);
+                    {(["customer", "vendor", "admin", "super_admin"] as const).map(role => {
+                      const cnt = diagnostics.tokensByRole[role] ?? 0;
+                      const max = Math.max(...Object.values(diagnostics.tokensByRole), 1);
                       return (
                         <div key={role} className="flex items-center gap-3">
-                          <span className="text-xs text-muted-foreground w-16 capitalize">{role}</span>
+                          <span className="text-xs text-muted-foreground w-20 capitalize">{role.replace("_", " ")}</span>
                           <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden">
                             <div
                               className="h-full bg-primary rounded-full transition-all"
@@ -2187,11 +2188,11 @@ function AdminNotificationsTab() {
               </div>
             </div>
 
-            {diagnostics.totalSubscriptions === 0 && (
+            {diagnostics.activeTokens === 0 && (
               <div className="mx-5 mb-5 flex items-start gap-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-3">
                 <span className="text-amber-600 text-base shrink-0">⚠️</span>
                 <p className="text-xs text-amber-800 dark:text-amber-300">
-                  <strong>No active push subscriptions.</strong> Users need to open the Notifications page and click "Enable" or "Force Refresh" to register their device. Push popups won't deliver until they do.
+                  <strong>No active FCM tokens.</strong> Users need to open the Notifications page and tap "Enable" to register their device. Push notifications won't deliver until at least one device is registered.
                 </p>
               </div>
             )}

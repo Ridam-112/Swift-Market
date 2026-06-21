@@ -1,0 +1,119 @@
+Implement Firebase Cloud Messaging (FCM) push notifications and replace/disable the current VAPID/manual web-push flow.
+
+Goal:
+User phone/browser default notification sound is enough. No custom sound needed.
+
+Current problem:
+Manual web-push has production issues:
+- push subscription setup fails
+- /api/push/diagnostics returns 500 on production
+- broadcast history sometimes fails
+- Active Devices stays 0
+
+Implement:
+
+1. Frontend FCM setup
+- Add Firebase Messaging to the frontend.
+- Request notification permission from user.
+- Generate FCM token using Firebase Web Push certificate key.
+- Save/update FCM token to backend after login and when token refreshes.
+- Show clear UI states:
+  - Not enabled
+  - Permission denied
+  - Enabled
+  - Token save failed
+
+2. Service worker
+- Add firebase-messaging-sw.js in public folder.
+- Handle background messages.
+- Show normal system notification with default device/browser sound.
+- Notification click should open swiftmart.space and relevant page if URL exists.
+
+3. Backend DB
+Create table or modify existing push table for FCM:
+
+Fields:
+- id
+- user_id
+- token
+- platform: web/android/ios
+- role
+- user_agent
+- is_active
+- last_seen_at
+- created_at
+- updated_at
+
+Token should be unique. Same user can have multiple devices.
+
+4. Backend API
+Add endpoints:
+- POST /api/fcm/register-token
+- POST /api/fcm/unregister-token
+- GET /api/fcm/diagnostics
+
+Register endpoint should upsert token with user_id, role, platform, user_agent.
+
+5. Firebase Admin SDK
+- Add firebase-admin on backend.
+- Use FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY from env.
+- Handle private key newline correctly.
+- Send messages using Firebase Admin SDK.
+
+6. Notification sending logic
+Whenever app creates an in-app notification, also send FCM push if user has active tokens.
+
+Must work for:
+- Admin broadcast to all users/customers/vendors/specific user
+- Vendor submits product -> notify all admins/super admins
+- Admin approves/rejects product -> notify vendor
+- Future order notifications should reuse same helper
+
+7. Message payload
+Use:
+- title
+- body
+- icon: SwiftMart logo
+- badge/icon if available
+- click_action/url
+- data: notificationId, type, targetUrl
+
+Do not add custom sound. Let device/browser use default notification sound.
+
+8. Diagnostics in admin panel
+Replace old push diagnostics with FCM diagnostics:
+- total users
+- active FCM tokens/devices
+- devices by role
+- devices by platform
+- all-time sent
+- all-time failed
+- last broadcast result
+- token save errors if any
+
+9. Remove conflict with old system
+- Disable old VAPID/web-push setup UI and old setup failed banner.
+- Stop calling old /api/push/subscribe from frontend.
+- Keep old in-app notification list.
+- Keep broadcast history.
+- If old tables exist, do not break them, but do not use them.
+
+10. Production safety
+- Add try/catch so notification APIs never crash with 500 due to missing optional columns.
+- Add logs for FCM register/send failures.
+- Run DB migration for production.
+- Verify production and Replit preview behave same.
+
+11. Testing
+After implementation test:
+- Login as customer, enable notification, token saved.
+- Login as vendor, enable notification, token saved.
+- Login as admin, enable notification, token saved.
+- Admin broadcast -> in-app notification + system push notification.
+- Vendor submits product -> admin gets in-app + system push.
+- Admin approves/rejects -> vendor gets in-app + system push.
+- Admin diagnostics should show active devices > 0.
+- No “subscription failed” banner should appear.
+
+Important:
+Use phone/browser default notification sound only. No custom sound needed.
