@@ -12,15 +12,20 @@
  */
 
 import { getMessaging, getToken, deleteToken, isSupported } from "firebase/messaging";
-import { getApps, getApp } from "firebase/app";
 import { api } from "./api";
+import { getFirebaseApp, isFirebaseConfigured } from "./firebase";
 
 const SW_PATH = "/firebase-messaging-sw.js";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
-function getFirebaseApp() {
-  return getApps().length > 0 ? getApp() : null;
+function getFirebaseAppSafe() {
+  if (!isFirebaseConfigured()) return null;
+  try {
+    return getFirebaseApp();
+  } catch {
+    return null;
+  }
 }
 
 async function fetchVapidKey(): Promise<string> {
@@ -33,7 +38,7 @@ async function fetchVapidKey(): Promise<string> {
 }
 
 async function sendConfigToSW(reg: ServiceWorkerRegistration): Promise<void> {
-  const app = getFirebaseApp();
+  const app = getFirebaseAppSafe();
   if (!app) return;
   const config = app.options;
   const sw = reg.active ?? reg.installing ?? reg.waiting;
@@ -74,7 +79,7 @@ export async function registerFcmToken(): Promise<FcmResult> {
     return { success: false, error: "Notification permission was not granted." };
   }
 
-  const app = getFirebaseApp();
+  const app = getFirebaseAppSafe();
   if (!app) {
     return { success: false, error: "Firebase is not initialized. Try reloading the page." };
   }
@@ -153,7 +158,7 @@ export async function registerFcmToken(): Promise<FcmResult> {
  */
 export async function unregisterFcmToken(): Promise<void> {
   try {
-    const app = getFirebaseApp();
+    const app = getFirebaseAppSafe();
     if (!app) return;
     const messaging = getMessaging(app);
 

@@ -12,6 +12,8 @@ interface FirebaseConfig {
   authDomain: string;
   projectId: string;
   appId: string;
+  messagingSenderId?: string;
+  storageBucket?: string;
 }
 
 let _config: FirebaseConfig | null = null;
@@ -26,7 +28,7 @@ export function initFirebase(config: FirebaseConfig): void {
 export const isFirebaseConfigured = (): boolean =>
   !!(_config?.apiKey && _config?.authDomain && _config?.projectId && _config?.appId);
 
-function getFirebaseApp(): FirebaseApp {
+export function getFirebaseApp(): FirebaseApp {
   if (_app) return _app;
   if (!isFirebaseConfigured()) throw new Error("Firebase is not configured. Set VITE_FIREBASE_* env vars in Replit.");
   _app = getApps().length > 0 ? getApps()[0]! : initializeApp(_config!);
