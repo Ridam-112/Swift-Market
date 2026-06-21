@@ -53,7 +53,10 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   const targetUrl = event.notification.data?.url ?? "/";
-  const fullUrl   = self.location.origin + (targetUrl.startsWith("/") ? targetUrl : "/" + targetUrl);
+  // targetUrl may be absolute (https://...) or relative (/path) — handle both
+  const fullUrl = targetUrl.startsWith("http")
+    ? targetUrl
+    : self.location.origin + (targetUrl.startsWith("/") ? targetUrl : "/" + targetUrl);
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {

@@ -104,14 +104,19 @@ export default function Notifications() {
         toast.error(res.message ?? "Push test failed.");
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.toLowerCase().includes("no active fcm") || msg.toLowerCase().includes("enable notifications")) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const lower = msg.toLowerCase();
+      if (lower.includes("no active fcm") || lower.includes("enable notifications") || lower.includes("enable notifications first")) {
         toast.error("No device registered. Tap Enable to set up notifications first.");
         setFcmState("default");
-      } else if (msg.toLowerCase().includes("fcm not configured")) {
-        toast.error("Push not configured on server yet. Add FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY secrets.");
+      } else if (lower.includes("stale") || lower.includes("rejected by firebase") || lower.includes("re-enable")) {
+        // Token was registered but Firebase rejected it — force re-registration
+        toast.error("Your push token expired. Tap 'Turn off' then 'Enable' to refresh it.");
+        setFcmState("default");
+      } else if (lower.includes("fcm not configured") || lower.includes("firebase_client_email")) {
+        toast.error("Push not configured on server. Contact the admin.");
       } else {
-        toast.error("Push delivery failed. Check browser console for details.");
+        toast.error(msg || "Push delivery failed. Check browser console for details.");
       }
     } finally {
       setTestLoading(false);

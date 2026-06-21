@@ -127,17 +127,37 @@ export async function registerFcmToken(): Promise<FcmResult> {
 
 /**
  * Unregisters the FCM token for this device and notifies the backend.
+ * Falls back to deactivating all tokens for this user if the specific token
+ * cannot be retrieved (e.g. VAPID key mismatch after a redeploy).
  */
 export async function unregisterFcmToken(): Promise<void> {
   try {
     const app = getFirebaseApp();
     if (!app) return;
     const messaging = getMessaging(app);
-    const currentToken = await getToken(messaging).catch(() => null);
+
+    // Try to get the current token with the VAPID key so we know which one to deactivate
+    let currentToken: string | null = null;
+    try {
+      const vapidKey = await fetchVapidKey();
+      if (vapidKey) {
+        // Re-use the existing service worker registration if available
+        const swReg = await navigator.serviceWorker.getRegistration("/").catch(() => undefined);
+        currentToken = await getToken(messaging, { vapidKey, ...(swReg ? { serviceWorkerRegistration: swReg } : {}) });
+      }
+    } catch {
+      // Couldn't retrieve token — will fall back to unregister-all below
+    }
+
     if (currentToken) {
       await api.post("/fcm/unregister-token", { token: currentToken }).catch(() => {});
-      await deleteToken(messaging).catch(() => {});
+    } else {
+      // Fallback: deactivate all tokens for this user on the server
+      await api.post("/fcm/unregister-all", {}).catch(() => {});
     }
+
+    // Always delete the local Firebase token, regardless of backend result
+    await deleteToken(messaging).catch(() => {});
   } catch {
     // Non-fatal
   }
