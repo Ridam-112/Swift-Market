@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { registerPushNotifications, getPushPermissionState } from "@/lib/pushNotifications";
 import { toast } from "sonner";
 
-const DISMISSED_KEY = "swiftmart_notif_prompt_dismissed";
+const DISMISSED_KEY = "swiftmart_notif_prompt_dismissed_at";
+const REMIND_AFTER_MS = 3 * 24 * 60 * 60 * 1000; // re-ask after 3 days
 
 export function NotificationPrompt({ userId }: { userId: string }) {
   const [visible, setVisible] = useState(false);
@@ -16,21 +17,31 @@ export function NotificationPrompt({ userId }: { userId: string }) {
     if (prompted.current) return;
     prompted.current = true;
 
-    // Don't show if:  unsupported, already granted/denied, or user dismissed before
     const check = async () => {
+      // Don't show if browser doesn't support push or permission already decided
       const state = await getPushPermissionState();
-      if (state !== "default") return;
-      if (localStorage.getItem(`${DISMISSED_KEY}_${userId}`)) return;
+      if (state === "unsupported") return;
+      if (state === "granted") return;
+      if (state === "denied") return; // browser-level block, prompt can't help
+
+      // Re-ask after REMIND_AFTER_MS if dismissed before
+      const dismissedAt = localStorage.getItem(`${DISMISSED_KEY}_${userId}`);
+      if (dismissedAt) {
+        const elapsed = Date.now() - parseInt(dismissedAt, 10);
+        if (elapsed < REMIND_AFTER_MS) return;
+        // enough time passed — clear old key and show again
+        localStorage.removeItem(`${DISMISSED_KEY}_${userId}`);
+      }
 
       // Small delay so the app fully renders before showing the sheet
-      setTimeout(() => setVisible(true), 1500);
+      setTimeout(() => setVisible(true), 1800);
     };
 
     void check();
   }, [userId]);
 
   const dismiss = () => {
-    localStorage.setItem(`${DISMISSED_KEY}_${userId}`, "1");
+    localStorage.setItem(`${DISMISSED_KEY}_${userId}`, String(Date.now()));
     setVisible(false);
   };
 
@@ -40,15 +51,17 @@ export function NotificationPrompt({ userId }: { userId: string }) {
       const ok = await registerPushNotifications();
       if (ok) {
         toast.success("Notifications enabled! You'll get alerts even when the app is closed.");
+        // Clear dismissed key so we don't re-prompt unnecessarily
+        localStorage.removeItem(`${DISMISSED_KEY}_${userId}`);
       } else {
         const state = await getPushPermissionState();
         if (state === "denied") {
-          toast.error("Blocked — please allow notifications in browser settings.");
+          toast.error("Blocked — open browser settings and allow notifications for this site.");
         }
       }
     } finally {
       setLoading(false);
-      dismiss();
+      setVisible(false);
     }
   };
 
@@ -62,7 +75,7 @@ export function NotificationPrompt({ userId }: { userId: string }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/30 backdrop-blur-sm"
+            className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm"
             onClick={dismiss}
           />
 
@@ -72,7 +85,7 @@ export function NotificationPrompt({ userId }: { userId: string }) {
             initial={{ y: "100%", opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}
-            transition={{ type: "spring", damping: 28, stiffness: 320 }}
+            transition={{ type: "spring", damping: 28, stiffness: 300 }}
             className="fixed bottom-0 left-0 right-0 z-[201] bg-card rounded-t-3xl p-6 pb-10 shadow-2xl max-w-lg mx-auto"
           >
             {/* Drag handle */}
@@ -81,21 +94,27 @@ export function NotificationPrompt({ userId }: { userId: string }) {
             {/* Dismiss X */}
             <button
               onClick={dismiss}
+              aria-label="Close"
               className="absolute top-5 right-5 p-1.5 rounded-full text-muted-foreground hover:bg-muted transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
 
             <div className="flex flex-col items-center text-center gap-4">
-              {/* Icon */}
-              <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center neu-inset">
+              {/* Animated icon */}
+              <motion.div
+                initial={{ scale: 0.7, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.15, type: "spring", stiffness: 300 }}
+                className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center neu-inset"
+              >
                 <Bell className="w-8 h-8 text-primary" />
-              </div>
+              </motion.div>
 
               <div className="space-y-1.5">
                 <h2 className="text-xl font-bold text-foreground">Stay in the loop</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
-                  Get instant alerts for order updates, offers, and delivery status — just like Swiggy &amp; Zomato.
+                  Get instant alerts for order updates, delivery status, and exclusive offers — even when the app is closed.
                 </p>
               </div>
 
@@ -105,7 +124,7 @@ export function NotificationPrompt({ userId }: { userId: string }) {
                   onClick={handleEnable}
                   disabled={loading}
                 >
-                  {loading ? "Enabling…" : "🔔  Enable Notifications"}
+                  {loading ? "Enabling…" : "🔔  Allow Notifications"}
                 </Button>
                 <button
                   onClick={dismiss}
