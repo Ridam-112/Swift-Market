@@ -60,33 +60,53 @@ router.post("/unregister-token", authenticate, async (req: AuthRequest, res: Res
 // POST /api/fcm/test — send a test FCM push to yourself
 router.post("/test", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user!.userId;
-  const activeTokens = await db
-    .select({ token: fcmTokens.token })
+
+  // 1) Gather all tokens for this user (active + inactive) for diagnostics
+  const allTokens = await db
+    .select({ token: fcmTokens.token, isActive: fcmTokens.isActive, platform: fcmTokens.platform, updatedAt: fcmTokens.updatedAt })
     .from(fcmTokens)
-    .where(and(eq(fcmTokens.userId, userId), eq(fcmTokens.isActive, true)));
+    .where(eq(fcmTokens.userId, userId));
+
+  const activeTokens = allTokens.filter(t => t.isActive);
+
+  console.log(`[FCM] /test userId=${userId} total_tokens=${allTokens.length} active=${activeTokens.length}`);
 
   if (activeTokens.length === 0) {
-    res.status(404).json({ success: false, message: "No active FCM tokens. Enable notifications first." });
+    res.status(404).json({
+      success: false,
+      message: "No active FCM tokens. Enable notifications first.",
+      debug: { totalTokensInDb: allTokens.length, tokens: allTokens.map(t => ({ active: t.isActive, platform: t.platform, updatedAt: t.updatedAt })) },
+    });
     return;
   }
 
   const messaging = getMessagingInstance();
   if (!messaging) {
-    res.status(503).json({ success: false, message: "FCM not configured on server. Set FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY." });
+    const projectId = process.env["FIREBASE_PROJECT_ID"] ?? process.env["VITE_FIREBASE_PROJECT_ID"] ?? "(not set)";
+    const clientEmail = process.env["FIREBASE_CLIENT_EMAIL"] ? "(set)" : "(not set)";
+    const privateKey  = process.env["FIREBASE_PRIVATE_KEY"]  ? "(set)" : "(not set)";
+    res.status(503).json({
+      success: false,
+      message: "FCM not configured on server. Set FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY.",
+      debug: { projectId, clientEmail, privateKey },
+    });
     return;
   }
 
-  const appUrl = process.env["APP_URL"] ?? `${(req as { protocol: string }).protocol}://${(req as { get: (h: string) => string }).get("host")}`;
+  const appUrl = (process.env["APP_URL"] ?? `${(req as { protocol: string }).protocol}://${(req as { get: (h: string) => string }).get("host")}`).replace(/\/+$/, "");
+  const tokenStrings = activeTokens.map(t => t.token);
+
+  console.log(`[FCM] Sending test push to ${tokenStrings.length} token(s) via project=${process.env["FIREBASE_PROJECT_ID"] ?? process.env["VITE_FIREBASE_PROJECT_ID"]}`);
 
   try {
-    const { successCount, failureCount } = await messaging.sendEachForMulticast({
-      tokens: activeTokens.map(t => t.token),
+    const result = await messaging.sendEachForMulticast({
+      tokens: tokenStrings,
       notification: {
         title: "Test Notification",
         body:  "Push is working! You'll get alerts for orders and updates.",
         imageUrl: `${appUrl}/logo.png`,
       },
-      data: { type: "system", url: "/notifications" },
+      data: { type: "system", url: `${appUrl}/notifications` },
       webpush: {
         notification: {
           icon:  `${appUrl}/logo.png`,
@@ -98,14 +118,56 @@ router.post("/test", authenticate, async (req: AuthRequest, res: Response): Prom
       },
     });
 
+    const { successCount, failureCount, responses } = result;
+
+    // Log per-token results
+    responses.forEach((resp, i) => {
+      if (resp.success) {
+        console.log(`[FCM] Token[${i}] OK — messageId=${resp.messageId}`);
+      } else {
+        console.error(`[FCM] Token[${i}] FAILED — code=${resp.error?.code} message=${resp.error?.message}`);
+      }
+    });
+
+    // Deactivate tokens that Firebase says are stale
+    const toDeactivate = responses
+      .map((resp, i) => (!resp.success && (
+        resp.error?.code === "messaging/registration-token-not-registered" ||
+        resp.error?.code === "messaging/invalid-registration-token" ||
+        resp.error?.code === "messaging/invalid-argument"
+      ) ? tokenStrings[i] : null))
+      .filter(Boolean) as string[];
+
+    if (toDeactivate.length > 0) {
+      await db.update(fcmTokens).set({ isActive: false, updatedAt: new Date() }).where(inArray(fcmTokens.token, toDeactivate));
+      console.log(`[FCM] Deactivated ${toDeactivate.length} stale token(s)`);
+    }
+
+    const perTokenErrors = responses
+      .filter(r => !r.success)
+      .map(r => ({ code: r.error?.code, message: r.error?.message }));
+
     if (successCount > 0) {
       res.json({ success: true, message: `Test push sent to ${successCount} device(s).`, sent: successCount, failed: failureCount });
     } else {
-      res.status(500).json({ success: false, message: "Push delivery failed — check that your FCM token is valid.", sent: 0, failed: failureCount });
+      res.status(422).json({
+        success: false,
+        message: "All tokens rejected by Firebase. Your FCM token may be stale — re-enable notifications.",
+        sent: 0,
+        failed: failureCount,
+        errors: perTokenErrors,
+      });
     }
-  } catch (err) {
-    console.error("[FCM] test push error:", err);
-    res.status(500).json({ success: false, message: "FCM send error — check server logs." });
+  } catch (err: unknown) {
+    const e = err as { code?: string; message?: string; errorInfo?: unknown; stack?: string };
+    console.error("[FCM] test push EXCEPTION:", JSON.stringify({ code: e?.code, message: e?.message, errorInfo: e?.errorInfo }, null, 2));
+    console.error("[FCM] test push stack:", e?.stack);
+    res.status(500).json({
+      success: false,
+      message: e?.message ?? "FCM send error",
+      code: e?.code ?? null,
+      errorInfo: e?.errorInfo ?? null,
+    });
   }
 });
 

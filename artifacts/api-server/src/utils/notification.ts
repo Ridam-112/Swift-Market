@@ -31,7 +31,9 @@ async function sendFcm(userId: string, payload: NotificationPayload): Promise<vo
     const messaging = getMessagingInstance();
     if (!messaging) return;
 
-    const targetUrl = String(payload.data?.url ?? "/notifications");
+    const rawUrl = String(payload.data?.url ?? "/notifications");
+    // fcmOptions.link must be absolute — prepend APP_URL if the url is relative
+    const targetUrl = rawUrl.startsWith("http") ? rawUrl : `${APP_URL}${rawUrl}`;
     const iconUrl = APP_URL ? `${APP_URL}/logo.png` : undefined;
 
     const { successCount, failureCount, responses } = await messaging.sendEachForMulticast({
