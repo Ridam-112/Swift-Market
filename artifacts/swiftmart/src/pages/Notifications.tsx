@@ -73,18 +73,14 @@ export default function Notifications() {
   const handleEnablePush = async () => {
     setPushLoading(true);
     try {
-      const success = await registerPushNotifications();
-      if (success) {
+      const result = await registerPushNotifications();
+      if (result.success) {
         setPushState("subscribed");
         toast.success("Push notifications enabled! You'll get alerts even when the app is closed.");
       } else {
         const actual = await getActualPushState();
         setPushState(actual);
-        if (actual === "denied") {
-          toast.error("Notifications blocked. Please allow them in your browser or app settings.");
-        } else {
-          toast.error("Could not register for push notifications. Please try Force refresh or use a different browser.");
-        }
+        toast.error(result.error ?? "Could not register for push notifications.");
       }
     } finally {
       setPushLoading(false);
@@ -106,14 +102,14 @@ export default function Notifications() {
     setRefreshLoading(true);
     try {
       await unregisterPushNotifications();
-      const ok = await registerPushNotifications();
-      if (ok) {
+      const result = await registerPushNotifications();
+      if (result.success) {
         setPushState("subscribed");
         toast.success("Push subscription refreshed! Your device is now registered.");
       } else {
         const actual = await getActualPushState();
         setPushState(actual);
-        toast.error("Could not refresh push subscription. Check browser notification permissions.");
+        toast.error(result.error ?? "Could not refresh push subscription.");
       }
     } finally {
       setRefreshLoading(false);
@@ -135,11 +131,11 @@ export default function Notifications() {
         if (isNoSubscription) {
           // Subscription missing from DB — re-register then retry once
           await unregisterPushNotifications();
-          const reRegistered = await registerPushNotifications();
-          if (!reRegistered) {
+          const reResult = await registerPushNotifications();
+          if (!reResult.success) {
             const actual = await getActualPushState();
             setPushState(actual);
-            toast.error("Push setup failed. Your browser may be blocking push notifications, or a network restriction is preventing registration.");
+            toast.error(reResult.error ?? "Push setup failed.");
             return;
           }
           setPushState("subscribed");

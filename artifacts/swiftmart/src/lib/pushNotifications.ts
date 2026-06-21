@@ -4,7 +4,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
+  const outputArray = new Uint8Array(new ArrayBuffer(rawData.length));
   for (let i = 0; i < rawData.length; i++) {
     outputArray[i] = rawData.charCodeAt(i);
   }
@@ -30,57 +30,118 @@ async function saveSubscriptionToServer(subscription: PushSubscription): Promise
   });
 }
 
-export async function registerPushNotifications(): Promise<boolean> {
+export type PushRegistrationResult =
+  | { success: true }
+  | { success: false; error: string };
+
+/**
+ * Registers for push notifications, step by step.
+ * Returns { success: true } on success, or { success: false; error: "<what failed>" }.
+ * Always force-creates a fresh subscription to avoid VAPID key mismatch issues.
+ */
+export async function registerPushNotifications(): Promise<PushRegistrationResult> {
+  // 1 — Feature check
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    return { success: false, error: "Push notifications are not supported by this browser." };
+  }
+
+  // 2 — Permission
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") {
+    return { success: false, error: "Notification permission was not granted." };
+  }
+
+  // 3 — Service worker registration + activation (15 s timeout)
+  let reg: ServiceWorkerRegistration;
   try {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
-
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") return false;
-
     await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-    const reg = await navigator.serviceWorker.ready;
+    reg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Service worker activation timed out (15 s). Try refreshing the page.")),
+          15_000
+        )
+      ),
+    ]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[Push] SW error:", msg);
+    return { success: false, error: `Service worker error — ${msg}` };
+  }
 
-    const { publicKey } = await api.get<{ success: boolean; publicKey: string }>("/push/vapid-public-key");
-    if (!publicKey) return false;
+  // 4 — Fetch VAPID public key from backend
+  let publicKey: string;
+  try {
+    const resp = await api.get<{ success: boolean; publicKey: string }>("/push/vapid-public-key");
+    publicKey = resp.publicKey;
+    if (!publicKey) throw new Error("Backend returned an empty VAPID public key.");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[Push] VAPID fetch error:", msg);
+    return { success: false, error: `Could not fetch push config from server — ${msg}` };
+  }
 
-    const applicationServerKey = urlBase64ToUint8Array(publicKey);
+  // 5 — Convert VAPID key
+  let applicationServerKey: Uint8Array<ArrayBuffer>;
+  try {
+    applicationServerKey = urlBase64ToUint8Array(publicKey);
+  } catch (err) {
+    return { success: false, error: "Invalid VAPID public key format returned by server." };
+  }
 
-    // Try reusing the existing browser subscription first
-    let subscription = await reg.pushManager.getSubscription();
-
-    if (subscription) {
-      try {
-        await saveSubscriptionToServer(subscription);
-        return true;
-      } catch (err) {
-        // Subscription is stale (VAPID key mismatch or missing fields) — clear it and start fresh
-        console.warn("[Push] Existing subscription invalid, clearing:", err);
-        await subscription.unsubscribe();
-        subscription = null;
-      }
+  // 6 — Always clear the existing subscription first.
+  //     This prevents InvalidStateError when the VAPID key has changed since the
+  //     last subscription was created (e.g. after a redeployment).
+  try {
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) {
+      await existing.unsubscribe();
+      console.log("[Push] Cleared existing subscription before re-subscribing.");
     }
+  } catch (err) {
+    // Best-effort — don't block on this
+    console.warn("[Push] Could not clear old subscription:", err);
+  }
 
-    // Create a fresh subscription with the current VAPID key
+  // 7 — Create fresh push subscription
+  let subscription: PushSubscription;
+  try {
     subscription = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey,
     });
-
-    await saveSubscriptionToServer(subscription);
-    return true;
   } catch (err) {
-    console.error("[Push] Registration failed:", err);
-    return false;
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[Push] subscribe() failed:", msg);
+    if (err instanceof DOMException && err.name === "NotAllowedError") {
+      return { success: false, error: "Browser blocked the push subscription — allow notifications in browser settings and try again." };
+    }
+    return { success: false, error: `Push subscription failed — ${msg}` };
   }
+
+  // 8 — Save subscription to backend
+  try {
+    await saveSubscriptionToServer(subscription);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[Push] saveSubscriptionToServer failed:", msg);
+    // Undo browser subscription so state stays consistent
+    try { await subscription.unsubscribe(); } catch { /* ignore */ }
+    return { success: false, error: `Could not register device with server — ${msg}` };
+  }
+
+  console.log("[Push] Registration complete:", subscription.endpoint.slice(0, 60) + "…");
+  return { success: true };
 }
 
 export async function unregisterPushNotifications(): Promise<void> {
   try {
-    const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+    const reg = await navigator.serviceWorker.getRegistration("/");
     if (!reg) return;
     const sub = await reg.pushManager.getSubscription();
     if (!sub) return;
-    await api.post("/push/unsubscribe", { endpoint: sub.endpoint });
+    await api.post("/push/unsubscribe", { endpoint: sub.endpoint }).catch(() => {});
     await sub.unsubscribe();
   } catch { /* ignore */ }
 }
@@ -102,7 +163,8 @@ export async function getActualPushState(): Promise<"subscribed" | "permission_o
   if (permission === "denied") return "denied";
   if (permission !== "granted") return "default";
   try {
-    const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+    // Check both common registration scopes
+    const reg = await navigator.serviceWorker.getRegistration("/");
     if (!reg) return "permission_only";
     const sub = await reg.pushManager.getSubscription();
     return sub ? "subscribed" : "permission_only";

@@ -48,16 +48,12 @@ export function NotificationPrompt({ userId }: { userId: string }) {
   const handleEnable = async () => {
     setLoading(true);
     try {
-      const ok = await registerPushNotifications();
-      if (ok) {
+      const result = await registerPushNotifications();
+      if (result.success) {
         toast.success("Notifications enabled! You'll get alerts even when the app is closed.");
-        // Clear dismissed key so we don't re-prompt unnecessarily
         localStorage.removeItem(`${DISMISSED_KEY}_${userId}`);
       } else {
-        const state = await getPushPermissionState();
-        if (state === "denied") {
-          toast.error("Blocked — open browser settings and allow notifications for this site.");
-        }
+        toast.error(result.error ?? "Could not enable notifications.");
       }
     } finally {
       setLoading(false);
