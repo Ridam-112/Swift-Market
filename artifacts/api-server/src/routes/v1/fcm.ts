@@ -9,7 +9,12 @@ const A = requireRole("admin", "super_admin");
 
 // GET /api/fcm/config — public: frontend fetches this to get the FCM VAPID key
 router.get("/config", (_req, res: Response): void => {
-  const vapidKey = process.env["FIREBASE_VAPID_KEY"] ?? process.env["VITE_FIREBASE_VAPID_KEY"] ?? "";
+  // Prefer FIREBASE_VAPID_KEY, but if it is set to its own name (misconfigured),
+  // fall back to VAPID_PUBLIC_KEY which the .replit env already has the real value.
+  const raw = process.env["FIREBASE_VAPID_KEY"] ?? process.env["VITE_FIREBASE_VAPID_KEY"] ?? "";
+  const vapidKey = (raw && raw !== "FIREBASE_VAPID_KEY" && raw !== "VITE_FIREBASE_VAPID_KEY")
+    ? raw
+    : (process.env["VAPID_PUBLIC_KEY"] ?? "");
   res.json({ success: true, vapidKey });
 });
 
