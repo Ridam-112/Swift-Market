@@ -4,6 +4,7 @@ import { formatINR } from "@/lib/currency";
 export function CartSummary({
   subtotal,
   deliveryFee = 0,
+  deliveryType = 'instant',
   crossAreaCharge = 0,
   rainSurcharge = 0,
   rainModeActive = false,
@@ -12,6 +13,7 @@ export function CartSummary({
 }: {
   subtotal: number;
   deliveryFee?: number;
+  deliveryType?: 'instant' | 'scheduled';
   crossAreaCharge?: number;
   rainSurcharge?: number;
   rainModeActive?: boolean;
@@ -19,6 +21,7 @@ export function CartSummary({
   couponCode?: string;
 }) {
   const total = subtotal + deliveryFee + crossAreaCharge + rainSurcharge - couponDiscount;
+  const deliveryLabel = deliveryType === 'scheduled' ? 'Scheduled Delivery (2–4 hrs)' : 'Instant Delivery (10–30 min)';
 
   return (
     <div className="bg-card p-4 rounded-2xl neu-card space-y-3 text-sm">
@@ -31,7 +34,7 @@ export function CartSummary({
 
       {deliveryFee > 0 && (
         <div className="flex justify-between text-muted-foreground">
-          <span>Instant Delivery (10 min)</span>
+          <span>{deliveryLabel}</span>
           <span className="font-medium text-foreground">{formatINR(deliveryFee)}</span>
         </div>
       )}
@@ -49,13 +52,6 @@ export function CartSummary({
             <CloudRain className="w-3.5 h-3.5" /> Rain Surcharge
           </span>
           <span className="font-medium">{formatINR(rainSurcharge)}</span>
-        </div>
-      )}
-
-      {crossAreaCharge === 0 && deliveryFee === 0 && (
-        <div className="flex justify-between text-green-600 dark:text-green-400">
-          <span>Delivery Fee</span>
-          <span className="font-medium">Free</span>
         </div>
       )}
 

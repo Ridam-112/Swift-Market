@@ -19,6 +19,7 @@ export const orders = pgTable("orders", {
   status: text("status").notNull().default("placed"),
   paymentMethod: text("payment_method").notNull().default("COD"),
   paymentStatus: text("payment_status").notNull().default("pending"),
+  deliveryType: text("delivery_type").notNull().default("instant"),
   deliveryPartnerId: text("delivery_partner_id"),
   address: jsonb("address").notNull().default({}),
   couponCode: text("coupon_code"),

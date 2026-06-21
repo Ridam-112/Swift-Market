@@ -76,6 +76,7 @@ interface ApiOrder {
   status: string;
   paymentMethod?: string;
   paymentStatus?: string;
+  deliveryType?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -1238,6 +1239,7 @@ function OrdersTab() {
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<PlatformOrder['status'] | 'all'>('all');
+  const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'instant' | 'scheduled'>('all');
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1256,6 +1258,7 @@ function OrdersTab() {
           status: o.status as PlatformOrder['status'],
           paymentMethod: (o.paymentMethod ?? "cash") as PlatformOrder['paymentMethod'],
           paymentStatus: (o.paymentStatus ?? "pending") as PlatformOrder['paymentStatus'],
+          deliveryType: (o.deliveryType === 'scheduled' ? 'scheduled' : 'instant') as 'instant' | 'scheduled',
           placedAt: o.createdAt,
           updatedAt: o.updatedAt ?? o.createdAt,
         })));
@@ -1276,6 +1279,7 @@ function OrdersTab() {
 
   const filtered = platformOrders.filter(o => {
     if (filter !== 'all' && o.status !== filter) return false;
+    if (deliveryFilter !== 'all' && o.deliveryType !== deliveryFilter) return false;
     if (search && !o.id.toLowerCase().includes(search.toLowerCase()) && 
         !o.customerName.toLowerCase().includes(search.toLowerCase()) && 
         !o.vendorName.toLowerCase().includes(search.toLowerCase())) return false;
@@ -1337,6 +1341,21 @@ function OrdersTab() {
             </button>
           ))}
         </div>
+        <div className="flex gap-2 shrink-0">
+          {(['all', 'instant', 'scheduled'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setDeliveryFilter(f)}
+              className={`px-3 py-2 rounded-xl text-sm font-medium capitalize whitespace-nowrap transition-all ${
+                deliveryFilter === f
+                  ? f === 'scheduled' ? 'bg-violet-600 text-white neu-card' : f === 'instant' ? 'bg-amber-500 text-white neu-card' : 'bg-primary text-primary-foreground neu-card'
+                  : 'bg-background text-muted-foreground neu-inset'
+              }`}
+            >
+              {f === 'all' ? '⚡ All types' : f === 'instant' ? '⚡ Instant' : '🕐 Scheduled'}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -1354,6 +1373,15 @@ function OrdersTab() {
                   <Badge className={`${getStatusColor(o.status)} border-none neu-inset px-2.5 py-0.5 capitalize`}>
                     {o.status.replace(/_/g, ' ')}
                   </Badge>
+                  {o.deliveryType === 'scheduled' ? (
+                    <Badge className="bg-violet-100 text-violet-700 border-none neu-inset px-2.5 py-0.5 dark:bg-violet-900/30 dark:text-violet-300">
+                      🕐 Scheduled
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-amber-100 text-amber-700 border-none neu-inset px-2.5 py-0.5 dark:bg-amber-900/30 dark:text-amber-300">
+                      ⚡ Instant
+                    </Badge>
+                  )}
                   <span className="text-xs text-muted-foreground">{new Date(o.placedAt).toLocaleString()}</span>
                 </div>
                 

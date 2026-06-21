@@ -31,6 +31,7 @@ interface ApiOrder {
   netAmount: number;
   status: string;
   paymentMethod: string;
+  deliveryType?: string;
   address: { label: string; line1: string; city: string; pincode: string };
   createdAt: string;
 }
@@ -292,6 +293,15 @@ function OrderCard({ order, onUpdate, updatingId, isNew }: {
             <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full", statusColor(order.status))}>
               {statusLabel(order.status)}
             </span>
+            {order.deliveryType === 'scheduled' ? (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+                Scheduled
+              </span>
+            ) : (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                Instant
+              </span>
+            )}
           </div>
           <p className="text-sm text-muted-foreground mt-1 font-medium">{order.customerName} · {order.customerPhone}</p>
           <p className="text-xs text-muted-foreground mt-0.5">

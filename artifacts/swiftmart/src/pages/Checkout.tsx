@@ -134,8 +134,8 @@ export default function Checkout() {
     }).finally(() => setChargesLoading(false));
   }, [address?.pincode, shopPincode]);
 
-  const instantFee = deliverySlot === 'instant' ? 25 : 0;
-  const totalDeliveryFee = instantFee + crossAreaCharge + rainSurcharge;
+  const slotFee = deliverySlot === 'instant' ? 25 : 10;
+  const totalDeliveryFee = slotFee + crossAreaCharge + rainSurcharge;
   const orderTotalForCoupon = subtotal + totalDeliveryFee;
   const couponDiscount = couponApplied?.discount ?? 0;
   const totalAmount = subtotal + totalDeliveryFee - couponDiscount;
@@ -185,6 +185,7 @@ export default function Checkout() {
       })),
       subtotal,
       deliveryCharge: totalDeliveryFee,
+      deliveryType: deliverySlot === 'instant' ? 'instant' : 'scheduled',
       couponDiscount,
       ...(couponApplied ? { couponCode: couponApplied.code } : {}),
       ...(razorpayOrderId ? { razorpayOrderId } : {}),
@@ -424,8 +425,8 @@ export default function Checkout() {
                 deliverySlot === 'instant' ? "neu-card border-primary/50 bg-primary/5" : "bg-card border-transparent neu-inset"
               )}
             >
-              <div className="font-bold">Instant 10 min</div>
-              <div className="text-xs text-muted-foreground mt-1">Extra ₹25</div>
+              <div className="font-bold">Instant 10–30 min</div>
+              <div className="text-xs text-muted-foreground mt-1">₹25 delivery fee</div>
             </div>
             <div
               onClick={() => { setDeliverySlot('schedule'); handleRemoveCoupon(); }}
@@ -434,12 +435,16 @@ export default function Checkout() {
                 deliverySlot === 'schedule' ? "neu-card border-primary/50 bg-primary/5" : "bg-card border-transparent neu-inset"
               )}
             >
-              <div className="font-bold">Schedule later</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {isSamePincode ? "Free delivery" : crossAreaCharge > 0 ? `Cross-area charge applies` : "Free delivery"}
-              </div>
+              <div className="font-bold">Scheduled Delivery</div>
+              <div className="text-xs text-muted-foreground mt-1">₹10 · Delivered in 2–4 hrs</div>
             </div>
           </div>
+          {deliverySlot === 'schedule' && (
+            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5 px-1">
+              <span className="text-green-600">✓</span>
+              Scheduled delivery may take 2–4 hours. Orders are batched for efficiency.
+            </p>
+          )}
         </section>
 
         <section>
@@ -516,7 +521,8 @@ export default function Checkout() {
         <section className="pt-4 border-t border-border">
           <CartSummary
             subtotal={subtotal}
-            deliveryFee={instantFee}
+            deliveryFee={slotFee}
+            deliveryType={deliverySlot === 'instant' ? 'instant' : 'scheduled'}
             crossAreaCharge={crossAreaCharge}
             rainSurcharge={rainSurcharge}
             rainModeActive={rainModeActive}
@@ -548,3 +554,4 @@ export default function Checkout() {
     </div>
   );
 }
+
