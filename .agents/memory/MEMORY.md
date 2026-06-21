@@ -5,3 +5,4 @@
 - [Launch Hardening & TS Fixes](launch-hardening.md) — Rate limiter, UUID validation, RBAC fixes, TS2769 req.params fix, full build passing
 - [Capacitor CORS fix](capacitor-cors.md) — Android WebView sends origin 'https://localhost'; must be whitelisted in prod CORS or all APK requests return 500
 - [FCM Push Migration](fcm-migration.md) — Replaced VAPID/web-push with Firebase Cloud Messaging; 3 new secrets required before push works
+- [Replit migration secrets](swiftmart-replit-migration.md) — All secrets needed to run on Replit; run scripts/check-secrets.mjs to verify; duplicate artifact workflows fail on port conflicts (expected, main workflow owns ports)
