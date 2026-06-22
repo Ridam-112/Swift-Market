@@ -60,7 +60,7 @@ router.get("/config", (_req: Request, res: Response): void => {
     authDomain:        process.env["VITE_FIREBASE_AUTH_DOMAIN"]  ?? "",
     projectId:         process.env["VITE_FIREBASE_PROJECT_ID"]   ?? "",
     appId:             process.env["VITE_FIREBASE_APP_ID"]       ?? "",
-    messagingSenderId: process.env["FIREBASE_MESSAGING_SENDER_ID"] ?? "",
+    messagingSenderId: process.env["FIREBASE_MESSAGING_SENDER_ID"] ?? process.env["VITE_FIREBASE_MESSAGING_SENDER_ID"] ?? "",
   } : null;
 
   res.json({

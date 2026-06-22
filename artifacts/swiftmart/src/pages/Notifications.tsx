@@ -54,7 +54,11 @@ export default function Notifications() {
       // This self-heals the case where the server token was cleared (e.g. after a redeploy or DB wipe)
       // without requiring the user to toggle notifications off and on again.
       if (state === "subscribed") {
-        registerFcmToken().catch(() => {});
+        registerFcmToken().then(result => {
+          if (!result.success) {
+            console.warn("[FCM] Silent re-registration failed:", result.error);
+          }
+        }).catch(err => console.error("[FCM] Silent re-registration threw:", err));
       }
     });
   }, []);

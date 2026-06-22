@@ -12,7 +12,7 @@ interface FirebaseConfig {
   authDomain: string;
   projectId: string;
   appId: string;
-  messagingSenderId?: string;
+  messagingSenderId: string;
   storageBucket?: string;
 }
 

@@ -19,6 +19,7 @@ interface FirebaseConfig {
   authDomain: string;
   projectId: string;
   appId: string;
+  messagingSenderId?: string;
 }
 
 async function bootstrap() {
