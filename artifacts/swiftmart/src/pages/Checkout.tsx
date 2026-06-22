@@ -182,6 +182,8 @@ export default function Checkout() {
         qty: item.qty,
         price: item.product.price,
         category: item.product.category,
+        ...(item.selectedColor ? { selectedColor: item.selectedColor } : {}),
+        ...(item.selectedSize ? { selectedSize: item.selectedSize } : {}),
       })),
       subtotal,
       deliveryCharge: totalDeliveryFee,

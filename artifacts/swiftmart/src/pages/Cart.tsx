@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 import { SectionHeader } from "@/components/SectionHeader";
+import { cartKey } from "@/context/CartContext";
 
 const MINIMUM_ORDER_AMOUNT = 80;
 
@@ -66,7 +67,7 @@ export default function Cart() {
       <div className="flex flex-col md:flex-row gap-6">
         <div className="flex-1 space-y-4">
           {items.map(item => (
-            <CartItemRow key={item.product.id} item={item} />
+            <CartItemRow key={cartKey(item.product.id, item.selectedColor, item.selectedSize)} item={item} />
           ))}
         </div>
         

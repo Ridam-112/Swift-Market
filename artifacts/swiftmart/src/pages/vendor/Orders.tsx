@@ -5,7 +5,7 @@ import { formatINR } from "@/lib/currency";
 import { SectionHeader } from "@/components/SectionHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, Loader2, AlertCircle, CheckCircle2, XCircle, ChevronDown, Package, RefreshCw, Bell } from "lucide-react";
+import { ClipboardList, Loader2, AlertCircle, CheckCircle2, XCircle, ChevronDown, Package, RefreshCw, Bell, Palette, Ruler } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { playVendorAlert } from "@/lib/pushNotifications";
@@ -17,6 +17,8 @@ interface ApiOrderItem {
   qty: number;
   price: number;
   category: string;
+  selectedColor?: string;
+  selectedSize?: string;
 }
 
 interface ApiOrder {
@@ -385,6 +387,22 @@ function OrderCard({ order, onUpdate, updatingId, isNew }: {
                 <div>
                   <div className="font-medium text-sm line-clamp-1">{item.productName}</div>
                   <div className="text-xs text-muted-foreground">{item.qty} × {formatINR(item.price)}</div>
+                  {(item.selectedColor || item.selectedSize) && (
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {item.selectedColor && (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold bg-background border border-border px-2 py-0.5 rounded-full">
+                          <Palette className="w-2.5 h-2.5 text-muted-foreground" />
+                          {item.selectedColor}
+                        </span>
+                      )}
+                      {item.selectedSize && (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold bg-background border border-border px-2 py-0.5 rounded-full">
+                          <Ruler className="w-2.5 h-2.5 text-muted-foreground" />
+                          Size: {item.selectedSize}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="font-bold text-sm">

@@ -1,11 +1,15 @@
 import React, { createContext, useState, useEffect } from "react";
 import { CartItem, Product } from "@/types";
 
+export function cartKey(productId: string, color?: string | null, size?: string | null): string {
+  return `${productId}::${color ?? ""}::${size ?? ""}`;
+}
+
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product, qty?: number) => void;
-  removeFromCart: (productId: string) => void;
-  updateQty: (productId: string, qty: number) => void;
+  addToCart: (product: Product, qty?: number, selectedColor?: string, selectedSize?: string) => void;
+  removeFromCart: (key: string) => void;
+  updateQty: (key: string, qty: number) => void;
   clearCart: () => void;
   totalItems: number;
   subtotal: number;
@@ -23,35 +27,52 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("swiftmart_cart", JSON.stringify(items));
   }, [items]);
 
-  const addToCart = (product: Product, qty: number = 1) => {
+  const addToCart = (product: Product, qty: number = 1, selectedColor?: string, selectedSize?: string) => {
     setItems(current => {
-      const existing = current.find(item => item.product.id === product.id);
+      const key = cartKey(product.id, selectedColor, selectedSize);
+      const existing = current.find(
+        item => cartKey(item.product.id, item.selectedColor, item.selectedSize) === key
+      );
       if (existing) {
         const newQty = existing.qty + qty;
         const capped = product.stock > 0 ? Math.min(newQty, product.stock) : newQty;
         return current.map(item =>
-          item.product.id === product.id ? { ...item, qty: capped } : item
+          cartKey(item.product.id, item.selectedColor, item.selectedSize) === key
+            ? { ...item, qty: capped }
+            : item
         );
       }
-      return [...current, { product, qty: Math.min(qty, product.stock > 0 ? product.stock : qty) }];
+      return [
+        ...current,
+        {
+          product,
+          qty: Math.min(qty, product.stock > 0 ? product.stock : qty),
+          selectedColor,
+          selectedSize,
+        },
+      ];
     });
   };
 
-  const removeFromCart = (productId: string) => {
-    setItems(current => current.filter(item => item.product.id !== productId));
+  const removeFromCart = (key: string) => {
+    setItems(current =>
+      current.filter(item => cartKey(item.product.id, item.selectedColor, item.selectedSize) !== key)
+    );
   };
 
-  const updateQty = (productId: string, qty: number) => {
+  const updateQty = (key: string, qty: number) => {
     if (qty <= 0) {
-      removeFromCart(productId);
+      removeFromCart(key);
       return;
     }
-    setItems(current => current.map(item => {
-      if (item.product.id !== productId) return item;
-      const stock = item.product.stock;
-      const capped = stock > 0 ? Math.min(qty, stock) : qty;
-      return { ...item, qty: capped };
-    }));
+    setItems(current =>
+      current.map(item => {
+        if (cartKey(item.product.id, item.selectedColor, item.selectedSize) !== key) return item;
+        const stock = item.product.stock;
+        const capped = stock > 0 ? Math.min(qty, stock) : qty;
+        return { ...item, qty: capped };
+      })
+    );
   };
 
   const clearCart = () => setItems([]);

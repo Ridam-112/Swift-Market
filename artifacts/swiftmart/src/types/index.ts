@@ -55,6 +55,8 @@ export interface Product {
 export interface CartItem {
   product: Product;
   qty: number;
+  selectedColor?: string;
+  selectedSize?: string;
 }
 
 export interface Address {

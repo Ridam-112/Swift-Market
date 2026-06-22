@@ -9,6 +9,7 @@ import { Star, ShieldCheck, Clock, AlertTriangle } from "lucide-react";
 import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { categories } from "@/data/categories";
+import { cartKey } from "@/context/CartContext";
 
 const COLOR_HEX: Record<string, string> = {
   Red: "#ef4444", Blue: "#3b82f6", Green: "#22c55e", Yellow: "#eab308",
@@ -24,8 +25,6 @@ export default function Product() {
   const { items, addToCart, updateQty } = useCart();
 
   const product = products.find(p => p.id === id);
-  const cartItem = items.find(item => item.product.id === id);
-  const qty = cartItem?.qty || 0;
 
   const allImages = product?.images?.filter(Boolean) ?? (product?.image ? [product.image] : []);
   const hasColors = (product?.colors?.length ?? 0) > 0;
@@ -34,6 +33,7 @@ export default function Product() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [showVariantError, setShowVariantError] = useState(false);
 
   if (!product) return <div className="p-8 text-center">Product not found</div>;
 
@@ -49,10 +49,45 @@ export default function Product() {
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(prev => prev === color ? null : color);
+    setShowVariantError(false);
     if (product.colorImages?.[color]) {
       const idx = allImages.indexOf(product.colorImages[color]);
       if (idx >= 0) setActiveImageIndex(idx);
     }
+  };
+
+  const handleSizeSelect = (size: string) => {
+    setSelectedSize(prev => prev === size ? null : size);
+    setShowVariantError(false);
+  };
+
+  const variantSelectionValid = () => {
+    if (hasColors && !selectedColor) return false;
+    if (hasSizes && !selectedSize) return false;
+    return true;
+  };
+
+  const itemKey = cartKey(
+    product.id,
+    hasColors ? selectedColor : undefined,
+    hasSizes ? selectedSize : undefined,
+  );
+  const cartItem = items.find(
+    item => cartKey(item.product.id, item.selectedColor, item.selectedSize) === itemKey
+  );
+  const qty = cartItem?.qty || 0;
+
+  const handleAddToCart = () => {
+    if (!variantSelectionValid()) {
+      setShowVariantError(true);
+      return;
+    }
+    addToCart(
+      product,
+      1,
+      hasColors ? selectedColor ?? undefined : undefined,
+      hasSizes ? selectedSize ?? undefined : undefined,
+    );
   };
 
   return (
@@ -127,9 +162,10 @@ export default function Product() {
             <div className="mb-4 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold">Color</span>
-                {selectedColor && (
-                  <span className="text-sm text-muted-foreground">— {selectedColor}</span>
-                )}
+                {selectedColor
+                  ? <span className="text-sm text-muted-foreground">— {selectedColor}</span>
+                  : <span className="text-sm text-destructive font-medium">— select one</span>
+                }
               </div>
               <div className="flex flex-wrap gap-2">
                 {product.colors!.map(color => (
@@ -152,16 +188,17 @@ export default function Product() {
             <div className="mb-4 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold">Size</span>
-                {selectedSize && (
-                  <span className="text-sm text-muted-foreground">— {selectedSize}</span>
-                )}
+                {selectedSize
+                  ? <span className="text-sm text-muted-foreground">— {selectedSize}</span>
+                  : <span className="text-sm text-destructive font-medium">— select one</span>
+                }
               </div>
               <div className="flex flex-wrap gap-2">
                 {product.sizes!.map(size => (
                   <button
                     key={size}
                     type="button"
-                    onClick={() => setSelectedSize(prev => prev === size ? null : size)}
+                    onClick={() => handleSizeSelect(size)}
                     className={`px-3 py-1.5 rounded-xl text-sm font-semibold border-2 transition-all
                       ${selectedSize === size
                         ? "border-primary bg-primary text-primary-foreground"
@@ -171,6 +208,15 @@ export default function Product() {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {showVariantError && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/30 mb-4">
+              <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+              <span className="text-sm font-semibold text-destructive">
+                Please select {[hasColors && !selectedColor ? "a color" : null, hasSizes && !selectedSize ? "a size" : null].filter(Boolean).join(" and ")} before adding to cart.
+              </span>
             </div>
           )}
 
@@ -213,13 +259,18 @@ export default function Product() {
               </Button>
             ) : qty > 0 ? (
               <div className="flex items-center gap-4">
-                <QuantityStepper qty={qty} maxQty={product.stock} onChange={(newQty) => updateQty(product.id, newQty)} />
-                <div className="text-sm text-muted-foreground font-medium">Added to cart</div>
+                <QuantityStepper qty={qty} maxQty={product.stock} onChange={(newQty) => updateQty(itemKey, newQty)} />
+                <div className="text-sm text-muted-foreground font-medium">
+                  {selectedColor && <span className="font-semibold">{selectedColor}</span>}
+                  {selectedColor && selectedSize && " · "}
+                  {selectedSize && <span className="font-semibold">{selectedSize}</span>}
+                  {(selectedColor || selectedSize) ? " added" : "Added to cart"}
+                </div>
               </div>
             ) : (
               <Button size="lg"
                 className="w-full md:w-auto rounded-full text-lg font-bold shadow-none neu-card h-14 px-12"
-                onClick={() => addToCart(product)}>
+                onClick={handleAddToCart}>
                 Add to Cart
               </Button>
             )}
