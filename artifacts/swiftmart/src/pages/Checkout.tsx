@@ -15,47 +15,6 @@ import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { isServicePincode } from "@/lib/serviceArea";
 
-declare global {
-  interface Window {
-    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
-  }
-}
-
-interface RazorpayOptions {
-  key: string;
-  amount: number;
-  currency: string;
-  name: string;
-  description: string;
-  order_id: string;
-  prefill: { name: string; contact: string };
-  theme: { color: string };
-  handler: (response: RazorpayResponse) => void;
-  modal: { ondismiss: () => void };
-}
-
-interface RazorpayInstance {
-  open(): void;
-}
-
-interface RazorpayResponse {
-  razorpay_order_id: string;
-  razorpay_payment_id: string;
-  razorpay_signature: string;
-}
-
-interface RazorpayOrderResponse {
-  success: boolean;
-  keyId: string;
-  serverTotal: number;
-  couponDiscount: number;
-  order: {
-    id: string;
-    amount: number;
-    currency: string;
-  };
-}
-
 interface ApiOrderResponse {
   success: boolean;
   order: { _id: string };
@@ -252,69 +211,10 @@ export default function Checkout() {
     setPlacing(true);
 
     try {
-      if (paymentMethod === 'COD') {
-        const data = await createOrderRecord(shopName);
-        toast.success("Order placed successfully!");
-        clearCart();
-        setLocation(`/order/success/${data.order._id}`);
-      } else {
-        const rzpOrderData = await api.post<RazorpayOrderResponse>("/payments/create-order", {
-          items: items.map(i => ({ productId: i.product.id, qty: i.qty })),
-          deliveryCharge: totalDeliveryFee,
-          ...(couponApplied ? { couponCode: couponApplied.code } : {}),
-          receipt: `order_${Date.now()}`,
-        });
-
-        if (!window.Razorpay) {
-          toast.error("Payment gateway failed to load", {
-            description: "This is often caused by an ad-blocker. Disable it for this site, then refresh the page and try again.",
-            duration: 8000,
-          });
-          setPlacing(false);
-          return;
-        }
-
-        const rzp = new window.Razorpay({
-          key: rzpOrderData.keyId,
-          amount: rzpOrderData.order.amount,
-          currency: rzpOrderData.order.currency,
-          name: "SwiftMart",
-          description: `Order from ${shopName}`,
-          order_id: rzpOrderData.order.id,
-          prefill: {
-            name: user.name,
-            contact: user.phone,
-          },
-          theme: { color: "#16a34a" },
-          handler: async (response: RazorpayResponse) => {
-            try {
-              const orderData = await createOrderRecord(shopName, rzpOrderData.order.id);
-              await api.post("/payments/verify", {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                orderId: orderData.order._id,
-              });
-              toast.success("Payment successful! Order placed.");
-              clearCart();
-              setLocation(`/order/success/${orderData.order._id}`);
-            } catch (err) {
-              const msg = err instanceof Error ? err.message : "Payment verification failed";
-              toast.error(msg);
-            } finally {
-              setPlacing(false);
-            }
-          },
-          modal: {
-            ondismiss: () => {
-              toast.info("Payment cancelled");
-              setPlacing(false);
-            },
-          },
-        });
-
-        rzp.open();
-      }
+      const data = await createOrderRecord(shopName);
+      toast.success("Order placed successfully!");
+      clearCart();
+      setLocation(`/order/success/${data.order._id}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to place order";
       toast.error(msg.includes("buffering") ? "Database connecting — please retry" : msg);
@@ -511,8 +411,11 @@ export default function Checkout() {
                 </div>
                 <div>
                   <span className="font-bold">{option.label}</span>
-                  {option.id !== 'COD' && (
-                    <p className="text-xs text-muted-foreground mt-0.5">Powered by Razorpay</p>
+                  {option.id === 'UPI' && (
+                    <p className="text-xs text-muted-foreground mt-0.5">Rider shows QR code at your door</p>
+                  )}
+                  {option.id === 'COD' && (
+                    <p className="text-xs text-muted-foreground mt-0.5">Pay cash when order arrives</p>
                   )}
                 </div>
               </div>
@@ -540,7 +443,7 @@ export default function Checkout() {
             {placing ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                {paymentMethod === 'COD' ? 'Placing Order…' : 'Opening Payment…'}
+                Placing Order…
               </>
             ) : chargesLoading ? (
               <>
@@ -548,7 +451,7 @@ export default function Checkout() {
                 Calculating charges…
               </>
             ) : (
-              paymentMethod === 'COD' ? 'Place Order' : `Pay ₹${Math.max(0, totalAmount)}`
+              'Place Order'
             )}
           </Button>
         </section>
