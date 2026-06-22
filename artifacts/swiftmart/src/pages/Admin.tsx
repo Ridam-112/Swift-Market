@@ -864,44 +864,50 @@ function UsersTab() {
 function CustomersList() {
   const [customers, setCustomers] = useState<AdminCustomer[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<'all' | 'active' | 'banned'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const fetchCustomers = () => {
     setLoadingCustomers(true);
-    Promise.all([
-      api.get<{ success: boolean; users: ApiUser[] }>('/users?role=customer&limit=100'),
-      api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=2000'),
-    ]).then(([usersData, ordersData]) => {
-      const allOrders = ordersData.orders ?? [];
-      setCustomers(usersData.users.map(u => {
-        const customerOrders = allOrders.filter(o => o.customerId === u._id);
-        const totalSpent = customerOrders.reduce((s, o) => s + (o.netAmount ?? o.subtotal ?? 0), 0);
-        return {
-          id: u._id,
-          name: u.name,
-          phone: u.phone,
-          email: u.email ?? "",
-          joinedAt: u.createdAt,
-          totalOrders: customerOrders.length,
-          totalSpent,
-          status: (u.status === 'banned' ? 'banned' : 'active') as 'active' | 'banned',
-          orders: customerOrders.map(o => ({
-            id: `#${o._id.slice(-6).toUpperCase()}`,
-            placedAt: o.createdAt,
-            vendorId: o.shopId ?? '',
-            vendorName: o.shopName ?? 'Shop',
-            items: o.items.map(i => ({ name: i.name, qty: i.qty, price: i.price, category: '' })),
-            total: o.netAmount ?? o.subtotal ?? o.items.reduce((s, i) => s + i.price * i.qty, 0),
-            status: (o.status ?? 'placed') as 'placed' | 'packed' | 'out_for_delivery' | 'delivered',
-            paymentMethod: (o.paymentMethod ?? 'COD') as 'UPI' | 'Card' | 'COD',
-          })),
-        };
-      }));
-    })
-    .catch(() => setCustomers([]))
-    .finally(() => setLoadingCustomers(false));
+    setFetchError(null);
+    api.get<{ success: boolean; users: ApiUser[] }>('/users?role=customer&limit=500')
+      .then(async usersData => {
+        const allOrders: ApiOrder[] = await api
+          .get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=2000')
+          .then(d => d.orders ?? [])
+          .catch(() => []);
+        setCustomers(usersData.users.map(u => {
+          const customerOrders = allOrders.filter(o => o.customerId === u._id);
+          const totalSpent = customerOrders.reduce((s, o) => s + (o.netAmount ?? o.subtotal ?? 0), 0);
+          return {
+            id: u._id,
+            name: u.name,
+            phone: u.phone,
+            email: u.email ?? "",
+            joinedAt: u.createdAt,
+            totalOrders: customerOrders.length,
+            totalSpent,
+            status: (u.status === 'banned' ? 'banned' : 'active') as 'active' | 'banned',
+            orders: customerOrders.map(o => ({
+              id: `#${o._id.slice(-6).toUpperCase()}`,
+              placedAt: o.createdAt,
+              vendorId: o.shopId ?? '',
+              vendorName: o.shopName ?? 'Shop',
+              items: o.items.map(i => ({ name: i.name, qty: i.qty, price: i.price, category: '' })),
+              total: o.netAmount ?? o.subtotal ?? o.items.reduce((s, i) => s + i.price * i.qty, 0),
+              status: (o.status ?? 'placed') as 'placed' | 'packed' | 'out_for_delivery' | 'delivered',
+              paymentMethod: (o.paymentMethod ?? 'COD') as 'UPI' | 'Card' | 'COD',
+            })),
+          };
+        }));
+      })
+      .catch(err => {
+        setFetchError(err instanceof Error ? err.message : "Failed to load customers");
+        setCustomers([]);
+      })
+      .finally(() => setLoadingCustomers(false));
   };
 
   useEffect(() => { fetchCustomers(); }, []);
@@ -924,6 +930,17 @@ function CustomersList() {
 
   if (loadingCustomers) {
     return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-muted rounded-3xl animate-pulse" />)}</div>;
+  }
+
+  if (fetchError) {
+    return (
+      <div className="text-center p-12 bg-card rounded-3xl neu-inset text-muted-foreground">
+        <AlertCircle className="w-10 h-10 mx-auto mb-3 text-destructive opacity-70" />
+        <p className="font-medium text-foreground mb-1">Failed to load customers</p>
+        <p className="text-sm mb-4">{fetchError}</p>
+        <button onClick={fetchCustomers} className="text-primary text-sm font-medium underline">Retry</button>
+      </div>
+    );
   }
 
   return (
