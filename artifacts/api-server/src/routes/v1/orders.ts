@@ -5,6 +5,7 @@ import { db, orders, products, shops, users, payouts, coupons } from "@workspace
 import { eq, and, ilike, or, gte, ne, desc, count, sql, inArray } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { validateUuidParams } from "../../middlewares/validateUuid.js";
+import { orderLimiter } from "../../middlewares/rateLimiter.js";
 import { resolveCommission, calculateCommissionAmount } from "../../utils/commission.js";
 import { createNotificationLimited } from "../../utils/notification.js";
 import { logger } from "../../lib/logger.js";
@@ -179,7 +180,7 @@ router.get("/:id", authenticate, validateUuidParams("id"), async (req: AuthReque
 });
 
 // POST /api/orders
-router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = CreateOrderSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ success: false, message: "Invalid order data", errors: parsed.error.flatten().fieldErrors });

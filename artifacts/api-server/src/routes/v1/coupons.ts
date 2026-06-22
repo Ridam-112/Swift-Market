@@ -3,6 +3,7 @@ import { db, coupons, orders } from "@workspace/db";
 import { eq, and, desc, count, ne } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { mi, miArr } from "../../utils/mapId.js";
+import { couponValidateLimiter } from "../../middlewares/rateLimiter.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -13,7 +14,7 @@ router.get("/", authenticate, A, async (_req: Request, res: Response): Promise<v
 });
 
 // POST /validate — validate a coupon code against an order total
-router.post("/validate", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post("/validate", authenticate, couponValidateLimiter, async (req: AuthRequest, res: Response): Promise<void> => {
   const { code, orderTotal, shopId, categories: cartCategories } = req.body as {
     code: string;
     orderTotal: number;

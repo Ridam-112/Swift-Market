@@ -112,3 +112,59 @@ export const tokenRefreshLimiter = isDev
       keyFn: (req) => `refresh:ip:${req.ip ?? req.socket.remoteAddress ?? "unknown"}`,
       message: "Too many token refresh requests. Please wait 15 minutes.",
     });
+
+// ─── Order placement limiter ─────────────────────────────────────────────────
+// Prevents a compromised account or bot from flooding the system with orders.
+// Keyed per authenticated user ID: 10 orders per 10 minutes.
+// Falls back to IP if user ID unavailable. Always active (even in dev) because
+// the key is user-scoped, not IP-scoped, so Replit's shared-IP issue doesn't apply.
+export const orderLimiter = makeRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: isDev ? 100 : 10,
+  keyFn: (req) => {
+    const userId = (req as Request & { user?: { id?: string } }).user?.id;
+    return `order:user:${userId ?? req.ip ?? "unknown"}`;
+  },
+  message: "You are placing orders too quickly. Please wait a few minutes before trying again.",
+});
+
+// ─── Coupon validation limiter ────────────────────────────────────────────────
+// Prevents brute-forcing coupon codes by trying many random strings.
+// Per-IP: 30 attempts per 15 minutes in production.
+// Skipped in dev (Replit shared-IP issue).
+export const couponValidateLimiter = isDev
+  ? (_req: Request, _res: Response, next: NextFunction): void => next()
+  : makeRateLimiter({
+      windowMs: 15 * 60 * 1000,
+      max: 30,
+      keyFn: (req) => `coupon:ip:${req.ip ?? req.socket.remoteAddress ?? "unknown"}`,
+      message: "Too many coupon attempts. Please wait 15 minutes before trying again.",
+    });
+
+// ─── Vendor write limiter ─────────────────────────────────────────────────────
+// Prevents a vendor from spamming product creates/updates (e.g. bulk fake listings).
+// Per authenticated vendor ID: 50 write operations per 15 minutes.
+// User-scoped, so active in all environments.
+export const vendorWriteLimiter = makeRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: isDev ? 500 : 50,
+  keyFn: (req) => {
+    const userId = (req as Request & { user?: { id?: string } }).user?.id;
+    return `vendor:write:${userId ?? req.ip ?? "unknown"}`;
+  },
+  message: "Too many product updates. Please slow down and try again in 15 minutes.",
+});
+
+// ─── Upload limiter ───────────────────────────────────────────────────────────
+// Image uploads hit Cloudinary and are expensive. Cap at 20 uploads per hour
+// per authenticated user to prevent abuse / cost attacks.
+// User-scoped, so active in all environments.
+export const uploadLimiter = makeRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: isDev ? 200 : 20,
+  keyFn: (req) => {
+    const userId = (req as Request & { user?: { id?: string } }).user?.id;
+    return `upload:user:${userId ?? req.ip ?? "unknown"}`;
+  },
+  message: "Upload limit reached. You can upload up to 20 images per hour.",
+});

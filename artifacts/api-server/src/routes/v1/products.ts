@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { db, products, shops, categories, users } from "@workspace/db";
 import { eq, and, ilike, inArray, desc, count, gt, sql, or } from "drizzle-orm";
 import { authenticate, requireRole, optionalAuth, type AuthRequest } from "../../middlewares/auth.js";
+import { vendorWriteLimiter } from "../../middlewares/rateLimiter.js";
 import { deleteFromCloudinary } from "../../lib/cloudinary.js";
 import { createNotificationLimited } from "../../utils/notification.js";
 import { mi, miArr } from "../../utils/mapId.js";
@@ -186,7 +187,7 @@ router.get("/:id", optionalAuth, async (req: Request, res: Response): Promise<vo
 });
 
 // POST /api/products
-router.post("/", authenticate, V, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post("/", authenticate, V, vendorWriteLimiter, async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body as Record<string, unknown>;
   const isAdmin = req.user!.role === "admin" || req.user!.role === "super_admin";
 
@@ -314,7 +315,7 @@ router.patch("/:id/approval", authenticate, A, async (req: AuthRequest, res: Res
 
 // PATCH /api/products/:id — vendor/admin edit
 // Vendor edits always reset status to "pending" and verify ownership (M2)
-router.patch("/:id", authenticate, V, async (req: AuthRequest, res: Response): Promise<void> => {
+router.patch("/:id", authenticate, V, vendorWriteLimiter, async (req: AuthRequest, res: Response): Promise<void> => {
   const isAdmin = req.user!.role === "admin" || req.user!.role === "super_admin";
   const body = req.body as Record<string, unknown>;
 
