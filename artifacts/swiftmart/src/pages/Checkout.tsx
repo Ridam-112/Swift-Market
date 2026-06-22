@@ -58,11 +58,13 @@ export default function Checkout() {
   const [rainSurcharge, setRainSurcharge] = useState(0);
   const [rainModeActive, setRainModeActive] = useState(false);
   const [chargesLoading, setChargesLoading] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState(false);
 
-  if (items.length === 0) {
-    setLocation("/cart");
-    return null;
-  }
+  useEffect(() => {
+    if (items.length === 0 && !orderPlaced) {
+      setLocation("/cart");
+    }
+  }, [items.length, orderPlaced, setLocation]);
 
   const address = user?.addresses.find(a => a.id === selectedAddress);
   const addressPincodeInvalid = address && !isServicePincode(address.pincode);
@@ -212,7 +214,7 @@ export default function Checkout() {
 
     try {
       const data = await createOrderRecord(shopName);
-      toast.success("Order placed successfully!");
+      setOrderPlaced(true);
       clearCart();
       setLocation(`/order/success/${data.order._id}`);
     } catch (err) {
