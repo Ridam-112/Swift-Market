@@ -202,7 +202,8 @@ export default function Profile() {
                 <span className="font-bold text-foreground capitalize">{user.vendorProfile?.storeCategory.replace('-', ' ')}</span>
               </div>
               <div className="mt-4 space-y-3">
-                <p className="text-xs text-muted-foreground font-medium">Switch mode</p>
+                <p className="text-sm font-bold mb-1">Switch between modes</p>
+                <p className="text-xs text-muted-foreground mb-3">Tap a card to switch how you use the app</p>
                 <RoleSwitcher />
                 {role === 'vendor' && (
                   <Button
