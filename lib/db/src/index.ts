@@ -12,12 +12,23 @@ if (!connectionString) {
   );
 }
 
+const isNeon =
+  connectionString.includes("neon") ||
+  connectionString.includes("sslmode=require");
+
 export const pool = new Pool({
   connectionString,
-  ssl: connectionString.includes("neon") || connectionString.includes("sslmode=require")
-    ? { rejectUnauthorized: false }
-    : undefined,
+  ssl: isNeon ? { rejectUnauthorized: false } : undefined,
+  max: isNeon ? 5 : 10,
+  idleTimeoutMillis: isNeon ? 20_000 : 30_000,
+  connectionTimeoutMillis: 10_000,
+  keepAlive: true,
 });
+
+pool.on("error", (err) => {
+  console.error("[DB] Idle client error:", err.message);
+});
+
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";

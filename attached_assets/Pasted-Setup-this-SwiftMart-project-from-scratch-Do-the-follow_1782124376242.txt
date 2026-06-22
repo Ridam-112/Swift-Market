@@ -1,0 +1,38 @@
+Setup this SwiftMart project from scratch. Do the following:
+
+Set these Secrets (Tools → Secrets):
+
+Key	Value
+NEON_DATABASE_URL	postgresql://neondb_owner:npg_wyr4mq0sbZvV@ep-calm-glitter-aoeraspe-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+JWT_SECRET	(generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")
+JWT_REFRESH_SECRET	(generate another random value the same way)
+CLOUDINARY_CLOUD_NAME	(your Cloudinary cloud name)
+CLOUDINARY_API_KEY	(your Cloudinary API key)
+CLOUDINARY_API_SECRET	(your Cloudinary API secret)
+RAZORPAY_KEY_ID	(your Razorpay key ID)
+RAZORPAY_KEY_SECRET	(your Razorpay key secret)
+RAZORPAY_WEBHOOK_SECRET	(your Razorpay webhook secret)
+TWO_FACTOR_API_KEY	(your 2Factor.in API key)
+GOOGLE_CLIENT_ID	(Firebase Google client ID)
+VITE_FIREBASE_API_KEY	(Firebase web app API key)
+VITE_FIREBASE_AUTH_DOMAIN	(e.g. your-project.firebaseapp.com)
+VITE_FIREBASE_PROJECT_ID	(e.g. your-project-id)
+VITE_FIREBASE_APP_ID	(e.g. 1:123:web:abc)
+FIREBASE_PROJECT_ID	(same as VITE_FIREBASE_PROJECT_ID)
+FIREBASE_CLIENT_EMAIL	(Firebase service account email)
+FIREBASE_PRIVATE_KEY	(Firebase service account private key)
+FIREBASE_MESSAGING_SENDER_ID	(Firebase messaging sender ID)
+VAPID_PRIVATE_KEY	(VAPID private key for push notifications)
+Push the DB schema to Neon (run in Shell):
+
+DATABASE_URL="$NEON_DATABASE_URL" pnpm --filter @workspace/db run push
+
+Start the app — run the Start application workflow (or artifacts/api-server: API Server + artifacts/swiftmart: web workflows separately).
+
+The app uses the Neon database (NEON_DATABASE_URL takes priority over Replit's built-in DATABASE_URL), so all existing shops, products, users, and orders will be visible immediately.
+
+OTP login is in demo mode — use code 123456 for any phone number during testing. Set OTP_MODE=real in environment variables when ready for production SMS.
+
+Super admin phones are set in the SUPER_ADMIN_PHONES environment variable (already configured in .replit).
+
+⚠️ Important: The NEON_DATABASE_URL above contains credentials — treat it as a secret and never commit it to code. Only paste it into Replit Secrets.
