@@ -322,75 +322,57 @@ export default function Checkout() {
         <section>
           <h3 className="font-bold text-lg mb-1">Delivery Slot</h3>
           <p className="text-xs text-muted-foreground mb-4">Choose how fast you need it</p>
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-3 gap-3">
 
             {/* Instant */}
             <div
               onClick={() => { setDeliverySlot('instant'); handleRemoveCoupon(); }}
               className={cn(
-                "p-4 rounded-2xl cursor-pointer border-2 transition-all flex items-center gap-4",
+                "p-4 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center text-center gap-2",
                 deliverySlot === 'instant' ? "neu-card border-orange-400/60 bg-orange-500/5" : "bg-card border-transparent neu-inset"
               )}
             >
               <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-lg",
+                "w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0",
                 deliverySlot === 'instant' ? "bg-orange-500 text-white" : "bg-background text-orange-500 neu-inset"
-              )}>
-                ⚡
-              </div>
-              <div className="flex-1">
-                <div className="font-bold text-sm">Instant Delivery</div>
-                <div className="text-xs text-muted-foreground mt-0.5">Delivered in 10–30 minutes</div>
-              </div>
-              <div className={cn("font-bold text-sm", deliverySlot === 'instant' ? "text-orange-500" : "text-foreground")}>
-                ₹35
-              </div>
+              )}>⚡</div>
+              <div className="font-bold text-xs leading-tight">Instant</div>
+              <div className="text-[10px] text-muted-foreground leading-tight">10–30 min</div>
+              <div className={cn("font-extrabold text-sm mt-auto", deliverySlot === 'instant' ? "text-orange-500" : "text-foreground")}>₹35</div>
             </div>
 
             {/* Standard */}
             <div
               onClick={() => { setDeliverySlot('standard'); handleRemoveCoupon(); }}
               className={cn(
-                "p-4 rounded-2xl cursor-pointer border-2 transition-all flex items-center gap-4",
+                "p-4 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center text-center gap-2",
                 deliverySlot === 'standard' ? "neu-card border-blue-400/60 bg-blue-500/5" : "bg-card border-transparent neu-inset"
               )}
             >
               <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-lg",
+                "w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0",
                 deliverySlot === 'standard' ? "bg-blue-500 text-white" : "bg-background text-blue-500 neu-inset"
-              )}>
-                🕐
-              </div>
-              <div className="flex-1">
-                <div className="font-bold text-sm">Standard Delivery</div>
-                <div className="text-xs text-muted-foreground mt-0.5">Delivered in 2–4 hours</div>
-              </div>
-              <div className={cn("font-bold text-sm", deliverySlot === 'standard' ? "text-blue-500" : "text-foreground")}>
-                ₹25
-              </div>
+              )}>🕐</div>
+              <div className="font-bold text-xs leading-tight">Standard</div>
+              <div className="text-[10px] text-muted-foreground leading-tight">2–4 hours</div>
+              <div className={cn("font-extrabold text-sm mt-auto", deliverySlot === 'standard' ? "text-blue-500" : "text-foreground")}>₹25</div>
             </div>
 
             {/* Saver */}
             <div
               onClick={() => { setDeliverySlot('saver'); handleRemoveCoupon(); }}
               className={cn(
-                "p-4 rounded-2xl cursor-pointer border-2 transition-all flex items-center gap-4",
+                "p-4 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center text-center gap-2",
                 deliverySlot === 'saver' ? "neu-card border-green-400/60 bg-green-500/5" : "bg-card border-transparent neu-inset"
               )}
             >
               <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-lg",
+                "w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0",
                 deliverySlot === 'saver' ? "bg-green-500 text-white" : "bg-background text-green-500 neu-inset"
-              )}>
-                🌿
-              </div>
-              <div className="flex-1">
-                <div className="font-bold text-sm">Saver Delivery</div>
-                <div className="text-xs text-muted-foreground mt-0.5">Same day / next available route</div>
-              </div>
-              <div className={cn("font-bold text-sm", deliverySlot === 'saver' ? "text-green-500" : "text-foreground")}>
-                ₹15
-              </div>
+              )}>🌿</div>
+              <div className="font-bold text-xs leading-tight">Saver</div>
+              <div className="text-[10px] text-muted-foreground leading-tight">Same day</div>
+              <div className={cn("font-extrabold text-sm mt-auto", deliverySlot === 'saver' ? "text-green-500" : "text-foreground")}>₹15</div>
             </div>
 
           </div>
