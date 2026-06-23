@@ -328,7 +328,7 @@ export default function Checkout() {
             <div
               onClick={() => { setDeliverySlot('instant'); handleRemoveCoupon(); }}
               className={cn(
-                "p-4 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center text-center gap-2",
+                "aspect-square p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center justify-between text-center",
                 deliverySlot === 'instant' ? "neu-card border-orange-400/60 bg-orange-500/5" : "bg-card border-transparent neu-inset"
               )}
             >
@@ -338,14 +338,14 @@ export default function Checkout() {
               )}>⚡</div>
               <div className="font-bold text-xs leading-tight">Instant</div>
               <div className="text-[10px] text-muted-foreground leading-tight">10–30 min</div>
-              <div className={cn("font-extrabold text-sm mt-auto", deliverySlot === 'instant' ? "text-orange-500" : "text-foreground")}>₹35</div>
+              <div className={cn("font-extrabold text-sm", deliverySlot === 'instant' ? "text-orange-500" : "text-foreground")}>₹35</div>
             </div>
 
             {/* Standard */}
             <div
               onClick={() => { setDeliverySlot('standard'); handleRemoveCoupon(); }}
               className={cn(
-                "p-4 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center text-center gap-2",
+                "aspect-square p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center justify-between text-center",
                 deliverySlot === 'standard' ? "neu-card border-blue-400/60 bg-blue-500/5" : "bg-card border-transparent neu-inset"
               )}
             >
@@ -355,14 +355,14 @@ export default function Checkout() {
               )}>🕐</div>
               <div className="font-bold text-xs leading-tight">Standard</div>
               <div className="text-[10px] text-muted-foreground leading-tight">2–4 hours</div>
-              <div className={cn("font-extrabold text-sm mt-auto", deliverySlot === 'standard' ? "text-blue-500" : "text-foreground")}>₹25</div>
+              <div className={cn("font-extrabold text-sm", deliverySlot === 'standard' ? "text-blue-500" : "text-foreground")}>₹25</div>
             </div>
 
             {/* Saver */}
             <div
               onClick={() => { setDeliverySlot('saver'); handleRemoveCoupon(); }}
               className={cn(
-                "p-4 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center text-center gap-2",
+                "aspect-square p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center justify-between text-center",
                 deliverySlot === 'saver' ? "neu-card border-green-400/60 bg-green-500/5" : "bg-card border-transparent neu-inset"
               )}
             >
@@ -372,7 +372,7 @@ export default function Checkout() {
               )}>🌿</div>
               <div className="font-bold text-xs leading-tight">Saver</div>
               <div className="text-[10px] text-muted-foreground leading-tight">Same day</div>
-              <div className={cn("font-extrabold text-sm mt-auto", deliverySlot === 'saver' ? "text-green-500" : "text-foreground")}>₹15</div>
+              <div className={cn("font-extrabold text-sm", deliverySlot === 'saver' ? "text-green-500" : "text-foreground")}>₹15</div>
             </div>
 
           </div>
