@@ -39,7 +39,10 @@ async function bootstrap() {
     googleClientId = data.googleClientId ?? "";
 
     if (data.firebaseConfig?.apiKey) {
-      initFirebase(data.firebaseConfig);
+      initFirebase({
+        ...data.firebaseConfig,
+        messagingSenderId: data.firebaseConfig.messagingSenderId ?? "",
+      });
     }
   } catch {
     // non-fatal — falls back to OTP-only mode

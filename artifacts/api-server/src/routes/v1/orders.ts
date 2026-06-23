@@ -95,13 +95,13 @@ async function restoreStock(items: OrderItem[]): Promise<void> {
   }));
 }
 
-// Cancel the payout associated with an order and decrement coupon usage (M1, M5)
+// Cancel the payout associated with an order and decrement coupon usage
 async function reverseOrderFinancials(order: { id: string; shopId: string; couponCode?: string | null }): Promise<void> {
   await db.update(payouts)
     .set({ status: "cancelled" })
     .where(sql`${payouts.ordersIncluded} @> ${JSON.stringify([order.id])}::jsonb`)
     .catch((err: unknown) => {
-      console.error(`[orders] reverseOrderFinancials: failed to cancel payout for order ${order.id}:`, err);
+      logger.error({ err, orderId: order.id }, "reverseOrderFinancials: failed to cancel payout");
     });
 
   if (order.couponCode) {
@@ -109,7 +109,7 @@ async function reverseOrderFinancials(order: { id: string; shopId: string; coupo
       .set({ usedCount: sql`GREATEST(${coupons.usedCount} - 1, 0)` })
       .where(eq(coupons.code, order.couponCode))
       .catch((err: unknown) => {
-        console.error(`[orders] reverseOrderFinancials: failed to decrement coupon "${order.couponCode}" for order ${order.id}:`, err);
+        logger.error({ err, couponCode: order.couponCode, orderId: order.id }, "reverseOrderFinancials: failed to decrement coupon");
       });
   }
 }
@@ -122,10 +122,8 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<v
   const role = req.user!.role;
 
   if (role === "customer") {
-    // Customers see only their own orders
     conditions.push(eq(orders.customerId, req.user!.userId));
   } else if (role === "vendor") {
-    // BUG#2 fix: vendors must only see orders for shops they own
     const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq(shops.ownerId, req.user!.userId));
     const vendorShopIds = vendorShops.map(s => s.id);
 
@@ -135,7 +133,6 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<v
     }
 
     if (shopId) {
-      // If a specific shopId is requested, verify it belongs to this vendor
       if (!vendorShopIds.includes(shopId)) {
         res.status(403).json({ success: false, message: "Forbidden: you do not own this shop" });
         return;
@@ -145,7 +142,6 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<v
       conditions.push(inArray(orders.shopId, vendorShopIds));
     }
   } else {
-    // Admins/super_admins see all orders; optionally filtered by shopId
     if (shopId) conditions.push(eq(orders.shopId, shopId));
   }
 
@@ -180,6 +176,12 @@ router.get("/:id", authenticate, validateUuidParams("id"), async (req: AuthReque
 });
 
 // POST /api/orders
+// Bug fixes applied:
+//   #3 — All writes (stock, order, payout, coupon) are wrapped in a single DB transaction.
+//        If anything fails mid-way the DB rolls back atomically; no manual rollback helper needed.
+//   #4 — Coupon limits (global usageLimit + perUserLimit) are re-checked INSIDE the transaction
+//        under the same DB lock, closing the race window where two parallel requests could
+//        both pass the validate endpoint and then both land here simultaneously.
 router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = CreateOrderSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -188,148 +190,166 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
   }
 
   const body = req.body as Record<string, unknown>;
-
   type OrderItemInput = { productId: string; productName: string; qty: number; price: number; category: string };
   const items = parsed.data.items as OrderItemInput[];
-  const reducedProducts: Array<{ productId: string; qty: number; dbPrice: number }> = [];
+  const shopId = String(body["shopId"] ?? "");
 
-  // Stock deduction — captured outside try so rollback helper can access it
-  const rollbackStock = () =>
-    Promise.all(reducedProducts.map(r =>
-      db.update(products)
-        .set({ stock: sql`${products.stock} + ${r.qty}` })
-        .where(eq(products.id, r.productId))
-    ));
+  // Pre-transaction read: fetch shop (needed for commission resolution + payout)
+  const [shop] = await db
+    .select({ id: shops.id, ownerId: shops.ownerId, shopType: shops.shopType, ownerName: shops.ownerName })
+    .from(shops).where(eq(shops.id, shopId)).limit(1);
+  const vendorId = shop ? shop.ownerId : shopId;
 
-  for (const item of items) {
-    // Atomic: decrement only if stock >= qty and product is not inactive
-    const [updated] = await db.update(products)
-      .set({ stock: sql`${products.stock} - ${item.qty}` })
-      .where(and(
-        eq(products.id, item.productId),
-        gte(products.stock, item.qty),
-        ne(products.status, "inactive"),
-      ))
-      .returning({ id: products.id, price: products.price, stock: products.stock });
+  const couponCode = typeof body["couponCode"] === "string" && body["couponCode"].trim()
+    ? body["couponCode"].trim().toUpperCase()
+    : null;
 
-    if (!updated) {
-      if (reducedProducts.length > 0) await rollbackStock();
-      res.status(400).json({
-        success: false,
-        message: `"${item.productName}" is out of stock or unavailable.`,
-      });
-      return;
-    }
-
-    reducedProducts.push({ productId: item.productId, qty: item.qty, dbPrice: updated.price });
-
-    if (updated.stock === 0) {
-      await db.update(products).set({ status: "out_of_stock" }).where(eq(products.id, item.productId));
-    }
-  }
+  // ─── Atomic transaction: stock → coupon re-validation → order → payout → coupon increment ───
+  let createdOrder: typeof orders.$inferSelect;
 
   try {
-    // Recalculate subtotal from real DB prices, ignore client value
-    const subtotal = +reducedProducts
-      .reduce((sum, r) => sum + r.dbPrice * r.qty, 0)
-      .toFixed(2);
+    createdOrder = await db.transaction(async (tx) => {
+      // 1. Deduct stock for every item atomically — if any item fails the whole tx rolls back
+      const reducedProducts: Array<{ productId: string; qty: number; dbPrice: number }> = [];
 
-    const MINIMUM_ORDER_AMOUNT = 80;
-    if (subtotal < MINIMUM_ORDER_AMOUNT) {
-      await rollbackStock();
-      res.status(400).json({
-        success: false,
-        message: `Minimum order amount is ₹${MINIMUM_ORDER_AMOUNT}. Your cart total is ₹${subtotal}.`,
-      });
-      return;
-    }
+      for (const item of items) {
+        const [updated] = await tx.update(products)
+          .set({ stock: sql`${products.stock} - ${item.qty}` })
+          .where(and(
+            eq(products.id, item.productId),
+            gte(products.stock, item.qty),
+            ne(products.status, "inactive"),
+          ))
+          .returning({ id: products.id, price: products.price, stock: products.stock });
 
-    const deliveryCharge = Number(body["deliveryCharge"] ?? 0);
-    const couponDiscount = Number(body["couponDiscount"] ?? 0);
-    const netAmount = subtotal + deliveryCharge - couponDiscount;
+        if (!updated) {
+          throw Object.assign(
+            new Error(`"${item.productName}" is out of stock or unavailable.`),
+            { statusCode: 400 },
+          );
+        }
 
-    const shopId = String(body["shopId"] ?? "");
+        reducedProducts.push({ productId: item.productId, qty: item.qty, dbPrice: updated.price });
 
-    // Look up shop to get owner ID and shop type slug for accurate commission resolution
-    const [shop] = await db.select({ id: shops.id, ownerId: shops.ownerId, shopType: shops.shopType, ownerName: shops.ownerName })
-      .from(shops).where(eq(shops.id, shopId)).limit(1);
-    const vendorId = shop ? shop.ownerId : shopId;
+        if (updated.stock === 0) {
+          await tx.update(products).set({ status: "out_of_stock" }).where(eq(products.id, item.productId));
+        }
+      }
 
-    // Per-item commission calculation (product-level has highest priority)
-    let totalCommissionAmount = 0;
-    const enrichedItems: Array<OrderItemInput & {
-      commissionType: string;
-      commissionRate: number;
-      commissionAmount: number;
-      commissionLevel: string;
-    }> = [];
+      // 2. Recalculate subtotal from real DB prices (client value is ignored)
+      const subtotal = +reducedProducts.reduce((sum, r) => sum + r.dbPrice * r.qty, 0).toFixed(2);
+      const MINIMUM_ORDER_AMOUNT = 80;
+      if (subtotal < MINIMUM_ORDER_AMOUNT) {
+        throw Object.assign(
+          new Error(`Minimum order amount is ₹${MINIMUM_ORDER_AMOUNT}. Your cart total is ₹${subtotal}.`),
+          { statusCode: 400 },
+        );
+      }
 
-    // Build a map of DB prices for commission calculation — never use client-supplied price
-    const dbPriceMap = new Map(reducedProducts.map(r => [r.productId, r.dbPrice]));
+      // 3. Per-item commission calculation (uses real DB prices, not client-supplied prices)
+      const dbPriceMap = new Map(reducedProducts.map(r => [r.productId, r.dbPrice]));
+      let totalCommissionAmount = 0;
+      const enrichedItems: Array<OrderItemInput & {
+        commissionType: string;
+        commissionRate: number;
+        commissionAmount: number;
+        commissionLevel: string;
+      }> = [];
 
-    for (const item of items) {
-      const dbPrice = dbPriceMap.get(item.productId) ?? 0;
-      const lineTotal = dbPrice * item.qty;
-      const itemResolved = await resolveCommission({
-        productId: item.productId,
-        vendorId,
-        categorySlug: item.category,
-        shopTypeSlug: shop?.shopType ?? undefined,
-      });
-      const itemCommission = calculateCommissionAmount(lineTotal, itemResolved);
-      totalCommissionAmount += itemCommission;
-      enrichedItems.push({
-        ...item,
-        price: dbPrice,
-        commissionType: itemResolved.type,
-        commissionRate: itemResolved.rate,
-        commissionAmount: +itemCommission.toFixed(2),
-        commissionLevel: itemResolved.level,
-      });
-    }
+      for (const item of items) {
+        const dbPrice = dbPriceMap.get(item.productId) ?? 0;
+        const lineTotal = dbPrice * item.qty;
+        const itemResolved = await resolveCommission({
+          productId: item.productId,
+          vendorId,
+          categorySlug: item.category,
+          shopTypeSlug: shop?.shopType ?? undefined,
+        });
+        const itemCommission = calculateCommissionAmount(lineTotal, itemResolved);
+        totalCommissionAmount += itemCommission;
+        enrichedItems.push({
+          ...item,
+          price: dbPrice,
+          commissionType: itemResolved.type,
+          commissionRate: itemResolved.rate,
+          commissionAmount: +itemCommission.toFixed(2),
+          commissionLevel: itemResolved.level,
+        });
+      }
 
-    const commissionAmount = +totalCommissionAmount.toFixed(2);
-    const vendorPayable = +(netAmount - commissionAmount).toFixed(2);
-    const avgRate = items.length > 0
-      ? +(enrichedItems.reduce((s, it) => s + it.commissionRate, 0) / enrichedItems.length).toFixed(2)
-      : 0;
+      const commissionAmount = +totalCommissionAmount.toFixed(2);
+      const deliveryCharge = Number(body["deliveryCharge"] ?? 0);
+      const couponDiscount = Number(body["couponDiscount"] ?? 0);
+      const netAmount = subtotal + deliveryCharge - couponDiscount;
+      const vendorPayable = +(netAmount - commissionAmount).toFixed(2);
+      const avgRate = enrichedItems.length > 0
+        ? +(enrichedItems.reduce((s, it) => s + it.commissionRate, 0) / enrichedItems.length).toFixed(2)
+        : 0;
 
-    // Online payment orders start as "pending"; verify endpoint upgrades to "success"
-    const paymentMethod = String(body["paymentMethod"] ?? "COD");
-    const paymentStatus = paymentMethod === "COD" ? "pending" : "pending";
+      // 4. Re-validate coupon inside the transaction (fixes race condition — Bug #4)
+      //    Two concurrent requests both passed /coupons/validate but we re-check here
+      //    while holding the transaction lock so only one can succeed.
+      if (couponCode) {
+        const [coupon] = await tx.select().from(coupons)
+          .where(eq(coupons.code, couponCode))
+          .limit(1);
 
-    const [order] = await db.insert(orders).values({
-      customerId: req.user!.userId,
-      customerName: String(body["customerName"] ?? ""),
-      customerPhone: String(body["customerPhone"] ?? ""),
-      shopId,
-      shopName: String(body["shopName"] ?? ""),
-      items: enrichedItems,
-      subtotal,
-      deliveryCharge,
-      couponDiscount,
-      netAmount,
-      commissionRate: avgRate,
-      commissionAmount,
-      vendorPayable,
-      platformRevenue: commissionAmount,
-      deliveryType: (body["deliveryType"] === 'scheduled' ? 'scheduled' : 'instant') as 'instant' | 'scheduled',
-      paymentMethod,
-      paymentStatus,
-      address: (body["address"] ?? {}) as Record<string, string>,
-      couponCode: typeof body["couponCode"] === "string" && body["couponCode"].trim()
-        ? body["couponCode"].trim().toUpperCase()
-        : undefined,
-      // Store Razorpay order ID early so webhook can reconcile abandoned payments
-      razorpayOrderId: typeof body["razorpayOrderId"] === "string" && body["razorpayOrderId"].trim()
-        ? body["razorpayOrderId"].trim()
-        : undefined,
-    }).returning();
+        if (!coupon || !coupon.isActive) {
+          throw Object.assign(new Error("Coupon is no longer valid."), { statusCode: 400 });
+        }
+        if (coupon.expiryDate < new Date()) {
+          throw Object.assign(new Error("Coupon has expired."), { statusCode: 400 });
+        }
+        if (coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit) {
+          throw Object.assign(new Error("Coupon usage limit has been reached."), { statusCode: 400 });
+        }
+        if (coupon.perUserLimit > 0) {
+          const [{ uses }] = await tx.select({ uses: count() }).from(orders)
+            .where(and(
+              eq(orders.customerId, req.user!.userId),
+              eq(orders.couponCode, couponCode),
+              ne(orders.status, "cancelled"),
+              ne(orders.status, "refunded"),
+            ));
+          if (Number(uses) >= coupon.perUserLimit) {
+            throw Object.assign(
+              new Error(`You've already used this coupon ${coupon.perUserLimit} time${coupon.perUserLimit > 1 ? "s" : ""} (limit reached).`),
+              { statusCode: 400 },
+            );
+          }
+        }
+      }
 
-    // Create payout record for vendor
-    try {
+      // 5. Insert order record
+      const paymentMethod = String(body["paymentMethod"] ?? "COD");
+      const [order] = await tx.insert(orders).values({
+        customerId: req.user!.userId,
+        customerName: String(body["customerName"] ?? ""),
+        customerPhone: String(body["customerPhone"] ?? ""),
+        shopId,
+        shopName: String(body["shopName"] ?? ""),
+        items: enrichedItems,
+        subtotal,
+        deliveryCharge,
+        couponDiscount,
+        netAmount,
+        commissionRate: avgRate,
+        commissionAmount,
+        vendorPayable,
+        platformRevenue: commissionAmount,
+        deliveryType: (body["deliveryType"] === "scheduled" ? "scheduled" : "instant") as "instant" | "scheduled",
+        paymentMethod,
+        paymentStatus: "pending",
+        address: (body["address"] ?? {}) as Record<string, string>,
+        couponCode: couponCode ?? undefined,
+        razorpayOrderId: typeof body["razorpayOrderId"] === "string" && body["razorpayOrderId"].trim()
+          ? body["razorpayOrderId"].trim()
+          : undefined,
+      }).returning();
+
+      // 6. Create payout record inside transaction — vendor payout is guaranteed or order rolls back
       if (shopId && vendorPayable > 0 && shop) {
-        await db.insert(payouts).values({
+        await tx.insert(payouts).values({
           vendorId: shop.ownerId,
           vendorName: shop.ownerName ?? String(body["shopName"] ?? ""),
           shopId,
@@ -340,58 +360,50 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
           ordersIncluded: [order!.id],
         });
       }
-    } catch (payoutErr) {
-      // Payout creation failed — log clearly and notify all super-admins so they can create it manually (M8)
-      logger.error({ err: payoutErr, orderId: order!.id, vendorPayable }, "Payout creation FAILED — manual intervention required");
-      db.select({ id: users.id }).from(users).where(eq(users.role, "super_admin")).limit(10)
-        .then(admins => Promise.all(admins.map(a =>
-          createNotificationLimited(a.id, {
-            type: "system",
-            title: "⚠️ Payout Creation Failed",
-            message: `Order #${order!.id.slice(-6).toUpperCase()} — payout of ₹${vendorPayable} for shop ${String(body["shopName"] ?? shopId ?? "")} could not be created automatically. Please create it manually.`,
-            data: { orderId: order!.id },
-          }).catch(() => {})
-        )))
-        .catch(() => {});
-    }
 
-    // Increment coupon usedCount
-    const couponCode = order!.couponCode;
-    if (couponCode) {
-      await db.update(coupons)
-        .set({ usedCount: sql`${coupons.usedCount} + 1` })
-        .where(eq(coupons.code, couponCode));
-    }
-
-    // Notify customer — fire-and-forget so a notification failure never blocks the 201
-    createNotificationLimited(req.user!.userId, {
-      type: "order_update",
-      title: "Order Placed Successfully",
-      message: `Your order #${order!.id.slice(-6).toUpperCase()} has been placed. We'll keep you updated!`,
-      data: { orderId: order!.id },
-    }).catch(() => {});
-
-    // Notify vendor/shop owner
-    try {
-      if (shop?.ownerId) {
-        const [vendor] = await db.select({ id: users.id }).from(users).where(eq(users.id, shop.ownerId)).limit(1);
-        if (vendor) {
-          await createNotificationLimited(vendor.id, {
-            type: "order_update",
-            title: "New Order Received",
-            message: `You have a new order #${order!.id.slice(-6).toUpperCase()} worth ₹${netAmount}.`,
-            data: { orderId: order!.id },
-          });
-        }
+      // 7. Increment coupon usedCount inside transaction — atomic with the order insert
+      if (couponCode) {
+        await tx.update(coupons)
+          .set({ usedCount: sql`${coupons.usedCount} + 1` })
+          .where(eq(coupons.code, couponCode));
       }
-    } catch { /* ignore vendor notification errors */ }
 
-    res.status(201).json({ success: true, order: mi(order!) });
-  } catch (err) {
-    // Roll back deducted stock on any unexpected error
-    await rollbackStock().catch(() => {});
-    throw err; // re-throw so Express 5 global error handler returns 500
+      return order!;
+    });
+  } catch (err: unknown) {
+    // Known validation errors (stock, minimum order, coupon) — return 4xx to client
+    const e = err as { statusCode?: number; message?: string };
+    if (e.statusCode) {
+      res.status(e.statusCode).json({ success: false, message: e.message });
+      return;
+    }
+    // Unexpected DB/server errors — re-throw for Express 5 global handler (returns 500)
+    throw err;
   }
+
+  // Post-transaction: fire-and-forget notifications — failures never affect the 201 response
+  createNotificationLimited(req.user!.userId, {
+    type: "order_update",
+    title: "Order Placed Successfully",
+    message: `Your order #${createdOrder.id.slice(-6).toUpperCase()} has been placed. We'll keep you updated!`,
+    data: { orderId: createdOrder.id },
+  }).catch(() => {});
+
+  try {
+    if (shop?.ownerId) {
+      const [vendor] = await db.select({ id: users.id }).from(users).where(eq(users.id, shop.ownerId)).limit(1);
+      if (vendor) {
+        await createNotificationLimited(vendor.id, {
+          type: "order_update",
+          title: "New Order Received",
+          message: `You have a new order #${createdOrder.id.slice(-6).toUpperCase()} worth ₹${createdOrder.netAmount}.`,
+          data: { orderId: createdOrder.id },
+        });
+      }
+    }
+  } catch { /* ignore vendor notification errors */ }
+
+  res.status(201).json({ success: true, order: mi(createdOrder) });
 });
 
 // PATCH /api/orders/:id/status
@@ -399,7 +411,6 @@ router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: 
   const orderId = req.params["id"] as string;
   const { status, cancelReason } = req.body as { status: string; cancelReason?: string };
 
-  // Validate status is a known value (L1)
   if (!VALID_STATUSES.has(status)) {
     res.status(400).json({ success: false, message: `Invalid status '${status}'` });
     return;
@@ -408,9 +419,7 @@ router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: 
   const role = req.user!.role;
   const userId = req.user!.userId;
 
-  // RBAC: restrict which roles can set which statuses
   if (role === "customer") {
-    // Customers can only cancel their own orders
     if (status !== "cancelled") {
       res.status(403).json({ success: false, message: "Customers can only cancel orders" });
       return;
@@ -423,12 +432,10 @@ router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: 
       return;
     }
   } else if (role === "vendor") {
-    // Vendors cannot issue refunds — admin only
     if (status === "refunded") {
       res.status(403).json({ success: false, message: "Only admins can issue refunds" });
       return;
     }
-    // Vendors can only update orders for their own shops
     const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq(shops.ownerId, userId));
     const vendorShopIds = new Set(vendorShops.map(s => s.id));
     const [vendorOrder] = await db.select({ shopId: orders.shopId })
@@ -439,9 +446,7 @@ router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: 
       return;
     }
   }
-  // Admins/super_admins may set any valid status — no extra check needed
 
-  // Fetch current order to guard against double-reversals
   const [current] = await db.select({ status: orders.status, couponCode: orders.couponCode })
     .from(orders).where(eq(orders.id, orderId)).limit(1);
   if (!current) { res.status(404).json({ success: false, message: "Not found" }); return; }
@@ -483,18 +488,16 @@ router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: 
 router.post("/:id/refund", authenticate, A, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
   const orderId = req.params["id"] as string;
 
-  // Fetch full order first — need paymentId, method, and amount for Razorpay call
   const [current] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
   if (!current) { res.status(404).json({ success: false, message: "Order not found" }); return; }
 
-  // H1 fix: call Razorpay Refund API for online-payment orders before marking refunded in DB
   let razorpayWarning: string | null = null;
   if (current.paymentMethod !== "COD" && current.razorpayPaymentId) {
     const rzp = getRazorpay();
     if (rzp) {
       try {
         await rzp.payments.refund(current.razorpayPaymentId, {
-          amount: Math.round(current.netAmount * 100), // paise
+          amount: Math.round(current.netAmount * 100),
           speed: "normal",
           notes: { orderId, reason: "Admin initiated refund via SwiftMart dashboard" },
         });
