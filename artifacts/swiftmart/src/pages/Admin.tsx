@@ -6195,11 +6195,7 @@ const LAYOUT_OPTIONS = [
   { value: "grid", label: "Grid" },
 ];
 
-const DEFAULT_CATEGORIES = [
-  "grocery", "kirana-store", "fruits-vegetables", "dairy", "snacks", "drinks",
-  "restaurant", "pharmacy", "cosmetics", "clothing", "electronics", "toys",
-  "household", "gifts", "hardware",
-];
+interface ApiCategory { _id: string; slug: string; name: string; emoji?: string; }
 
 function HomepageSectionsTab() {
   const [sections, setSections] = useState<HomepageSectionRow[]>([]);
@@ -6207,6 +6203,7 @@ function HomepageSectionsTab() {
   const [saving, setSaving] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingSection, setEditingSection] = useState<HomepageSectionRow | null>(null);
+  const [apiCategories, setApiCategories] = useState<ApiCategory[]>([]);
 
   const [formTitle, setFormTitle] = useState("");
   const [formType, setFormType] = useState("trending");
@@ -6227,6 +6224,12 @@ function HomepageSectionsTab() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    api.get<{ success: boolean; categories: ApiCategory[] }>('/categories')
+      .then(d => setApiCategories(d.categories ?? []))
+      .catch(() => {});
+  }, []);
 
   function openCreate() {
     setEditingSection(null);
@@ -6466,8 +6469,15 @@ function HomepageSectionsTab() {
                   className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="">— Pick a category —</option>
-                  {DEFAULT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  {apiCategories.map(c => (
+                    <option key={c._id} value={c.slug}>
+                      {c.emoji ? `${c.emoji} ` : ""}{c.name}
+                    </option>
+                  ))}
                 </select>
+                {apiCategories.length === 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">Loading categories…</p>
+                )}
               </div>
             )}
 
