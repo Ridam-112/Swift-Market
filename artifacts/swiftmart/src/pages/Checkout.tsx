@@ -45,7 +45,7 @@ export default function Checkout() {
     selectedDeliveryAddress?.id || user?.addresses[0]?.id || null
   );
   const [showAddressForm, setShowAddressForm] = useState(false);
-  const [deliverySlot, setDeliverySlot] = useState<'instant' | 'schedule'>('instant');
+  const [deliverySlot, setDeliverySlot] = useState<'instant' | 'standard' | 'saver'>('instant');
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'COD'>('UPI');
   const [placing, setPlacing] = useState(false);
 
@@ -95,7 +95,7 @@ export default function Checkout() {
     }).finally(() => setChargesLoading(false));
   }, [address?.pincode, shopPincode]);
 
-  const slotFee = deliverySlot === 'instant' ? 25 : 10;
+  const slotFee = deliverySlot === 'instant' ? 35 : deliverySlot === 'standard' ? 25 : 15;
   const totalDeliveryFee = slotFee + crossAreaCharge + rainSurcharge;
   const orderTotalForCoupon = subtotal + totalDeliveryFee;
   const couponDiscount = couponApplied?.discount ?? 0;
@@ -148,7 +148,7 @@ export default function Checkout() {
       })),
       subtotal,
       deliveryCharge: totalDeliveryFee,
-      deliveryType: deliverySlot === 'instant' ? 'instant' : 'scheduled',
+      deliveryType: deliverySlot === 'instant' ? 'instant' : deliverySlot === 'standard' ? 'scheduled' : 'saver',
       couponDiscount,
       ...(couponApplied ? { couponCode: couponApplied.code } : {}),
       ...(razorpayOrderId ? { razorpayOrderId } : {}),
@@ -320,35 +320,80 @@ export default function Checkout() {
         </section>
 
         <section>
-          <h3 className="font-bold text-lg mb-4">Delivery Slot</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <h3 className="font-bold text-lg mb-1">Delivery Slot</h3>
+          <p className="text-xs text-muted-foreground mb-4">Choose how fast you need it</p>
+          <div className="flex flex-col gap-3">
+
+            {/* Instant */}
             <div
               onClick={() => { setDeliverySlot('instant'); handleRemoveCoupon(); }}
               className={cn(
-                "p-4 rounded-2xl cursor-pointer text-center border-2 transition-all",
-                deliverySlot === 'instant' ? "neu-card border-primary/50 bg-primary/5" : "bg-card border-transparent neu-inset"
+                "p-4 rounded-2xl cursor-pointer border-2 transition-all flex items-center gap-4",
+                deliverySlot === 'instant' ? "neu-card border-orange-400/60 bg-orange-500/5" : "bg-card border-transparent neu-inset"
               )}
             >
-              <div className="font-bold">Instant 10–30 min</div>
-              <div className="text-xs text-muted-foreground mt-1">₹25 delivery fee</div>
+              <div className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-lg",
+                deliverySlot === 'instant' ? "bg-orange-500 text-white" : "bg-background text-orange-500 neu-inset"
+              )}>
+                ⚡
+              </div>
+              <div className="flex-1">
+                <div className="font-bold text-sm">Instant Delivery</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Delivered in 10–30 minutes</div>
+              </div>
+              <div className={cn("font-bold text-sm", deliverySlot === 'instant' ? "text-orange-500" : "text-foreground")}>
+                ₹35
+              </div>
             </div>
+
+            {/* Standard */}
             <div
-              onClick={() => { setDeliverySlot('schedule'); handleRemoveCoupon(); }}
+              onClick={() => { setDeliverySlot('standard'); handleRemoveCoupon(); }}
               className={cn(
-                "p-4 rounded-2xl cursor-pointer text-center border-2 transition-all",
-                deliverySlot === 'schedule' ? "neu-card border-primary/50 bg-primary/5" : "bg-card border-transparent neu-inset"
+                "p-4 rounded-2xl cursor-pointer border-2 transition-all flex items-center gap-4",
+                deliverySlot === 'standard' ? "neu-card border-blue-400/60 bg-blue-500/5" : "bg-card border-transparent neu-inset"
               )}
             >
-              <div className="font-bold">Scheduled Delivery</div>
-              <div className="text-xs text-muted-foreground mt-1">₹10 · Delivered in 2–4 hrs</div>
+              <div className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-lg",
+                deliverySlot === 'standard' ? "bg-blue-500 text-white" : "bg-background text-blue-500 neu-inset"
+              )}>
+                🕐
+              </div>
+              <div className="flex-1">
+                <div className="font-bold text-sm">Standard Delivery</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Delivered in 2–4 hours</div>
+              </div>
+              <div className={cn("font-bold text-sm", deliverySlot === 'standard' ? "text-blue-500" : "text-foreground")}>
+                ₹25
+              </div>
             </div>
+
+            {/* Saver */}
+            <div
+              onClick={() => { setDeliverySlot('saver'); handleRemoveCoupon(); }}
+              className={cn(
+                "p-4 rounded-2xl cursor-pointer border-2 transition-all flex items-center gap-4",
+                deliverySlot === 'saver' ? "neu-card border-green-400/60 bg-green-500/5" : "bg-card border-transparent neu-inset"
+              )}
+            >
+              <div className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-lg",
+                deliverySlot === 'saver' ? "bg-green-500 text-white" : "bg-background text-green-500 neu-inset"
+              )}>
+                🌿
+              </div>
+              <div className="flex-1">
+                <div className="font-bold text-sm">Saver Delivery</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Same day / next available route</div>
+              </div>
+              <div className={cn("font-bold text-sm", deliverySlot === 'saver' ? "text-green-500" : "text-foreground")}>
+                ₹15
+              </div>
+            </div>
+
           </div>
-          {deliverySlot === 'schedule' && (
-            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5 px-1">
-              <span className="text-green-600">✓</span>
-              Scheduled delivery may take 2–4 hours. Orders are batched for efficiency.
-            </p>
-          )}
         </section>
 
         <section>
