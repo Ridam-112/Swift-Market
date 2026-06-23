@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { db, homepageSections, products } from "@workspace/db";
-import { eq, inArray, asc, and, gt, desc } from "drizzle-orm";
+import { eq, inArray, asc, and, gt, desc, sql } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { mi, miArr } from "../../utils/mapId.js";
 
@@ -14,7 +14,12 @@ type SectionConfig = {
   layout?: "grid" | "scroll";
 };
 
-async function resolveProducts(type: string, config: SectionConfig, limit: number) {
+async function resolveProducts(
+  type: string,
+  config: SectionConfig,
+  limit: number,
+  offset = 0,
+) {
   const lm = Math.min(limit, 40);
   const base = and(eq(products.status, "active"), gt(products.stock, 0));
 
@@ -22,41 +27,51 @@ async function resolveProducts(type: string, config: SectionConfig, limit: numbe
     const rows = await db.select().from(products)
       .where(and(base, eq(products.trending, true)))
       .orderBy(desc(products.rating))
-      .limit(lm);
-    return miArr(rows);
+      .limit(lm).offset(offset);
+    const [{ total }] = await db.select({ total: sql<number>`count(*)::int` })
+      .from(products).where(and(base, eq(products.trending, true)));
+    return { rows: miArr(rows), total: total ?? 0 };
   }
 
   if (type === "category" && config.categorySlug) {
     const rows = await db.select().from(products)
       .where(and(base, eq(products.category, config.categorySlug)))
       .orderBy(desc(products.rating))
-      .limit(lm);
-    return miArr(rows);
+      .limit(lm).offset(offset);
+    const [{ total }] = await db.select({ total: sql<number>`count(*)::int` })
+      .from(products).where(and(base, eq(products.category, config.categorySlug)));
+    return { rows: miArr(rows), total: total ?? 0 };
   }
 
   if (type === "manual" && Array.isArray(config.productIds) && config.productIds.length > 0) {
+    const ids = config.productIds.slice(0, 40);
     const rows = await db.select().from(products)
-      .where(and(base, inArray(products.id, config.productIds.slice(0, 40))))
-      .limit(lm);
-    return miArr(rows);
+      .where(and(base, inArray(products.id, ids)))
+      .limit(lm).offset(offset);
+    return { rows: miArr(rows), total: ids.length };
   }
 
   if (type === "new_arrivals") {
     const rows = await db.select().from(products)
       .where(base)
       .orderBy(desc(products.createdAt))
-      .limit(lm);
-    return miArr(rows);
+      .limit(lm).offset(offset);
+    const [{ total }] = await db.select({ total: sql<number>`count(*)::int` })
+      .from(products).where(base);
+    return { rows: miArr(rows), total: total ?? 0 };
   }
 
+  // fallback: all active products by rating
   const rows = await db.select().from(products)
     .where(base)
     .orderBy(desc(products.rating))
-    .limit(lm);
-  return miArr(rows);
+    .limit(lm).offset(offset);
+  const [{ total }] = await db.select({ total: sql<number>`count(*)::int` })
+    .from(products).where(base);
+  return { rows: miArr(rows), total: total ?? 0 };
 }
 
-// GET /api/homepage-sections — public, enabled sections with resolved products
+// GET /api/homepage-sections — public, enabled sections with first 8 products each
 router.get("/", async (_req: Request, res: Response): Promise<void> => {
   const sections = await db.select().from(homepageSections)
     .where(eq(homepageSections.enabled, true))
@@ -64,15 +79,29 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
   const resolved = await Promise.all(sections.map(async (s) => {
     const cfg = (s.config ?? {}) as SectionConfig;
-    const limit = cfg.limit ?? 10;
-    const prods = await resolveProducts(s.type, cfg, limit);
-    return {
-      ...mi(s),
-      products: prods,
-    };
+    const { rows, total } = await resolveProducts(s.type, cfg, 8, 0);
+    return { ...mi(s), products: rows, total, hasMore: total > 8 };
   }));
 
   res.json({ success: true, sections: resolved });
+});
+
+// GET /api/homepage-sections/:id/products — public, paginated products for one section
+router.get("/:id/products", async (req: Request, res: Response): Promise<void> => {
+  const id = req.params["id"] as string;
+  const page = Math.max(1, parseInt((req.query as Record<string, string>)["page"] ?? "1"));
+  const limit = Math.min(40, parseInt((req.query as Record<string, string>)["limit"] ?? "8"));
+  const offset = (page - 1) * limit;
+
+  const [section] = await db.select().from(homepageSections)
+    .where(eq(homepageSections.id, id)).limit(1);
+  if (!section) { res.status(404).json({ success: false, message: "Section not found" }); return; }
+
+  const cfg = (section.config ?? {}) as SectionConfig;
+  const { rows, total } = await resolveProducts(section.type, cfg, limit, offset);
+  const hasMore = offset + rows.length < total;
+
+  res.json({ success: true, products: rows, total, page, hasMore });
 });
 
 // GET /api/homepage-sections/admin — admin, all sections (no product resolution)

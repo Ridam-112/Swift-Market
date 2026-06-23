@@ -72,27 +72,65 @@ interface HomepageSection {
   sortOrder: number;
   config: { layout?: string; limit?: number };
   products: Product[];
+  total: number;
+  hasMore: boolean;
 }
 
+const PAGE_SIZE = 8;
+
 function DynamicSection({ section }: { section: HomepageSection }) {
-  const isGrid = section.config.layout === "grid";
+  const [allProducts, setAllProducts] = useState<Product[]>(section.products);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(section.hasMore);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  function handleSeeMore() {
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    api.get<{ success: boolean; products: RawProduct[]; hasMore: boolean }>(
+      `/homepage-sections/${section._id}/products?page=${nextPage}&limit=${PAGE_SIZE}`
+    )
+      .then(d => {
+        setAllProducts(prev => [...prev, ...(d.products ?? []).map(mapProduct)]);
+        setHasMore(d.hasMore ?? false);
+        setPage(nextPage);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  }
 
   return (
     <section>
-      <SectionHeader title={section.title} />
-      {isGrid ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
-          {section.products.map((product, i) => (
-            <ProductCard key={product.id} product={product} index={i} />
-          ))}
-        </div>
-      ) : (
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
-          {section.products.map((product, i) => (
-            <div key={product.id} className="snap-start shrink-0 w-44">
-              <ProductCard product={product} index={i} />
-            </div>
-          ))}
+      <SectionHeader
+        title={section.title}
+        action={
+          <span className="text-xs text-muted-foreground font-medium">
+            {section.total} item{section.total !== 1 ? "s" : ""}
+          </span>
+        }
+      />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
+        {allProducts.map((product, i) => (
+          <ProductCard key={product.id} product={product} index={i} />
+        ))}
+      </div>
+      {hasMore && (
+        <div className="flex justify-center pt-4">
+          <Button
+            variant="outline"
+            onClick={handleSeeMore}
+            disabled={loadingMore}
+            className="rounded-full px-8 font-semibold neu-card border-none gap-2"
+          >
+            {loadingMore ? (
+              <>
+                <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin inline-block" />
+                Loading…
+              </>
+            ) : (
+              <>See more <ChevronRight className="w-4 h-4" /></>
+            )}
+          </Button>
         </div>
       )}
     </section>
