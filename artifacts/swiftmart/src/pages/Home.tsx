@@ -5,18 +5,16 @@ import { useShops } from "@/hooks/useShops";
 import { HeroBannerSlider } from "@/components/HeroBannerSlider";
 import { CategoryBubble, type DisplayCategory } from "@/components/CategoryBubble";
 import { ProductCard } from "@/components/ProductCard";
-import { ProductGrid } from "@/components/ProductGrid";
-import { SectionHeader } from "@/components/SectionHeader";
 import { SkeletonGrid } from "@/components/SkeletonGrid";
+import { SectionHeader } from "@/components/SectionHeader";
 import { api } from "@/lib/api";
-import { Star, ChevronRight, Flame, Zap, MapPin } from "lucide-react";
+import { Star, ChevronRight, Zap, MapPin } from "lucide-react";
 import type { Product } from "@/types";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
 const VISIBLE_CATEGORIES = 8;
 
-// Priority order: daily needs first, then food, then other categories
 const CATEGORY_PRIORITY: Record<string, number> = {
   grocery: 1, "kirana-store": 2, "fruits-vegetables": 3, vegetables: 4, fruits: 5,
   "sweet-shop": 6, bakery: 7, dairy: 8, snacks: 9, drinks: 10,
@@ -41,40 +39,86 @@ const DEFAULT_COLORS = [
   "hsl(350,80%,60%)", "hsl(160,60%,40%)", "hsl(230,60%,55%)", "hsl(250,55%,55%)",
 ];
 
+interface RawProduct {
+  id?: unknown; _id?: unknown; name?: unknown; category?: unknown;
+  price?: unknown; discountedPrice?: unknown; unit?: unknown; images?: unknown;
+  image?: unknown; description?: unknown; stock?: unknown; rating?: unknown;
+  shopId?: unknown; trending?: unknown;
+}
+
+function mapProduct(p: RawProduct): Product {
+  return {
+    id: (p.id ?? p._id ?? "") as string,
+    name: (p.name ?? "") as string,
+    category: (p.category ?? "") as Product["category"],
+    price: Number(p.price ?? 0),
+    discountedPrice: p.discountedPrice != null ? Number(p.discountedPrice) : undefined,
+    unit: (p.unit ?? "1 unit") as string,
+    image: ((p.images as string[] | undefined)?.[0] ?? p.image ?? "/assets/product-placeholder.png") as string,
+    images: (p.images as string[] | undefined) ?? [],
+    description: (p.description ?? "") as string,
+    stock: Number(p.stock ?? 0),
+    rating: Number(p.rating ?? 0),
+    vendorId: (p.shopId ?? "") as string,
+    trending: Boolean(p.trending),
+  };
+}
+
+interface HomepageSection {
+  _id: string;
+  title: string;
+  type: string;
+  enabled: boolean;
+  sortOrder: number;
+  config: { layout?: string; limit?: number };
+  products: Product[];
+}
+
+function DynamicSection({ section }: { section: HomepageSection }) {
+  const isGrid = section.config.layout === "grid";
+
+  return (
+    <section>
+      <SectionHeader title={section.title} />
+      {isGrid ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
+          {section.products.map((product, i) => (
+            <ProductCard key={product.id} product={product} index={i} />
+          ))}
+        </div>
+      ) : (
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
+          {section.products.map((product, i) => (
+            <div key={product.id} className="snap-start shrink-0 w-44">
+              <ProductCard product={product} index={i} />
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function Home() {
   const { user } = useAuth();
-  const { products } = useProducts();
   const { shops, isLoading: shopsLoading } = useShops();
-  // Use real data-loading state instead of a hardcoded timeout
   const loading = shopsLoading;
   const [apiCategories, setApiCategories] = useState<DisplayCategory[]>([]);
-  const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
-  const [trendingLoading, setTrendingLoading] = useState(true);
+  const [dynamicSections, setDynamicSections] = useState<HomepageSection[]>([]);
+  const [sectionsLoading, setSectionsLoading] = useState(true);
 
+  // Load admin-configured homepage sections
   useEffect(() => {
-    api.get<{ success: boolean; products: Array<Record<string, unknown>> }>('/products?trending=true&limit=10')
+    api.get<{ success: boolean; sections: Array<HomepageSection & { products: RawProduct[] }> }>('/homepage-sections')
       .then(d => {
-        const mapped: Product[] = (d.products ?? []).map(p => ({
-          id: (p['id'] ?? p['_id'] ?? '') as string,
-          name: (p['name'] ?? '') as string,
-          category: (p['category'] ?? '') as Product['category'],
-          price: Number(p['price'] ?? 0),
-          discountedPrice: p['discountedPrice'] != null ? Number(p['discountedPrice']) : undefined,
-          unit: (p['unit'] ?? '1 unit') as string,
-          image: ((p['images'] as string[] | undefined)?.[0] ?? p['image'] ?? '/assets/product-placeholder.png') as string,
-          images: (p['images'] as string[] | undefined) ?? [],
-          description: (p['description'] ?? '') as string,
-          stock: Number(p['stock'] ?? 0),
-          rating: Number(p['rating'] ?? 0),
-          vendorId: (p['shopId'] ?? '') as string,
-          trending: Boolean(p['trending']),
+        const mapped = (d.sections ?? []).map(s => ({
+          ...s,
+          products: (s.products ?? []).map(mapProduct),
         }));
-        setTrendingProducts(mapped);
+        setDynamicSections(mapped);
       })
-      .catch((err: unknown) => {
-        console.error("[Home] Failed to load trending products:", err);
-      })
-      .finally(() => setTrendingLoading(false));
+      .catch(() => {})
+      .finally(() => setSectionsLoading(false));
   }, []);
 
   useEffect(() => {
@@ -91,8 +135,6 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  const HOME_PRODUCTS = 8;
-  const homeProducts = products.slice(0, HOME_PRODUCTS);
   const SHOPS_PREVIEW = 4;
   const popularShops = shops.slice(0, SHOPS_PREVIEW);
 
@@ -100,6 +142,7 @@ export default function Home() {
     <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto space-y-6 overflow-x-hidden">
       <HeroBannerSlider />
 
+      {/* Shop by Category */}
       <section>
         <SectionHeader
           title="Shop by Category"
@@ -128,6 +171,7 @@ export default function Home() {
         )}
       </section>
 
+      {/* Popular Shops */}
       <section>
         <SectionHeader
           title="Popular Shops"
@@ -161,17 +205,11 @@ export default function Home() {
               <Link key={shop.id} href={`/shop/${shop.id}`} className="snap-start shrink-0 block w-[calc(75vw)] max-w-[260px] min-w-[200px]">
                 <div className="bg-card rounded-2xl p-3 neu-card flex gap-3 items-center h-full">
                   <div className="w-14 h-14 rounded-xl overflow-hidden bg-background neu-inset flex-shrink-0">
-                    <img
-                      src={shop.image}
-                      alt={shop.storeName}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={shop.image} alt={shop.storeName} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-sm truncate text-foreground">{shop.storeName}</h3>
-                    <div className="text-[10px] text-muted-foreground mb-1 truncate">
-                      {shop.category}
-                    </div>
+                    <div className="text-[10px] text-muted-foreground mb-1 truncate">{shop.category}</div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <div className="flex items-center gap-1 text-[11px] font-medium text-yellow-600">
                         <Star className="w-3 h-3 fill-current" />
@@ -192,78 +230,30 @@ export default function Home() {
         )}
       </section>
 
-      {(trendingLoading || trendingProducts.length > 0) && (
+      {/* Dynamic Admin-Configured Sections */}
+      {sectionsLoading ? (
         <section>
-          <SectionHeader
-            title="Trending in Your Area"
-            action={
-              !trendingLoading && trendingProducts.length > 0 ? (
-                <div className="flex items-center gap-1 text-xs font-semibold text-orange-500">
-                  <Flame className="w-3.5 h-3.5" />
-                  {trendingProducts.length} hot picks
+          <div className="h-5 w-48 bg-muted rounded animate-pulse mb-4" />
+          <div className="flex gap-3 -mx-3 px-3">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="shrink-0 w-44">
+                <div className="bg-card rounded-2xl p-2.5 animate-pulse">
+                  <div className="aspect-square rounded-xl bg-muted mb-2" />
+                  <div className="h-2 bg-muted rounded w-3/4 mb-1.5" />
+                  <div className="h-2 bg-muted rounded w-1/2 mb-3" />
+                  <div className="h-7 bg-muted rounded-full w-full" />
                 </div>
-              ) : undefined
-            }
-          />
-          {trendingLoading ? (
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-3 px-3 scrollbar-hide">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="shrink-0 w-44">
-                  <div className="bg-card rounded-2xl p-2.5 animate-pulse">
-                    <div className="aspect-square rounded-xl bg-muted mb-2" />
-                    <div className="h-2 bg-muted rounded w-3/4 mb-1.5" />
-                    <div className="h-2 bg-muted rounded w-1/2 mb-3" />
-                    <div className="h-7 bg-muted rounded-full w-full" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
-              {trendingProducts.map((product, i) => (
-                <div key={product.id} className="snap-start shrink-0 w-44">
-                  <ProductCard product={product} index={i} />
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      <section>
-        <SectionHeader
-          title="Your Daily Needs"
-          action={
-            products.length > HOME_PRODUCTS ? (
-              <Link href="/products" className="flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80 transition-opacity">
-                See more <ChevronRight className="w-4 h-4" />
-              </Link>
-            ) : undefined
-          }
-        />
-        {loading ? (
-          <SkeletonGrid count={8} />
-        ) : (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
-              {homeProducts.map((product, index) => (
-                <ProductCard key={product.id} product={product} index={index} />
-              ))}
-            </div>
-            {products.length > HOME_PRODUCTS && (
-              <div className="flex justify-center pt-4">
-                <Link href="/products">
-                  <Button variant="outline" className="rounded-full px-8 font-semibold neu-card border-none">
-                    See all {products.length} products
-                  </Button>
-                </Link>
               </div>
-            )}
-          </>
-        )}
-      </section>
+            ))}
+          </div>
+        </section>
+      ) : dynamicSections.length > 0 ? (
+        dynamicSections
+          .filter(s => s.products.length > 0)
+          .map(section => <DynamicSection key={section._id} section={section} />)
+      ) : null}
 
-      {/* About + Footer — SEO content, invisible to casual browsing, natural to read */}
+      {/* About + Footer */}
       <section aria-label="About SwiftMart" className="border-t border-border/30 pt-6 space-y-3">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           <MapPin className="w-3.5 h-3.5" />
@@ -274,9 +264,7 @@ export default function Home() {
           shops for fast delivery. From groceries and sweets to electronics and daily essentials,
           order from trusted local vendors in Balurghat, West Bengal and get it delivered in minutes.
         </p>
-        <p className="text-xs text-muted-foreground font-medium">
-          Serving Balurghat, West Bengal
-        </p>
+        <p className="text-xs text-muted-foreground font-medium">Serving Balurghat, West Bengal</p>
         <div className="flex items-center gap-3 flex-wrap text-xs pt-1">
           <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy</Link>
           <span className="text-border">·</span>

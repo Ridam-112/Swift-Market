@@ -13,6 +13,7 @@ import {
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
   ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown, Home,
+  Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText,
   type LucideIcon,
 } from "lucide-react";
 import { categories } from "@/data/categories";
@@ -107,7 +108,7 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections';
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -192,6 +193,7 @@ export default function Admin() {
               {activeSection === 'payouts' && <PayoutsTab />}
               {activeSection === 'support' && <SupportTicketsTab />}
               {activeSection === 'delivery-charges' && <DeliveryChargesTab />}
+              {activeSection === 'home-sections' && <HomepageSectionsTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -236,6 +238,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'payouts', label: 'Payouts', icon: CreditCard },
     { id: 'support', label: 'Support Tickets', icon: HelpCircle },
   { id: 'delivery-charges', label: 'Delivery Charges', icon: Package },
+  { id: 'home-sections', label: 'Home Sections', icon: Layers },
   ];
 
   return (
@@ -6149,6 +6152,394 @@ function DeliveryChargesTab() {
 
           <div className="px-5 py-3 border-t border-border bg-muted/20 text-xs text-muted-foreground">
             {rules.length} rule{rules.length !== 1 ? "s" : ""} · Rain mode is {rainModeActive ? "ON 🌧️" : "OFF"}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Homepage Sections Tab ────────────────────────────────────────────────────
+
+interface HomepageSectionRow {
+  _id: string;
+  id: string;
+  title: string;
+  type: string;
+  enabled: boolean;
+  sortOrder: number;
+  config: {
+    categorySlug?: string;
+    productIds?: string[];
+    limit?: number;
+    layout?: string;
+  };
+}
+
+interface ProductSearchResult {
+  _id: string;
+  id: string;
+  name: string;
+  category?: string;
+}
+
+const SECTION_TYPES = [
+  { value: "trending", label: "Trending Products", icon: "🔥" },
+  { value: "new_arrivals", label: "New Arrivals", icon: "✨" },
+  { value: "category", label: "By Category", icon: "🗂️" },
+  { value: "manual", label: "Manual / Custom", icon: "✋" },
+];
+
+const LAYOUT_OPTIONS = [
+  { value: "scroll", label: "Horizontal Scroll" },
+  { value: "grid", label: "Grid" },
+];
+
+const DEFAULT_CATEGORIES = [
+  "grocery", "kirana-store", "fruits-vegetables", "dairy", "snacks", "drinks",
+  "restaurant", "pharmacy", "cosmetics", "clothing", "electronics", "toys",
+  "household", "gifts", "hardware",
+];
+
+function HomepageSectionsTab() {
+  const [sections, setSections] = useState<HomepageSectionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editingSection, setEditingSection] = useState<HomepageSectionRow | null>(null);
+
+  const [formTitle, setFormTitle] = useState("");
+  const [formType, setFormType] = useState("trending");
+  const [formLayout, setFormLayout] = useState("scroll");
+  const [formLimit, setFormLimit] = useState(10);
+  const [formCategorySlug, setFormCategorySlug] = useState("");
+  const [formProductSearch, setFormProductSearch] = useState("");
+  const [formProductIds, setFormProductIds] = useState<string[]>([]);
+  const [productSearchResults, setProductSearchResults] = useState<ProductSearchResult[]>([]);
+  const [productSearchLoading, setProductSearchLoading] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    api.get<{ success: boolean; sections: HomepageSectionRow[] }>('/homepage-sections/admin')
+      .then(d => setSections(d.sections ?? []))
+      .catch(() => toast.error("Failed to load sections"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  function openCreate() {
+    setEditingSection(null);
+    setFormTitle(""); setFormType("trending"); setFormLayout("scroll");
+    setFormLimit(10); setFormCategorySlug(""); setFormProductIds([]);
+    setFormProductSearch(""); setProductSearchResults([]);
+    setShowForm(true);
+  }
+
+  function openEdit(s: HomepageSectionRow) {
+    setEditingSection(s);
+    setFormTitle(s.title); setFormType(s.type);
+    setFormLayout(s.config.layout ?? "scroll");
+    setFormLimit(s.config.limit ?? 10);
+    setFormCategorySlug(s.config.categorySlug ?? "");
+    setFormProductIds(s.config.productIds ?? []);
+    setFormProductSearch(""); setProductSearchResults([]);
+    setShowForm(true);
+  }
+
+  async function handleSave() {
+    if (!formTitle.trim()) { toast.error("Title is required"); return; }
+    setSaving("form");
+    const config: HomepageSectionRow["config"] = { limit: formLimit, layout: formLayout };
+    if (formType === "category") config.categorySlug = formCategorySlug;
+    if (formType === "manual") config.productIds = formProductIds;
+
+    try {
+      if (editingSection) {
+        await api.patch(`/homepage-sections/${editingSection._id}`, { title: formTitle, type: formType, config });
+        toast.success("Section updated");
+      } else {
+        const maxOrder = sections.length > 0 ? Math.max(...sections.map(s => s.sortOrder)) + 1 : 0;
+        await api.post('/homepage-sections', { title: formTitle, type: formType, config, sortOrder: maxOrder });
+        toast.success("Section created");
+      }
+      setShowForm(false);
+      load();
+    } catch {
+      toast.error("Failed to save section");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function handleToggle(s: HomepageSectionRow) {
+    setSaving(s._id);
+    try {
+      await api.patch(`/homepage-sections/${s._id}`, { enabled: !s.enabled });
+      setSections(prev => prev.map(x => x._id === s._id ? { ...x, enabled: !x.enabled } : x));
+    } catch {
+      toast.error("Failed to toggle section");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function handleDelete(s: HomepageSectionRow) {
+    if (!confirm(`Delete "${s.title}"? This cannot be undone.`)) return;
+    setSaving(s._id + "-del");
+    try {
+      await api.delete(`/homepage-sections/${s._id}`);
+      toast.success("Section deleted");
+      setSections(prev => prev.filter(x => x._id !== s._id));
+    } catch {
+      toast.error("Failed to delete section");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function handleMove(s: HomepageSectionRow, dir: -1 | 1) {
+    const sorted = [...sections].sort((a, b) => a.sortOrder - b.sortOrder);
+    const idx = sorted.findIndex(x => x._id === s._id);
+    const swapIdx = idx + dir;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    const swap = sorted[swapIdx]!;
+    const newOrder = [
+      { id: s.id, sortOrder: swap.sortOrder },
+      { id: swap.id, sortOrder: s.sortOrder },
+    ];
+    try {
+      await api.patch('/homepage-sections/reorder', { order: newOrder });
+      setSections(prev => prev.map(x => {
+        if (x._id === s._id) return { ...x, sortOrder: swap.sortOrder };
+        if (x._id === swap._id) return { ...x, sortOrder: s.sortOrder };
+        return x;
+      }));
+    } catch {
+      toast.error("Failed to reorder");
+    }
+  }
+
+  useEffect(() => {
+    if (!formProductSearch.trim() || formType !== "manual") { setProductSearchResults([]); return; }
+    const t = setTimeout(() => {
+      setProductSearchLoading(true);
+      api.get<{ success: boolean; products: ProductSearchResult[] }>(`/products?search=${encodeURIComponent(formProductSearch)}&limit=10`)
+        .then(d => setProductSearchResults(d.products ?? []))
+        .catch(() => {})
+        .finally(() => setProductSearchLoading(false));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [formProductSearch, formType]);
+
+  const sorted = [...sections].sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const typeLabel = (type: string) => SECTION_TYPES.find(t => t.value === type)?.label ?? type;
+  const typeIcon = (type: string) => SECTION_TYPES.find(t => t.value === type)?.icon ?? "📦";
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">Home Page Sections</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage what product sections appear on the customer home page</p>
+        </div>
+        <Button onClick={openCreate} className="rounded-xl gap-2">
+          <Plus className="w-4 h-4" /> Add Section
+        </Button>
+      </div>
+
+      {/* Section List */}
+      {loading ? (
+        <div className="space-y-3">
+          {[1,2,3].map(i => <div key={i} className="h-20 rounded-2xl bg-muted animate-pulse" />)}
+        </div>
+      ) : sorted.length === 0 ? (
+        <div className="neu-card rounded-2xl p-12 text-center">
+          <Layers className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+          <p className="font-semibold text-muted-foreground">No sections yet</p>
+          <p className="text-xs text-muted-foreground mt-1">Click "Add Section" to create your first home page section</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {sorted.map((s, idx) => (
+            <div key={s._id} className={`neu-card rounded-2xl px-5 py-4 flex items-center gap-4 transition-opacity ${!s.enabled ? "opacity-50" : ""}`}>
+              {/* Reorder */}
+              <div className="flex flex-col gap-0.5 shrink-0">
+                <button onClick={() => handleMove(s, -1)} disabled={idx === 0} className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => handleMove(s, 1)} disabled={idx === sorted.length - 1} className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Icon */}
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-xl shrink-0">
+                {typeIcon(s.type)}
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-sm truncate">{s.title}</div>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-medium">{typeLabel(s.type)}</span>
+                  {s.type === "category" && s.config.categorySlug && (
+                    <span className="text-xs text-primary font-medium">#{s.config.categorySlug}</span>
+                  )}
+                  {s.type === "manual" && (
+                    <span className="text-xs text-primary font-medium">{(s.config.productIds ?? []).length} products</span>
+                  )}
+                  <span className="text-xs text-muted-foreground">{s.config.layout ?? "scroll"} · limit {s.config.limit ?? 10}</span>
+                </div>
+              </div>
+
+              {/* Toggle */}
+              <button
+                onClick={() => handleToggle(s)}
+                disabled={saving === s._id}
+                className="shrink-0 transition-colors"
+                title={s.enabled ? "Visible on home page" : "Hidden from home page"}
+              >
+                {saving === s._id ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                ) : s.enabled ? (
+                  <ToggleRight className="w-8 h-8 text-primary" />
+                ) : (
+                  <ToggleLeft className="w-8 h-8 text-muted-foreground" />
+                )}
+              </button>
+
+              {/* Actions */}
+              <div className="flex gap-1 shrink-0">
+                <button onClick={() => openEdit(s)} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button onClick={() => handleDelete(s)} disabled={saving === s._id + "-del"} className="p-2 rounded-lg hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive">
+                  {saving === s._id + "-del" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create / Edit Modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={() => setShowForm(false)}>
+          <div className="bg-card rounded-3xl p-6 w-full max-w-lg space-y-5 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-lg">{editingSection ? "Edit Section" : "New Section"}</h3>
+              <button onClick={() => setShowForm(false)} className="p-2 rounded-lg hover:bg-muted text-muted-foreground"><X className="w-4 h-4" /></button>
+            </div>
+
+            {/* Title */}
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Section Title</label>
+              <Input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="e.g. Your Daily Needs" className="rounded-xl" />
+            </div>
+
+            {/* Type */}
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Section Type</label>
+              <div className="grid grid-cols-2 gap-2">
+                {SECTION_TYPES.map(t => (
+                  <button
+                    key={t.value}
+                    onClick={() => setFormType(t.value)}
+                    className={`p-3 rounded-xl border-2 text-left transition-all ${formType === t.value ? "border-primary bg-primary/5" : "border-transparent bg-muted hover:border-muted-foreground/30"}`}
+                  >
+                    <div className="text-lg mb-0.5">{t.icon}</div>
+                    <div className="text-xs font-semibold">{t.label}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Category picker */}
+            {formType === "category" && (
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Category</label>
+                <select
+                  value={formCategorySlug}
+                  onChange={e => setFormCategorySlug(e.target.value)}
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">— Pick a category —</option>
+                  {DEFAULT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* Manual product picker */}
+            {formType === "manual" && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Products ({formProductIds.length} selected)</label>
+                <Input
+                  value={formProductSearch}
+                  onChange={e => setFormProductSearch(e.target.value)}
+                  placeholder="Search products to add…"
+                  className="rounded-xl"
+                />
+                {productSearchLoading && <p className="text-xs text-muted-foreground">Searching…</p>}
+                {productSearchResults.length > 0 && (
+                  <div className="neu-inset rounded-xl divide-y divide-border max-h-40 overflow-y-auto">
+                    {productSearchResults.map(p => (
+                      <button
+                        key={p._id}
+                        onClick={() => {
+                          if (!formProductIds.includes(p._id)) setFormProductIds(prev => [...prev, p._id]);
+                          setFormProductSearch(""); setProductSearchResults([]);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors text-left"
+                      >
+                        <span className="text-sm font-medium truncate">{p.name}</span>
+                        <Plus className="w-3.5 h-3.5 text-primary shrink-0 ml-2" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {formProductIds.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {formProductIds.map(pid => (
+                      <span key={pid} className="flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+                        {pid.slice(0, 8)}…
+                        <button onClick={() => setFormProductIds(prev => prev.filter(x => x !== pid))}><X className="w-3 h-3" /></button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Layout & Limit */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Display Layout</label>
+                <select
+                  value={formLayout}
+                  onChange={e => setFormLayout(e.target.value)}
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {LAYOUT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Max Products</label>
+                <Input
+                  type="number" min={1} max={40} value={formLimit}
+                  onChange={e => setFormLimit(Number(e.target.value))}
+                  className="rounded-xl"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <Button onClick={handleSave} disabled={saving === "form"} className="flex-1 rounded-xl">
+                {saving === "form" ? <Loader2 className="w-4 h-4 animate-spin" /> : editingSection ? "Save Changes" : "Create Section"}
+              </Button>
+              <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-xl">Cancel</Button>
+            </div>
           </div>
         </div>
       )}

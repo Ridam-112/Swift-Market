@@ -20,6 +20,7 @@ import pushRouter from "./push.js";
 import fcmRouter from "./fcm.js";
 import supportRouter from "./support.js";
 import analyticsRouter from "./analytics.js";
+import homepageSectionsRouter from "./homepage-sections.js";
 
 const router = Router();
 
@@ -44,5 +45,6 @@ router.use("/push", pushRouter);
 router.use("/fcm", fcmRouter);
 router.use("/support", supportRouter);
 router.use("/admin/analytics", analyticsRouter);
+router.use("/homepage-sections", homepageSectionsRouter);
 
 export default router;
