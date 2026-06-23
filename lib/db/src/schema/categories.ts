@@ -9,6 +9,7 @@ export const categories = pgTable("categories", {
   commissionRate: doublePrecision("commission_rate"),
   emoji: text("emoji"),
   color: text("color"),
+  subcategories: jsonb("subcategories").notNull().default([]),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
