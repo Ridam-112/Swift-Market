@@ -1,4 +1,4 @@
-import { LegalLayout, Section, InfoBox, SUPPORT_EMAIL, APP_NAME } from "./LegalLayout";
+import { LegalLayout, Section, InfoBox, SUPPORT_EMAIL, SUPPORT_PHONE, APP_NAME } from "./LegalLayout";
 import { Link } from "wouter";
 
 export default function ContactSupport() {
@@ -11,14 +11,22 @@ export default function ContactSupport() {
         Have a question, complaint, or feedback? Reach out — we aim to respond within 1 business day.
       </InfoBox>
 
-      <Section title="Email Support">
-        <p>The fastest way to reach us:</p>
+      <Section title="Contact Support">
+        <p>Reach us by email or phone:</p>
         <p>
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
             className="text-primary hover:underline font-bold text-base"
           >
             {SUPPORT_EMAIL}
+          </a>
+        </p>
+        <p>
+          <a
+            href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`}
+            className="text-primary hover:underline font-bold text-base"
+          >
+            {SUPPORT_PHONE}
           </a>
         </p>
         <p className="pt-1">
@@ -81,6 +89,8 @@ export default function ContactSupport() {
           <strong className="text-foreground">Name:</strong> SwiftMart Support Team<br />
           <strong className="text-foreground">Email:</strong>{" "}
           <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline">{SUPPORT_EMAIL}</a><br />
+          <strong className="text-foreground">Phone:</strong>{" "}
+          <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`} className="text-primary hover:underline">{SUPPORT_PHONE}</a><br />
           <strong className="text-foreground">Address:</strong> Balurghat, Dakshin Dinajpur, West Bengal – 733101, India<br />
           <strong className="text-foreground">Response time:</strong> Within 48 hours of receipt of complaint
         </p>

@@ -1,8 +1,9 @@
 import { Link, useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
 
-export const SUPPORT_EMAIL = "support@swiftmart.co.in";
-export const APP_NAME      = "SwiftMart";
+export const SUPPORT_EMAIL  = "swiftmart144@gmail.com";
+export const SUPPORT_PHONE  = "+91 62961 18949";
+export const APP_NAME       = "SwiftMart";
 
 interface LegalLayoutProps {
   title: string;
@@ -55,6 +56,10 @@ export function LegalLayout({ title, subtitle, children }: LegalLayoutProps) {
           Questions? Email us at{" "}
           <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline font-medium">
             {SUPPORT_EMAIL}
+          </a>
+          {" "}or call{" "}
+          <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`} className="text-primary hover:underline font-medium">
+            {SUPPORT_PHONE}
           </a>
         </p>
         <div className="flex items-center justify-center gap-3 flex-wrap text-xs">
