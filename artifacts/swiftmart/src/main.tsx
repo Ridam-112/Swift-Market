@@ -4,6 +4,7 @@ import "./index.css";
 import { setAuthConfig, type AuthMode } from "./lib/authConfig";
 import { initFirebase } from "./lib/firebase";
 import { setBaseUrl } from "@workspace/api-client-react";
+import { setServicePincodes } from "./lib/serviceArea";
 
 // When deployed to a separate host (e.g. Cloudflare Pages), VITE_API_URL must
 // point to the backend (e.g. https://your-app.onrender.com).
@@ -34,9 +35,14 @@ async function bootstrap() {
       authMode?: AuthMode;
       googleClientId?: string;
       firebaseConfig?: FirebaseConfig | null;
+      servicePincodes?: string[];
     };
     authMode = data.authMode ?? "otp";
     googleClientId = data.googleClientId ?? "";
+
+    if (Array.isArray(data.servicePincodes) && data.servicePincodes.length > 0) {
+      setServicePincodes(data.servicePincodes);
+    }
 
     if (data.firebaseConfig?.apiKey) {
       initFirebase({

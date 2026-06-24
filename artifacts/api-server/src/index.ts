@@ -12,6 +12,35 @@ import { OTP_MODE } from "./lib/sms.js";
 type AuthMode = "otp" | "google" | "both";
 const AUTH_MODE: AuthMode = (process.env["AUTH_MODE"] as AuthMode | undefined) ?? "otp";
 
+// Fail fast on missing required secrets; warn on missing optional ones at boot time
+// so issues surface in logs immediately rather than on first customer request.
+function validateEnv(): void {
+  const required = ["DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET", "PORT"];
+  const missing = required.filter(k => !process.env[k]);
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
+  }
+
+  const optionalWarnings: Array<[string, string]> = [
+    ["RAZORPAY_KEY_ID",       "Razorpay payments will not work"],
+    ["RAZORPAY_KEY_SECRET",   "Razorpay payments will not work"],
+    ["CLOUDINARY_CLOUD_NAME", "Image uploads will not work"],
+    ["CLOUDINARY_API_KEY",    "Image uploads will not work"],
+    ["CLOUDINARY_API_SECRET", "Image uploads will not work"],
+    ["TWO_FACTOR_API_KEY",    "OTP SMS will not work (set OTP_MODE=demo to suppress)"],
+    ["FIREBASE_PROJECT_ID",   "FCM push notifications will not work"],
+    ["FIREBASE_CLIENT_EMAIL", "FCM push notifications will not work"],
+    ["FIREBASE_PRIVATE_KEY",  "FCM push notifications will not work"],
+  ];
+  for (const [key, impact] of optionalWarnings) {
+    if (!process.env[key]) {
+      logger.warn({ key }, `Optional secret missing — ${impact}`);
+    }
+  }
+}
+
+validateEnv();
+
 const rawPort = process.env["PORT"];
 if (!rawPort) throw new Error("PORT environment variable is required but was not provided.");
 const port = Number(rawPort);
@@ -42,7 +71,7 @@ async function main() {
     logger.error({ err }, "Seed error (non-fatal)");
   }
 
-  // Background job: cancel online-payment orders stuck pending > 15 min (C5)
+  // Background job: cancel online-payment orders stuck pending > 15 min
   // Run once on startup, then every 10 minutes
   const runCleanup = async () => {
     try {

@@ -3,6 +3,7 @@ import { db, fcmTokens, users, adminBroadcasts } from "@workspace/db";
 import { eq, and, count, sum, desc, inArray } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { getMessagingInstance } from "../../lib/firebase-admin.js";
+import { logger } from "../../lib/logger.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -35,7 +36,6 @@ router.post("/register-token", authenticate, async (req: AuthRequest, res: Respo
   const userAgent = req.headers["user-agent"] ?? null;
 
   try {
-    // Upsert: if same token exists (any user), take ownership; otherwise insert
     const existing = await db.select({ id: fcmTokens.id }).from(fcmTokens).where(eq(fcmTokens.token, token)).limit(1);
 
     if (existing.length > 0) {
@@ -46,10 +46,10 @@ router.post("/register-token", authenticate, async (req: AuthRequest, res: Respo
       await db.insert(fcmTokens).values({ userId, token, platform, role, userAgent, isActive: true });
     }
 
-    console.log("[FCM] Token registered:", { userId, platform, role, token: token.slice(0, 20) + "…" });
+    logger.info({ userId, platform, role }, "[FCM] Token registered");
     res.json({ success: true });
   } catch (err) {
-    console.error("[FCM] register-token error:", err);
+    logger.error({ err, userId }, "[FCM] register-token error");
     res.status(500).json({ success: false, message: "Failed to save FCM token" });
   }
 });
@@ -65,23 +65,21 @@ router.post("/unregister-token", authenticate, async (req: AuthRequest, res: Res
   res.json({ success: true });
 });
 
-// POST /api/fcm/unregister-all — deactivate ALL tokens for this user (fallback when specific token can't be retrieved)
+// POST /api/fcm/unregister-all — deactivate ALL tokens for this user
 router.post("/unregister-all", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user!.userId;
-  const result = await db.update(fcmTokens)
+  await db.update(fcmTokens)
     .set({ isActive: false, updatedAt: new Date() })
     .where(and(eq(fcmTokens.userId, userId), eq(fcmTokens.isActive, true)));
-  console.log(`[FCM] unregister-all userId=${userId}`);
+  logger.info({ userId }, "[FCM] unregister-all");
   res.json({ success: true });
 });
 
 // POST /api/fcm/test — send a test FCM push to yourself
 router.post("/test", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  // Wrap EVERYTHING in try/catch so no exception can escape to the global "Internal server error" handler
   try {
     const userId = req.user!.userId;
 
-    // 1) Gather all tokens for this user (active + inactive) for diagnostics
     const allTokens = await db
       .select({ token: fcmTokens.token, isActive: fcmTokens.isActive, platform: fcmTokens.platform, updatedAt: fcmTokens.updatedAt })
       .from(fcmTokens)
@@ -89,7 +87,7 @@ router.post("/test", authenticate, async (req: AuthRequest, res: Response): Prom
 
     const activeTokens = allTokens.filter(t => t.isActive);
 
-    console.log(`[FCM] /test userId=${userId} total_tokens=${allTokens.length} active=${activeTokens.length}`);
+    logger.info({ userId, totalTokens: allTokens.length, activeTokens: activeTokens.length }, "[FCM] /test");
 
     if (activeTokens.length === 0) {
       res.status(404).json({
@@ -105,7 +103,7 @@ router.post("/test", authenticate, async (req: AuthRequest, res: Response): Prom
       const projectId   = process.env["FIREBASE_PROJECT_ID"] ?? process.env["VITE_FIREBASE_PROJECT_ID"] ?? "(not set)";
       const clientEmail = process.env["FIREBASE_CLIENT_EMAIL"] ? "(set)" : "(not set)";
       const privateKey  = process.env["FIREBASE_PRIVATE_KEY"]  ? "(set)" : "(not set)";
-      console.error(`[FCM] getMessagingInstance returned null — projectId=${projectId} clientEmail=${clientEmail} privateKey=${privateKey}`);
+      logger.error({ projectId, clientEmail, privateKey }, "[FCM] getMessagingInstance returned null");
       res.status(503).json({
         success: false,
         message: "FCM not configured on server. Set FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY.",
@@ -117,7 +115,7 @@ router.post("/test", authenticate, async (req: AuthRequest, res: Response): Prom
     const appUrl = (process.env["APP_URL"] ?? `${(req as { protocol: string }).protocol}://${(req as { get: (h: string) => string }).get("host")}`).replace(/\/+$/, "");
     const tokenStrings = activeTokens.map(t => t.token);
 
-    console.log(`[FCM] Sending test push to ${tokenStrings.length} token(s) via project=${process.env["FIREBASE_PROJECT_ID"] ?? process.env["VITE_FIREBASE_PROJECT_ID"]}`);
+    logger.info({ tokenCount: tokenStrings.length, projectId: process.env["FIREBASE_PROJECT_ID"] ?? process.env["VITE_FIREBASE_PROJECT_ID"] }, "[FCM] Sending test push");
 
     const result = await messaging.sendEachForMulticast({
       tokens: tokenStrings,
@@ -140,16 +138,14 @@ router.post("/test", authenticate, async (req: AuthRequest, res: Response): Prom
 
     const { successCount, failureCount, responses } = result;
 
-    // Log per-token results
     responses.forEach((resp, i) => {
       if (resp.success) {
-        console.log(`[FCM] Token[${i}] OK — messageId=${resp.messageId}`);
+        logger.info({ index: i, messageId: resp.messageId }, "[FCM] Token OK");
       } else {
-        console.error(`[FCM] Token[${i}] FAILED — code=${resp.error?.code} message=${resp.error?.message}`);
+        logger.error({ index: i, code: resp.error?.code, message: resp.error?.message }, "[FCM] Token FAILED");
       }
     });
 
-    // Deactivate tokens that Firebase says are stale/invalid
     const staleErrorCodes = new Set([
       "messaging/registration-token-not-registered",
       "messaging/invalid-registration-token",
@@ -161,7 +157,7 @@ router.post("/test", authenticate, async (req: AuthRequest, res: Response): Prom
 
     if (toDeactivate.length > 0) {
       await db.update(fcmTokens).set({ isActive: false, updatedAt: new Date() }).where(inArray(fcmTokens.token, toDeactivate));
-      console.log(`[FCM] Deactivated ${toDeactivate.length} stale token(s)`);
+      logger.info({ count: toDeactivate.length }, "[FCM] Deactivated stale tokens");
     }
 
     const perTokenErrors = responses
@@ -180,10 +176,8 @@ router.post("/test", authenticate, async (req: AuthRequest, res: Response): Prom
       });
     }
   } catch (err: unknown) {
-    // Catch-all: log the full exception and return a structured 500 (never reaches global handler)
     const e = err as { code?: string; message?: string; errorInfo?: unknown; stack?: string };
-    console.error("[FCM] /test EXCEPTION code=%s message=%s", e?.code, e?.message);
-    console.error("[FCM] /test stack:", e?.stack);
+    logger.error({ err, code: e?.code }, "[FCM] /test exception");
     res.status(500).json({
       success: false,
       message: e?.message ?? "FCM send error",
@@ -255,7 +249,7 @@ router.get("/diagnostics", authenticate, A, async (_req: AuthRequest, res: Respo
       allTimePushFailed,
     });
   } catch (err) {
-    console.error("[FCM] diagnostics error:", err);
+    logger.error({ err }, "[FCM] diagnostics error");
     res.status(500).json({ success: false, message: "Failed to load FCM diagnostics" });
   }
 });

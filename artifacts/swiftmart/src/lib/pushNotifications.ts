@@ -66,7 +66,7 @@ export async function registerPushNotifications(): Promise<PushRegistrationResul
     ]);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[Push] SW error:", msg);
+    if (import.meta.env.DEV) console.error("[Push] SW error:", msg);
     return { success: false, error: `Service worker error — ${msg}` };
   }
 
@@ -78,7 +78,7 @@ export async function registerPushNotifications(): Promise<PushRegistrationResul
     if (!publicKey) throw new Error("Backend returned an empty VAPID public key.");
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[Push] VAPID fetch error:", msg);
+    if (import.meta.env.DEV) console.error("[Push] VAPID fetch error:", msg);
     return { success: false, error: `Could not fetch push config from server — ${msg}` };
   }
 
@@ -97,11 +97,10 @@ export async function registerPushNotifications(): Promise<PushRegistrationResul
     const existing = await reg.pushManager.getSubscription();
     if (existing) {
       await existing.unsubscribe();
-      console.log("[Push] Cleared existing subscription before re-subscribing.");
+      if (import.meta.env.DEV) console.log("[Push] Cleared existing subscription before re-subscribing.");
     }
   } catch (err) {
-    // Best-effort — don't block on this
-    console.warn("[Push] Could not clear old subscription:", err);
+    if (import.meta.env.DEV) console.warn("[Push] Could not clear old subscription:", err);
   }
 
   // 7 — Create fresh push subscription
@@ -113,7 +112,7 @@ export async function registerPushNotifications(): Promise<PushRegistrationResul
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[Push] subscribe() failed:", msg);
+    if (import.meta.env.DEV) console.error("[Push] subscribe() failed:", msg);
     if (err instanceof DOMException && err.name === "NotAllowedError") {
       return { success: false, error: "Browser blocked the push subscription — allow notifications in browser settings and try again." };
     }
@@ -125,13 +124,13 @@ export async function registerPushNotifications(): Promise<PushRegistrationResul
     await saveSubscriptionToServer(subscription);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[Push] saveSubscriptionToServer failed:", msg);
+    if (import.meta.env.DEV) console.error("[Push] saveSubscriptionToServer failed:", msg);
     // Undo browser subscription so state stays consistent
     try { await subscription.unsubscribe(); } catch { /* ignore */ }
     return { success: false, error: `Could not register device with server — ${msg}` };
   }
 
-  console.log("[Push] Registration complete:", subscription.endpoint.slice(0, 60) + "…");
+  if (import.meta.env.DEV) console.log("[Push] Registration complete:", subscription.endpoint.slice(0, 60) + "…");
   return { success: true };
 }
 

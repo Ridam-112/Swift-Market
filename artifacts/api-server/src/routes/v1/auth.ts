@@ -63,11 +63,15 @@ router.get("/config", (_req: Request, res: Response): void => {
     messagingSenderId: process.env["FIREBASE_MESSAGING_SENDER_ID"] ?? process.env["VITE_FIREBASE_MESSAGING_SENDER_ID"] ?? "",
   } : null;
 
+  const rawPincodes = process.env["SERVICE_PINCODES"] ?? "733101,733103";
+  const servicePincodes = rawPincodes.split(",").map(p => p.trim()).filter(Boolean);
+
   res.json({
     success: true,
     authMode: AUTH_MODE,
     googleClientId: AUTH_MODE !== "otp" ? (process.env["GOOGLE_CLIENT_ID"] ?? "") : "",
     firebaseConfig,
+    servicePincodes,
   });
 });
 

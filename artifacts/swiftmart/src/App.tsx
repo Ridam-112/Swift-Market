@@ -10,6 +10,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ProductsProvider } from "@/context/ProductsContext";
 import { ShopsProvider } from "@/context/ShopsContext";
 import { CartProvider } from "@/context/CartContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
@@ -367,24 +368,26 @@ function PushManager() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-          <ProductsProvider>
-            <ShopsProvider>
-            <CartProvider>
-              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                <Router />
-              </WouterRouter>
-              <PushManager />
-              <InstallPrompt />
-              <Toaster />
-            </CartProvider>
-            </ShopsProvider>
-          </ProductsProvider>
-        </AuthProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <AuthProvider>
+            <ProductsProvider>
+              <ShopsProvider>
+                <CartProvider>
+                  <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                    <Router />
+                  </WouterRouter>
+                  <PushManager />
+                  <InstallPrompt />
+                  <Toaster />
+                </CartProvider>
+              </ShopsProvider>
+            </ProductsProvider>
+          </AuthProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
