@@ -76,61 +76,43 @@ interface HomepageSection {
   hasMore: boolean;
 }
 
-const PAGE_SIZE = 8;
-
 function DynamicSection({ section }: { section: HomepageSection }) {
-  const [allProducts, setAllProducts] = useState<Product[]>(section.products);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(section.hasMore);
-  const [loadingMore, setLoadingMore] = useState(false);
-
-  function handleSeeMore() {
-    const nextPage = page + 1;
-    setLoadingMore(true);
-    api.get<{ success: boolean; products: RawProduct[]; hasMore: boolean }>(
-      `/homepage-sections/${section._id}/products?page=${nextPage}&limit=${PAGE_SIZE}`
-    )
-      .then(d => {
-        setAllProducts(prev => [...prev, ...(d.products ?? []).map(mapProduct)]);
-        setHasMore(d.hasMore ?? false);
-        setPage(nextPage);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingMore(false));
-  }
+  const sectionHref = `/section/${section._id}?title=${encodeURIComponent(section.title)}`;
 
   return (
     <section>
       <SectionHeader
         title={section.title}
         action={
-          <span className="text-xs text-muted-foreground font-medium">
-            {section.total} item{section.total !== 1 ? "s" : ""}
-          </span>
+          section.hasMore || section.total > section.products.length ? (
+            <Link
+              href={sectionHref}
+              className="flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80 transition-opacity"
+            >
+              See all <ChevronRight className="w-4 h-4" />
+            </Link>
+          ) : (
+            <span className="text-xs text-muted-foreground font-medium">
+              {section.total} item{section.total !== 1 ? "s" : ""}
+            </span>
+          )
         }
       />
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
-        {allProducts.map((product, i) => (
+        {section.products.map((product, i) => (
           <ProductCard key={product.id} product={product} index={i} />
         ))}
       </div>
-      {hasMore && (
+      {(section.hasMore || section.total > section.products.length) && (
         <div className="flex justify-center pt-4">
-          <Button
-            variant="outline"
-            onClick={handleSeeMore}
-            disabled={loadingMore}
-            className="rounded-full px-8 font-semibold neu-card border-none gap-2"
-          >
-            {loadingMore ? (
-              <>
-                <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin inline-block" />
-                Loading…
-              </>
-            ) : (
-              <>See more <ChevronRight className="w-4 h-4" /></>
-            )}
-          </Button>
+          <Link href={sectionHref}>
+            <Button
+              variant="outline"
+              className="rounded-full px-8 font-semibold neu-card border-none gap-2"
+            >
+              See more <ChevronRight className="w-4 h-4" />
+            </Button>
+          </Link>
         </div>
       )}
     </section>
