@@ -62,6 +62,7 @@ interface ApiUser {
   role: string;
   status: string;
   createdAt: string;
+  addresses?: Array<{ id?: string; label?: string; line1?: string; line2?: string; city?: string; pincode?: string }>;
 }
 
 interface ApiOrder {
@@ -893,6 +894,14 @@ function CustomersList() {
             totalOrders: customerOrders.length,
             totalSpent,
             status: (u.status === 'banned' ? 'banned' : 'active') as 'active' | 'banned',
+            addresses: (u.addresses ?? []).map(a => ({
+              id: a.id ?? "",
+              label: (a.label ?? "Home") as 'Home' | 'Work' | 'Other',
+              line1: a.line1 ?? "",
+              line2: a.line2,
+              city: a.city ?? "",
+              pincode: a.pincode ?? "",
+            })),
             orders: customerOrders.map(o => ({
               id: `#${o._id.slice(-6).toUpperCase()}`,
               placedAt: o.createdAt,
@@ -1021,9 +1030,25 @@ function CustomersList() {
               {expandedId === c.id && (
                 <div className="px-4 md:px-6 pb-6 pt-2 border-t border-border/50 bg-background/50">
                   <div className="flex flex-col md:flex-row justify-between gap-4 mb-4 mt-2">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Joined: {new Date(c.joinedAt).toLocaleDateString()}</p>
-                      <p className="text-sm text-muted-foreground">Email: {c.email || 'N/A'}</p>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">First login:</span>{" "}
+                        {new Date(c.joinedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">Email:</span>{" "}{c.email || 'N/A'}
+                      </p>
+                      {c.addresses.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-sm font-medium text-foreground">Saved Addresses:</p>
+                          {c.addresses.map((addr, idx) => (
+                            <div key={addr.id || idx} className="text-xs text-muted-foreground bg-background rounded-xl px-3 py-2 neu-inset">
+                              <span className="font-semibold text-foreground">{addr.label}</span>
+                              {" — "}{addr.line1}{addr.line2 ? `, ${addr.line2}` : ""}, {addr.city} – {addr.pincode}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div>
                       {c.status === 'active' ? (

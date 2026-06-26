@@ -177,7 +177,11 @@ export default function Auth() {
 
   const handleOnboardingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) { toast.error("Please enter your name"); return; }
+    const trimmedName = name.trim();
+    if (!trimmedName) { toast.error("Please enter your full name"); return; }
+    if (trimmedName.length < 2) { toast.error("Name must be at least 2 characters"); return; }
+    if (/^user$/i.test(trimmedName)) { toast.error('Please enter your real name, not "User"'); return; }
+    if (!/[a-zA-Z]{2,}/.test(trimmedName)) { toast.error("Please enter a valid name with letters"); return; }
     if (!addressLine1.trim()) { toast.error("Please enter your address"); return; }
     if (!addressArea.trim()) { toast.error("Please enter your area/locality"); return; }
     if (!city.trim()) { toast.error("Please enter your city"); return; }
@@ -362,13 +366,15 @@ export default function Auth() {
 
               <form onSubmit={handleOnboardingSubmit} className="space-y-5">
                 <div className="space-y-2">
-                  <Label>Full Name</Label>
+                  <Label>Full Name <span className="text-destructive">*</span></Label>
                   <Input
                     value={name}
                     onChange={e => setName(e.target.value)}
-                    placeholder="Your full name"
+                    placeholder="e.g. Rahul Kumar"
                     className="bg-background neu-inset border-none h-12 rounded-xl"
+                    autoComplete="name"
                   />
+                  <p className="text-xs text-muted-foreground">Enter your real name — this will appear on your orders and receipts.</p>
                 </div>
 
                 <div className="space-y-2">

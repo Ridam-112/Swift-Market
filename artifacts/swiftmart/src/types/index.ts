@@ -149,6 +149,7 @@ export interface AdminCustomer {
   status: 'active' | 'banned';
   lastOrderAt?: string;
   orders: AdminOrder[];
+  addresses: Address[];
 }
 
 export interface PlatformRevenuePoint {
