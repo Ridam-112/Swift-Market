@@ -21,6 +21,7 @@ import fcmRouter from "./fcm.js";
 import supportRouter from "./support.js";
 import analyticsRouter from "./analytics.js";
 import homepageSectionsRouter from "./homepage-sections.js";
+import servicePincodesRouter from "./servicePincodes.js";
 
 const router = Router();
 
@@ -46,5 +47,6 @@ router.use("/fcm", fcmRouter);
 router.use("/support", supportRouter);
 router.use("/admin/analytics", analyticsRouter);
 router.use("/homepage-sections", homepageSectionsRouter);
+router.use("/service-pincodes", servicePincodesRouter);
 
 export default router;

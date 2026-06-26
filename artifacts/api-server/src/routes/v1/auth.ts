@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { OAuth2Client } from "google-auth-library";
-import { db, users, shops, otpSessions } from "@workspace/db";
+import { db, users, shops, otpSessions, servicePincodes as servicePincodesTable } from "@workspace/db";
 import { eq, or, and, lt } from "drizzle-orm";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt.js";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
@@ -54,7 +54,7 @@ function formatUser(u: typeof users.$inferSelect) {
 // Returns runtime auth configuration consumed by the frontend.
 // authMode drives which login methods the UI shows — no frontend deploy needed to switch modes.
 // Firebase public config is served here so secrets never need to be exposed as VITE_* env vars.
-router.get("/config", (_req: Request, res: Response): void => {
+router.get("/config", async (_req: Request, res: Response): Promise<void> => {
   const firebaseConfig = AUTH_MODE !== "otp" ? {
     apiKey:            process.env["VITE_FIREBASE_API_KEY"]      ?? "",
     authDomain:        process.env["VITE_FIREBASE_AUTH_DOMAIN"]  ?? "",
@@ -64,7 +64,19 @@ router.get("/config", (_req: Request, res: Response): void => {
   } : null;
 
   const rawPincodes = process.env["SERVICE_PINCODES"] ?? "733101,733102,733103";
-  const servicePincodes = rawPincodes.split(",").map(p => p.trim()).filter(Boolean);
+  const envPincodes = rawPincodes.split(",").map(p => p.trim()).filter(Boolean);
+
+  let servicePincodes: Array<{ pincode: string; area: string; state: string }>;
+  try {
+    const rows = await db.select().from(servicePincodesTable).where(eq(servicePincodesTable.isActive, true));
+    if (rows.length > 0) {
+      servicePincodes = rows.map(r => ({ pincode: r.pincode, area: r.area, state: r.state }));
+    } else {
+      servicePincodes = envPincodes.map(p => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal" }));
+    }
+  } catch {
+    servicePincodes = envPincodes.map(p => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal" }));
+  }
 
   res.json({
     success: true,

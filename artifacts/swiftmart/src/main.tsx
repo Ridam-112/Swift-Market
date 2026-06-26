@@ -35,7 +35,7 @@ async function bootstrap() {
       authMode?: AuthMode;
       googleClientId?: string;
       firebaseConfig?: FirebaseConfig | null;
-      servicePincodes?: string[];
+      servicePincodes?: Array<{ pincode: string; area: string; state: string }>;
     };
     authMode = data.authMode ?? "otp";
     googleClientId = data.googleClientId ?? "";
