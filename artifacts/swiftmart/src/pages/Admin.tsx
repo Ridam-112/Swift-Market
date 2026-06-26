@@ -13,7 +13,7 @@ import {
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
   ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown, Home,
-  Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText,
+  Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin,
   type LucideIcon,
 } from "lucide-react";
 import { categories } from "@/data/categories";
@@ -109,7 +109,7 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'service-areas';
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -195,6 +195,7 @@ export default function Admin() {
               {activeSection === 'support' && <SupportTicketsTab />}
               {activeSection === 'delivery-charges' && <DeliveryChargesTab />}
               {activeSection === 'home-sections' && <HomepageSectionsTab />}
+              {activeSection === 'service-areas' && <ServiceAreasTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -240,6 +241,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'support', label: 'Support Tickets', icon: HelpCircle },
   { id: 'delivery-charges', label: 'Delivery Charges', icon: Package },
   { id: 'home-sections', label: 'Home Sections', icon: Layers },
+  { id: 'service-areas', label: 'Service Areas', icon: MapPin },
   ];
 
   return (
@@ -6575,6 +6577,378 @@ function HomepageSectionsTab() {
               </Button>
               <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-xl">Cancel</Button>
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// SERVICE AREAS TAB — Pincode / Area / State management
+// ============================================================================
+
+const INDIAN_STATES = [
+  "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam",
+  "Bihar", "Chandigarh", "Chhattisgarh", "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jammu and Kashmir",
+  "Jharkhand", "Karnataka", "Kerala", "Ladakh", "Lakshadweep", "Madhya Pradesh",
+  "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha",
+  "Puducherry", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana",
+  "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+];
+
+interface ServicePincodeRow {
+  _id: string;
+  pincode: string;
+  area: string;
+  state: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+const EMPTY_PIN_FORM = { pincode: "", area: "", state: "West Bengal" };
+
+function ServiceAreasTab() {
+  const [rows, setRows] = useState<ServicePincodeRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(EMPTY_PIN_FORM);
+  const [saving, setSaving] = useState(false);
+  const [editingRow, setEditingRow] = useState<ServicePincodeRow | null>(null);
+  const [editForm, setEditForm] = useState(EMPTY_PIN_FORM);
+  const [deletingPin, setDeletingPin] = useState<string | null>(null);
+  const [togglingPin, setTogglingPin] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await api.get<{ success: boolean; pincodes: ServicePincodeRow[] }>("/service-pincodes");
+      setRows(d.pincodes ?? []);
+    } catch {
+      toast.error("Failed to load service areas");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    if (!q) return rows;
+    return rows.filter(r =>
+      r.pincode.includes(q) ||
+      r.area.toLowerCase().includes(q) ||
+      r.state.toLowerCase().includes(q)
+    );
+  }, [rows, search]);
+
+  const stateGroups = useMemo(() => {
+    const map: Record<string, number> = {};
+    rows.forEach(r => { map[r.state] = (map[r.state] ?? 0) + 1; });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  }, [rows]);
+
+  const activeCount = rows.filter(r => r.isActive).length;
+
+  const handleAdd = async () => {
+    if (!/^\d{6}$/.test(form.pincode)) { toast.error("Pincode must be exactly 6 digits"); return; }
+    if (!form.area.trim()) { toast.error("Area / Town name is required"); return; }
+    if (!form.state) { toast.error("State is required"); return; }
+    setSaving(true);
+    try {
+      await api.post("/service-pincodes", { pincode: form.pincode, area: form.area.trim(), state: form.state });
+      toast.success(`Pincode ${form.pincode} added`);
+      setForm(EMPTY_PIN_FORM);
+      setShowForm(false);
+      load();
+    } catch {
+      toast.error("Failed to add pincode");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingRow) return;
+    if (!editForm.area.trim()) { toast.error("Area name is required"); return; }
+    setSaving(true);
+    try {
+      await api.patch(`/service-pincodes/${editingRow.pincode}`, { area: editForm.area.trim(), state: editForm.state });
+      toast.success("Updated successfully");
+      setEditingRow(null);
+      load();
+    } catch {
+      toast.error("Failed to update");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggle = async (row: ServicePincodeRow) => {
+    setTogglingPin(row.pincode);
+    try {
+      await api.patch(`/service-pincodes/${row.pincode}`, { isActive: !row.isActive });
+      toast.success(row.isActive ? "Pincode deactivated" : "Pincode activated");
+      load();
+    } catch {
+      toast.error("Failed to update status");
+    } finally {
+      setTogglingPin(null);
+    }
+  };
+
+  const handleDelete = async (pincode: string) => {
+    setDeletingPin(pincode);
+    try {
+      await api.delete(`/service-pincodes/${pincode}`);
+      toast.success(`Pincode ${pincode} removed`);
+      load();
+    } catch {
+      toast.error("Failed to delete");
+    } finally {
+      setDeletingPin(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <MapPin className="w-6 h-6 text-primary" /> Service Areas
+          </h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Manage pincodes, areas and states where SwiftMart delivers
+          </p>
+        </div>
+        <Button onClick={() => { setShowForm(true); setForm(EMPTY_PIN_FORM); }} className="rounded-xl gap-2 shrink-0">
+          <Plus className="w-4 h-4" /> Add Pincode
+        </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: "Total Pincodes", value: rows.length, color: "text-foreground" },
+          { label: "Active", value: activeCount, color: "text-green-600" },
+          { label: "States Covered", value: stateGroups.length, color: "text-primary" },
+        ].map(s => (
+          <div key={s.label} className="bg-card border border-border rounded-2xl p-4 text-center shadow-sm">
+            <div className={`text-3xl font-bold ${s.color}`}>{s.value}</div>
+            <div className="text-xs text-muted-foreground mt-1 font-medium">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* State breakdown pills */}
+      {stateGroups.length > 0 && (
+        <div className="bg-card border border-border rounded-2xl p-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Pincodes by State</p>
+          <div className="flex flex-wrap gap-2">
+            {stateGroups.map(([state, count]) => (
+              <span key={state} className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-medium px-3 py-1.5 rounded-full">
+                <MapPin className="w-3 h-3" />
+                {state}
+                <span className="bg-primary text-primary-foreground rounded-full px-1.5 min-w-[18px] text-center text-[10px] font-bold">{count}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Add form */}
+      {showForm && (
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm">
+          <h3 className="font-semibold text-foreground flex items-center gap-2">
+            <Plus className="w-4 h-4 text-primary" /> Add New Service Pincode
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                Pincode <span className="text-red-500">*</span>
+              </label>
+              <Input
+                placeholder="e.g. 733101"
+                value={form.pincode}
+                maxLength={6}
+                onChange={e => setForm(f => ({ ...f, pincode: e.target.value.replace(/\D/g, "") }))}
+                className="rounded-xl font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                Area / Town <span className="text-red-500">*</span>
+              </label>
+              <Input
+                placeholder="e.g. Balurghat"
+                value={form.area}
+                onChange={e => setForm(f => ({ ...f, area: e.target.value }))}
+                className="rounded-xl"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                State <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={form.state}
+                onChange={e => setForm(f => ({ ...f, state: e.target.value }))}
+                className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-1">
+            <Button onClick={handleAdd} disabled={saving} className="rounded-xl gap-2">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              Add Pincode
+            </Button>
+            <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-xl">Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <Input
+          placeholder="Search by pincode, area or state…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="pl-9 rounded-xl"
+        />
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-20 text-muted-foreground">
+          <MapPin className="w-12 h-12 mx-auto mb-3 opacity-25" />
+          <p className="font-semibold text-base">{search ? "No results found" : "No service areas yet"}</p>
+          <p className="text-sm mt-1">{search ? "Try a different search term" : 'Click "Add Pincode" to get started'}</p>
+        </div>
+      ) : (
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pincode</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Area / Town</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">State</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filtered.map(row => (
+                  <tr key={row._id} className="hover:bg-muted/20 transition-colors">
+                    {editingRow?._id === row._id ? (
+                      <>
+                        <td className="px-5 py-3 font-mono font-bold text-primary text-base">{row.pincode}</td>
+                        <td className="px-5 py-3">
+                          <Input
+                            value={editForm.area}
+                            onChange={e => setEditForm(f => ({ ...f, area: e.target.value }))}
+                            className="rounded-lg h-8 text-sm"
+                            placeholder="Area / Town"
+                          />
+                        </td>
+                        <td className="px-5 py-3">
+                          <select
+                            value={editForm.state}
+                            onChange={e => setEditForm(f => ({ ...f, state: e.target.value }))}
+                            className="w-full rounded-lg border border-input bg-background px-2 py-1.5 text-sm"
+                          >
+                            {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${row.isActive ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
+                            {row.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button size="sm" onClick={handleSaveEdit} disabled={saving} className="rounded-lg h-8 px-3 gap-1 text-xs">
+                              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />} Save
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setEditingRow(null)} className="rounded-lg h-8 px-3 text-xs">
+                              Cancel
+                            </Button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-5 py-3">
+                          <span className="font-mono font-bold text-primary text-base">{row.pincode}</span>
+                        </td>
+                        <td className="px-5 py-3 font-medium text-foreground">{row.area || <span className="text-muted-foreground italic text-xs">—</span>}</td>
+                        <td className="px-5 py-3 text-muted-foreground text-sm">{row.state}</td>
+                        <td className="px-5 py-3">
+                          <button
+                            onClick={() => handleToggle(row)}
+                            disabled={togglingPin === row.pincode}
+                            title={row.isActive ? "Click to deactivate" : "Click to activate"}
+                            className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-all ${
+                              row.isActive
+                                ? "bg-green-50 text-green-700 border-green-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-green-50 hover:text-green-700 hover:border-green-200"
+                            }`}
+                          >
+                            {togglingPin === row.pincode
+                              ? <Loader2 className="w-3 h-3 animate-spin" />
+                              : row.isActive
+                                ? <CheckCircle className="w-3 h-3" />
+                                : <XCircle className="w-3 h-3" />
+                            }
+                            {row.isActive ? "Active" : "Inactive"}
+                          </button>
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              size="sm" variant="outline"
+                              onClick={() => { setEditingRow(row); setEditForm({ pincode: row.pincode, area: row.area, state: row.state }); }}
+                              className="rounded-lg h-8 w-8 p-0"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              size="sm" variant="outline"
+                              onClick={() => handleDelete(row.pincode)}
+                              disabled={deletingPin === row.pincode}
+                              className="rounded-lg h-8 w-8 p-0 text-red-500 hover:bg-red-50 hover:text-red-600 border-red-200"
+                              title="Delete"
+                            >
+                              {deletingPin === row.pincode
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <Trash2 className="w-3.5 h-3.5" />
+                              }
+                            </Button>
+                          </div>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-5 py-3 border-t border-border bg-muted/20 text-xs text-muted-foreground flex items-center gap-2">
+            <MapPin className="w-3.5 h-3.5" />
+            {filtered.length} pincode{filtered.length !== 1 ? "s" : ""}{search ? ` matching "${search}"` : " total"}
+            {" · "}{activeCount} active · {stateGroups.length} state{stateGroups.length !== 1 ? "s" : ""}
           </div>
         </div>
       )}
