@@ -1,7 +1,8 @@
-let _pincodes: string[] = ["733101", "733103"];
+let _pincodes: string[] = ["733101", "733102", "733103"];
 
 const _names: Record<string, string> = {
   "733101": "Balurghat, South Dinajpur",
+  "733102": "Balurghat, South Dinajpur",
   "733103": "Balurghat, South Dinajpur",
 };
 

@@ -63,7 +63,7 @@ router.get("/config", (_req: Request, res: Response): void => {
     messagingSenderId: process.env["FIREBASE_MESSAGING_SENDER_ID"] ?? process.env["VITE_FIREBASE_MESSAGING_SENDER_ID"] ?? "",
   } : null;
 
-  const rawPincodes = process.env["SERVICE_PINCODES"] ?? "733101,733103";
+  const rawPincodes = process.env["SERVICE_PINCODES"] ?? "733101,733102,733103";
   const servicePincodes = rawPincodes.split(",").map(p => p.trim()).filter(Boolean);
 
   res.json({
