@@ -784,7 +784,14 @@ function ShopRequestsTab() {
               )}
 
               {app.status === 'pending' && (
-                <div className="pt-2 border-t border-border flex flex-col md:flex-row gap-3">
+                <div className="pt-2 border-t border-border space-y-3">
+                  {rawShop?.certificateFile && rawShop?.certificateStatus === 'pending' && (
+                    <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl px-3 py-2.5 text-xs text-amber-800 dark:text-amber-300">
+                      <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      <span>A compliance document is pending review. Approving will automatically verify it, or you can review it above first.</span>
+                    </div>
+                  )}
+                  <div className="flex flex-col md:flex-row gap-3">
                   {rejectingId === app.id ? (
                     <div className="w-full space-y-3 bg-red-50/50 dark:bg-red-950/10 p-3 rounded-xl">
                       <Textarea 
@@ -812,6 +819,7 @@ function ShopRequestsTab() {
                       </Button>
                     </>
                   )}
+                  </div>
                 </div>
               )}
 

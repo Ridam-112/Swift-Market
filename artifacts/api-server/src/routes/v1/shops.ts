@@ -328,9 +328,6 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
 router.post("/:id/approve", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const shopId = req.params["id"] as string;
 
-  // C1 fix: if compliance docs have been uploaded they must be verified before the shop can go live.
-  // A shop with certificateFile set but certificateStatus !== "verified" is blocked until an admin
-  // runs POST /api/shops/:id/verify.
   const [existing] = await db.select({
     certificateFile: shops.certificateFile,
     certificateStatus: shops.certificateStatus,
@@ -338,16 +335,17 @@ router.post("/:id/approve", authenticate, A, async (req: AuthRequest, res: Respo
 
   if (!existing) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
 
-  if (existing.certificateFile && existing.certificateStatus !== "verified") {
-    res.status(422).json({
-      success: false,
-      message: "Cannot approve shop: compliance document is uploaded but not yet verified. Please verify or reject the certificate first (POST /api/shops/:id/verify).",
-    });
-    return;
+  // If a compliance document was uploaded but not yet explicitly verified,
+  // auto-verify it on approval — the admin's approval action IS the verification.
+  const certUpdate: Record<string, unknown> = {};
+  if (existing.certificateFile && existing.certificateStatus === "pending") {
+    certUpdate["certificateStatus"] = "verified";
   }
 
   const shop = await db.transaction(async (tx) => {
-    const [shop] = await tx.update(shops).set({ status: "approved", isOpen: true }).where(eq(shops.id, shopId)).returning();
+    const [shop] = await tx.update(shops)
+      .set({ status: "approved", isOpen: true, ...certUpdate })
+      .where(eq(shops.id, shopId)).returning();
     if (!shop) return null;
     const [owner] = await tx.select({ role: users.role }).from(users).where(eq(users.phone, shop.phone)).limit(1);
     if (owner) {
