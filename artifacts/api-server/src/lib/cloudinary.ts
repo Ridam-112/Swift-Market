@@ -7,16 +7,31 @@ cloudinary.config({
   secure: true,
 });
 
+/**
+ * Upload a buffer to Cloudinary.
+ *
+ * @param buffer       - File buffer to upload.
+ * @param folder       - Cloudinary folder (e.g. "swiftmart/products").
+ * @param resourceType - "image" for photos (default), "auto" for mixed
+ *                       content like certificates that may be PDF or image.
+ *                       Using "auto" lets Cloudinary detect the type; PDFs
+ *                       are stored as "raw" and images as "image".
+ */
 export function uploadToCloudinary(
   buffer: Buffer,
   folder: string,
-): Promise<{ url: string; publicId: string }> {
+  resourceType: "image" | "auto" | "raw" = "image",
+): Promise<{ url: string; publicId: string; resourceType: string }> {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder, resource_type: "image" },
+      { folder, resource_type: resourceType },
       (error, result) => {
         if (error || !result) return reject(error ?? new Error("Cloudinary upload failed"));
-        resolve({ url: result.secure_url, publicId: result.public_id });
+        resolve({
+          url: result.secure_url,
+          publicId: result.public_id,
+          resourceType: result.resource_type,
+        });
       },
     );
     stream.end(buffer);
@@ -28,6 +43,14 @@ export function extractPublicId(cloudinaryUrl: string): string | null {
   return match?.[1] ?? null;
 }
 
+/**
+ * Detect whether a Cloudinary URL points to a raw (PDF) asset.
+ * Raw assets are served under /raw/upload/ instead of /image/upload/.
+ */
+function isRawUrl(url: string): boolean {
+  return url.includes("/raw/upload/");
+}
+
 export async function deleteFromCloudinary(imageUrl: string): Promise<void> {
   if (!imageUrl) return;
   if (imageUrl.startsWith("/api/uploads/")) return;
@@ -35,7 +58,10 @@ export async function deleteFromCloudinary(imageUrl: string): Promise<void> {
   const publicId = extractPublicId(imageUrl);
   if (!publicId) return;
   try {
-    await cloudinary.uploader.destroy(publicId);
+    // PDFs are stored as "raw" resource type; images as "image".
+    // Using the wrong type silently no-ops, so detect from the URL.
+    const resourceType = isRawUrl(imageUrl) ? "raw" : "image";
+    await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
   } catch {
     // non-fatal — log silently
   }

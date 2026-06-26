@@ -84,7 +84,10 @@ router.post(
       res.status(400).json({ success: false, message: "No file uploaded" });
       return;
     }
-    const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/certificates");
+    // Use "auto" so Cloudinary accepts both image files (jpg/png/webp)
+    // and PDF documents. Without this, PDFs fail silently at Cloudinary
+    // even though multer allows them.
+    const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/certificates", "auto");
     res.json({ success: true, fileUrl: url });
   },
 );
