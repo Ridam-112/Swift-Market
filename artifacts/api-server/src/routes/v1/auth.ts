@@ -175,12 +175,28 @@ router.post("/login", loginLimiter, async (req: Request, res: Response): Promise
       return;
     }
 
-    // Existing OTP user with no password set
+    // Existing OTP user with no password set.
+    // Auto-generate a setup token so the frontend can go straight to the
+    // "Create your password" step without a separate forgot-password request.
     if (!user.passwordHash) {
+      const token = randomBytes(32).toString("hex");
+      const tokenHash = hashToken(token);
+      const expires = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
+
+      await db.update(users)
+        .set({ passwordResetTokenHash: tokenHash, passwordResetExpires: expires })
+        .where(eq(users.id, user.id));
+
+      req.log.info(
+        { phone, tokenExpires: expires.toISOString() },
+        `[PASSWORD SETUP] Token for +91${phone}: ${token}  (expires in 15 min)`
+      );
+      console.log(`\n🔑 PASSWORD SETUP TOKEN for +91${phone}:\n   ${token}\n   (expires at ${expires.toISOString()})\n`);
+
       res.status(200).json({
         success: false,
         needsPasswordSetup: true,
-        message: "Password not set. Please create a password using Forgot Password.",
+        message: "Please create a password for your account.",
       });
       return;
     }
