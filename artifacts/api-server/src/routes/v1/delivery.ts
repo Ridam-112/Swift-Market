@@ -1,7 +1,8 @@
 import { Router, type Response } from "express";
-import { db, deliveryPartners, deliveryChargeRules, deliverySettings } from "@workspace/db";
+import { db, deliveryPartners, deliveryChargeRules, deliverySettings, orders } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
+import { validateUuidParams } from "../../middlewares/validateUuid.js";
 import { mi, miArr } from "../../utils/mapId.js";
 
 const router = Router();
@@ -151,6 +152,84 @@ router.post("/rain-mode", authenticate, A, async (req: AuthRequest, res: Respons
   }
 
   res.json({ success: true, rainModeActive: active });
+});
+
+// ─── Delivery Partner Self-Service ───────────────────────────────────────────
+
+// GET /delivery/me — get own partner profile (linked by userId)
+router.get("/me", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) { res.status(404).json({ success: false, message: "Not a delivery partner" }); return; }
+  res.json({ success: true, partner: mi(partner) });
+});
+
+// PATCH /delivery/me/availability — toggle online/offline
+router.patch("/me/availability", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const [existing] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!existing) { res.status(404).json({ success: false, message: "Not a delivery partner" }); return; }
+  if (existing.status !== "active") { res.status(403).json({ success: false, message: "Account is not active" }); return; }
+  const [partner] = await db.update(deliveryPartners)
+    .set({ isAvailable: !existing.isAvailable, updatedAt: new Date() })
+    .where(eq(deliveryPartners.userId, userId))
+    .returning();
+  res.json({ success: true, partner: mi(partner!) });
+});
+
+// GET /delivery/me/orders — get all orders assigned to this partner
+router.get("/me/orders", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) { res.status(404).json({ success: false, message: "Not a delivery partner" }); return; }
+  const assigned = await db.select().from(orders)
+    .where(eq(orders.deliveryPartnerId, partner.id))
+    .orderBy(desc(orders.createdAt));
+  res.json({ success: true, orders: miArr(assigned), partner: mi(partner) });
+});
+
+// PATCH /delivery/me/orders/:orderId/status — mark order as out_for_delivery or delivered
+router.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("orderId"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const orderId = req.params["orderId"] as string;
+  const { status } = req.body as { status: string };
+
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) { res.status(403).json({ success: false, message: "Not a delivery partner" }); return; }
+
+  const allowed = ["out_for_delivery", "delivered"];
+  if (!allowed.includes(status)) {
+    res.status(400).json({ success: false, message: "Delivery partners can only set out_for_delivery or delivered" });
+    return;
+  }
+
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
+  if (order.deliveryPartnerId !== partner.id) {
+    res.status(403).json({ success: false, message: "This order is not assigned to you" });
+    return;
+  }
+
+  if (status === "delivered") {
+    await db.update(deliveryPartners).set({
+      ordersDelivered: partner.ordersDelivered + 1,
+      totalEarnings: partner.totalEarnings + (order.deliveryCharge ?? 0),
+      currentOrderId: null,
+      updatedAt: new Date(),
+    }).where(eq(deliveryPartners.id, partner.id));
+  } else if (status === "out_for_delivery") {
+    await db.update(deliveryPartners).set({
+      currentOrderId: order.id,
+      updatedAt: new Date(),
+    }).where(eq(deliveryPartners.id, partner.id));
+  }
+
+  const [updated] = await db.update(orders)
+    .set({ status, updatedAt: new Date() })
+    .where(eq(orders.id, orderId))
+    .returning();
+
+  res.json({ success: true, order: mi(updated!) });
 });
 
 export default router;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import { api } from "@/lib/api";
@@ -11,7 +11,7 @@ import { AddressCard } from "@/components/AddressCard";
 import { AddressForm } from "@/components/AddressForm";
 import { PincodeSelector } from "@/components/PincodeSelector";
 import { toast } from "sonner";
-import { LogOut, MapPin, Store, Clock, XCircle, Shield, HelpCircle, ChevronDown, ChevronUp, Send } from "lucide-react";
+import { LogOut, MapPin, Store, Clock, XCircle, Shield, HelpCircle, ChevronDown, ChevronUp, Send, Bike } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
@@ -36,6 +36,14 @@ export default function Profile() {
   const [helpSubject, setHelpSubject] = useState("");
   const [helpMessage, setHelpMessage] = useState("");
   const [isSubmittingHelp, setIsSubmittingHelp] = useState(false);
+  const [isDeliveryPartner, setIsDeliveryPartner] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    api.get<{ success: boolean }>("/delivery/me")
+      .then(d => setIsDeliveryPartner(d.success))
+      .catch(() => setIsDeliveryPartner(false));
+  }, [user]);
 
   if (!user) {
     return null;
@@ -295,6 +303,16 @@ export default function Profile() {
           <Link href="/admin">
             <Button variant="outline" className="w-full rounded-2xl h-14 font-bold text-lg shadow-none neu-inset bg-background text-foreground border-none">
               <Shield className="w-5 h-5 mr-2 text-primary" /> Admin Panel
+            </Button>
+          </Link>
+        </section>
+      )}
+
+      {isDeliveryPartner && (
+        <section>
+          <Link href="/delivery">
+            <Button variant="outline" className="w-full rounded-2xl h-14 font-bold text-lg shadow-none neu-inset bg-background text-foreground border-none">
+              <Bike className="w-5 h-5 mr-2 text-primary" /> Delivery Dashboard
             </Button>
           </Link>
         </section>

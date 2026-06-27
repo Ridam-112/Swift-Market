@@ -17,6 +17,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { RoleGuard } from "@/components/RoleGuard";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AdminGuard } from "@/components/AdminGuard";
+import { DeliveryGuard } from "@/components/DeliveryGuard";
 import { PincodeSelector } from "@/components/PincodeSelector";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { InstallPrompt } from "@/components/InstallPrompt";
@@ -60,7 +61,8 @@ const VendorShopProfile  = lazy(() => import("@/pages/vendor/ShopProfile"));
 const VendorRegister     = lazy(() => import("@/pages/VendorRegister"));
 const VendorStatus       = lazy(() => import("@/pages/VendorStatus"));
 
-const Admin       = lazy(() => import("@/pages/Admin"));
+const Admin            = lazy(() => import("@/pages/Admin"));
+const DeliveryDashboard = lazy(() => import("@/pages/DeliveryDashboard"));
 const AllProducts     = lazy(() => import("@/pages/AllProducts"));
 const SectionProducts = lazy(() => import("@/pages/SectionProducts"));
 
@@ -338,6 +340,14 @@ function Router() {
 
         <Route path="/admin">
           <AdminLayout><AdminGuard><Admin /></AdminGuard></AdminLayout>
+        </Route>
+
+        <Route path="/delivery">
+          <AdminLayout>
+            <Suspense fallback={<PageLoader />}>
+              <DeliveryGuard><DeliveryDashboard /></DeliveryGuard>
+            </Suspense>
+          </AdminLayout>
         </Route>
 
         <Route>
