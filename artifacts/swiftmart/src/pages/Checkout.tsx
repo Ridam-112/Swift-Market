@@ -162,7 +162,7 @@ export default function Checkout() {
     });
   };
 
-  const MINIMUM_ORDER_AMOUNT = 80;
+  const MINIMUM_ORDER_AMOUNT = 99;
 
   const handlePlaceOrder = async () => {
     if (subtotal < MINIMUM_ORDER_AMOUNT) {

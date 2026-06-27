@@ -9,7 +9,7 @@ import { Link } from "wouter";
 import { SectionHeader } from "@/components/SectionHeader";
 import { cartKey } from "@/context/CartContext";
 
-const MINIMUM_ORDER_AMOUNT = 80;
+const MINIMUM_ORDER_AMOUNT = 99;
 
 export default function Cart() {
   const { items, subtotal } = useCart();

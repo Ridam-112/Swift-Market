@@ -240,7 +240,7 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
 
       // 2. Recalculate subtotal from real DB prices (client value is ignored)
       const subtotal = +reducedProducts.reduce((sum, r) => sum + r.dbPrice * r.qty, 0).toFixed(2);
-      const MINIMUM_ORDER_AMOUNT = 80;
+      const MINIMUM_ORDER_AMOUNT = 99;
       if (subtotal < MINIMUM_ORDER_AMOUNT) {
         throw Object.assign(
           new Error(`Minimum order amount is ₹${MINIMUM_ORDER_AMOUNT}. Your cart total is ₹${subtotal}.`),
