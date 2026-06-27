@@ -79,8 +79,18 @@ interface ApiOrder {
   paymentMethod?: string;
   paymentStatus?: string;
   deliveryType?: string;
+  deliveryPartnerId?: string;
   createdAt: string;
   updatedAt?: string;
+}
+
+interface ActivePartner {
+  _id: string;
+  name: string;
+  phone: string;
+  vehicle?: string;
+  isAvailable: boolean;
+  status: string;
 }
 
 interface AdminStats {
@@ -1293,36 +1303,54 @@ function VendorsList() {
 
 function OrdersTab() {
   const [platformOrders, setPlatformOrders] = useState<PlatformOrder[]>([]);
+  const [partnerMap, setPartnerMap] = useState<Record<string, string | null>>({});
+  const [activePartners, setActivePartners] = useState<ActivePartner[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<PlatformOrder['status'] | 'all'>('all');
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'instant' | 'scheduled'>('all');
+  const [unassignedOnly, setUnassignedOnly] = useState(false);
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
+  const [assigningOrder, setAssigningOrder] = useState<string | null>(null);
+  const [pendingAssign, setPendingAssign] = useState<Record<string, string>>({});
 
-  useEffect(() => {
+  const loadOrders = useCallback(async () => {
     setLoadingOrders(true);
-    api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=100')
-      .then(d => {
-        setPlatformOrders(d.orders.map(o => ({
-          id: o._id,
-          customerId: o.customerId,
-          customerName: o.customerName ?? "Customer",
-          customerPhone: o.customerPhone ?? "",
-          vendorId: o.shopId ?? "",
-          vendorName: o.shopName ?? "Shop",
-          items: o.items.map(i => ({ name: i.name, qty: i.qty, price: i.price, category: "" })),
-          total: o.netAmount ?? o.subtotal ?? o.items.reduce((s, i) => s + i.price * i.qty, 0),
-          status: o.status as PlatformOrder['status'],
-          paymentMethod: (o.paymentMethod ?? "cash") as PlatformOrder['paymentMethod'],
-          paymentStatus: (o.paymentStatus ?? "pending") as PlatformOrder['paymentStatus'],
-          deliveryType: (o.deliveryType === 'scheduled' ? 'scheduled' : 'instant') as 'instant' | 'scheduled',
-          placedAt: o.createdAt,
-          updatedAt: o.updatedAt ?? o.createdAt,
-        })));
-      })
-      .catch(() => setPlatformOrders([]))
-      .finally(() => setLoadingOrders(false));
+    try {
+      const [ordersData, partnersData] = await Promise.all([
+        api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=200'),
+        api.get<{ success: boolean; partners: ActivePartner[] }>('/delivery'),
+      ]);
+      const rawOrders = ordersData.orders ?? [];
+      setPlatformOrders(rawOrders.map(o => ({
+        id: o._id,
+        customerId: o.customerId,
+        customerName: o.customerName ?? "Customer",
+        customerPhone: o.customerPhone ?? "",
+        vendorId: o.shopId ?? "",
+        vendorName: o.shopName ?? "Shop",
+        items: o.items.map(i => ({ name: i.name, qty: i.qty, price: i.price, category: "" })),
+        total: o.netAmount ?? o.subtotal ?? o.items.reduce((s, i) => s + i.price * i.qty, 0),
+        status: o.status as PlatformOrder['status'],
+        paymentMethod: (o.paymentMethod ?? "cash") as PlatformOrder['paymentMethod'],
+        paymentStatus: (o.paymentStatus ?? "pending") as PlatformOrder['paymentStatus'],
+        deliveryType: (o.deliveryType === 'scheduled' ? 'scheduled' : 'instant') as 'instant' | 'scheduled',
+        placedAt: o.createdAt,
+        updatedAt: o.updatedAt ?? o.createdAt,
+      })));
+      // Build orderId → deliveryPartnerId map
+      const map: Record<string, string | null> = {};
+      rawOrders.forEach(o => { map[o._id] = o.deliveryPartnerId ?? null; });
+      setPartnerMap(map);
+      setActivePartners((partnersData.partners ?? []).filter(p => p.status === "active"));
+    } catch {
+      setPlatformOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
   }, []);
+
+  useEffect(() => { loadOrders(); }, [loadOrders]);
 
   const updateOrderStatus = async (orderId: string, status: PlatformOrder['status']) => {
     await api.patch(`/orders/${orderId}/status`, { status }).catch(() => {});
@@ -1334,11 +1362,34 @@ function OrdersTab() {
     setPlatformOrders(prev => prev.map(o => o.id === orderId ? { ...o, paymentStatus: 'refunded' as const } : o));
   };
 
+  const handleAssignPartner = async (orderId: string) => {
+    const selected = pendingAssign[orderId] ?? "__unassigned__";
+    const deliveryPartnerId = selected === "__unassigned__" ? null : selected;
+    setAssigningOrder(orderId);
+    try {
+      await api.patch(`/orders/${orderId}/assign-partner`, { deliveryPartnerId });
+      setPartnerMap(prev => ({ ...prev, [orderId]: deliveryPartnerId }));
+      const partner = activePartners.find(p => p._id === deliveryPartnerId);
+      toast.success(deliveryPartnerId ? `Assigned to ${partner?.name ?? "partner"}` : "Partner unassigned");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to assign partner");
+    } finally {
+      setAssigningOrder(null);
+    }
+  };
+
+  const getAssignedPartnerName = (orderId: string) => {
+    const pid = partnerMap[orderId];
+    if (!pid) return null;
+    return activePartners.find(p => p._id === pid) ?? null;
+  };
+
   const filtered = platformOrders.filter(o => {
     if (filter !== 'all' && o.status !== filter) return false;
     if (deliveryFilter !== 'all' && o.deliveryType !== deliveryFilter) return false;
-    if (search && !o.id.toLowerCase().includes(search.toLowerCase()) && 
-        !o.customerName.toLowerCase().includes(search.toLowerCase()) && 
+    if (unassignedOnly && partnerMap[o.id]) return false;
+    if (search && !o.id.toLowerCase().includes(search.toLowerCase()) &&
+        !o.customerName.toLowerCase().includes(search.toLowerCase()) &&
         !o.vendorName.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -1368,11 +1419,23 @@ function OrdersTab() {
     }
   };
 
+  const unassignedCount = platformOrders.filter(o =>
+    !["delivered", "cancelled", "refunded"].includes(o.status) && !partnerMap[o.id]
+  ).length;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <h2 className="text-2xl font-bold text-foreground">Order Management</h2>
         <Badge className="bg-primary/10 text-primary neu-inset border-none">{platformOrders.length} total</Badge>
+        {unassignedCount > 0 && (
+          <Badge className="bg-amber-100 text-amber-700 border-none neu-inset dark:bg-amber-900/30 dark:text-amber-300">
+            {unassignedCount} need delivery partner
+          </Badge>
+        )}
+        <button onClick={loadOrders} className="ml-auto p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted">
+          <RefreshCw className="w-4 h-4" />
+        </button>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4">
@@ -1398,7 +1461,7 @@ function OrdersTab() {
             </button>
           ))}
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 flex-wrap">
           {(['all', 'instant', 'scheduled'] as const).map(f => (
             <button
               key={f}
@@ -1412,6 +1475,14 @@ function OrdersTab() {
               {f === 'all' ? '⚡ All types' : f === 'instant' ? '⚡ Instant' : '🕐 Scheduled'}
             </button>
           ))}
+          <button
+            onClick={() => setUnassignedOnly(v => !v)}
+            className={`px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              unassignedOnly ? 'bg-amber-500 text-white neu-card' : 'bg-background text-muted-foreground neu-inset'
+            }`}
+          >
+            <Bike className="w-3.5 h-3.5" /> Unassigned
+          </button>
         </div>
       </div>
 
@@ -1422,7 +1493,11 @@ function OrdersTab() {
             <p>No orders found</p>
           </div>
         ) : (
-          filtered.map(o => (
+          filtered.map(o => {
+            const assignedPartner = getAssignedPartnerName(o.id);
+            const currentPendingAssign = pendingAssign[o.id] ?? (partnerMap[o.id] ?? "__unassigned__");
+            const isTerminal = ["delivered", "cancelled", "refunded"].includes(o.status);
+            return (
             <div key={o.id} className="bg-card p-4 md:p-6 rounded-3xl neu-card flex flex-col md:flex-row gap-6">
               <div className="flex-1 space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
@@ -1459,6 +1534,69 @@ function OrdersTab() {
                     Items: {o.items[0]?.name} {o.items.length > 1 ? `& ${o.items.length - 1} more` : ''}
                   </p>
                 </div>
+
+                {/* Delivery Partner Assignment */}
+                {!isTerminal && (
+                  <div className="bg-background p-3 rounded-2xl neu-inset space-y-2">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                      <Bike className="w-3.5 h-3.5" /> Delivery Partner
+                    </p>
+                    {assignedPartner ? (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-sm text-foreground">{assignedPartner.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            +91 {assignedPartner.phone} · {assignedPartner.vehicle ?? ""}
+                            <span className={`ml-1.5 inline-block w-1.5 h-1.5 rounded-full align-middle ${assignedPartner.isAvailable ? "bg-green-500" : "bg-muted-foreground"}`} />
+                            {assignedPartner.isAvailable ? " Online" : " Offline"}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm" variant="ghost"
+                          className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                          disabled={assigningOrder === o.id}
+                          onClick={async () => {
+                            setAssigningOrder(o.id);
+                            try {
+                              await api.patch(`/orders/${o.id}/assign-partner`, { deliveryPartnerId: null });
+                              setPartnerMap(prev => ({ ...prev, [o.id]: null }));
+                              toast.success("Partner unassigned");
+                            } catch { toast.error("Failed to unassign partner"); }
+                            finally { setAssigningOrder(null); }
+                          }}
+                        >
+                          <X className="w-3 h-3 mr-1" />Remove
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="flex-1 h-8 rounded-lg border border-input bg-background px-2 text-sm text-foreground"
+                          value={currentPendingAssign}
+                          onChange={e => setPendingAssign(prev => ({ ...prev, [o.id]: e.target.value }))}
+                        >
+                          <option value="__unassigned__">— Select partner —</option>
+                          {activePartners.map(p => (
+                            <option key={p._id} value={p._id}>
+                              {p.name} ({p.vehicle ?? "—"}) {p.isAvailable ? "🟢" : "🔴"}
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          size="sm"
+                          disabled={!currentPendingAssign || currentPendingAssign === "__unassigned__" || assigningOrder === o.id}
+                          onClick={() => handleAssignPartner(o.id)}
+                          className="h-8 px-3 text-xs shrink-0"
+                        >
+                          {assigningOrder === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Assign"}
+                        </Button>
+                      </div>
+                    )}
+                    {activePartners.length === 0 && (
+                      <p className="text-xs text-muted-foreground">No active delivery partners. Add partners in the Delivery Partners section.</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="w-full md:w-64 flex flex-col gap-3 shrink-0">
@@ -1486,6 +1624,8 @@ function OrdersTab() {
                         }}
                       >
                         <option value="placed">Placed</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="preparing">Preparing</option>
                         <option value="packed">Packed</option>
                         <option value="out_for_delivery">Out for Delivery</option>
                         <option value="delivered">Delivered</option>
@@ -1515,7 +1655,8 @@ function OrdersTab() {
                 </div>
               </div>
             </div>
-          ))
+          );
+          })
         )}
       </div>
     </div>

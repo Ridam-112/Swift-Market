@@ -1,7 +1,7 @@
 import { Router, type Response } from "express";
 import Razorpay from "razorpay";
 import { z } from "zod";
-import { db, orders, products, shops, users, payouts, coupons } from "@workspace/db";
+import { db, orders, products, shops, users, payouts, coupons, deliveryPartners } from "@workspace/db";
 import { eq, and, ilike, or, gte, ne, desc, count, sql, inArray } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { validateUuidParams } from "../../middlewares/validateUuid.js";
@@ -538,6 +538,40 @@ router.post("/:id/refund", authenticate, A, validateUuidParams("id"), async (req
   } catch { /* ignore */ }
 
   res.json({ success: true, order: mi(order), ...(razorpayWarning ? { warning: razorpayWarning } : {}) });
+});
+
+// PATCH /api/orders/:id/assign-partner — admin: assign or unassign a delivery partner
+router.patch("/:id/assign-partner", authenticate, A, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const orderId = req.params["id"] as string;
+  const { deliveryPartnerId } = req.body as { deliveryPartnerId: string | null };
+
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
+
+  // Release previous partner's currentOrderId if they were holding this order
+  if (order.deliveryPartnerId && order.deliveryPartnerId !== deliveryPartnerId) {
+    await db.update(deliveryPartners)
+      .set({ currentOrderId: null, updatedAt: new Date() })
+      .where(eq(deliveryPartners.id, order.deliveryPartnerId));
+  }
+
+  // Stamp new partner's currentOrderId
+  if (deliveryPartnerId) {
+    const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.id, deliveryPartnerId)).limit(1);
+    if (!partner) { res.status(404).json({ success: false, message: "Delivery partner not found" }); return; }
+    if (partner.status !== "active") { res.status(400).json({ success: false, message: "Partner is not active" }); return; }
+
+    await db.update(deliveryPartners)
+      .set({ currentOrderId: orderId, updatedAt: new Date() })
+      .where(eq(deliveryPartners.id, deliveryPartnerId));
+  }
+
+  const [updated] = await db.update(orders)
+    .set({ deliveryPartnerId: deliveryPartnerId ?? null, updatedAt: new Date() })
+    .where(eq(orders.id, orderId))
+    .returning();
+
+  res.json({ success: true, order: mi(updated!) });
 });
 
 export default router;
