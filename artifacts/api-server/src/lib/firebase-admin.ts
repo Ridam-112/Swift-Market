@@ -3,11 +3,13 @@ import { getMessaging } from "firebase-admin/messaging";
 
 const projectId   = process.env["FIREBASE_PROJECT_ID"]   ?? process.env["VITE_FIREBASE_PROJECT_ID"] ?? "";
 const clientEmail = process.env["FIREBASE_CLIENT_EMAIL"] ?? "";
-// Strip surrounding quotes (some secret stores wrap the key in double quotes)
-// and convert literal \n escape sequences to real newlines
-const privateKey  = (process.env["FIREBASE_PRIVATE_KEY"] ?? "")
+// Strip surrounding quotes, convert \n escapes, then extract only the PEM block
+// (handles cases where extra text was accidentally pasted around the key)
+const _rawKey = (process.env["FIREBASE_PRIVATE_KEY"] ?? "")
   .replace(/^["']|["']$/g, "")
   .replace(/\\n/g, "\n");
+const _pemMatch = _rawKey.match(/-----BEGIN PRIVATE KEY-----[\s\S]+?-----END PRIVATE KEY-----/);
+const privateKey = _pemMatch ? _pemMatch[0] : _rawKey;
 
 let _ready = false;
 
