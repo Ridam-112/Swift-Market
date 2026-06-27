@@ -314,7 +314,7 @@ export default function Auth() {
     setIsSendingReset(true);
     try {
       await forgotPassword(resetPhone);
-      toast.success("Reset token generated — check the server console.");
+      toast.success("6-digit code sent to your mobile number");
       setResetToken("");
       setNewPwd("");
       setConfirmPwd("");
@@ -621,7 +621,7 @@ export default function Auth() {
                 </button>
                 <div>
                   <h2 className="text-xl font-bold">Forgot Password</h2>
-                  <p className="text-muted-foreground text-sm">Enter your mobile number to reset</p>
+                  <p className="text-muted-foreground text-sm">We'll send a 6-digit code to your mobile</p>
                 </div>
               </div>
 
@@ -636,19 +636,19 @@ export default function Auth() {
                   </div>
                 </div>
 
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-sm text-amber-800 dark:text-amber-300">
-                  <p className="font-medium">Development mode</p>
-                  <p className="text-xs mt-0.5">Reset token is printed in the server console (terminal).</p>
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-sm text-blue-800 dark:text-blue-300">
+                  <p className="font-medium">SMS verification</p>
+                  <p className="text-xs mt-0.5">A 6-digit code will be sent to your registered mobile number via SMS. Valid for 15 minutes.</p>
                 </div>
 
                 <Button type="submit" disabled={isSendingReset || resetPhone.length !== 10}
                   className="w-full rounded-2xl h-14 text-lg font-bold shadow-none neu-card">
-                  {isSendingReset ? <Loader2 className="w-5 h-5 animate-spin" /> : "Send Reset Token"}
+                  {isSendingReset ? <Loader2 className="w-5 h-5 animate-spin" /> : "Send Code via SMS"}
                 </Button>
 
                 <button type="button" onClick={() => { setStep('reset'); }}
                   className="w-full text-center text-sm text-primary hover:underline">
-                  Already have a token? Enter it here
+                  Already have the code? Enter it here
                 </button>
               </form>
             </motion.div>
@@ -665,7 +665,7 @@ export default function Auth() {
                 </button>
                 <div>
                   <h2 className="text-xl font-bold">Set New Password</h2>
-                  <p className="text-muted-foreground text-sm">Enter the token from the server console</p>
+                  <p className="text-muted-foreground text-sm">Enter the 6-digit code sent to your mobile</p>
                 </div>
               </div>
 
@@ -685,9 +685,9 @@ export default function Auth() {
                 )}
 
                 <div className="space-y-2">
-                  <Label>Reset Token</Label>
-                  <Input placeholder="Paste the token from server console" value={resetToken}
-                    onChange={e => setResetToken(e.target.value.trim())} className={cn(inputCls, "font-mono text-sm")} />
+                  <Label>6-Digit SMS Code</Label>
+                  <Input placeholder="Enter the code from your SMS" value={resetToken} inputMode="numeric"
+                    maxLength={64} onChange={e => setResetToken(e.target.value.trim())} className={cn(inputCls, "font-mono text-lg tracking-widest")} />
                 </div>
 
                 <div className="space-y-2">

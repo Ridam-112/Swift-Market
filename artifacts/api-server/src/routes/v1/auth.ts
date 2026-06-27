@@ -7,6 +7,7 @@ import { eq, or } from "drizzle-orm";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt.js";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
 import { mi } from "../../utils/mapId.js";
+import { sendPasswordResetOtp, verify2FactorOtp, OTP_MODE } from "../../lib/sms.js";
 import {
   loginLimiter,
   signupLimiter,
@@ -302,7 +303,8 @@ router.post("/login", loginLimiter, async (req: Request, res: Response): Promise
 
 // ─── POST /api/auth/forgot-password ──────────────────────────────────────────
 // For users who already have a password but forgot it.
-// Generates a secure token, logs to console (replace with SMS/email in prod).
+// Real mode: sends a 6-digit OTP via 2Factor AUTOGEN SMS.
+// Demo mode: logs a 6-digit code to the console (code "123456").
 router.post("/forgot-password", resetPasswordLimiter, async (req: Request, res: Response): Promise<void> => {
   const { phone } = req.body as { phone?: string };
 
@@ -312,23 +314,31 @@ router.post("/forgot-password", resetPasswordLimiter, async (req: Request, res: 
   }
 
   try {
-    const { randomBytes } = await import("node:crypto");
     const [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
 
     if (user && user.status !== "banned") {
-      const token = randomBytes(32).toString("hex");
-      const tokenHash = hashToken(token);
+      const smsResult = await sendPasswordResetOtp(phone);
       const expires = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
 
-      await db.update(users)
-        .set({ passwordResetTokenHash: tokenHash, passwordResetExpires: expires })
-        .where(eq(users.id, user.id));
-
-      req.log.info({ phone }, `[PASSWORD RESET] Token for +91${phone}: ${token}`);
-      console.log(`\n🔑 PASSWORD RESET TOKEN for +91${phone}:\n   ${token}\n   (expires at ${expires.toISOString()})\n`);
+      if (smsResult.success && smsResult.sessionId) {
+        // Store "2fa:<sessionId>" so reset-password knows to verify via 2Factor
+        await db.update(users)
+          .set({ passwordResetTokenHash: `2fa:${smsResult.sessionId}`, passwordResetExpires: expires })
+          .where(eq(users.id, user.id));
+        req.log.info({ phone, mode: OTP_MODE }, "Password reset OTP sent");
+      } else {
+        // SMS failed — fall back to hex token and log to console
+        const { randomBytes } = await import("node:crypto");
+        const token = randomBytes(32).toString("hex");
+        await db.update(users)
+          .set({ passwordResetTokenHash: hashToken(token), passwordResetExpires: expires })
+          .where(eq(users.id, user.id));
+        req.log.warn({ phone, err: smsResult.error }, "SMS failed — falling back to console token");
+        console.log(`\n🔑 PASSWORD RESET TOKEN for +91${phone}:\n   ${token}\n   (expires ${expires.toISOString()})\n`);
+      }
     }
 
-    res.json({ success: true, message: "If an account exists for this number, a reset token has been sent." });
+    res.json({ success: true, message: "A 6-digit code has been sent to your mobile number." });
   } catch (err) {
     req.log.error({ err, phone }, "Forgot-password failed");
     res.status(500).json({ success: false, message: "Request failed. Please try again." });
@@ -336,7 +346,7 @@ router.post("/forgot-password", resetPasswordLimiter, async (req: Request, res: 
 });
 
 // ─── POST /api/auth/reset-password ───────────────────────────────────────────
-// Reset a forgotten password using the token from forgot-password.
+// Reset a forgotten password using the 6-digit SMS code (or legacy hex token).
 router.post("/reset-password", async (req: Request, res: Response): Promise<void> => {
   const { phone, token, newPassword } = req.body as { phone?: string; token?: string; newPassword?: string };
 
@@ -344,8 +354,8 @@ router.post("/reset-password", async (req: Request, res: Response): Promise<void
     res.status(400).json({ success: false, message: "Valid 10-digit mobile number required" });
     return;
   }
-  if (!token || token.length < 10) {
-    res.status(400).json({ success: false, message: "Reset token required" });
+  if (!token || !token.trim()) {
+    res.status(400).json({ success: false, message: "Verification code required" });
     return;
   }
   if (!newPassword || newPassword.length < 8) {
@@ -357,15 +367,34 @@ router.post("/reset-password", async (req: Request, res: Response): Promise<void
     const [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
 
     if (!user || !user.passwordResetTokenHash || !user.passwordResetExpires) {
-      res.status(400).json({ success: false, message: "Invalid or expired reset token" });
+      res.status(400).json({ success: false, message: "Invalid or expired code. Request a new one." });
       return;
     }
     if (user.passwordResetExpires < new Date()) {
-      res.status(400).json({ success: false, message: "Reset token has expired. Please request a new one." });
+      res.status(400).json({ success: false, message: "Code has expired. Please request a new one." });
       return;
     }
-    if (hashToken(token) !== user.passwordResetTokenHash) {
-      res.status(400).json({ success: false, message: "Invalid or expired reset token" });
+
+    // Verify: 2Factor SMS session ("2fa:<sessionId>") or legacy hex token
+    let verified = false;
+    if (user.passwordResetTokenHash.startsWith("2fa:")) {
+      const sessionId = user.passwordResetTokenHash.slice(4);
+      if (sessionId === "demo") {
+        verified = token.trim() === "123456";
+      } else {
+        const result = await verify2FactorOtp(sessionId, token.trim());
+        verified = result.success;
+        if (!verified) {
+          req.log.warn({ phone }, "2Factor password reset verify failed");
+        }
+      }
+    } else {
+      // Legacy: hex token hashed with SHA-256
+      verified = token.length >= 10 && hashToken(token) === user.passwordResetTokenHash;
+    }
+
+    if (!verified) {
+      res.status(400).json({ success: false, message: "Incorrect code. Please try again." });
       return;
     }
 

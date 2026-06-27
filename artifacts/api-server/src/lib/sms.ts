@@ -55,6 +55,38 @@ export async function sendOtpSms(phone: string): Promise<SmsResult> {
 }
 
 /**
+ * Sends a password-reset OTP via 2Factor AUTOGEN in real mode.
+ * Uses the same AUTOGEN endpoint as login OTP — no DLT template required.
+ * In demo mode: returns a fake sessionId of "demo" (code "123456").
+ */
+export async function sendPasswordResetOtp(phone: string): Promise<SmsResult> {
+  if (OTP_MODE === "demo") {
+    console.info(`[sms] DEMO mode — password reset OTP for ${phone}: 123456`);
+    return { success: true, sessionId: "demo" };
+  }
+
+  if (!TWO_FACTOR_API_KEY) {
+    return { success: false, error: "TWO_FACTOR_API_KEY is not set. Add it to Replit Secrets." };
+  }
+
+  try {
+    const url = `https://2factor.in/API/V1/${TWO_FACTOR_API_KEY}/SMS/91${phone}/AUTOGEN`;
+    const res = await fetch(url);
+    const raw = await res.text();
+    let data: { Status?: string; Details?: string };
+    try { data = JSON.parse(raw) as typeof data; }
+    catch { return { success: false, error: `2Factor non-JSON (HTTP ${res.status}): ${raw.slice(0, 200)}` }; }
+    if (!res.ok || data.Status !== "Success") {
+      return { success: false, error: `2Factor error: ${data.Details ?? data.Status ?? `HTTP ${res.status}`}` };
+    }
+    return { success: true, sessionId: data.Details };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: `2Factor network error: ${msg}` };
+  }
+}
+
+/**
  * Verifies the OTP the user entered against 2Factor's session.
  * Only called when OTP_MODE=real (session.otp starts with "2fa:").
  */
