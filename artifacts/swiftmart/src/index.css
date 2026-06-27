@@ -273,7 +273,6 @@
 
   /* ─── Mobile smoothness ─────────────────────────────────────────────────── */
   html {
-    scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;

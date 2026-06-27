@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useLocation } from "wouter";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -200,8 +200,11 @@ function PageLoader() {
 
 function ScrollToTop() {
   const [location] = useLocation();
+  const prevLocation = useRef(location);
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    if (prevLocation.current === location) return;
+    prevLocation.current = location;
+    window.scrollTo(0, 0);
   }, [location]);
   return null;
 }
