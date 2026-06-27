@@ -59,7 +59,16 @@ export function CartItemRow({ item }: { item: CartItem }) {
             Only {product.stock} left in stock
           </div>
         )}
-        <div className="font-bold text-primary mt-1">{formatINR(product.price)}</div>
+        <div className="flex items-baseline gap-1.5 mt-1">
+          <span className="font-bold text-primary">
+            {formatINR(product.discountedPrice ?? product.price)}
+          </span>
+          {product.discountedPrice && product.discountedPrice < product.price && (
+            <span className="text-xs text-muted-foreground line-through">
+              {formatINR(product.price)}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex-shrink-0">

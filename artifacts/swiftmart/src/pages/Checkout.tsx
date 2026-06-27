@@ -141,7 +141,7 @@ export default function Checkout() {
         productId: item.product.id,
         productName: item.product.name,
         qty: item.qty,
-        price: item.product.price,
+        price: item.product.discountedPrice ?? item.product.price,
         category: item.product.category,
         ...(item.selectedColor ? { selectedColor: item.selectedColor } : {}),
         ...(item.selectedSize ? { selectedSize: item.selectedSize } : {}),

@@ -220,7 +220,7 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
             gte(products.stock, item.qty),
             ne(products.status, "inactive"),
           ))
-          .returning({ id: products.id, price: products.price, stock: products.stock });
+          .returning({ id: products.id, price: products.price, discountedPrice: products.discountedPrice, stock: products.stock });
 
         if (!updated) {
           throw Object.assign(
@@ -229,7 +229,9 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
           );
         }
 
-        reducedProducts.push({ productId: item.productId, qty: item.qty, dbPrice: updated.price });
+        // Use offer/discounted price when set — this is what the customer was shown
+        const dbPrice = updated.discountedPrice ?? updated.price;
+        reducedProducts.push({ productId: item.productId, qty: item.qty, dbPrice });
 
         if (updated.stock === 0) {
           await tx.update(products).set({ status: "out_of_stock" }).where(eq(products.id, item.productId));
