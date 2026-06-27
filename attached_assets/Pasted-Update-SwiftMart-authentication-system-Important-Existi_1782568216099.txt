@@ -1,0 +1,106 @@
+Update SwiftMart authentication system.
+
+Important:
+Existing users who signed up/login using OTP must NOT be deleted.
+Keep all existing user accounts, roles, orders, vendor data, admin data, addresses, carts, etc.
+
+Goal:
+Remove OTP login as the active login method, but safely migrate existing OTP users to the new auth system.
+
+New login methods:
+1. Mobile Number + Password
+2. Firebase Google Login
+
+Existing OTP users:
+- Keep their mobile numbers and user profiles.
+- Add passwordHash field as nullable initially.
+- For old OTP users who do not have a password:
+  - When they try to login with mobile number, show:
+    “Password not set. Please create a password.”
+  - Create a “Set Password” flow.
+- Since OTP is being removed, use a secure reset/setup token system for setting password.
+- Token should expire in 15 minutes.
+- Backend should be ready to send this token by SMS/email later.
+- For development, log the reset link/token only in server console, not frontend.
+
+Database:
+- Do safe migration only.
+- Do not drop users table.
+- Do not delete any old users.
+- Add:
+  - passwordHash nullable
+  - authProvider
+  - googleUid nullable
+  - email nullable
+  - profilePhoto nullable
+  - passwordResetTokenHash nullable
+  - passwordResetExpires nullable
+
+Auth UI:
+- Remove OTP login UI.
+- Login page:
+  - Mobile Number
+  - Password
+  - Login button
+  - Forgot Password?
+  - Continue with Google
+  - Create Account
+
+Signup:
+- Full Name
+- Mobile Number
+- Password
+- Confirm Password
+- Default role = customer
+- Mobile number must be unique.
+
+Login:
+- Mobile number + password.
+- If user exists but passwordHash is empty, show password setup required.
+- Return same JWT/session format as before.
+- Existing roles must continue working:
+  - customer
+  - vendor
+  - admin
+  - super_admin
+
+Forgot Password / Set Password:
+- User enters mobile number.
+- If user exists, generate secure reset token.
+- Store only hashed token in database.
+- Token expires in 15 minutes.
+- Allow user to set new password using token.
+- Hash password using bcrypt.
+- Clear reset token after success.
+- Do not reveal whether mobile number exists in public error messages.
+
+Google Login:
+- Use Firebase Google Sign-In on frontend.
+- Frontend sends Firebase ID token to backend.
+- Backend verifies token securely.
+- If googleUid/email matches existing user, login.
+- If not found, create new customer user.
+- If possible, link Google login to existing user with same email or verified mobile later.
+- If Google user has no mobile number, ask them to complete mobile number after first login.
+
+Security:
+- bcrypt password hashing.
+- Password minimum 8 characters.
+- Rate limit login and reset password routes.
+- JWT should continue working with current role guards.
+- Do not expose backend secrets or Firebase admin keys in frontend.
+
+Cleanup:
+- Remove OTP as login method.
+- Remove OTP screens/buttons/routes from frontend.
+- Keep old OTP-related database fields only if needed for backward compatibility, but do not use them.
+- Do not break existing data.
+
+After implementation:
+- Test old OTP user still exists.
+- Test old OTP user can set password.
+- Test new signup works.
+- Test mobile + password login works.
+- Test Google login works.
+- Test admin/vendor role login still works.
+- Fix all TypeScript/build errors.

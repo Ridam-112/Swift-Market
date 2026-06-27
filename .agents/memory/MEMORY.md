@@ -6,3 +6,4 @@
 - [Capacitor CORS fix](capacitor-cors.md) — Android WebView sends origin 'https://localhost'; must be whitelisted in prod CORS or all APK requests return 500
 - [FCM Push Migration](fcm-migration.md) — Replaced VAPID/web-push with Firebase Cloud Messaging; 3 new secrets required before push works
 - [Replit migration secrets](swiftmart-replit-migration.md) — All secrets needed to run on Replit; run scripts/check-secrets.mjs to verify; duplicate artifact workflows fail on port conflicts (expected, main workflow owns ports)
+- [Password Auth Migration](password-auth.md) — OTP removed; mobile+password+Google; existing OTP users preserved with needsPasswordSetup flow; token-based reset logged to console in dev

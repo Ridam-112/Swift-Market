@@ -21,10 +21,21 @@ interface AuthContextType {
   deleteAddress: (id: string) => void;
   updateAddress: (address: Address) => void;
   updatePincode: (pincode: string) => Promise<void>;
+
+  // Password-based auth
+  loginWithPassword: (phone: string, password: string) => Promise<{ isNewUser: boolean; user?: User; needsPasswordSetup?: boolean }>;
+  signup: (name: string, phone: string, password: string) => Promise<{ isNewUser: boolean; user?: User }>;
+  forgotPassword: (phone: string) => Promise<void>;
+  resetPassword: (phone: string, token: string, newPassword: string) => Promise<{ user?: User }>;
+
+  // Google auth
+  loginWithGoogle: (token: string, type?: "credential" | "accessToken") => Promise<{ isNewUser: boolean; user?: User }>;
+
+  completeOnboarding: (name: string, phone: string, address: Address, email?: string) => Promise<void>;
+
+  // Legacy — kept so existing call sites don't break during transition
   loginWithPhone: (phone: string) => Promise<void>;
   verifyOtp: (otp: string, phone: string) => Promise<{ isNewUser: boolean; user?: User }>;
-  loginWithGoogle: (token: string, type?: "credential" | "accessToken") => Promise<{ isNewUser: boolean; user?: User }>;
-  completeOnboarding: (name: string, phone: string, address: Address, email?: string) => Promise<void>;
 
   applications: VendorApplication[];
   submitVendorApplication: (app: Omit<VendorApplication, 'id' | 'userId' | 'userName' | 'userPhone' | 'submittedAt' | 'status'>) => Promise<void>;
@@ -67,6 +78,7 @@ interface ApiUser {
   vendorStatus?: string;
   pincode?: string;
   addresses?: ApiAddress[];
+  profilePhoto?: string | null;
   vendorProfile?: {
     storeName: string;
     storeCategory: string;
@@ -133,6 +145,15 @@ function apiUserToFrontend(apiUser: ApiUser): User {
   };
 }
 
+function handleAuthResponse(data: {
+  accessToken: string;
+  refreshToken: string;
+  user: ApiUser;
+}): User {
+  setTokens(data.accessToken, data.refreshToken);
+  return apiUserToFrontend(data.user);
+}
+
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -170,7 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (savedRole) setUserRole(savedRole as UserRole);
     if (savedDashRole) setRoleState(savedDashRole as 'customer' | 'vendor');
 
-    const { access, refresh } = api.getTokens();
+    const { access } = api.getTokens();
     if (access) {
       api.get<{ success: boolean; user: ApiUser }>("/auth/me")
         .then(d => {
@@ -187,26 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUserRole('customer');
         })
         .finally(() => setIsLoading(false));
-    } else if (refresh) {
-      // Access token missing but refresh token present — try to get a new access token silently
-      api.get<{ success: boolean; user: ApiUser }>("/auth/me")
-        .then(d => {
-          const u = apiUserToFrontend(d.user);
-          setUser(u);
-          setUserRole(d.user.role);
-          localStorage.setItem("sm_user", JSON.stringify(u));
-          localStorage.setItem("sm_role", d.user.role);
-          if (u.addresses?.length > 0) setSelectedDeliveryAddress(u.addresses[0]);
-        })
-        .catch(() => {
-          clearTokens();
-          setUser(null);
-          setUserRole('customer');
-        })
-        .finally(() => setIsLoading(false));
     } else {
-      // No tokens at all — clear any stale cached role/user from localStorage
-      // so role-gated UI (AdminGuard, etc.) doesn't render with no valid session
       clearTokens();
       setUser(null);
       setUserRole('customer');
@@ -219,8 +221,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchReports();
   }, [isAdmin, isLoading]);
 
+  const applyAuthResult = (apiUser: ApiUser) => {
+    const u = apiUserToFrontend(apiUser);
+    setUser(u);
+    setUserRole(apiUser.role);
+    localStorage.setItem("sm_user", JSON.stringify(u));
+    localStorage.setItem("sm_role", apiUser.role);
+    if (u.addresses?.length > 0) setSelectedDeliveryAddress(u.addresses[0]);
+    const dashRole = apiUser.role === 'vendor' ? 'vendor' : 'customer';
+    setRoleState(dashRole);
+    localStorage.setItem("swiftmart_role", dashRole);
+    return u;
+  };
+
   const login = (_phone: string, _name: string) => {
-    throw new Error("login() is not implemented — use verifyOtp() or loginWithGoogle()");
+    throw new Error("login() is not implemented — use loginWithPassword() or loginWithGoogle()");
   };
 
   const logout = async () => {
@@ -233,6 +248,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setReports([]);
     localStorage.removeItem("swiftmart_cart");
     localStorage.removeItem("swiftmart_role");
+    localStorage.removeItem("sm_user");
+    localStorage.removeItem("sm_role");
   };
 
   const setRole = (newRole: 'customer' | 'vendor') => {
@@ -259,17 +276,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const u = apiUserToFrontend(data.user);
       setUser(u);
       localStorage.setItem("sm_user", JSON.stringify(u));
-      // After backend saves, addresses get server-generated ids. Re-sync selectedDeliveryAddress.
       setSelectedDeliveryAddress(prev => {
         if (!prev || !u.addresses.length) return prev;
         const stillValid = u.addresses.find(a => a.id === prev.id);
         if (stillValid) return stillValid;
-        // Match by content (label + line1) to find the freshly-saved address
         const matched = u.addresses.find(a => a.label === prev.label && a.line1 === prev.line1);
         return matched ?? u.addresses[0];
       });
     } catch {
-      // Rollback optimistic update on failure (L5)
       if (rollbackUser) {
         setUser(rollbackUser);
         localStorage.setItem("sm_user", JSON.stringify(rollbackUser));
@@ -308,34 +322,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updateUser({ pincode });
   };
 
-  const loginWithPhone = async (phone: string): Promise<void> => {
-    await api.post<{ success: boolean; message: string }>("/auth/send-otp", { phone });
+  // ─── Password auth ──────────────────────────────────────────────────────────
+
+  const loginWithPassword = async (phone: string, password: string): Promise<{ isNewUser: boolean; user?: User; needsPasswordSetup?: boolean }> => {
+    const data = await api.post<{
+      success: boolean;
+      isNewUser?: boolean;
+      needsPasswordSetup?: boolean;
+      accessToken?: string;
+      refreshToken?: string;
+      user?: ApiUser;
+      message?: string;
+    }>("/auth/login", { phone, password });
+
+    if (data.needsPasswordSetup) {
+      return { isNewUser: false, needsPasswordSetup: true };
+    }
+
+    if (!data.accessToken || !data.user) {
+      throw new Error(data.message ?? "Login failed");
+    }
+
+    const u = handleAuthResponse({ accessToken: data.accessToken, refreshToken: data.refreshToken!, user: data.user });
+    applyAuthResult(data.user);
+    return { isNewUser: data.isNewUser ?? false, user: u };
   };
 
-  const verifyOtp = async (otp: string, phone: string): Promise<{ isNewUser: boolean; user?: User }> => {
+  const signup = async (name: string, phone: string, password: string): Promise<{ isNewUser: boolean; user?: User }> => {
     const data = await api.post<{
       success: boolean;
       isNewUser: boolean;
       accessToken: string;
       refreshToken: string;
       user: ApiUser;
-    }>("/auth/verify-otp", { phone, otp });
+    }>("/auth/signup", { name, phone, password });
 
-    setTokens(data.accessToken, data.refreshToken);
-    const u = apiUserToFrontend(data.user);
-    setUser(u);
-    setUserRole(data.user.role);
-    localStorage.setItem("sm_user", JSON.stringify(u));
-    localStorage.setItem("sm_role", data.user.role);
-
-    if (u.addresses?.length > 0) setSelectedDeliveryAddress(u.addresses[0]);
-
-    const dashRole = data.user.role === 'vendor' ? 'vendor' : 'customer';
-    setRoleState(dashRole);
-    localStorage.setItem("swiftmart_role", dashRole);
-
+    const u = handleAuthResponse(data);
+    applyAuthResult(data.user);
     return { isNewUser: data.isNewUser, user: u };
   };
+
+  const forgotPassword = async (phone: string): Promise<void> => {
+    await api.post<{ success: boolean; message: string }>("/auth/forgot-password", { phone });
+  };
+
+  const resetPassword = async (phone: string, token: string, newPassword: string): Promise<{ user?: User }> => {
+    const data = await api.post<{
+      success: boolean;
+      accessToken: string;
+      refreshToken: string;
+      user: ApiUser;
+    }>("/auth/reset-password", { phone, token, newPassword });
+
+    const u = handleAuthResponse(data);
+    applyAuthResult(data.user);
+    return { user: u };
+  };
+
+  // ─── Google auth ────────────────────────────────────────────────────────────
 
   const loginWithGoogle = async (token: string, type: "credential" | "accessToken" = "credential"): Promise<{ isNewUser: boolean; user?: User }> => {
     const body = type === "accessToken" ? { accessToken: token } : { credential: token };
@@ -347,21 +391,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: ApiUser;
     }>("/auth/google", body);
 
-    setTokens(data.accessToken, data.refreshToken);
-    const u = apiUserToFrontend(data.user);
-    setUser(u);
-    setUserRole(data.user.role);
-    localStorage.setItem("sm_user", JSON.stringify(u));
-    localStorage.setItem("sm_role", data.user.role);
-
-    if (u.addresses?.length > 0) setSelectedDeliveryAddress(u.addresses[0]);
-
-    const dashRole = data.user.role === 'vendor' ? 'vendor' : 'customer';
-    setRoleState(dashRole);
-    localStorage.setItem("swiftmart_role", dashRole);
-
+    const u = handleAuthResponse(data);
+    applyAuthResult(data.user);
     return { isNewUser: data.isNewUser, user: u };
   };
+
+  // ─── Onboarding ─────────────────────────────────────────────────────────────
 
   const completeOnboarding = async (name: string, phone: string, address: Address, email?: string): Promise<void> => {
     const data = await api.patch<{ success: boolean; user: ApiUser }>("/users/me/profile", {
@@ -375,10 +410,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserRole(data.user.role);
     localStorage.setItem("sm_user", JSON.stringify(u));
     localStorage.setItem("sm_role", data.user.role);
-    // Use the API-returned address (normalized _id → id) so selectedDeliveryAddress.id
-    // matches user.addresses[0].id in Checkout.
     setSelectedDeliveryAddress(u.addresses.length > 0 ? u.addresses[0] : address);
   };
+
+  // ─── Legacy OTP stubs (no-op, kept so import sites compile) ─────────────────
+  const loginWithPhone = async (_phone: string): Promise<void> => {
+    throw new Error("OTP login has been removed. Please use mobile number + password.");
+  };
+  const verifyOtp = async (_otp: string, _phone: string): Promise<{ isNewUser: boolean; user?: User }> => {
+    throw new Error("OTP login has been removed. Please use mobile number + password.");
+  };
+
+  // ─── Vendor & admin helpers ─────────────────────────────────────────────────
 
   const submitVendorApplication = async (appData: Omit<VendorApplication, 'id' | 'userId' | 'userName' | 'userPhone' | 'submittedAt' | 'status'>): Promise<void> => {
     if (!user) return;
@@ -392,8 +435,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       status: 'pending',
     };
 
-    // Bug #14 fix: do NOT update UI state before the API succeeds.
-    // Wait for the API call — only update on success, rollback is implicit (nothing to undo).
     await api.post("/shops", {
       shopName: appData.storeName,
       ownerName: appData.ownerName,
@@ -422,7 +463,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     });
 
-    // API succeeded — now update local state
     setApplications(prev => [...prev, newApp]);
     updateUser({ vendorStatus: 'pending', vendorApplicationId: newApp.id, isVendorRegistered: true });
 
@@ -522,7 +562,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       user, userRole, role, isAdmin, isLoading, selectedDeliveryAddress, setSelectedDeliveryAddress,
       login, logout, setRole, updateUser, addAddress, deleteAddress, updateAddress, updatePincode,
-      loginWithPhone, verifyOtp, loginWithGoogle, completeOnboarding,
+      loginWithPassword, signup, forgotPassword, resetPassword,
+      loginWithGoogle, completeOnboarding,
+      loginWithPhone, verifyOtp,
       applications, submitVendorApplication, approveApplication, rejectApplication,
       adminCustomers, banCustomer, unbanCustomer, bannedVendorIds, banVendor, unbanVendor, removeVendor,
       platformOrders, updateOrderStatus, refundOrder, reports, resolveReport, ignoreReport,
