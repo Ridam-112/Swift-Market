@@ -207,7 +207,7 @@ export default function Profile() {
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">Category</span>
-                <span className="font-bold text-foreground capitalize">{user.vendorProfile?.storeCategory.replace('-', ' ')}</span>
+                <span className="font-bold text-foreground capitalize">{user.vendorProfile?.storeCategory?.replace('-', ' ')}</span>
               </div>
               <div className="mt-4 space-y-3">
                 <p className="text-sm font-bold mb-1">Switch between modes</p>

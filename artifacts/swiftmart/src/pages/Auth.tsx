@@ -119,7 +119,7 @@ export default function Auth() {
   const [, setLocation] = useLocation();
   const {
     user, checkPhone, loginWithPassword, setPasswordForOtpUser,
-    signup, forgotPassword, resetPassword, loginWithGoogle, completeOnboarding, addAddress,
+    signup, forgotPassword, resetPassword, loginWithGoogle, completeOnboarding, addAddress, updatePincode,
   } = useAuth();
 
   const [step, setStep] = useState<Step>('phone');
@@ -796,6 +796,7 @@ export default function Auth() {
                 setIsSavingAddress(true);
                 try {
                   addAddress({ id: `a_${Date.now()}`, label: addressLabel, line1: addressLine1, line2: addressArea, city, pincode });
+                  await updatePincode(pincode);
                   toast.success("Address saved! Welcome back!");
                   setLocation("/");
                 } catch {

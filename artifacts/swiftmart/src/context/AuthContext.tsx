@@ -228,6 +228,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const dashRole = apiUser.role === 'vendor' ? 'vendor' : 'customer';
     setRoleState(dashRole);
     localStorage.setItem("swiftmart_role", dashRole);
+
+    // Background refresh: fetch /auth/me to populate vendorProfile and any other
+    // fields not returned by login/set-password (e.g. shop data for vendors).
+    api.get<{ success: boolean; user: ApiUser }>("/auth/me")
+      .then(d => {
+        const fullUser = apiUserToFrontend(d.user);
+        setUser(fullUser);
+        setUserRole(d.user.role);
+        localStorage.setItem("sm_user", JSON.stringify(fullUser));
+        localStorage.setItem("sm_role", d.user.role);
+        if (fullUser.addresses?.length > 0) setSelectedDeliveryAddress(fullUser.addresses[0]);
+      })
+      .catch(() => { /* silent — initial data already set above */ });
+
     return u;
   };
 
