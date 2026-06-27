@@ -1,5 +1,5 @@
 import { Router, type Response } from "express";
-import { db, deliveryPartners, deliveryChargeRules, deliverySettings, orders } from "@workspace/db";
+import { db, deliveryPartners, deliveryChargeRules, deliverySettings, orders, users } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { validateUuidParams } from "../../middlewares/validateUuid.js";
@@ -17,10 +17,19 @@ router.get("/", authenticate, A, async (_req, res: Response): Promise<void> => {
 
 router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body as Record<string, unknown>;
+  const phone = String(body["phone"] ?? "");
+
+  // Auto-resolve userId from phone if not explicitly supplied
+  let resolvedUserId: string | undefined = body["userId"] ? String(body["userId"]) : undefined;
+  if (!resolvedUserId && phone) {
+    const [linked] = await db.select({ id: users.id }).from(users).where(eq(users.phone, phone)).limit(1);
+    if (linked) resolvedUserId = linked.id;
+  }
+
   const [partner] = await db.insert(deliveryPartners).values({
     name: String(body["name"] ?? ""),
-    phone: String(body["phone"] ?? ""),
-    userId: body["userId"] ? String(body["userId"]) : undefined,
+    phone,
+    userId: resolvedUserId,
     vehicle: body["vehicle"] ? String(body["vehicle"]) : undefined,
     isAvailable: body["isAvailable"] != null ? Boolean(body["isAvailable"]) : true,
     status: body["status"] ? String(body["status"]) : "active",
@@ -49,6 +58,25 @@ router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): 
   }
   await db.delete(deliveryPartners).where(eq(deliveryPartners.id, id));
   res.json({ success: true, message: "Deleted" });
+});
+
+// POST /delivery/:id/link-user — admin: auto-link a partner to the user account with matching phone
+router.post("/:id/link-user", authenticate, A, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const id = req.params["id"] as string;
+  const [p] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.id, id)).limit(1);
+  if (!p) { res.status(404).json({ success: false, message: "Partner not found" }); return; }
+
+  const [userRow] = await db.select({ id: users.id }).from(users).where(eq(users.phone, p.phone)).limit(1);
+  if (!userRow) {
+    res.status(404).json({ success: false, message: `No user account found with phone ${p.phone}. Ask the partner to sign up first.` });
+    return;
+  }
+
+  const [updated] = await db.update(deliveryPartners)
+    .set({ userId: userRow.id, updatedAt: new Date() })
+    .where(eq(deliveryPartners.id, id))
+    .returning();
+  res.json({ success: true, partner: mi(updated!), message: "User account linked successfully" });
 });
 
 // ─── Delivery Charge Rules ────────────────────────────────────────────────────
@@ -156,10 +184,27 @@ router.post("/rain-mode", authenticate, A, async (req: AuthRequest, res: Respons
 
 // ─── Delivery Partner Self-Service ───────────────────────────────────────────
 
-// GET /delivery/me — get own partner profile (linked by userId)
+// GET /delivery/me — get own partner profile
+// First tries by userId; falls back to phone match and auto-links if found.
 router.get("/me", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user!.userId;
-  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+
+  // Primary: exact userId match
+  let [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+
+  if (!partner) {
+    // Fallback: look up this user's phone, then find partner by phone
+    const [userRow] = await db.select({ phone: users.phone }).from(users).where(eq(users.id, userId)).limit(1);
+    if (userRow?.phone) {
+      [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.phone, userRow.phone)).limit(1);
+      // Auto-link: stamp userId so future lookups skip the fallback
+      if (partner && !partner.userId) {
+        await db.update(deliveryPartners).set({ userId, updatedAt: new Date() }).where(eq(deliveryPartners.id, partner.id));
+        partner = { ...partner, userId };
+      }
+    }
+  }
+
   if (!partner) { res.status(404).json({ success: false, message: "Not a delivery partner" }); return; }
   res.json({ success: true, partner: mi(partner) });
 });

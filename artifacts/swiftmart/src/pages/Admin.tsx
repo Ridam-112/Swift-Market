@@ -6979,6 +6979,7 @@ interface DeliveryPartnerRow {
   ordersDelivered: number;
   totalEarnings: number;
   createdAt: string;
+  userId?: string;
 }
 
 const VEHICLE_OPTIONS = ["Bike", "Bicycle", "Scooter", "E-Bike", "On Foot"];
@@ -6998,6 +6999,7 @@ function DeliveryPartnersTab() {
   const [editForm, setEditForm] = useState<{ name: string; phone: string; vehicle: string; status: string }>({ name: "", phone: "", vehicle: "Bike", status: "active" });
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [linkingId, setLinkingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -7093,6 +7095,22 @@ function DeliveryPartnersTab() {
       toast.error("Failed to remove partner");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleLinkUser = async (p: DeliveryPartnerRow) => {
+    setLinkingId(p._id);
+    try {
+      const d = await api.post<{ success: boolean; message: string }>(`/delivery/${p._id}/link-user`, {});
+      if (d.success) {
+        toast.success(d.message ?? "Account linked!");
+        load();
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "No user account found with this phone. Partner must sign up first.";
+      toast.error(msg);
+    } finally {
+      setLinkingId(null);
     }
   };
 
@@ -7201,6 +7219,7 @@ function DeliveryPartnersTab() {
                   <th className="text-left px-5 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Partner</th>
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Vehicle</th>
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Status</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">App Access</th>
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Available</th>
                   <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Orders</th>
                   <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Earnings</th>
@@ -7252,6 +7271,25 @@ function DeliveryPartnersTab() {
                         </span>
                       </td>
                       <td className="px-4 py-3">{statusBadge(p.status)}</td>
+                      <td className="px-4 py-3">
+                        {p.userId ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
+                            <CheckCircle className="w-3 h-3" />Linked
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleLinkUser(p)}
+                            disabled={linkingId === p._id}
+                            className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 hover:bg-amber-200 disabled:opacity-60 transition-colors"
+                            title="Click to auto-link user account by phone number"
+                          >
+                            {linkingId === p._id
+                              ? <Loader2 className="w-3 h-3 animate-spin" />
+                              : <AlertCircle className="w-3 h-3" />}
+                            {linkingId === p._id ? "Linking…" : "Link Account"}
+                          </button>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <button
                           onClick={() => handleToggleAvailability(p)}
