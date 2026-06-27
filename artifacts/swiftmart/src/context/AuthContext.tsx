@@ -22,8 +22,12 @@ interface AuthContextType {
   updateAddress: (address: Address) => void;
   updatePincode: (pincode: string) => Promise<void>;
 
-  // Password-based auth
-  loginWithPassword: (phone: string, password: string) => Promise<{ isNewUser: boolean; user?: User; needsPasswordSetup?: boolean }>;
+  // Phone-first check
+  checkPhone: (phone: string) => Promise<{ exists: boolean; hasPassword: boolean }>;
+
+  // Password auth
+  loginWithPassword: (phone: string, password: string) => Promise<{ isNewUser: boolean; user?: User }>;
+  setPasswordForOtpUser: (phone: string, password: string) => Promise<{ user?: User }>;
   signup: (name: string, phone: string, password: string) => Promise<{ isNewUser: boolean; user?: User }>;
   forgotPassword: (phone: string) => Promise<void>;
   resetPassword: (phone: string, token: string, newPassword: string) => Promise<{ user?: User }>;
@@ -33,7 +37,7 @@ interface AuthContextType {
 
   completeOnboarding: (name: string, phone: string, address: Address, email?: string) => Promise<void>;
 
-  // Legacy — kept so existing call sites don't break during transition
+  // Legacy stubs — kept so any old import sites compile
   loginWithPhone: (phone: string) => Promise<void>;
   verifyOtp: (otp: string, phone: string) => Promise<{ isNewUser: boolean; user?: User }>;
 
@@ -145,15 +149,6 @@ function apiUserToFrontend(apiUser: ApiUser): User {
   };
 }
 
-function handleAuthResponse(data: {
-  accessToken: string;
-  refreshToken: string;
-  user: ApiUser;
-}): User {
-  setTokens(data.accessToken, data.refreshToken);
-  return apiUserToFrontend(data.user);
-}
-
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -221,6 +216,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchReports();
   }, [isAdmin, isLoading]);
 
+  // ─── Internal helpers ───────────────────────────────────────────────────────
+
   const applyAuthResult = (apiUser: ApiUser) => {
     const u = apiUserToFrontend(apiUser);
     setUser(u);
@@ -233,6 +230,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("swiftmart_role", dashRole);
     return u;
   };
+
+  // ─── Auth actions ───────────────────────────────────────────────────────────
 
   const login = (_phone: string, _name: string) => {
     throw new Error("login() is not implemented — use loginWithPassword() or loginWithGoogle()");
@@ -318,34 +317,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updatePincode = async (pincode: string): Promise<void> => {
     try {
       await api.patch<{ success: boolean; user: ApiUser }>("/users/me/profile", { pincode });
-    } catch { /* ignore, still update locally */ }
+    } catch { /* ignore, update locally */ }
     updateUser({ pincode });
+  };
+
+  // ─── Phone-first check ──────────────────────────────────────────────────────
+
+  const checkPhone = async (phone: string): Promise<{ exists: boolean; hasPassword: boolean }> => {
+    const data = await api.post<{ success: boolean; exists: boolean; hasPassword: boolean }>(
+      "/auth/check-phone",
+      { phone }
+    );
+    return { exists: data.exists, hasPassword: data.hasPassword };
   };
 
   // ─── Password auth ──────────────────────────────────────────────────────────
 
-  const loginWithPassword = async (phone: string, password: string): Promise<{ isNewUser: boolean; user?: User; needsPasswordSetup?: boolean }> => {
+  const loginWithPassword = async (phone: string, password: string): Promise<{ isNewUser: boolean; user?: User }> => {
     const data = await api.post<{
       success: boolean;
       isNewUser?: boolean;
-      needsPasswordSetup?: boolean;
-      accessToken?: string;
-      refreshToken?: string;
-      user?: ApiUser;
-      message?: string;
+      accessToken: string;
+      refreshToken: string;
+      user: ApiUser;
     }>("/auth/login", { phone, password });
 
-    if (data.needsPasswordSetup) {
-      return { isNewUser: false, needsPasswordSetup: true };
-    }
-
-    if (!data.accessToken || !data.user) {
-      throw new Error(data.message ?? "Login failed");
-    }
-
-    const u = handleAuthResponse({ accessToken: data.accessToken, refreshToken: data.refreshToken!, user: data.user });
-    applyAuthResult(data.user);
+    setTokens(data.accessToken, data.refreshToken);
+    const u = applyAuthResult(data.user);
     return { isNewUser: data.isNewUser ?? false, user: u };
+  };
+
+  const setPasswordForOtpUser = async (phone: string, password: string): Promise<{ user?: User }> => {
+    const data = await api.post<{
+      success: boolean;
+      accessToken: string;
+      refreshToken: string;
+      user: ApiUser;
+    }>("/auth/set-password", { phone, password });
+
+    setTokens(data.accessToken, data.refreshToken);
+    const u = applyAuthResult(data.user);
+    return { user: u };
   };
 
   const signup = async (name: string, phone: string, password: string): Promise<{ isNewUser: boolean; user?: User }> => {
@@ -357,8 +369,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: ApiUser;
     }>("/auth/signup", { name, phone, password });
 
-    const u = handleAuthResponse(data);
-    applyAuthResult(data.user);
+    setTokens(data.accessToken, data.refreshToken);
+    const u = applyAuthResult(data.user);
     return { isNewUser: data.isNewUser, user: u };
   };
 
@@ -374,8 +386,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: ApiUser;
     }>("/auth/reset-password", { phone, token, newPassword });
 
-    const u = handleAuthResponse(data);
-    applyAuthResult(data.user);
+    setTokens(data.accessToken, data.refreshToken);
+    const u = applyAuthResult(data.user);
     return { user: u };
   };
 
@@ -391,8 +403,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: ApiUser;
     }>("/auth/google", body);
 
-    const u = handleAuthResponse(data);
-    applyAuthResult(data.user);
+    setTokens(data.accessToken, data.refreshToken);
+    const u = applyAuthResult(data.user);
     return { isNewUser: data.isNewUser, user: u };
   };
 
@@ -413,7 +425,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSelectedDeliveryAddress(u.addresses.length > 0 ? u.addresses[0] : address);
   };
 
-  // ─── Legacy OTP stubs (no-op, kept so import sites compile) ─────────────────
+  // ─── Legacy OTP stubs ───────────────────────────────────────────────────────
   const loginWithPhone = async (_phone: string): Promise<void> => {
     throw new Error("OTP login has been removed. Please use mobile number + password.");
   };
@@ -468,101 +480,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (appData.storePincode) {
       api.patch<{ success: boolean; user: ApiUser }>("/users/me/profile", { pincode: appData.storePincode })
-        .then(d => {
-          const u = apiUserToFrontend(d.user);
-          setUser(u);
-          localStorage.setItem("sm_user", JSON.stringify(u));
-        })
-        .catch(() => {
-          updateUser({ pincode: appData.storePincode });
-        });
+        .then(d => { const u = apiUserToFrontend(d.user); setUser(u); localStorage.setItem("sm_user", JSON.stringify(u)); })
+        .catch(() => { updateUser({ pincode: appData.storePincode }); });
     }
   };
 
   const approveApplication = (applicationId: string) => {
-    setApplications(prev => prev.map(app =>
-      app.id === applicationId ? { ...app, status: 'approved' } : app
-    ));
+    setApplications(prev => prev.map(app => app.id === applicationId ? { ...app, status: 'approved' } : app));
   };
-
   const rejectApplication = (applicationId: string, reason: string) => {
-    setApplications(prev => prev.map(app =>
-      app.id === applicationId ? { ...app, status: 'rejected', rejectionReason: reason } : app
-    ));
+    setApplications(prev => prev.map(app => app.id === applicationId ? { ...app, status: 'rejected', rejectionReason: reason } : app));
   };
 
   const banCustomer = (customerId: string) => {
-    api.patch(`/users/${customerId}/ban`).catch((e: unknown) => {
-      toast.error(e instanceof Error ? e.message : "Failed to ban customer");
-    });
+    api.patch(`/users/${customerId}/ban`).catch((e: unknown) => { toast.error(e instanceof Error ? e.message : "Failed to ban customer"); });
   };
-
   const unbanCustomer = (customerId: string) => {
-    api.patch(`/users/${customerId}/unban`).catch((e: unknown) => {
-      toast.error(e instanceof Error ? e.message : "Failed to unban customer");
-    });
+    api.patch(`/users/${customerId}/unban`).catch((e: unknown) => { toast.error(e instanceof Error ? e.message : "Failed to unban customer"); });
   };
-
   const banVendor = (vendorId: string) => {
     setBannedVendorIds(prev => [...new Set([...prev, vendorId])]);
-    api.post(`/shops/${vendorId}/ban`).catch((e: unknown) => {
-      setBannedVendorIds(prev => prev.filter(id => id !== vendorId));
-      toast.error(e instanceof Error ? e.message : "Failed to ban vendor");
-    });
+    api.post(`/shops/${vendorId}/ban`).catch((e: unknown) => { setBannedVendorIds(prev => prev.filter(id => id !== vendorId)); toast.error(e instanceof Error ? e.message : "Failed to ban vendor"); });
   };
-
   const unbanVendor = (vendorId: string) => {
     setBannedVendorIds(prev => prev.filter(id => id !== vendorId));
-    api.post(`/shops/${vendorId}/unban`).catch((e: unknown) => {
-      setBannedVendorIds(prev => [...new Set([...prev, vendorId])]);
-      toast.error(e instanceof Error ? e.message : "Failed to unban vendor");
-    });
+    api.post(`/shops/${vendorId}/unban`).catch((e: unknown) => { setBannedVendorIds(prev => [...new Set([...prev, vendorId])]); toast.error(e instanceof Error ? e.message : "Failed to unban vendor"); });
   };
-
   const removeVendor = (vendorId: string) => {
-    setApplications(prev => prev.map(app =>
-      app.id === vendorId || app.userId === vendorId
-        ? { ...app, status: 'rejected', rejectionReason: "Removed by admin" }
-        : app
-    ));
-    api.delete(`/shops/${vendorId}`).catch((e: unknown) => {
-      toast.error(e instanceof Error ? e.message : "Failed to remove vendor");
-    });
+    setApplications(prev => prev.map(app => (app.id === vendorId || app.userId === vendorId) ? { ...app, status: 'rejected', rejectionReason: "Removed by admin" } : app));
+    api.delete(`/shops/${vendorId}`).catch((e: unknown) => { toast.error(e instanceof Error ? e.message : "Failed to remove vendor"); });
   };
-
   const updateOrderStatus = (orderId: string, status: PlatformOrder['status']) => {
-    api.patch(`/orders/${orderId}/status`, { status }).catch((e: unknown) => {
-      toast.error(e instanceof Error ? e.message : "Failed to update order status");
-    });
+    api.patch(`/orders/${orderId}/status`, { status }).catch((e: unknown) => { toast.error(e instanceof Error ? e.message : "Failed to update order status"); });
   };
-
   const refundOrder = (orderId: string) => {
-    api.post(`/orders/${orderId}/refund`).catch((e: unknown) => {
-      toast.error(e instanceof Error ? e.message : "Failed to process refund");
-    });
+    api.post(`/orders/${orderId}/refund`).catch((e: unknown) => { toast.error(e instanceof Error ? e.message : "Failed to process refund"); });
   };
-
   const resolveReport = (reportId: string) => {
     api.patch(`/reports/${reportId}/resolve`)
       .then(() => setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'resolved' as const } : r)))
-      .catch((e: unknown) => {
-        toast.error(e instanceof Error ? e.message : "Failed to resolve report");
-      });
+      .catch((e: unknown) => { toast.error(e instanceof Error ? e.message : "Failed to resolve report"); });
   };
-
   const ignoreReport = (reportId: string) => {
     api.patch(`/reports/${reportId}/ignore`)
       .then(() => setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'ignored' as const } : r)))
-      .catch((e: unknown) => {
-        toast.error(e instanceof Error ? e.message : "Failed to ignore report");
-      });
+      .catch((e: unknown) => { toast.error(e instanceof Error ? e.message : "Failed to ignore report"); });
   };
 
   return (
     <AuthContext.Provider value={{
       user, userRole, role, isAdmin, isLoading, selectedDeliveryAddress, setSelectedDeliveryAddress,
       login, logout, setRole, updateUser, addAddress, deleteAddress, updateAddress, updatePincode,
-      loginWithPassword, signup, forgotPassword, resetPassword,
+      checkPhone,
+      loginWithPassword, setPasswordForOtpUser, signup, forgotPassword, resetPassword,
       loginWithGoogle, completeOnboarding,
       loginWithPhone, verifyOtp,
       applications, submitVendorApplication, approveApplication, rejectApplication,

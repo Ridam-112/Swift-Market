@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
 import { db, users, shops, otpSessions, servicePincodes as servicePincodesTable } from "@workspace/db";
@@ -19,7 +19,7 @@ const googleClient = new OAuth2Client(process.env["GOOGLE_CLIENT_ID"]);
 const router = Router();
 
 const BCRYPT_ROUNDS = 12;
-const RESET_TOKEN_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
+const RESET_TOKEN_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes (kept for forgot-password flow)
 
 type AuthMode = "otp" | "google" | "both";
 const AUTH_MODE: AuthMode = (process.env["AUTH_MODE"] as AuthMode | undefined) ?? "otp";
@@ -60,7 +60,6 @@ function issueTokens(u: typeof users.$inferSelect) {
 }
 
 // ─── GET /api/auth/config ─────────────────────────────────────────────────────
-// Returns runtime auth configuration consumed by the frontend.
 router.get("/config", async (_req: Request, res: Response): Promise<void> => {
   const firebaseConfig = AUTH_MODE !== "otp" ? {
     apiKey:            process.env["VITE_FIREBASE_API_KEY"]      ?? "",
@@ -76,11 +75,9 @@ router.get("/config", async (_req: Request, res: Response): Promise<void> => {
   let servicePincodes: Array<{ pincode: string; area: string; state: string }>;
   try {
     const rows = await db.select().from(servicePincodesTable).where(eq(servicePincodesTable.isActive, true));
-    if (rows.length > 0) {
-      servicePincodes = rows.map(r => ({ pincode: r.pincode, area: r.area, state: r.state }));
-    } else {
-      servicePincodes = envPincodes.map(p => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal" }));
-    }
+    servicePincodes = rows.length > 0
+      ? rows.map(r => ({ pincode: r.pincode, area: r.area, state: r.state }))
+      : envPincodes.map(p => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal" }));
   } catch {
     servicePincodes = envPincodes.map(p => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal" }));
   }
@@ -94,8 +91,106 @@ router.get("/config", async (_req: Request, res: Response): Promise<void> => {
   });
 });
 
+// ─── POST /api/auth/check-phone ───────────────────────────────────────────────
+// Step 1 of the phone-first login flow.
+// Returns whether the phone is registered and whether a password exists.
+// Used by the frontend to show the right form (login / create-password / signup).
+router.post("/check-phone", loginLimiter, async (req: Request, res: Response): Promise<void> => {
+  const { phone } = req.body as { phone?: string };
+
+  if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+    res.status(400).json({ success: false, message: "Valid 10-digit mobile number required" });
+    return;
+  }
+
+  try {
+    const [user] = await db
+      .select({ id: users.id, passwordHash: users.passwordHash, status: users.status })
+      .from(users)
+      .where(eq(users.phone, phone))
+      .limit(1);
+
+    if (!user) {
+      res.json({ success: true, exists: false, hasPassword: false });
+      return;
+    }
+
+    if (user.status === "banned") {
+      res.status(403).json({ success: false, message: "This account has been suspended. Please contact support." });
+      return;
+    }
+
+    res.json({ success: true, exists: true, hasPassword: !!user.passwordHash });
+  } catch (err) {
+    req.log.error({ err, phone }, "check-phone failed");
+    res.status(500).json({ success: false, message: "Request failed. Please try again." });
+  }
+});
+
+// ─── POST /api/auth/set-password ─────────────────────────────────────────────
+// Sets a password for an existing OTP user who has no password yet.
+// No token required — this is the migration path for existing OTP users.
+// Once a password is set, this endpoint returns an error (use forgot-password instead).
+router.post("/set-password", loginLimiter, async (req: Request, res: Response): Promise<void> => {
+  const { phone, password } = req.body as { phone?: string; password?: string };
+
+  if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+    res.status(400).json({ success: false, message: "Valid 10-digit mobile number required" });
+    return;
+  }
+  if (!password || password.length < 8) {
+    res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
+    return;
+  }
+
+  try {
+    const [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
+
+    if (!user) {
+      res.status(404).json({ success: false, message: "No account found for this mobile number" });
+      return;
+    }
+
+    if (user.status === "banned") {
+      res.status(403).json({ success: false, message: "This account has been suspended. Please contact support." });
+      return;
+    }
+
+    // Only allowed for users who have never had a password (OTP migration)
+    if (user.passwordHash) {
+      res.status(409).json({ success: false, message: "A password is already set. Please use Login or Forgot Password." });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+    await db.update(users)
+      .set({
+        passwordHash,
+        authProvider: "password",
+        // Clear any stale reset tokens (e.g. from a previous forgot-password attempt)
+        passwordResetTokenHash: null,
+        passwordResetExpires: null,
+        lastLoginAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+
+    const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+
+    req.log.info({ phone, role: user.role }, "OTP user set password — auto login");
+    res.json({
+      success: true,
+      isNewUser: false,
+      ...issueTokens(updated),
+      user: formatUser(updated),
+    });
+  } catch (err) {
+    req.log.error({ err, phone }, "set-password failed");
+    res.status(500).json({ success: false, message: "Failed to set password. Please try again." });
+  }
+});
+
 // ─── POST /api/auth/signup ────────────────────────────────────────────────────
-// Register a new user with name, mobile number and password.
 router.post("/signup", signupLimiter, async (req: Request, res: Response): Promise<void> => {
   const { name, phone, password } = req.body as { name?: string; phone?: string; password?: string };
 
@@ -113,7 +208,6 @@ router.post("/signup", signupLimiter, async (req: Request, res: Response): Promi
   }
 
   try {
-    // Check phone uniqueness
     const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.phone, phone)).limit(1);
     if (existing) {
       res.status(409).json({ success: false, message: "An account with this mobile number already exists" });
@@ -147,8 +241,8 @@ router.post("/signup", signupLimiter, async (req: Request, res: Response): Promi
 });
 
 // ─── POST /api/auth/login ─────────────────────────────────────────────────────
-// Login with mobile number + password.
-// If the user has no password set (existing OTP user), returns needsPasswordSetup=true.
+// Login with phone + password. Requires passwordHash to be set.
+// If passwordHash is missing, instructs client to use set-password instead.
 router.post("/login", loginLimiter, async (req: Request, res: Response): Promise<void> => {
   const { phone, password } = req.body as { phone?: string; password?: string };
 
@@ -165,7 +259,6 @@ router.post("/login", loginLimiter, async (req: Request, res: Response): Promise
     const [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
 
     if (!user) {
-      // Don't reveal whether the account exists
       res.status(401).json({ success: false, message: "Invalid mobile number or password" });
       return;
     }
@@ -175,24 +268,8 @@ router.post("/login", loginLimiter, async (req: Request, res: Response): Promise
       return;
     }
 
-    // Existing OTP user with no password set.
-    // Auto-generate a setup token so the frontend can go straight to the
-    // "Create your password" step without a separate forgot-password request.
+    // OTP user who still has no password — direct them to set-password flow
     if (!user.passwordHash) {
-      const token = randomBytes(32).toString("hex");
-      const tokenHash = hashToken(token);
-      const expires = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
-
-      await db.update(users)
-        .set({ passwordResetTokenHash: tokenHash, passwordResetExpires: expires })
-        .where(eq(users.id, user.id));
-
-      req.log.info(
-        { phone, tokenExpires: expires.toISOString() },
-        `[PASSWORD SETUP] Token for +91${phone}: ${token}  (expires in 15 min)`
-      );
-      console.log(`\n🔑 PASSWORD SETUP TOKEN for +91${phone}:\n   ${token}\n   (expires at ${expires.toISOString()})\n`);
-
       res.status(200).json({
         success: false,
         needsPasswordSetup: true,
@@ -224,9 +301,8 @@ router.post("/login", loginLimiter, async (req: Request, res: Response): Promise
 });
 
 // ─── POST /api/auth/forgot-password ──────────────────────────────────────────
-// Generate a secure password reset/setup token for a mobile number.
-// Always returns success regardless of whether the phone exists (no enumeration).
-// Token is logged to server console ONLY — never sent to frontend.
+// For users who already have a password but forgot it.
+// Generates a secure token, logs to console (replace with SMS/email in prod).
 router.post("/forgot-password", resetPasswordLimiter, async (req: Request, res: Response): Promise<void> => {
   const { phone } = req.body as { phone?: string };
 
@@ -236,6 +312,7 @@ router.post("/forgot-password", resetPasswordLimiter, async (req: Request, res: 
   }
 
   try {
+    const { randomBytes } = await import("node:crypto");
     const [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
 
     if (user && user.status !== "banned") {
@@ -247,20 +324,11 @@ router.post("/forgot-password", resetPasswordLimiter, async (req: Request, res: 
         .set({ passwordResetTokenHash: tokenHash, passwordResetExpires: expires })
         .where(eq(users.id, user.id));
 
-      // ⚠️  DEV ONLY — log token to server console. Replace with SMS/email in production.
-      req.log.info(
-        { phone, tokenExpires: expires.toISOString() },
-        `[PASSWORD RESET] Token for +91${phone}: ${token}  (expires in 15 min)`
-      );
-      // Also print plainly so it's easy to find in dev logs:
+      req.log.info({ phone }, `[PASSWORD RESET] Token for +91${phone}: ${token}`);
       console.log(`\n🔑 PASSWORD RESET TOKEN for +91${phone}:\n   ${token}\n   (expires at ${expires.toISOString()})\n`);
     }
 
-    // Always return success — don't reveal if the phone is registered
-    res.json({
-      success: true,
-      message: "If an account exists for this number, a reset token has been sent.",
-    });
+    res.json({ success: true, message: "If an account exists for this number, a reset token has been sent." });
   } catch (err) {
     req.log.error({ err, phone }, "Forgot-password failed");
     res.status(500).json({ success: false, message: "Request failed. Please try again." });
@@ -268,7 +336,7 @@ router.post("/forgot-password", resetPasswordLimiter, async (req: Request, res: 
 });
 
 // ─── POST /api/auth/reset-password ───────────────────────────────────────────
-// Validate the reset token and set a new password. Auto-logs the user in on success.
+// Reset a forgotten password using the token from forgot-password.
 router.post("/reset-password", async (req: Request, res: Response): Promise<void> => {
   const { phone, token, newPassword } = req.body as { phone?: string; token?: string; newPassword?: string };
 
@@ -292,27 +360,23 @@ router.post("/reset-password", async (req: Request, res: Response): Promise<void
       res.status(400).json({ success: false, message: "Invalid or expired reset token" });
       return;
     }
-
     if (user.passwordResetExpires < new Date()) {
       res.status(400).json({ success: false, message: "Reset token has expired. Please request a new one." });
       return;
     }
-
-    const providedHash = hashToken(token);
-    if (providedHash !== user.passwordResetTokenHash) {
+    if (hashToken(token) !== user.passwordResetTokenHash) {
       res.status(400).json({ success: false, message: "Invalid or expired reset token" });
       return;
     }
 
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
-
     await db.update(users)
       .set({
         passwordHash,
         authProvider: "password",
         passwordResetTokenHash: null,
         passwordResetExpires: null,
-        tokenVersion: (user.tokenVersion ?? 1) + 1, // revoke all old sessions
+        tokenVersion: (user.tokenVersion ?? 1) + 1,
         lastLoginAt: new Date(),
       })
       .where(eq(users.id, user.id));
@@ -320,13 +384,7 @@ router.post("/reset-password", async (req: Request, res: Response): Promise<void
     const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
 
     req.log.info({ phone }, "Password reset successful");
-    res.json({
-      success: true,
-      message: "Password set successfully",
-      isNewUser: false,
-      ...issueTokens(updated),
-      user: formatUser(updated),
-    });
+    res.json({ success: true, isNewUser: false, ...issueTokens(updated), user: formatUser(updated) });
   } catch (err) {
     req.log.error({ err, phone }, "Reset-password failed");
     res.status(500).json({ success: false, message: "Password reset failed. Please try again." });
@@ -354,10 +412,7 @@ router.post("/google", googleAuthLimiter, async (req: Request, res: Response): P
       const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: process.env["GOOGLE_CLIENT_ID"] });
       const payload = ticket.getPayload();
       if (!payload?.email) { res.status(400).json({ success: false, message: "Invalid Google token" }); return; }
-      email = payload.email;
-      name = payload.name;
-      googleId = payload.sub;
-      profilePhoto = payload.picture;
+      email = payload.email; name = payload.name; googleId = payload.sub; profilePhoto = payload.picture;
     } else {
       const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
         headers: { Authorization: `Bearer ${googleAccessToken}` },
@@ -365,10 +420,7 @@ router.post("/google", googleAuthLimiter, async (req: Request, res: Response): P
       if (!resp.ok) { res.status(400).json({ success: false, message: "Invalid Google access token" }); return; }
       const info = await resp.json() as { email?: string; name?: string; sub?: string; picture?: string };
       if (!info.email) { res.status(400).json({ success: false, message: "Could not retrieve Google user info" }); return; }
-      email = info.email;
-      name = info.name;
-      googleId = info.sub;
-      profilePhoto = info.picture;
+      email = info.email; name = info.name; googleId = info.sub; profilePhoto = info.picture;
     }
 
     if (!email || !googleId) { res.status(400).json({ success: false, message: "Invalid Google token" }); return; }
@@ -378,17 +430,10 @@ router.post("/google", googleAuthLimiter, async (req: Request, res: Response): P
 
     if (!user) {
       [user] = await db.insert(users).values({
-        name: name ?? "User",
-        email,
-        googleId,
-        phone: `g_${googleId}`,
-        role: "customer",
-        status: "active",
-        authProvider: "google",
-        profilePhoto: profilePhoto ?? null,
+        name: name ?? "User", email, googleId, phone: `g_${googleId}`,
+        role: "customer", status: "active", authProvider: "google", profilePhoto: profilePhoto ?? null,
       }).returning();
     } else {
-      // Link Google ID and update profile photo if not already set
       await db.update(users).set({
         googleId: user.googleId ?? googleId,
         profilePhoto: user.profilePhoto ?? profilePhoto ?? null,
@@ -399,16 +444,10 @@ router.post("/google", googleAuthLimiter, async (req: Request, res: Response): P
     await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
     const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
 
-    res.json({
-      success: true,
-      isNewUser,
-      ...issueTokens(updated),
-      user: formatUser(updated),
-    });
+    res.json({ success: true, isNewUser, ...issueTokens(updated), user: formatUser(updated) });
   } catch (err) {
     req.log.error({ err }, "Google auth failed");
-    const msg = err instanceof Error ? err.message : "Google authentication failed";
-    res.status(401).json({ success: false, message: msg });
+    res.status(401).json({ success: false, message: err instanceof Error ? err.message : "Google authentication failed" });
   }
 });
 
@@ -476,7 +515,7 @@ router.post("/logout", authenticate, async (req: AuthRequest, res: Response): Pr
   }
 });
 
-// ─── Legacy OTP routes (removed — kept as 410 Gone for graceful degradation) ──
+// ─── Legacy OTP routes (410 Gone) ─────────────────────────────────────────────
 router.post("/send-otp", (_req: Request, res: Response): void => {
   res.status(410).json({ success: false, message: "OTP login is no longer supported. Please use mobile number + password." });
 });
@@ -484,8 +523,9 @@ router.post("/verify-otp", (_req: Request, res: Response): void => {
   res.status(410).json({ success: false, message: "OTP login is no longer supported. Please use mobile number + password." });
 });
 
-// Suppress unused import warning for otpSessions (still in DB, kept for backward compat)
+// Suppress unused import warnings
 void otpSessions;
 void mi;
+void RESET_TOKEN_EXPIRY_MS;
 
 export default router;
