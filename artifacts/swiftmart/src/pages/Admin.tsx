@@ -13,7 +13,7 @@ import {
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
   ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown, Home,
-  Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin,
+  Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin, Truck, Bike,
   type LucideIcon,
 } from "lucide-react";
 import { categories } from "@/data/categories";
@@ -109,7 +109,7 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'service-areas';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'service-areas' | 'delivery-partners';
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -196,6 +196,7 @@ export default function Admin() {
               {activeSection === 'delivery-charges' && <DeliveryChargesTab />}
               {activeSection === 'home-sections' && <HomepageSectionsTab />}
               {activeSection === 'service-areas' && <ServiceAreasTab />}
+              {activeSection === 'delivery-partners' && <DeliveryPartnersTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -242,6 +243,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
   { id: 'delivery-charges', label: 'Delivery Charges', icon: Package },
   { id: 'home-sections', label: 'Home Sections', icon: Layers },
   { id: 'service-areas', label: 'Service Areas', icon: MapPin },
+  { id: 'delivery-partners', label: 'Delivery Partners', icon: Truck },
   ];
 
   return (
@@ -6956,6 +6958,339 @@ function ServiceAreasTab() {
             <MapPin className="w-3.5 h-3.5" />
             {filtered.length} pincode{filtered.length !== 1 ? "s" : ""}{search ? ` matching "${search}"` : " total"}
             {" · "}{activeCount} active · {stateGroups.length} state{stateGroups.length !== 1 ? "s" : ""}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// DELIVERY PARTNERS TAB
+// ============================================================================
+
+interface DeliveryPartnerRow {
+  _id: string;
+  name: string;
+  phone: string;
+  vehicle?: string;
+  status: string;
+  isAvailable: boolean;
+  ordersDelivered: number;
+  totalEarnings: number;
+  createdAt: string;
+}
+
+const VEHICLE_OPTIONS = ["Bike", "Bicycle", "Scooter", "E-Bike", "On Foot"];
+const STATUS_OPTIONS = ["active", "inactive", "suspended"];
+
+const EMPTY_DP_FORM = { name: "", phone: "", vehicle: "Bike" };
+
+function DeliveryPartnersTab() {
+  const [partners, setPartners] = useState<DeliveryPartnerRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(EMPTY_DP_FORM);
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{ name: string; phone: string; vehicle: string; status: string }>({ name: "", phone: "", vehicle: "Bike", status: "active" });
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await api.get<{ success: boolean; partners: DeliveryPartnerRow[] }>("/delivery");
+      setPartners(d.partners ?? []);
+    } catch {
+      toast.error("Failed to load delivery partners");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return partners.filter(p => {
+      const matchSearch = !q || p.name.toLowerCase().includes(q) || p.phone.includes(q) || (p.vehicle ?? "").toLowerCase().includes(q);
+      const matchStatus = statusFilter === "all" || p.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [partners, search, statusFilter]);
+
+  const stats = useMemo(() => ({
+    total: partners.length,
+    active: partners.filter(p => p.status === "active").length,
+    available: partners.filter(p => p.isAvailable && p.status === "active").length,
+    totalOrders: partners.reduce((s, p) => s + p.ordersDelivered, 0),
+    totalEarnings: partners.reduce((s, p) => s + p.totalEarnings, 0),
+  }), [partners]);
+
+  const handleAdd = async () => {
+    if (!form.name.trim()) { toast.error("Name is required"); return; }
+    if (!/^\d{10}$/.test(form.phone)) { toast.error("Enter a valid 10-digit phone number"); return; }
+    setSaving(true);
+    try {
+      await api.post("/delivery", { name: form.name.trim(), phone: form.phone, vehicle: form.vehicle });
+      toast.success(`${form.name} added as delivery partner`);
+      setForm(EMPTY_DP_FORM);
+      setShowForm(false);
+      load();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to add partner";
+      toast.error(msg.includes("unique") ? "Phone number already registered" : msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEdit = (p: DeliveryPartnerRow) => {
+    setEditingId(p._id);
+    setEditForm({ name: p.name, phone: p.phone, vehicle: p.vehicle ?? "Bike", status: p.status });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId) return;
+    if (!editForm.name.trim()) { toast.error("Name is required"); return; }
+    if (!/^\d{10}$/.test(editForm.phone)) { toast.error("Enter a valid 10-digit phone number"); return; }
+    setSaving(true);
+    try {
+      await api.patch(`/delivery/${editingId}`, { name: editForm.name.trim(), phone: editForm.phone, vehicle: editForm.vehicle, status: editForm.status, updatedAt: new Date().toISOString() });
+      toast.success("Partner updated");
+      setEditingId(null);
+      load();
+    } catch {
+      toast.error("Failed to update partner");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleAvailability = async (p: DeliveryPartnerRow) => {
+    setTogglingId(p._id);
+    try {
+      await api.patch(`/delivery/${p._id}`, { isAvailable: !p.isAvailable, updatedAt: new Date().toISOString() });
+      await load();
+    } catch {
+      toast.error("Failed to update availability");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const handleDelete = async (p: DeliveryPartnerRow) => {
+    if (!confirm(`Remove ${p.name} from delivery partners?`)) return;
+    setDeletingId(p._id);
+    try {
+      await api.delete(`/delivery/${p._id}`);
+      toast.success(`${p.name} removed`);
+      load();
+    } catch {
+      toast.error("Failed to remove partner");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const statusBadge = (status: string) => {
+    if (status === "active") return <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"><CheckCircle className="w-3 h-3" />Active</span>;
+    if (status === "suspended") return <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"><Ban className="w-3 h-3" />Suspended</span>;
+    return <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground"><Clock className="w-3 h-3" />Inactive</span>;
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2"><Truck className="w-6 h-6 text-primary" />Delivery Partners</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage delivery agents for SwiftMart Balurghat</p>
+        </div>
+        <Button onClick={() => { setShowForm(true); setEditingId(null); }} className="shrink-0">
+          <Plus className="w-4 h-4 mr-2" />Add Partner
+        </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {[
+          { label: "Total", value: stats.total, icon: Users },
+          { label: "Active", value: stats.active, icon: CheckCircle },
+          { label: "Available Now", value: stats.available, icon: Bike },
+          { label: "Orders Delivered", value: stats.totalOrders, icon: ShoppingBag },
+          { label: "Total Earnings", value: formatINR(stats.totalEarnings), icon: CreditCard },
+        ].map(({ label, value, icon: Icon }) => (
+          <div key={label} className="bg-card rounded-2xl p-4 neu-card flex flex-col gap-1">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium"><Icon className="w-3.5 h-3.5" />{label}</div>
+            <div className="text-xl font-bold">{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Add Form */}
+      <AnimatePresence>
+        {showForm && (
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            className="bg-card rounded-2xl neu-card p-5 space-y-4">
+            <h3 className="font-semibold text-base">Add New Delivery Partner</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Full Name *</label>
+                <Input placeholder="e.g. Rahul Das" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Phone (10 digits) *</label>
+                <Input placeholder="9876543210" maxLength={10} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Vehicle</label>
+                <select
+                  className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
+                  value={form.vehicle}
+                  onChange={e => setForm(f => ({ ...f, vehicle: e.target.value }))}
+                >
+                  {VEHICLE_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button onClick={handleAdd} disabled={saving} className="min-w-[110px]">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add Partner"}
+              </Button>
+              <Button variant="ghost" onClick={() => { setShowForm(false); setForm(EMPTY_DP_FORM); }}>Cancel</Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <Input placeholder="Search by name or phone…" className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <div className="flex gap-2">
+          {["all", "active", "inactive", "suspended"].map(s => (
+            <button key={s} onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${statusFilter === s ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}>
+              {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <Truck className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">{search || statusFilter !== "all" ? "No partners match your filters" : "No delivery partners yet"}</p>
+          {!search && statusFilter === "all" && <p className="text-xs mt-1">Click "Add Partner" to get started</p>}
+        </div>
+      ) : (
+        <div className="bg-card rounded-2xl neu-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="text-left px-5 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Partner</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Vehicle</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Status</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Available</th>
+                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Orders</th>
+                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Earnings</th>
+                  <th className="text-right px-5 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(p => (
+                  editingId === p._id ? (
+                    <tr key={p._id} className="border-b border-border bg-primary/5">
+                      <td className="px-5 py-3" colSpan={7}>
+                        <div className="flex flex-wrap gap-3 items-end">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-medium text-muted-foreground uppercase">Name</label>
+                            <Input className="h-8 text-sm w-44" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-medium text-muted-foreground uppercase">Phone</label>
+                            <Input className="h-8 text-sm w-36" maxLength={10} value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))} />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-medium text-muted-foreground uppercase">Vehicle</label>
+                            <select className="h-8 rounded-lg border border-input bg-background px-2 text-sm w-28" value={editForm.vehicle} onChange={e => setEditForm(f => ({ ...f, vehicle: e.target.value }))}>
+                              {VEHICLE_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-medium text-muted-foreground uppercase">Status</label>
+                            <select className="h-8 rounded-lg border border-input bg-background px-2 text-sm w-28" value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
+                              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                            </select>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={handleSaveEdit} disabled={saving}>{saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}</Button>
+                            <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={p._id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="px-5 py-3">
+                        <div className="font-semibold text-sm">{p.name}</div>
+                        <div className="text-xs text-muted-foreground">+91 {p.phone}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1 text-xs font-medium bg-muted px-2 py-0.5 rounded-full">
+                          <Bike className="w-3 h-3" />{p.vehicle ?? "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">{statusBadge(p.status)}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => handleToggleAvailability(p)}
+                          disabled={!!togglingId || p.status !== "active"}
+                          className="disabled:opacity-50"
+                          title={p.status !== "active" ? "Only active partners can be toggled" : undefined}
+                        >
+                          {togglingId === p._id
+                            ? <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                            : p.isAvailable
+                              ? <ToggleRight className="w-6 h-6 text-green-500" />
+                              : <ToggleLeft className="w-6 h-6 text-muted-foreground" />
+                          }
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium">{p.ordersDelivered}</td>
+                      <td className="px-4 py-3 text-right font-medium">{formatINR(p.totalEarnings)}</td>
+                      <td className="px-5 py-3 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEdit(p)} title="Edit">
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDelete(p)} disabled={deletingId === p._id} title="Remove">
+                            {deletingId === p._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-5 py-3 border-t border-border bg-muted/20 text-xs text-muted-foreground flex items-center gap-2">
+            <Truck className="w-3.5 h-3.5" />
+            {filtered.length} partner{filtered.length !== 1 ? "s" : ""}
+            {search || statusFilter !== "all" ? ` matching filters` : " total"}
+            {" · "}{stats.active} active · {stats.available} available now
           </div>
         </div>
       )}
