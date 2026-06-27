@@ -6607,7 +6607,6 @@ const INDIAN_STATES = [
 ];
 
 interface ServicePincodeRow {
-  _id: string;
   pincode: string;
   area: string;
   state: string;
@@ -6858,8 +6857,8 @@ function ServiceAreasTab() {
               </thead>
               <tbody className="divide-y divide-border">
                 {filtered.map(row => (
-                  <tr key={row._id} className="hover:bg-muted/20 transition-colors">
-                    {editingRow?._id === row._id ? (
+                  <tr key={row.pincode} className="hover:bg-muted/20 transition-colors">
+                    {editingRow?.pincode === row.pincode ? (
                       <>
                         <td className="px-5 py-3 font-mono font-bold text-primary text-base">{row.pincode}</td>
                         <td className="px-5 py-3">

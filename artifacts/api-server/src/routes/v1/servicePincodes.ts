@@ -2,14 +2,14 @@ import { Router, type Response } from "express";
 import { db, servicePincodes } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
-import { mi, miArr } from "../../utils/mapId.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
 router.get("/", authenticate, A, async (_req, res: Response): Promise<void> => {
   const rows = await db.select().from(servicePincodes).orderBy(servicePincodes.createdAt);
-  res.json({ success: true, pincodes: miArr(rows) });
+  // service_pincodes has no `id` column — return rows directly (pincode is the PK)
+  res.json({ success: true, pincodes: rows });
 });
 
 router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
@@ -35,7 +35,7 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
       set: { area, state, updatedAt: new Date() },
     })
     .returning();
-  res.status(201).json({ success: true, pincode: mi(row!) });
+  res.status(201).json({ success: true, pincode: row });
 });
 
 router.patch("/:pincode", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
@@ -52,7 +52,7 @@ router.patch("/:pincode", authenticate, A, async (req: AuthRequest, res: Respons
     .where(eq(servicePincodes.pincode, pincode))
     .returning();
   if (!row) { res.status(404).json({ success: false, message: "Not found" }); return; }
-  res.json({ success: true, pincode: mi(row) });
+  res.json({ success: true, pincode: row });
 });
 
 router.delete("/:pincode", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
