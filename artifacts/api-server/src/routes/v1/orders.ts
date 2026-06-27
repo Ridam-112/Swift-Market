@@ -571,6 +571,22 @@ router.patch("/:id/assign-partner", authenticate, A, validateUuidParams("id"), a
     .where(eq(orders.id, orderId))
     .returning();
 
+  // Notify the newly assigned delivery partner
+  if (deliveryPartnerId) {
+    try {
+      const [partner] = await db.select({ userId: deliveryPartners.userId, name: deliveryPartners.name })
+        .from(deliveryPartners).where(eq(deliveryPartners.id, deliveryPartnerId)).limit(1);
+      if (partner?.userId) {
+        await createNotificationLimited(partner.userId, {
+          type: "delivery_update",
+          title: "New Order Assigned 🛵",
+          message: `Order #${orderId.slice(-6).toUpperCase()} has been assigned to you. Tap to view details.`,
+          data: { orderId, url: "/delivery" },
+        });
+      }
+    } catch { /* ignore — don't fail the assignment */ }
+  }
+
   res.json({ success: true, order: mi(updated!) });
 });
 

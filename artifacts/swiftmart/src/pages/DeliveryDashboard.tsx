@@ -10,8 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import {
   Bike, Package, CheckCircle, Clock, MapPin, Phone, User,
   LogOut, Menu, X, LayoutDashboard, ClipboardList, IndianRupee,
-  ToggleLeft, ToggleRight, Truck, TrendingUp, ChevronRight,
-  RefreshCw, AlertCircle,
+  ToggleLeft, ToggleRight, Truck, ChevronRight,
+  RefreshCw, AlertCircle, Banknote, CreditCard, ShieldCheck,
+  TrendingUp,
 } from "lucide-react";
 
 interface DeliveryPartner {
@@ -35,12 +36,18 @@ interface DeliveryOrder {
   netAmount: number;
   deliveryCharge: number;
   status: string;
+  paymentMethod: string;
+  paymentStatus: string;
   address: { line1?: string; line2?: string; city?: string; pincode?: string };
   createdAt: string;
-  paymentMethod: string;
 }
 
 type Section = "overview" | "orders";
+
+interface CodConfirm {
+  orderId: string;
+  amount: number;
+}
 
 const STATUS_LABELS: Record<string, string> = {
   placed: "Placed",
@@ -70,31 +77,68 @@ function formatTime(iso: string) {
   });
 }
 
+function isToday(iso: string) {
+  const d = new Date(iso);
+  const now = new Date();
+  return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+}
+
+function PaymentBadge({ method, status }: { method: string; status: string }) {
+  const isCod = (method ?? "COD").toUpperCase() === "COD";
+  const isPaid = status === "paid";
+
+  if (!isCod) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+        <CreditCard className="w-3 h-3" /> Online · Paid
+      </span>
+    );
+  }
+
+  if (isPaid) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+        <ShieldCheck className="w-3 h-3" /> COD · Collected
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+      <Banknote className="w-3 h-3" /> COD · Collect Cash
+    </span>
+  );
+}
+
 function OrderCard({
   order,
   onUpdateStatus,
+  onRequestCodConfirm,
   updating,
 }: {
   order: DeliveryOrder;
-  onUpdateStatus: (orderId: string, status: string) => void;
+  onUpdateStatus: (orderId: string, status: string, confirmCash?: boolean) => void;
+  onRequestCodConfirm: (orderId: string, amount: number) => void;
   updating: string | null;
 }) {
   const address = order.address ?? {};
   const addressStr = [address.line1, address.line2, address.city, address.pincode]
     .filter(Boolean).join(", ");
 
-  const canPickUp = order.status === "packed" || order.status === "confirmed" || order.status === "accepted" || order.status === "preparing";
+  const canPickUp = ["packed", "confirmed", "accepted", "preparing"].includes(order.status);
   const canDeliver = order.status === "out_for_delivery";
   const isActive = canPickUp || canDeliver;
+  const isCod = (order.paymentMethod ?? "COD").toUpperCase() === "COD";
+  const needsCashCollection = order.status === "delivered" && isCod && order.paymentStatus !== "paid";
 
   return (
     <div className={`bg-card rounded-3xl p-4 space-y-4 ${isActive ? "ring-2 ring-primary/30" : ""}`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="font-bold text-sm">{order.shopName}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-bold text-sm truncate">{order.shopName}</p>
           <p className="text-xs text-muted-foreground">{formatTime(order.createdAt)}</p>
         </div>
-        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[order.status] ?? "bg-muted text-muted-foreground"}`}>
+        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${STATUS_COLORS[order.status] ?? "bg-muted text-muted-foreground"}`}>
           {STATUS_LABELS[order.status] ?? order.status}
         </span>
       </div>
@@ -104,10 +148,10 @@ function OrderCard({
           <Package className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
           <span>{order.items.map(i => `${i.name} ×${i.qty}`).join(", ")}</span>
         </div>
-        <div className="flex items-start gap-2">
-          <User className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+        <div className="flex items-center gap-2">
+          <User className="w-3.5 h-3.5 flex-shrink-0" />
           <span>{order.customerName}</span>
-          <a href={`tel:${order.customerPhone}`} className="text-primary font-medium flex items-center gap-1">
+          <a href={`tel:${order.customerPhone}`} className="text-primary font-medium flex items-center gap-1 ml-auto">
             <Phone className="w-3 h-3" />{order.customerPhone}
           </a>
         </div>
@@ -119,30 +163,56 @@ function OrderCard({
         )}
       </div>
 
-      <div className="flex items-center justify-between pt-1 border-t border-border">
-        <div>
-          <p className="text-xs text-muted-foreground">{order.paymentMethod} · {formatINR(order.netAmount)}</p>
-          <p className="text-xs font-medium text-primary">Your cut: {formatINR(order.deliveryCharge)}</p>
+      <div className="space-y-3 pt-1 border-t border-border">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-medium">{formatINR(order.netAmount)} total</p>
+            <p className="text-xs font-semibold text-primary">Your cut: {formatINR(order.deliveryCharge)}</p>
+          </div>
+          <PaymentBadge method={order.paymentMethod} status={order.paymentStatus} />
         </div>
-        {canPickUp && (
-          <Button
-            size="sm"
-            className="rounded-xl h-8 text-xs shadow-none"
-            disabled={updating === order._id}
-            onClick={() => onUpdateStatus(order._id, "out_for_delivery")}
+
+        <div className="flex gap-2">
+          {canPickUp && (
+            <Button
+              size="sm"
+              className="flex-1 rounded-xl h-9 text-xs shadow-none"
+              disabled={updating === order._id}
+              onClick={() => onUpdateStatus(order._id, "out_for_delivery")}
+            >
+              {updating === order._id
+                ? <RefreshCw className="w-3 h-3 animate-spin" />
+                : <><Truck className="w-3 h-3 mr-1" />Picked Up</>}
+            </Button>
+          )}
+          {canDeliver && (
+            <Button
+              size="sm"
+              className="flex-1 rounded-xl h-9 text-xs shadow-none bg-green-600 hover:bg-green-700 text-white"
+              disabled={updating === order._id}
+              onClick={() => {
+                if (isCod) {
+                  onRequestCodConfirm(order._id, order.netAmount);
+                } else {
+                  onUpdateStatus(order._id, "delivered");
+                }
+              }}
+            >
+              {updating === order._id
+                ? <RefreshCw className="w-3 h-3 animate-spin" />
+                : <><CheckCircle className="w-3 h-3 mr-1" />Delivered</>}
+            </Button>
+          )}
+        </div>
+
+        {needsCashCollection && (
+          <button
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-semibold"
+            onClick={() => onRequestCodConfirm(order._id, order.netAmount)}
           >
-            {updating === order._id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <><Truck className="w-3 h-3 mr-1" />Picked Up</>}
-          </Button>
-        )}
-        {canDeliver && (
-          <Button
-            size="sm"
-            className="rounded-xl h-8 text-xs shadow-none bg-green-600 hover:bg-green-700 text-white"
-            disabled={updating === order._id}
-            onClick={() => onUpdateStatus(order._id, "delivered")}
-          >
-            {updating === order._id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <><CheckCircle className="w-3 h-3 mr-1" />Delivered</>}
-          </Button>
+            <Banknote className="w-3.5 h-3.5" />
+            Confirm Cash Collected · {formatINR(order.netAmount)}
+          </button>
         )}
       </div>
     </div>
@@ -165,16 +235,11 @@ function OverviewTab({
   const activeOrders = orders.filter(o =>
     ["packed", "confirmed", "accepted", "preparing", "out_for_delivery"].includes(o.status)
   );
-  const todayDelivered = orders.filter(o => {
-    if (o.status !== "delivered") return false;
-    const today = new Date();
-    const d = new Date(o.createdAt);
-    return d.getDate() === today.getDate() && d.getMonth() === today.getMonth();
-  }).length;
+  const todayOrders = orders.filter(o => o.status === "delivered" && isToday(o.createdAt));
+  const todayEarnings = todayOrders.reduce((sum, o) => sum + (o.deliveryCharge ?? 0), 0);
 
   return (
     <div className="space-y-6">
-      {/* Status card */}
       <div className="bg-card rounded-3xl p-5 neu-card space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -217,12 +282,23 @@ function OverviewTab({
         )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {[
           { label: "Total Delivered", value: partner.ordersDelivered, icon: CheckCircle, color: "text-green-500" },
-          { label: "Today", value: todayDelivered, icon: Clock, color: "text-blue-500" },
-          { label: "Earnings", value: formatINR(partner.totalEarnings), icon: IndianRupee, color: "text-primary" },
+          { label: "Today", value: todayOrders.length, icon: Clock, color: "text-blue-500" },
+        ].map(({ label, value, icon: Icon, color }) => (
+          <div key={label} className="bg-card rounded-2xl p-4 neu-card text-center space-y-1">
+            <Icon className={`w-5 h-5 mx-auto ${color}`} />
+            <p className="font-bold text-xl">{value}</p>
+            <p className="text-xs text-muted-foreground">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { label: "Total Earnings", value: formatINR(partner.totalEarnings), icon: IndianRupee, color: "text-primary" },
+          { label: "Today's Revenue", value: formatINR(todayEarnings), icon: TrendingUp, color: "text-emerald-500" },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-card rounded-2xl p-4 neu-card text-center space-y-1">
             <Icon className={`w-5 h-5 mx-auto ${color}`} />
@@ -232,7 +308,6 @@ function OverviewTab({
         ))}
       </div>
 
-      {/* Active orders */}
       {activeOrders.length > 0 && (
         <div className="space-y-3">
           <h3 className="font-bold flex items-center gap-2">
@@ -240,18 +315,27 @@ function OverviewTab({
             <Badge className="ml-auto">{activeOrders.length}</Badge>
           </h3>
           <p className="text-xs text-muted-foreground -mt-1">Tap "Picked Up" once you collect, then "Delivered" when done.</p>
-          {activeOrders.slice(0, 3).map(o => (
-            <div key={o._id} className="bg-card rounded-2xl p-4 ring-2 ring-primary/20 space-y-1">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-sm">{o.shopName}</p>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[o.status] ?? ""}`}>
-                  {STATUS_LABELS[o.status] ?? o.status}
-                </span>
+          {activeOrders.slice(0, 3).map(o => {
+            const isCod = (o.paymentMethod ?? "COD").toUpperCase() === "COD";
+            return (
+              <div key={o._id} className="bg-card rounded-2xl p-4 ring-2 ring-primary/20 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-sm">{o.shopName}</p>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[o.status] ?? ""}`}>
+                    {STATUS_LABELS[o.status] ?? o.status}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">{o.customerName} · {o.customerPhone}</p>
+                <p className="text-xs text-muted-foreground">{[o.address?.line1, o.address?.city].filter(Boolean).join(", ")}</p>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-xs font-medium text-primary">{formatINR(o.netAmount)}</span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isCod ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"}`}>
+                    {isCod ? "COD" : "Online"}
+                  </span>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">{o.customerName} · {o.customerPhone}</p>
-              <p className="text-xs text-muted-foreground">{[o.address?.line1, o.address?.city].filter(Boolean).join(", ")}</p>
-            </div>
-          ))}
+            );
+          })}
           {activeOrders.length > 3 && (
             <Button variant="ghost" size="sm" className="w-full text-primary" onClick={() => onNavigate("orders")}>
               View all {activeOrders.length} active orders <ChevronRight className="w-4 h-4 ml-1" />
@@ -276,26 +360,42 @@ function OverviewTab({
 function OrdersTab({
   orders,
   onUpdateStatus,
+  onRequestCodConfirm,
   updating,
 }: {
   orders: DeliveryOrder[];
-  onUpdateStatus: (orderId: string, status: string) => void;
+  onUpdateStatus: (orderId: string, status: string, confirmCash?: boolean) => void;
+  onRequestCodConfirm: (orderId: string, amount: number) => void;
   updating: string | null;
 }) {
   const active = orders.filter(o =>
     ["packed", "confirmed", "accepted", "preparing", "out_for_delivery"].includes(o.status)
   );
-  const past = orders.filter(o => !active.includes(o));
+  const needsPayment = orders.filter(o =>
+    o.status === "delivered" && (o.paymentMethod ?? "COD").toUpperCase() === "COD" && o.paymentStatus !== "paid"
+  );
+  const past = orders.filter(o => !active.includes(o) && !needsPayment.includes(o));
 
   return (
     <div className="space-y-6">
+      {needsPayment.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-bold flex items-center gap-2 text-amber-600 dark:text-amber-400">
+            <Banknote className="w-4 h-4" /> Awaiting Cash Confirmation ({needsPayment.length})
+          </h3>
+          {needsPayment.map(o => (
+            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} updating={updating} />
+          ))}
+        </div>
+      )}
+
       {active.length > 0 && (
         <div className="space-y-3">
           <h3 className="font-bold flex items-center gap-2 text-primary">
             <Truck className="w-4 h-4" /> Active ({active.length})
           </h3>
           {active.map(o => (
-            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} updating={updating} />
+            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} updating={updating} />
           ))}
         </div>
       )}
@@ -306,7 +406,7 @@ function OrdersTab({
             <ClipboardList className="w-4 h-4" /> History ({past.length})
           </h3>
           {past.map(o => (
-            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} updating={updating} />
+            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} updating={updating} />
           ))}
         </div>
       )}
@@ -395,6 +495,7 @@ export default function DeliveryDashboard() {
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [codConfirm, setCodConfirm] = useState<CodConfirm | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -432,16 +533,44 @@ export default function DeliveryDashboard() {
     }
   };
 
-  const handleUpdateStatus = async (orderId: string, status: string) => {
+  const handleUpdateStatus = async (orderId: string, status: string, confirmCash?: boolean) => {
     setUpdating(orderId);
     try {
-      const data = await api.patch<{ success: boolean }>(`/delivery/me/orders/${orderId}/status`, { status });
+      const body: Record<string, unknown> = { status };
+      if (confirmCash !== undefined) body["confirmCash"] = confirmCash;
+      const data = await api.patch<{ success: boolean }>(`/delivery/me/orders/${orderId}/status`, body);
       if (data.success) {
-        toast.success(status === "delivered" ? "Order marked as delivered!" : "Order picked up!");
+        if (status === "delivered") {
+          toast.success(confirmCash ? "Delivered & cash collected! 💰" : "Order marked as delivered!");
+        } else {
+          toast.success("Order picked up!");
+        }
         await fetchData();
       }
     } catch {
       toast.error("Failed to update order status");
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const handleCodDeliver = async (confirmCash: boolean) => {
+    if (!codConfirm) return;
+    const { orderId } = codConfirm;
+    setCodConfirm(null);
+    await handleUpdateStatus(orderId, "delivered", confirmCash);
+  };
+
+  const handleCodConfirmPaymentOnly = async (orderId: string) => {
+    setUpdating(orderId);
+    try {
+      const data = await api.patch<{ success: boolean }>(`/delivery/me/orders/${orderId}/confirm-payment`, {});
+      if (data.success) {
+        toast.success("Cash collection confirmed!");
+        await fetchData();
+      }
+    } catch {
+      toast.error("Failed to confirm payment");
     } finally {
       setUpdating(null);
     }
@@ -546,6 +675,14 @@ export default function DeliveryDashboard() {
                 <OrdersTab
                   orders={orders}
                   onUpdateStatus={handleUpdateStatus}
+                  onRequestCodConfirm={(orderId, amount) => {
+                    const order = orders.find(o => o._id === orderId);
+                    if (order?.status === "delivered") {
+                      handleCodConfirmPaymentOnly(orderId);
+                    } else {
+                      setCodConfirm({ orderId, amount });
+                    }
+                  }}
                   updating={updating}
                 />
               )}
@@ -553,6 +690,58 @@ export default function DeliveryDashboard() {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* COD Cash Confirmation Modal */}
+      <AnimatePresence>
+        {codConfirm && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-50 bg-black/60"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setCodConfirm(null)}
+            />
+            <motion.div
+              className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-3xl p-6 space-y-5 shadow-2xl"
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 220 }}
+            >
+              <div className="w-10 h-1 bg-border rounded-full mx-auto" />
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <Banknote className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-lg">Collect Cash on Delivery</h2>
+                  <p className="text-muted-foreground text-sm">Order total: <span className="font-bold text-foreground">{formatINR(codConfirm.amount)}</span></p>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 text-sm text-amber-900 dark:text-amber-200">
+                <p className="font-semibold">This is a Cash on Delivery order.</p>
+                <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">Please collect <strong>{formatINR(codConfirm.amount)}</strong> from the customer before marking as delivered. Did you collect the cash?</p>
+              </div>
+
+              <div className="space-y-2.5">
+                <Button
+                  className="w-full h-14 rounded-2xl text-base font-bold bg-green-600 hover:bg-green-700 text-white shadow-none"
+                  onClick={() => handleCodDeliver(true)}
+                  disabled={!!updating}
+                >
+                  <ShieldCheck className="w-5 h-5 mr-2" />
+                  Yes, I collected {formatINR(codConfirm.amount)}
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full h-12 rounded-2xl text-sm"
+                  onClick={() => setCodConfirm(null)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

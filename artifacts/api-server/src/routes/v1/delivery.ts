@@ -4,6 +4,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { validateUuidParams } from "../../middlewares/validateUuid.js";
 import { mi, miArr } from "../../utils/mapId.js";
+import { createNotificationLimited } from "../../utils/notification.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -234,10 +235,12 @@ router.get("/me/orders", authenticate, async (req: AuthRequest, res: Response): 
 });
 
 // PATCH /delivery/me/orders/:orderId/status — mark order as out_for_delivery or delivered
+// Body: { status: "out_for_delivery" | "delivered", confirmCash?: boolean }
+// For COD orders, pass confirmCash: true when rider has collected payment — sets paymentStatus="paid".
 router.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("orderId"), async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user!.userId;
   const orderId = req.params["orderId"] as string;
-  const { status } = req.body as { status: string };
+  const { status, confirmCash } = req.body as { status: string; confirmCash?: boolean };
 
   const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
   if (!partner) { res.status(403).json({ success: false, message: "Not a delivery partner" }); return; }
@@ -255,6 +258,8 @@ router.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("ord
     return;
   }
 
+  const isCod = (order.paymentMethod ?? "COD").toUpperCase() === "COD";
+
   if (status === "delivered") {
     await db.update(deliveryPartners).set({
       ordersDelivered: partner.ordersDelivered + 1,
@@ -269,8 +274,60 @@ router.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("ord
     }).where(eq(deliveryPartners.id, partner.id));
   }
 
+  // For COD orders marked delivered with cash confirmed, mark payment as paid
+  const paymentStatusUpdate = (status === "delivered" && isCod && confirmCash) ? { paymentStatus: "paid" } : {};
+
   const [updated] = await db.update(orders)
-    .set({ status, updatedAt: new Date() })
+    .set({ status, ...paymentStatusUpdate, updatedAt: new Date() })
+    .where(eq(orders.id, orderId))
+    .returning();
+
+  // Notify the customer about status change
+  const STATUS_MESSAGES: Record<string, { title: string; body: string }> = {
+    out_for_delivery: { title: "Your order is on the way! 🚚", body: `Order #${orderId.slice(-6).toUpperCase()} has been picked up and is out for delivery.` },
+    delivered: { title: "Order Delivered! ✅", body: `Order #${orderId.slice(-6).toUpperCase()} has been delivered. Enjoy!` },
+  };
+  const msg = STATUS_MESSAGES[status];
+  if (msg && order.customerId) {
+    try {
+      await createNotificationLimited(order.customerId, {
+        type: "order_update",
+        title: msg.title,
+        message: msg.body,
+        data: { orderId, url: `/orders/${orderId}` },
+      });
+    } catch { /* ignore */ }
+  }
+
+  res.json({ success: true, order: mi(updated!) });
+});
+
+// PATCH /delivery/me/orders/:orderId/confirm-payment — rider confirms COD cash collected
+// Can be called after delivery for COD orders to set paymentStatus="paid".
+router.patch("/me/orders/:orderId/confirm-payment", authenticate, validateUuidParams("orderId"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const orderId = req.params["orderId"] as string;
+
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) { res.status(403).json({ success: false, message: "Not a delivery partner" }); return; }
+
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
+  if (order.deliveryPartnerId !== partner.id) {
+    res.status(403).json({ success: false, message: "This order is not assigned to you" });
+    return;
+  }
+  if (order.status !== "delivered") {
+    res.status(400).json({ success: false, message: "Order must be delivered first" });
+    return;
+  }
+  if (order.paymentStatus === "paid") {
+    res.json({ success: true, order: mi(order), message: "Payment already confirmed" });
+    return;
+  }
+
+  const [updated] = await db.update(orders)
+    .set({ paymentStatus: "paid", updatedAt: new Date() })
     .where(eq(orders.id, orderId))
     .returning();
 
