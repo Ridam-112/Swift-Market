@@ -112,6 +112,7 @@ router.post("/check-phone", loginLimiter, async (req: Request, res: Response): P
       .limit(1);
 
     if (!user) {
+      req.log.info({ phone }, "check-phone: number not registered");
       res.json({ success: true, exists: false, hasPassword: false });
       return;
     }
@@ -121,7 +122,9 @@ router.post("/check-phone", loginLimiter, async (req: Request, res: Response): P
       return;
     }
 
-    res.json({ success: true, exists: true, hasPassword: !!user.passwordHash });
+    const hasPassword = !!user.passwordHash;
+    req.log.info({ phone, userId: user.id, hasPassword }, "check-phone result");
+    res.json({ success: true, exists: true, hasPassword });
   } catch (err) {
     req.log.error({ err, phone }, "check-phone failed");
     res.status(500).json({ success: false, message: "Request failed. Please try again." });
@@ -159,13 +162,16 @@ router.post("/set-password", loginLimiter, async (req: Request, res: Response): 
 
     // Only allowed for users who have never had a password (OTP migration)
     if (user.passwordHash) {
+      req.log.info({ phone, userId: user.id }, "set-password: password already set — redirecting to login");
       res.status(409).json({ success: false, message: "A password is already set. Please use Login or Forgot Password." });
       return;
     }
 
+    req.log.info({ phone, userId: user.id, passwordHashBefore: null }, "set-password: no password exists — creating");
+
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    await db.update(users)
+    const [updated] = await db.update(users)
       .set({
         passwordHash,
         authProvider: "password",
@@ -174,14 +180,20 @@ router.post("/set-password", loginLimiter, async (req: Request, res: Response): 
         passwordResetExpires: null,
         lastLoginAt: new Date(),
       })
-      .where(eq(users.id, user.id));
+      .where(eq(users.id, user.id))
+      .returning();
 
-    const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+    if (!updated || !updated.passwordHash) {
+      req.log.error({ phone, userId: user.id }, "set-password: DB update returned no row — password not saved");
+      res.status(500).json({ success: false, message: "Failed to save password. Please try again." });
+      return;
+    }
 
-    req.log.info({ phone, role: user.role }, "OTP user set password — auto login");
+    req.log.info({ phone, userId: updated.id, passwordHashAfter: updated.passwordHash ? "SET" : "MISSING" }, "set-password: password saved — auto login");
     res.json({
       success: true,
       isNewUser: false,
+      hasPassword: true,
       ...issueTokens(updated),
       user: formatUser(updated),
     });

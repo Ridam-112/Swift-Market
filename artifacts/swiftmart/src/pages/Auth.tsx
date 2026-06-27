@@ -259,7 +259,17 @@ export default function Auth() {
       toast.success("Password created! You are now logged in.");
       afterLogin({ isNewUser: false, user: result.user as { addresses?: unknown[] } | undefined });
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to create password. Please try again.");
+      const msg = err instanceof Error ? err.message : "Failed to create password. Please try again.";
+      // If password was already set (e.g. double-submit or retry after a crash), go straight to login
+      if (/already set|use login|forgot password/i.test(msg)) {
+        toast.info("Password already set. Please log in.");
+        setPassword("");
+        setNewPwd("");
+        setConfirmPwd("");
+        setStep('password');
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setIsCreatingPwd(false);
     }
