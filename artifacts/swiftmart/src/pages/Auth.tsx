@@ -106,6 +106,23 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [resetToken, setResetToken] = useState("");
+  const [resolvedClientId, setResolvedClientId] = useState(getGoogleClientId());
+
+  // Always re-fetch Google client ID on mount — module state can reset on HMR
+  useEffect(() => {
+    const stored = getGoogleClientId();
+    if (stored && stored !== "placeholder") { setResolvedClientId(stored); return; }
+    fetch("/api/auth/config")
+      .then(r => r.json())
+      .then((d: { googleClientId?: string; authMode?: string }) => {
+        if (d.googleClientId) {
+          setResolvedClientId(d.googleClientId);
+          import("@/lib/authConfig").then(m => m.setAuthConfig((d.authMode ?? "both") as Parameters<typeof m.setAuthConfig>[0], d.googleClientId!));
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Detect reset-password token in URL query params
   useEffect(() => {
@@ -200,7 +217,7 @@ export default function Auth() {
 
   // ─── Google sign-in ─────────────────────────────────────────────────────────
   const handleGoogleSignIn = async () => {
-    const clientId = getGoogleClientId();
+    const clientId = resolvedClientId;
     if (!clientId || clientId === "placeholder") {
       toast.error("Google sign-in is not configured. Please use email instead.");
       return;

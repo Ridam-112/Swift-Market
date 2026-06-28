@@ -900,14 +900,31 @@ router.post("/complete-profile", authenticate, async (req: AuthRequest, res: Res
       return;
     }
 
-    // Ensure phone uniqueness if provided
+    // Phone-based account linking: if phone already belongs to another user, merge into that account
     if (phone) {
-      const [taken] = await db.select({ id: users.id })
+      const [taken] = await db.select()
         .from(users)
         .where(eq(users.phone, phone))
         .limit(1);
+
       if (taken && taken.id !== userId) {
-        res.status(409).json({ success: false, message: "This mobile number is already linked to another account" });
+        // Merge: bring email/passwordHash from the new (email-signup) account into the existing phone account
+        const mergeUpdates: Record<string, unknown> = { updatedAt: new Date() };
+        if (!taken.email && existing.email) mergeUpdates["email"] = existing.email;
+        if (!taken.passwordHash && existing.passwordHash) mergeUpdates["passwordHash"] = existing.passwordHash;
+        if (!taken.name || taken.name === "User") mergeUpdates["name"] = name.trim();
+        if (pincode && !taken.pincode) mergeUpdates["pincode"] = pincode;
+        if (address) {
+          const takenAddresses = (taken.addresses as unknown[]) ?? [];
+          mergeUpdates["addresses"] = [...takenAddresses, { id: crypto.randomUUID(), ...address }];
+        }
+
+        await db.update(users).set(mergeUpdates).where(eq(users.id, taken.id));
+        // Delete the stub email-signup account
+        await db.delete(users).where(eq(users.id, userId));
+        const [merged] = await db.select().from(users).where(eq(users.id, taken.id)).limit(1);
+        req.log.info({ userId: taken.id, mergedFrom: userId }, "Accounts merged via phone number");
+        res.json({ success: true, merged: true, ...issueTokens(merged), user: formatUser(merged) });
         return;
       }
     }

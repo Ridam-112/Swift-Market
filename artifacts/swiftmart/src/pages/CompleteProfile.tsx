@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, User, Phone, MapPin, ChevronRight } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, setTokens } from "@/lib/api";
 
 interface Address {
   label: "Home" | "Work" | "Other";
@@ -60,15 +60,33 @@ export default function CompleteProfile() {
         payload.address = address;
       }
 
-      await api.post<{ success: boolean; user: unknown }>("/auth/complete-profile", payload);
+      const result = await api.post<{
+        success: boolean;
+        merged?: boolean;
+        accessToken?: string;
+        refreshToken?: string;
+        user: Record<string, unknown>;
+      }>("/auth/complete-profile", payload);
 
-      updateUser({
-        name: name.trim(),
-        phone: phone || undefined,
-        pincode: pincode || undefined,
-      });
-
-      toast.success("Profile saved! Welcome to SwiftMart.");
+      if (result.merged && result.accessToken && result.refreshToken) {
+        // Phone matched an existing account — swap to that account's session
+        setTokens(result.accessToken, result.refreshToken);
+        updateUser({
+          id: result.user.id as string,
+          name: result.user.name as string,
+          phone: result.user.phone as string,
+          pincode: (result.user.pincode as string) || undefined,
+          addresses: (result.user.addresses as Address[]) || [],
+        });
+        toast.success("Account linked! Welcome back.");
+      } else {
+        updateUser({
+          name: name.trim(),
+          phone: phone || undefined,
+          pincode: pincode || undefined,
+        });
+        toast.success("Profile saved! Welcome to SwiftMart.");
+      }
       setLocation("/");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to save profile";
