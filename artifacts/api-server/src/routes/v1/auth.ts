@@ -8,6 +8,7 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
 import { mi } from "../../utils/mapId.js";
 import { sendPasswordResetOtp, verify2FactorOtp, OTP_MODE } from "../../lib/sms.js";
+import { logger } from "../../lib/logger.js";
 import {
   loginLimiter,
   signupLimiter,
