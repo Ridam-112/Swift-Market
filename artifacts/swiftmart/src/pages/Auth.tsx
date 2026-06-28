@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { signInWithGoogleGIS } from "@/lib/googleGIS";
-import { getGoogleClientId } from "@/lib/authConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -102,7 +100,7 @@ function PasswordInput({
 }
 
 export default function Auth() {
-  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, signInWithGoogle, forgotPassword, resetPassword } = useAuth();
+  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, forgotPassword, resetPassword } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
 
@@ -112,53 +110,15 @@ export default function Auth() {
   const [password, setPassword]       = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [resetToken, setResetToken] = useState("");
-  const [resolvedClientId, setResolvedClientId] = useState(getGoogleClientId());
-  // true while we're fetching /api/auth/config — prevents premature "not configured" flash
-  const [configFetching, setConfigFetching] = useState(true);
-
-  // Always fetch /api/auth/config on mount. Never rely solely on module-level state
-  // because: (a) Vite HMR resets module variables, and (b) in production the module
-  // initialises before the bootstrap fetch completes.
-  useEffect(() => {
-    fetch("/api/auth/config")
-      .then(r => r.json())
-      .then((d: { googleClientId?: string; authMode?: string }) => {
-        console.log("[SwiftMart] Auth.tsx /api/auth/config response:", {
-          authMode: d.authMode,
-          googleClientIdPresent: !!d.googleClientId,
-          googleClientIdLength: d.googleClientId?.length ?? 0,
-        });
-        const cid = d.googleClientId ?? "";
-        setResolvedClientId(cid || "placeholder");
-        if (cid) {
-          import("@/lib/authConfig").then(m =>
-            m.setAuthConfig((d.authMode ?? "both") as Parameters<typeof m.setAuthConfig>[0], cid)
-          );
-        }
-      })
-      .catch((err) => {
-        console.error("[SwiftMart] Auth.tsx /api/auth/config fetch failed:", err);
-        // Network error — fall back to whatever module state already has
-        const fallback = getGoogleClientId();
-        if (fallback && fallback !== "placeholder") setResolvedClientId(fallback);
-      })
-      .finally(() => setConfigFetching(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Detect reset-password token in URL query params
   useEffect(() => {
     const params = new URLSearchParams(search);
     const token = params.get("token");
-    const stepParam = params.get("step");
-
     if (token) {
       setResetToken(token);
       setStep("reset");
-    } else if (stepParam === "google-callback") {
-      handleGoogleCallback();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -167,11 +127,6 @@ export default function Auth() {
   useEffect(() => {
     if (!authLoading && user) setLocation("/");
   }, [user, authLoading, setLocation]);
-
-  // ─── Google OAuth callback handler (no-op — popup flow handles auth inline) ─
-  const handleGoogleCallback = () => {
-    setStep("email");
-  };
 
   // ─── Email step ─────────────────────────────────────────────────────────────
   const handleEmailContinue = async (e: React.FormEvent) => {
@@ -239,49 +194,9 @@ export default function Auth() {
     }
   };
 
-  // ─── Google sign-in ─────────────────────────────────────────────────────────
-  const handleGoogleSignIn = async () => {
-    // If config is still loading, wait for it (re-fetch in case the effect hasn't resolved yet)
-    let clientId = resolvedClientId;
-    if (!clientId || clientId === "placeholder") {
-      try {
-        const r = await fetch("/api/auth/config");
-        const d = await r.json() as { googleClientId?: string; authMode?: string };
-        console.log("[SwiftMart] Google Sign-In config refetch:", {
-          authMode: d.authMode,
-          googleClientIdPresent: !!d.googleClientId,
-          googleClientIdLength: d.googleClientId?.length ?? 0,
-        });
-        clientId = d.googleClientId ?? "";
-        if (clientId) {
-          setResolvedClientId(clientId);
-          import("@/lib/authConfig").then(m =>
-            m.setAuthConfig((d.authMode ?? "both") as Parameters<typeof m.setAuthConfig>[0], clientId)
-          );
-        }
-      } catch (err) {
-        console.error("[SwiftMart] Google Sign-In config refetch failed:", err);
-      }
-    }
-    if (!clientId || clientId === "placeholder") {
-      toast.error("Google sign-in is not available. Please use email login instead.");
-      return;
-    }
-    setGoogleLoading(true);
-    try {
-      const idToken = await signInWithGoogleGIS(clientId);
-      const result = await signInWithGoogle(idToken);
-      if (result.needsProfile) {
-        setLocation("/complete-profile");
-      } else {
-        setLocation("/");
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Google sign-in failed";
-      toast.error(msg);
-    } finally {
-      setGoogleLoading(false);
-    }
+  // ─── Google sign-in — standard OAuth redirect flow ──────────────────────────
+  const handleGoogleSignIn = () => {
+    window.location.href = "/api/auth/google/redirect";
   };
 
   // ─── Forgot password ─────────────────────────────────────────────────────────
@@ -348,14 +263,6 @@ export default function Auth() {
 
           <AnimatePresence mode="wait">
 
-            {/* ── GOOGLE LOADING ── */}
-            {step === "google-loading" && (
-              <motion.div key="google-loading" {...slide} className="text-center space-y-4">
-                <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" />
-                <p className="text-muted-foreground">Completing Google sign-in…</p>
-              </motion.div>
-            )}
-
             {/* ── EMAIL ── */}
             {step === "email" && (
               <motion.form key="email" {...slide} onSubmit={handleEmailContinue} className="space-y-4">
@@ -393,7 +300,7 @@ export default function Auth() {
                   </div>
                 </div>
 
-                <GoogleButton onClick={handleGoogleSignIn} loading={googleLoading} configFetching={configFetching} />
+                <GoogleButton onClick={handleGoogleSignIn} loading={false} />
               </motion.form>
             )}
 

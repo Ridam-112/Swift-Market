@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
+import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
 import { db, users, shops, otpSessions, servicePincodes as servicePincodesTable } from "@workspace/db";
@@ -511,6 +512,148 @@ router.post("/google", googleAuthLimiter, async (req: Request, res: Response): P
     res.json({ success: true, isNewUser, ...issueTokens(updated), user: formatUser(updated) });
   } catch (err) {
     req.log.error({ err }, "Google auth failed");
+    res.status(401).json({ success: false, message: err instanceof Error ? err.message : "Google authentication failed" });
+  }
+});
+
+// ─── GET /api/auth/google/redirect ───────────────────────────────────────────
+// Starts the standard OAuth 2.0 authorization code flow.
+// Redirects the browser to Google's consent page.
+router.get("/google/redirect", (req: Request, res: Response): void => {
+  const clientId = process.env["GOOGLE_CLIENT_ID"];
+  if (!clientId || AUTH_MODE === "otp") {
+    res.status(400).send("Google login is not configured.");
+    return;
+  }
+
+  const proto = ((req.headers["x-forwarded-proto"] as string | undefined) ?? "https").split(",")[0]!.trim();
+  const host  = ((req.headers["x-forwarded-host"]  as string | undefined) ?? req.headers.host ?? "").split(",")[0]!.trim();
+  const redirectUri = `${proto}://${host}/auth/google/callback`;
+
+  const nonce = randomBytes(16).toString("hex");
+  const state = jwt.sign(
+    { oauth: true, nonce, redirectUri },
+    process.env["JWT_SECRET"]!,
+    { expiresIn: "10m" },
+  );
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    scope: "openid email profile",
+    state,
+    access_type: "online",
+    prompt: "select_account",
+  });
+
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+});
+
+// ─── POST /api/auth/google/exchange ──────────────────────────────────────────
+// Exchanges the authorization code returned by Google for a user session.
+// Called by the frontend /auth/google/callback page.
+router.post("/google/exchange", googleAuthLimiter, async (req: Request, res: Response): Promise<void> => {
+  if (AUTH_MODE === "otp") {
+    res.status(403).json({ success: false, message: "Google login is not enabled." });
+    return;
+  }
+
+  const { code, state } = req.body as { code?: string; state?: string };
+  if (!code || !state) {
+    res.status(400).json({ success: false, message: "code and state are required" });
+    return;
+  }
+
+  const clientId     = process.env["GOOGLE_CLIENT_ID"];
+  const clientSecret = process.env["GOOGLE_CLIENT_SECRET"];
+  if (!clientId || !clientSecret) {
+    res.status(500).json({ success: false, message: "Google OAuth is not fully configured on the server. GOOGLE_CLIENT_SECRET is missing." });
+    return;
+  }
+
+  let redirectUri: string;
+  try {
+    const payload = jwt.verify(state, process.env["JWT_SECRET"]!) as { oauth: boolean; redirectUri: string };
+    if (!payload.oauth) throw new Error("Bad state");
+    redirectUri = payload.redirectUri;
+  } catch {
+    res.status(400).json({ success: false, message: "Invalid or expired state. Please try signing in again." });
+    return;
+  }
+
+  try {
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: "authorization_code",
+      }),
+    });
+
+    if (!tokenRes.ok) {
+      const errText = await tokenRes.text();
+      req.log.error({ errText }, "Google token exchange failed");
+      res.status(400).json({ success: false, message: "Failed to exchange authorization code with Google." });
+      return;
+    }
+
+    const tokenData = await tokenRes.json() as { id_token?: string; access_token?: string; error?: string };
+    if (tokenData.error) {
+      res.status(400).json({ success: false, message: tokenData.error });
+      return;
+    }
+
+    let email: string | undefined;
+    let name: string | undefined;
+    let googleId: string | undefined;
+    let profilePhoto: string | undefined;
+
+    if (tokenData.id_token) {
+      const ticket = await googleClient.verifyIdToken({ idToken: tokenData.id_token, audience: clientId });
+      const payload = ticket.getPayload();
+      if (!payload?.email) { res.status(400).json({ success: false, message: "Invalid Google token" }); return; }
+      email = payload.email; name = payload.name; googleId = payload.sub; profilePhoto = payload.picture;
+    } else if (tokenData.access_token) {
+      const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      });
+      if (!userRes.ok) { res.status(400).json({ success: false, message: "Could not fetch profile from Google." }); return; }
+      const info = await userRes.json() as { email?: string; name?: string; sub?: string; picture?: string };
+      email = info.email; name = info.name; googleId = info.sub; profilePhoto = info.picture;
+    }
+
+    if (!email || !googleId) { res.status(400).json({ success: false, message: "Could not retrieve your Google account info." }); return; }
+
+    let [user] = await db.select().from(users).where(or(eq(users.googleId, googleId), eq(users.email, email))).limit(1);
+    const isNewUser = !user;
+
+    if (!user) {
+      [user] = await db.insert(users).values({
+        name: name ?? "User", email, googleId, phone: `g_${googleId}`,
+        role: "customer", status: "active", authProvider: "google", profilePhoto: profilePhoto ?? null,
+      }).returning();
+    } else {
+      await db.update(users).set({
+        googleId: user.googleId ?? googleId,
+        profilePhoto: user.profilePhoto ?? profilePhoto ?? null,
+        authProvider: user.authProvider === "otp" ? "google" : user.authProvider,
+      }).where(eq(users.id, user.id));
+    }
+
+    await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+
+    const needsProfile = isNewUser || !updated.phone || updated.phone.startsWith("g_");
+
+    req.log.info({ email, isNewUser, needsProfile }, "Google OAuth exchange successful");
+    res.json({ success: true, isNewUser, needsProfile, ...issueTokens(updated), user: formatUser(updated) });
+  } catch (err) {
+    req.log.error({ err }, "Google exchange failed");
     res.status(401).json({ success: false, message: err instanceof Error ? err.message : "Google authentication failed" });
   }
 });

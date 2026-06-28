@@ -38,6 +38,7 @@ import OrderSuccess    from "@/pages/OrderSuccess";
 import Orders          from "@/pages/Orders";
 import Auth            from "@/pages/Auth";
 import CompleteProfile from "@/pages/CompleteProfile";
+import GoogleCallback  from "@/pages/GoogleCallback";
 
 // ── Lazy-loaded — split into separate chunks to shrink the initial bundle ──────
 const Profile        = lazy(() => import("@/pages/Profile"));
@@ -264,6 +265,7 @@ function Router() {
     <ThemedShell>
       <Switch>
         <Route path="/auth" component={Auth} />
+        <Route path="/auth/google/callback" component={GoogleCallback} />
 
         {/* Complete profile — logged-in users who signed up via email for first time */}
         <Route path="/complete-profile">
