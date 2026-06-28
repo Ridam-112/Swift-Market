@@ -1,91 +1,116 @@
 /**
- * Google sign-in via a dedicated standalone window.
+ * Google Sign-In via Google Identity Services (GIS) One Tap.
  *
- * Communication strategy (both channels tried in order):
- *  1. window.opener.postMessage — direct and reliable when popup has access to opener.
- *  2. BroadcastChannel — same-origin fallback for browsers that restrict opener access.
- *
- * Why a separate window instead of signInWithPopup / signInWithRedirect / GIS in iframe:
- *  - signInWithPopup  → Firebase popup postMessage blocked by Replit's iframe proxy.
- *  - signInWithRedirect → Firebase IndexedDB state lost when iframe navigates away/back.
- *  - GIS in app iframe → accounts.google.com iframe violates Replit CSP frame-ancestors.
- *
- * Opening /google-signin.html as a NEW TOP-LEVEL WINDOW sidesteps all iframe restrictions.
+ * Renders the GIS prompt directly on the current page — no popup window needed.
+ * This works at any top-level origin (swiftmart.space, etc.).
  */
 
-const CHANNEL_NAME = "swiftmart-google-auth";
-const POPUP_NAME   = "swiftmart_google_signin";
+const GIS_SRC = "https://accounts.google.com/gsi/client";
 
-export function openGoogleSigninWindow(clientId: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const origin = window.location.origin;
-    const url = `/google-signin.html?client_id=${encodeURIComponent(clientId)}&origin=${encodeURIComponent(origin)}`;
+interface PromptNotification {
+  isDisplayMoment(): boolean;
+  isDisplayed(): boolean;
+  isNotDisplayed(): boolean;
+  getNotDisplayedReason(): string;
+  isSkippedMoment(): boolean;
+  getSkippedReason(): string;
+  isDismissedMoment(): boolean;
+  getDismissedReason(): string;
+}
 
-    const popup = window.open(
-      url,
-      POPUP_NAME,
-      "width=480,height=560,top=100,left=100,toolbar=no,menubar=no,scrollbars=no,resizable=yes",
-    );
+interface GisCredentialResponse {
+  credential?: string;
+  select_by?: string;
+}
 
-    if (!popup) {
-      reject(new Error("Pop-up was blocked by your browser. Please allow pop-ups for this site and try again."));
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize(config: Record<string, unknown>): void;
+          prompt(cb?: (n: PromptNotification) => void): void;
+          cancel(): void;
+          renderButton(parent: HTMLElement, options: Record<string, unknown>): void;
+          disableAutoSelect(): void;
+        };
+      };
+    };
+  }
+}
+
+let loadPromise: Promise<void> | null = null;
+
+function loadGIS(): Promise<void> {
+  if (window.google?.accounts) return Promise.resolve();
+  if (loadPromise) return loadPromise;
+  loadPromise = new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${GIS_SRC}"]`);
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () => reject(new Error("Failed to load Google Sign-In library")));
       return;
     }
+    const s = document.createElement("script");
+    s.src = GIS_SRC;
+    s.async = true;
+    s.defer = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Failed to load Google Sign-In library. Check your internet connection."));
+    document.head.appendChild(s);
+  });
+  return loadPromise;
+}
 
-    let done = false;
+/**
+ * Sign in with Google using GIS One Tap on the current page.
+ * Returns the Google ID token string on success.
+ */
+export async function signInWithGoogleGIS(clientId: string): Promise<string> {
+  await loadGIS();
 
-    function cleanup() {
-      window.removeEventListener("message", onPostMessage);
-      channel.removeEventListener("message", onBroadcast);
-      channel.close();
-      clearInterval(pollClosed);
-      clearTimeout(timeout);
-      if (popup && !popup.closed) popup.close();
+  return new Promise<string>((resolve, reject) => {
+    let settled = false;
+
+    function settle(fn: () => void) {
+      if (settled) return;
+      settled = true;
+      try { window.google?.accounts.id.cancel(); } catch { /* ignore */ }
+      fn();
     }
 
-    function handlePayload(data: unknown) {
-      if (done) return;
-      const d = data as Record<string, unknown> | null;
-      if (!d || !d["swiftmartGoogle"]) return; // ignore unrelated messages
-      done = true;
-      cleanup();
-      if (d["idToken"]) {
-        resolve(d["idToken"] as string);
-      } else {
-        reject(new Error(typeof d["error"] === "string" ? d["error"] : "Google sign-in failed"));
+    window.google!.accounts.id.initialize({
+      client_id: clientId,
+      callback: (response: GisCredentialResponse) => {
+        settle(() => {
+          if (response.credential) {
+            resolve(response.credential);
+          } else {
+            reject(new Error("Google sign-in failed. Please try again."));
+          }
+        });
+      },
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      itp_support: true,
+      use_fedcm_for_prompt: false,
+    });
+
+    window.google!.accounts.id.prompt((n: PromptNotification) => {
+      if (n.isNotDisplayed()) {
+        const reason = n.getNotDisplayedReason();
+        settle(() => reject(new Error(
+          reason === "suppressed_by_user"
+            ? "Google sign-in was suppressed. Please clear site cookies and try again."
+            : reason === "opt_out_or_no_session"
+              ? "No Google session found. Please sign into Google in your browser first."
+              : "Google sign-in could not be shown. Please use email login instead."
+        )));
+      } else if (n.isDismissedMoment()) {
+        if (n.getDismissedReason() !== "credential_returned") {
+          settle(() => reject(new Error("Sign-in cancelled. Please try again.")));
+        }
       }
-    }
-
-    // Channel 1: window.opener.postMessage (popup → this window)
-    function onPostMessage(e: MessageEvent) {
-      if (e.origin !== origin) return;
-      handlePayload(e.data);
-    }
-    window.addEventListener("message", onPostMessage);
-
-    // Channel 2: BroadcastChannel fallback
-    const channel = new BroadcastChannel(CHANNEL_NAME);
-    function onBroadcast(e: MessageEvent) {
-      handlePayload(e.data);
-    }
-    channel.addEventListener("message", onBroadcast);
-
-    // Detect user closing the popup without completing sign-in
-    const pollClosed = setInterval(() => {
-      if (popup.closed && !done) {
-        done = true;
-        cleanup();
-        reject(new Error("Sign-in cancelled. Please try again."));
-      }
-    }, 500);
-
-    // 5-minute timeout
-    const timeout = setTimeout(() => {
-      if (!done) {
-        done = true;
-        cleanup();
-        reject(new Error("Google sign-in timed out. Please try again."));
-      }
-    }, 5 * 60 * 1000);
+    });
   });
 }

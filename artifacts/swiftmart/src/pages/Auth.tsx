@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { openGoogleSigninWindow } from "@/lib/googleGIS";
+import { signInWithGoogleGIS } from "@/lib/googleGIS";
 import { getGoogleClientId } from "@/lib/authConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -269,7 +269,7 @@ export default function Auth() {
     }
     setGoogleLoading(true);
     try {
-      const idToken = await openGoogleSigninWindow(clientId);
+      const idToken = await signInWithGoogleGIS(clientId);
       const result = await signInWithGoogle(idToken);
       if (result.needsProfile) {
         setLocation("/complete-profile");
