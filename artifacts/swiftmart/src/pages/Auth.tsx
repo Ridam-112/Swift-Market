@@ -125,6 +125,11 @@ export default function Auth() {
     fetch("/api/auth/config")
       .then(r => r.json())
       .then((d: { googleClientId?: string; authMode?: string }) => {
+        console.log("[SwiftMart] Auth.tsx /api/auth/config response:", {
+          authMode: d.authMode,
+          googleClientIdPresent: !!d.googleClientId,
+          googleClientIdLength: d.googleClientId?.length ?? 0,
+        });
         const cid = d.googleClientId ?? "";
         setResolvedClientId(cid || "placeholder");
         if (cid) {
@@ -133,7 +138,8 @@ export default function Auth() {
           );
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("[SwiftMart] Auth.tsx /api/auth/config fetch failed:", err);
         // Network error — fall back to whatever module state already has
         const fallback = getGoogleClientId();
         if (fallback && fallback !== "placeholder") setResolvedClientId(fallback);
@@ -241,6 +247,11 @@ export default function Auth() {
       try {
         const r = await fetch("/api/auth/config");
         const d = await r.json() as { googleClientId?: string; authMode?: string };
+        console.log("[SwiftMart] Google Sign-In config refetch:", {
+          authMode: d.authMode,
+          googleClientIdPresent: !!d.googleClientId,
+          googleClientIdLength: d.googleClientId?.length ?? 0,
+        });
         clientId = d.googleClientId ?? "";
         if (clientId) {
           setResolvedClientId(clientId);
@@ -248,7 +259,9 @@ export default function Auth() {
             m.setAuthConfig((d.authMode ?? "both") as Parameters<typeof m.setAuthConfig>[0], clientId)
           );
         }
-      } catch { /* ignore — will fall through to error below */ }
+      } catch (err) {
+        console.error("[SwiftMart] Google Sign-In config refetch failed:", err);
+      }
     }
     if (!clientId || clientId === "placeholder") {
       toast.error("Google sign-in is not available. Please use email login instead.");

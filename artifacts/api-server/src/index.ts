@@ -22,6 +22,7 @@ function validateEnv(): void {
   }
 
   const optionalWarnings: Array<[string, string]> = [
+    ["GOOGLE_CLIENT_ID",      "Google Sign-In will not work — /api/auth/config will return empty googleClientId"],
     ["RAZORPAY_KEY_ID",       "Razorpay payments will not work"],
     ["RAZORPAY_KEY_SECRET",   "Razorpay payments will not work"],
     ["CLOUDINARY_CLOUD_NAME", "Image uploads will not work"],
@@ -32,6 +33,9 @@ function validateEnv(): void {
     ["FIREBASE_CLIENT_EMAIL", "FCM push notifications will not work"],
     ["FIREBASE_PRIVATE_KEY",  "FCM push notifications will not work"],
   ];
+  if (process.env["GOOGLE_CLIENT_ID"]) {
+    logger.info({ googleClientIdLength: process.env["GOOGLE_CLIENT_ID"].length }, "GOOGLE_CLIENT_ID is set — Google Sign-In enabled");
+  }
   for (const [key, impact] of optionalWarnings) {
     if (!process.env[key]) {
       logger.warn({ key }, `Optional secret missing — ${impact}`);

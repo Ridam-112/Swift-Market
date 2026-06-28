@@ -40,6 +40,11 @@ async function bootstrap() {
       firebaseConfig?: FirebaseConfig | null;
       servicePincodes?: Array<{ pincode: string; area: string; state: string }>;
     };
+    console.log("[SwiftMart] /api/auth/config bootstrap response:", {
+      authMode: data.authMode,
+      googleClientIdPresent: !!data.googleClientId,
+      googleClientIdLength: data.googleClientId?.length ?? 0,
+    });
     authMode = data.authMode ?? "otp";
     googleClientId = data.googleClientId ?? "";
 
