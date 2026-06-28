@@ -51,6 +51,10 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
 localPort = 8081
 externalPort = 8081
 
@@ -85,7 +89,7 @@ SUPER_ADMIN_PHONES = "6296118949,7602584238"
 NODE_ENV = "development"
 OTP_DEMO_CODE = "123456"
 PORT = "8080"
-VAPID_PUBLIC_KEY = "BHUJUcsvz6PRJJw7e28uSZRiCygRJGyyk9xXsa1Wl9kVRzCDKRt8MnPFmKLy0PAE5mbQqkbaZG6jk-MGkHSLY6Y"
+VAPID_PUBLIC_KEY = "BMuVtWVpkWuzUE7pkH0pKFKNyws5niCsgMNq6yD58sAWDgw39B4zNw6Bfx9x0DXhmkS5vJ4Tx8INeoAbKQm74xY"
 VAPID_SUBJECT = "mailto:admin@swiftmart.com"
 OTP_MODE = "demo"
 AUTH_MODE = "both"
