@@ -17,6 +17,7 @@ interface AuthContextType {
   logout: () => void;
   setRole: (role: 'customer' | 'vendor') => void;
   updateUser: (user: Partial<User>) => void;
+  refreshUser: () => Promise<void>;
   addAddress: (address: Address) => void;
   deleteAddress: (id: string) => void;
   updateAddress: (address: Address) => void;
@@ -280,6 +281,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const d = await api.get<{ success: boolean; user: ApiUser }>("/auth/me");
+      applyAuthResult(d.user);
+    } catch { /* silent — tokens may not be valid yet */ }
+  };
+
   const persistAddresses = async (addresses: Address[], rollbackUser?: User) => {
     try {
       const data = await api.patch<{ success: boolean; user: ApiUser }>("/users/me/profile", { addresses });
@@ -505,7 +513,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, userRole, role, isAdmin, isLoading, selectedDeliveryAddress, setSelectedDeliveryAddress,
-      login, logout, setRole, updateUser, addAddress, deleteAddress, updateAddress, updatePincode,
+      login, logout, setRole, updateUser, refreshUser, addAddress, deleteAddress, updateAddress, updatePincode,
       signInWithEmail, signUpWithEmail, signInWithGoogle, forgotPassword, resetPassword,
       completeOnboarding,
       checkPhone, loginWithPassword, setPasswordForOtpUser, signup, loginWithGoogle,

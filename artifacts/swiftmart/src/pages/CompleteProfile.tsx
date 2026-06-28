@@ -17,7 +17,7 @@ interface Address {
 }
 
 export default function CompleteProfile() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, refreshUser } = useAuth();
   const [, setLocation] = useLocation();
 
   const [name, setName] = useState(user?.name && user.name !== "User" ? user.name : "");
@@ -69,15 +69,9 @@ export default function CompleteProfile() {
       }>("/auth/complete-profile", payload);
 
       if (result.merged && result.accessToken && result.refreshToken) {
-        // Phone matched an existing account — swap to that account's session
+        // Phone matched an existing account — swap tokens then reload full user (preserves role/vendorStatus/etc.)
         setTokens(result.accessToken, result.refreshToken);
-        updateUser({
-          id: result.user.id as string,
-          name: result.user.name as string,
-          phone: result.user.phone as string,
-          pincode: (result.user.pincode as string) || undefined,
-          addresses: (result.user.addresses as Address[]) || [],
-        });
+        await refreshUser();
         toast.success("Account linked! Welcome back.");
       } else {
         updateUser({
