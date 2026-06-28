@@ -1,0 +1,91 @@
+Change SwiftMart authentication to Neon Auth + Neon Postgres.
+
+Use Neon Auth if enabled in Neon dashboard. If Neon Auth is not enabled, stop and tell me exactly what env variables are missing.
+
+Final auth methods:
+1. Email + Password
+2. Google Login
+3. Forgot Password with email OTP or email reset code
+
+Important:
+- Do not use SMS OTP.
+- Do not use mobile number as login ID.
+- Do not delete existing Neon Postgres data.
+- Do not reset database.
+- Do not drop users/products/orders/vendors/admin data.
+
+User flow:
+Signup:
+- User signs up with Email + Password OR Google Login.
+- After successful auth, show Complete Profile page:
+  - Full Name
+  - Phone Number
+  - Address
+- Save these profile details in existing SwiftMart users table.
+
+Login:
+- Email + Password
+- Google Login
+- After login, if phone/name/address missing, redirect to Complete Profile page.
+- Otherwise go to home/dashboard based on role.
+
+Forgot Password:
+- User enters email.
+- Send email OTP/reset code to that email.
+- Verify code.
+- Allow new password creation.
+- No SMS OTP.
+
+Neon Auth:
+- Use @neondatabase/auth if suitable.
+- Use NEON_AUTH_BASE_URL and required Neon Auth env variables.
+- Keep secrets only in backend env.
+- Do not expose private API keys in frontend.
+- Data API key / Neon API key must not be placed in frontend code.
+- Use secure server-side auth verification/session handling.
+
+Database:
+- Keep existing SwiftMart users table for app profile and roles.
+- Link Neon Auth user to existing app user using:
+  - auth_user_id
+  - email
+- Add safe nullable columns only:
+  - auth_user_id
+  - email
+  - full_name
+  - phone_number
+  - address
+  - auth_provider
+- Preserve old OTP users.
+- Old OTP users can claim account later by admin/manual flow, not automatic phone-password flow.
+
+Security:
+- Passwords handled by Neon Auth, not custom plaintext storage.
+- Rate limit forgot password.
+- Verify email before allowing checkout.
+- Keep current role guards: customer, vendor, admin, super_admin.
+
+UI:
+Login page:
+- Email
+- Password
+- Login
+- Forgot Password?
+- Continue with Google
+- Create Account
+
+After signup/login:
+- Complete Profile page asking:
+  - Name
+  - Phone number
+  - Address
+
+Test:
+- Email password signup
+- Google signup
+- Complete profile save
+- Email login
+- Google login
+- Forgot password email OTP/reset code
+- Existing products/orders/vendors/admin data unchanged
+- Admin/vendor roles still work
