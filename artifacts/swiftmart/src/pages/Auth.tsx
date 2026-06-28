@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { authClient } from "@/lib/betterAuthClient";
+import { openGoogleSigninWindow } from "@/lib/googleGIS";
+import { getGoogleClientId } from "@/lib/authConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -126,26 +127,9 @@ export default function Auth() {
     if (!authLoading && user) setLocation("/");
   }, [user, authLoading, setLocation]);
 
-  // ─── Google OAuth callback handler ─────────────────────────────────────────
-  const handleGoogleCallback = async () => {
-    setStep("google-loading");
-    try {
-      const { data, error } = await authClient.getSession();
-      if (error || !data?.session?.token) {
-        toast.error("Google sign-in failed. Please try again.");
-        setStep("email");
-        return;
-      }
-      const result = await signInWithGoogle(data.session.token);
-      if (result.needsProfile) {
-        setLocation("/complete-profile");
-      } else {
-        setLocation("/");
-      }
-    } catch {
-      toast.error("Google sign-in failed. Please try again.");
-      setStep("email");
-    }
+  // ─── Google OAuth callback handler (no-op — popup flow handles auth inline) ─
+  const handleGoogleCallback = () => {
+    setStep("email");
   };
 
   // ─── Email step ─────────────────────────────────────────────────────────────
@@ -216,13 +200,24 @@ export default function Auth() {
 
   // ─── Google sign-in ─────────────────────────────────────────────────────────
   const handleGoogleSignIn = async () => {
+    const clientId = getGoogleClientId();
+    if (!clientId || clientId === "placeholder") {
+      toast.error("Google sign-in is not configured. Please use email instead.");
+      return;
+    }
     setGoogleLoading(true);
     try {
-      const callbackURL = `${window.location.origin}/auth?step=google-callback`;
-      await authClient.signIn.social({ provider: "google", callbackURL });
-      // Page will redirect — no code runs after this
-    } catch {
-      toast.error("Could not open Google sign-in. Please try again.");
+      const idToken = await openGoogleSigninWindow(clientId);
+      const result = await signInWithGoogle(idToken);
+      if (result.needsProfile) {
+        setLocation("/complete-profile");
+      } else {
+        setLocation("/");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Google sign-in failed";
+      toast.error(msg);
+    } finally {
       setGoogleLoading(false);
     }
   };

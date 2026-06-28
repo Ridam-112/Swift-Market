@@ -2,7 +2,6 @@ import React, { createContext, useState, useEffect } from "react";
 import { User, Address, VendorApplication, AdminCustomer, PlatformOrder, Report } from "@/types";
 import { toast } from "sonner";
 import { api, setTokens, clearTokens } from "@/lib/api";
-import { authClient } from "@/lib/betterAuthClient";
 
 export type UserRole = 'customer' | 'vendor' | 'admin' | 'super_admin';
 
@@ -106,14 +105,6 @@ interface ApiReport {
   description: string;
   status: 'open' | 'resolved' | 'ignored';
   createdAt: string;
-}
-
-interface NeonBridgeResult {
-  success: boolean;
-  needsProfile: boolean;
-  accessToken: string;
-  refreshToken: string;
-  user: ApiUser;
 }
 
 function mapApiReport(r: ApiReport): Report {
@@ -251,14 +242,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return u;
   };
 
-  // Exchange a Better Auth session token for a SwiftMart JWT
-  const neonBridge = async (sessionToken: string): Promise<{ needsProfile: boolean; user: User }> => {
-    const data = await api.post<NeonBridgeResult>("/auth/neon-bridge", { sessionToken });
-    setTokens(data.accessToken, data.refreshToken);
-    const u = applyAuthResult(data.user);
-    return { needsProfile: data.needsProfile, user: u };
-  };
-
   // ─── Auth actions ─────────────────────────────────────────────────────────
 
   const login = (_phone: string, _name: string) => {
@@ -267,8 +250,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try { await api.post("/auth/logout"); } catch { /* ignore */ }
-    // Also sign out from Better Auth so the Neon session is invalidated
-    try { await authClient.signOut(); } catch { /* ignore */ }
     clearTokens();
     setUser(null);
     setUserRole('customer');
@@ -351,54 +332,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updateUser({ pincode });
   };
 
-  // ─── Neon Auth (email-based) ──────────────────────────────────────────────
+  // ─── Email / Google auth (direct API calls) ───────────────────────────────
 
   const signInWithEmail = async (email: string, password: string): Promise<{ needsProfile: boolean; user?: User }> => {
-    const { data, error } = await authClient.signIn.email({ email, password });
-    if (error || !data?.token) {
-      throw new Error(
-        error?.message === "Invalid email or password"
-          ? "Incorrect password. Please try again."
-          : (error?.message ?? "Sign-in failed. Please try again.")
-      );
-    }
-    return neonBridge(data.token);
+    const data = await api.post<{ success: boolean; needsProfile: boolean; accessToken: string; refreshToken: string; user: ApiUser }>("/auth/email-login", { email, password });
+    setTokens(data.accessToken, data.refreshToken);
+    const u = applyAuthResult(data.user);
+    return { needsProfile: data.needsProfile, user: u };
   };
 
   const signUpWithEmail = async (name: string, email: string, password: string): Promise<{ needsProfile: boolean; user?: User }> => {
-    const { data, error } = await authClient.signUp.email({ name, email, password });
-    if (error) {
-      throw new Error(error.message ?? "Sign-up failed. Please try again.");
-    }
-    if (!data?.token) {
-      // Email verification is pending — Better Auth will send a verification email
-      throw new Error("Account created! Please check your email to verify your address before signing in.");
-    }
-    return neonBridge(data.token);
+    const data = await api.post<{ success: boolean; needsProfile: boolean; accessToken: string; refreshToken: string; user: ApiUser }>("/auth/email-signup", { name, email, password });
+    setTokens(data.accessToken, data.refreshToken);
+    const u = applyAuthResult(data.user);
+    return { needsProfile: data.needsProfile, user: u };
   };
 
-  const signInWithGoogle = async (sessionToken: string): Promise<{ needsProfile: boolean; user?: User }> => {
-    return neonBridge(sessionToken);
+  const signInWithGoogle = async (idToken: string): Promise<{ needsProfile: boolean; user?: User }> => {
+    const data = await api.post<{ success: boolean; isNewUser: boolean; accessToken: string; refreshToken: string; user: ApiUser }>("/auth/google", { credential: idToken });
+    setTokens(data.accessToken, data.refreshToken);
+    const u = applyAuthResult(data.user);
+    return { needsProfile: data.isNewUser && !data.user.phone, user: u };
   };
 
   const forgotPassword = async (email: string): Promise<void> => {
-    const callbackURL = `${window.location.origin}/auth?step=reset`;
-    // Better Auth v1.x uses forgetPassword for requesting a reset email
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const client = authClient as any;
-    const result = typeof client.forgetPassword === "function"
-      ? await (client.forgetPassword({ email, redirectTo: callbackURL }) as Promise<{ error?: { message?: string } | null }>)
-      : await (client.requestPasswordReset?.({ email, redirectTo: callbackURL }) as Promise<{ error?: { message?: string } | null }> | undefined);
-    const err = result?.error;
-    if (err) {
-      throw new Error(err.message ?? "Failed to send reset email");
-    }
+    await api.post("/auth/email-forgot-password", { email });
   };
 
   const resetPassword = async (newPassword: string, token: string): Promise<void> => {
-    const { error } = await authClient.resetPassword({ newPassword, token });
-    if (error) {
-      throw new Error(error.message ?? "Failed to reset password. The link may have expired.");
+    const data = await api.post<{ success: boolean; accessToken?: string; refreshToken?: string; user?: ApiUser }>("/auth/email-reset-password", { token, newPassword });
+    if (data.accessToken && data.refreshToken && data.user) {
+      setTokens(data.accessToken, data.refreshToken);
+      applyAuthResult(data.user);
     }
   };
 
