@@ -8,28 +8,24 @@ const CATEGORIES = [
     label: "GROCERY",
     Icon: ShoppingBasket,
     color: "#4ade80",
-    glow: "#4ade80",
   },
   {
     id: "medicine",
     label: "MEDICINE",
     Icon: Stethoscope,
     color: "#60a5fa",
-    glow: "#60a5fa",
   },
   {
     id: "cosmetics",
     label: "COSMETICS",
     Icon: Sparkles,
     color: "#f472b6",
-    glow: "#f472b6",
   },
   {
     id: "stationary",
     label: "STATIONARY",
     Icon: Pencil,
     color: "#fbbf24",
-    glow: "#fbbf24",
   },
   {
     id: "all",
@@ -37,37 +33,38 @@ const CATEGORIES = [
     sublabel: "IN JUST ONE CLICK",
     Icon: Layers,
     color: "#c084fc",
-    glow: "#c084fc",
   },
 ] as const;
 
-const HOLD_MS  = 2000;
-const ENTER_S  = 0.7;
-const EXIT_S   = 0.5;
-const FAST_MS  = 700;
+const HOLD_MS = 2000;
+const ENTER_S = 0.6;
+const EXIT_S  = 0.45;
+const FAST_MS = 700;
 
 type Mode = "idle" | "revealing";
 
+// Crisp neon: tight white core + soft colour halo (not blurry)
 function neonText(color: string) {
-  return `0 0 4px #fff, 0 0 8px #fff, 0 0 18px ${color}, 0 0 38px ${color}, 0 0 70px ${color}55`;
+  return `0 0 1px #fff, 0 0 3px #fff, 0 0 14px ${color}cc, 0 0 32px ${color}66`;
 }
 
 function neonDrop(color: string) {
-  return `drop-shadow(0 0 6px ${color}) drop-shadow(0 0 18px ${color}) drop-shadow(0 0 36px ${color}88)`;
+  return `drop-shadow(0 0 5px ${color}) drop-shadow(0 0 16px ${color}99)`;
 }
 
 export function AnimatedLoginBackground() {
-  const shouldReduce = useReducedMotion();
-  const [index, setIndex]     = useState(0);
-  const [mode, setMode]       = useState<Mode>("idle");
-  const [opacity, setOpacity] = useState(0.45);
+  const shouldReduce            = useReducedMotion();
+  const [index, setIndex]       = useState(0);
+  const [mode, setMode]         = useState<Mode>("idle");
+  const [opacity, setOpacity]   = useState(0.50);
   const [revealed, setRevealed] = useState(false);
-  const timerRef              = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef                = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearT = () => {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
   };
 
+  // Normal loop
   useEffect(() => {
     if (mode !== "idle") return;
     clearT();
@@ -79,11 +76,12 @@ export function AnimatedLoginBackground() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, mode]);
 
+  // First-tap reveal
   const handleClick = () => {
     if (revealed || mode === "revealing") return;
     setRevealed(true);
     setMode("revealing");
-    setOpacity(0.75);
+    setOpacity(0.80);
     clearT();
     let i = 0;
     const step = () => {
@@ -91,7 +89,7 @@ export function AnimatedLoginBackground() {
       if (i < CATEGORIES.length - 1) {
         timerRef.current = setTimeout(() => { i++; step(); }, FAST_MS);
       } else {
-        timerRef.current = setTimeout(() => { setOpacity(0.45); setMode("idle"); }, FAST_MS + 400);
+        timerRef.current = setTimeout(() => { setOpacity(0.50); setMode("idle"); }, FAST_MS + 400);
       }
     };
     step();
@@ -118,91 +116,95 @@ export function AnimatedLoginBackground() {
       onClick={handleClick}
       aria-hidden="true"
     >
-      {/* ── Ambient colour-matched glow blobs ── */}
+      {/* ── Ambient blobs — smoothly cross-fade to current category colour ── */}
       <motion.div
         className="absolute rounded-full pointer-events-none"
+        animate={{ backgroundColor: `${cat.color}1a` }}
+        transition={{ duration: 1.0, ease: "easeInOut" }}
         style={{
-          background: `radial-gradient(circle, ${cat.glow}18 0%, transparent 70%)`,
-          width: "80vw", height: "80vw",
-          top: "-20%", left: "-20%",
-          filter: "blur(60px)",
+          width: "90vw", height: "90vw",
+          top: "-25%", left: "-25%",
+          filter: "blur(80px)",
         }}
-        animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
-        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
         className="absolute rounded-full pointer-events-none"
+        animate={{ backgroundColor: `${cat.color}12` }}
+        transition={{ duration: 1.2, ease: "easeInOut", delay: 0.1 }}
         style={{
-          background: `radial-gradient(circle, ${cat.glow}10 0%, transparent 70%)`,
-          width: "60vw", height: "60vw",
-          bottom: "0%", right: "-10%",
-          filter: "blur(60px)",
+          width: "65vw", height: "65vw",
+          bottom: "-10%", right: "-10%",
+          filter: "blur(70px)",
         }}
-        animate={{ x: [0, -20, 0], y: [0, 20, 0] }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }}
       />
 
-      {/* ── Main 3-D category display ── */}
+      {/* ── Category display — no rotateX to keep text crisp ── */}
       <div
         className="absolute inset-0 flex items-center justify-center select-none pointer-events-none"
-        style={{ perspective: "900px", paddingBottom: "28vh" }}
+        style={{ paddingBottom: "28vh" }}
       >
         <AnimatePresence mode="wait">
           <motion.div
             key={cat.id}
             className="flex flex-col items-center gap-5 text-center"
-            style={{ transformStyle: "preserve-3d" }}
-            initial={{ opacity: 0, scale: 0.25, rotateX: 35 }}
-            animate={{ opacity, scale: 1, rotateX: 0 }}
+            initial={{ opacity: 0, scale: 0.55, y: 40 }}
+            animate={{ opacity, scale: 1, y: 0 }}
             exit={{
               opacity: 0,
-              scale: 1.8,
-              rotateX: -18,
+              scale: 1.45,
+              y: -30,
               transition: { duration: EXIT_S, ease: "easeIn" },
             }}
             transition={{ duration: ENTER_S, ease: [0.22, 1, 0.36, 1] }}
           >
-            {/* Neon icon */}
+            {/* Neon icon — subtle flicker */}
             <motion.div
-              animate={{ opacity: [1, 0.85, 1, 0.92, 1] }}
-              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", times: [0, 0.2, 0.5, 0.7, 1] }}
+              animate={{ opacity: [1, 0.88, 1, 0.93, 1] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
             >
               <cat.Icon
                 style={{
-                  width:  "clamp(52px, 10vw, 110px)",
-                  height: "clamp(52px, 10vw, 110px)",
+                  width:  "clamp(52px, 10vw, 108px)",
+                  height: "clamp(52px, 10vw, 108px)",
                   color: cat.color,
-                  filter: neonDrop(cat.glow),
+                  filter: neonDrop(cat.color),
                 }}
               />
             </motion.div>
 
-            {/* Neon main label */}
+            {/* Neon main label — crisp white core */}
             <motion.div
-              animate={{ opacity: [1, 0.88, 1, 0.94, 1] }}
-              transition={{ duration: 3.1, repeat: Infinity, ease: "easeInOut", times: [0, 0.15, 0.45, 0.75, 1] }}
-              className="font-black leading-none"
+              animate={{ opacity: [1, 0.9, 1, 0.95, 1] }}
+              transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
               style={{
-                fontSize: "clamp(2rem, 8vw, 6.5rem)",
-                letterSpacing: "0.16em",
+                fontFamily: "inherit",
+                fontWeight: 900,
+                lineHeight: 1,
+                letterSpacing: "0.15em",
+                fontSize: "clamp(2.2rem, 8vw, 6.5rem)",
                 color: cat.color,
-                textShadow: neonText(cat.glow),
+                textShadow: neonText(cat.color),
+                WebkitFontSmoothing: "antialiased",
+                MozOsxFontSmoothing: "grayscale",
               }}
             >
               {cat.label}
             </motion.div>
 
-            {/* Sublabel for "ALL IN ONE" slide */}
+            {/* Sublabel — only for "ALL IN ONE" */}
             {"sublabel" in cat && (
               <motion.div
                 initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 0.75, y: 0 }}
-                transition={{ delay: 0.25, duration: 0.5 }}
-                className="font-semibold tracking-[0.22em] uppercase"
+                animate={{ opacity: 0.80, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
                 style={{
-                  fontSize: "clamp(0.7rem, 2.5vw, 1.1rem)",
+                  fontWeight: 600,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  fontSize: "clamp(0.65rem, 2.2vw, 1rem)",
                   color: cat.color,
-                  textShadow: `0 0 8px ${cat.glow}, 0 0 20px ${cat.glow}`,
+                  textShadow: `0 0 6px ${cat.color}, 0 0 16px ${cat.color}88`,
+                  WebkitFontSmoothing: "antialiased",
                 }}
               >
                 {cat.sublabel}
