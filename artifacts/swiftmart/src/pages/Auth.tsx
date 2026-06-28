@@ -247,23 +247,26 @@ export default function Auth() {
   }
 
   return (
-    <div className="relative min-h-[100dvh] bg-[#080808] flex flex-col">
+    <div className="relative min-h-[100dvh] bg-[#080808] flex flex-col overflow-hidden">
       <AnimatedLoginBackground />
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm bg-white/[0.04] backdrop-blur-md rounded-3xl p-6 border border-white/[0.10] shadow-[0_8px_48px_rgba(0,0,0,0.5)]">
 
-          {/* Logo */}
-          <div className="mb-8 text-center">
-            <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-primary-foreground font-bold text-3xl mx-auto mb-4 shadow-lg">
-              S
-            </div>
-            <h1 className="text-2xl font-bold text-foreground">SwiftMart</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              10-minute delivery, right to your door
-            </p>
-          </div>
+      {/* ── Top-left branding ── */}
+      <div className="relative z-10 pt-14 px-8 flex items-center gap-3">
+        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-primary-foreground font-bold text-lg shadow-lg shrink-0">
+          S
+        </div>
+        <div>
+          <p className="text-white/45 text-[11px] font-medium uppercase tracking-widest leading-none mb-0.5">Welcome to</p>
+          <h1 className="text-white text-xl font-bold leading-none">SwiftMart</h1>
+        </div>
+      </div>
 
-          <AnimatePresence mode="wait">
+      {/* ── Spacer lets the animation breathe ── */}
+      <div className="flex-1" />
+
+      {/* ── Bottom login form — no card ── */}
+      <div className="relative z-10 w-full px-8 pb-6">
+        <AnimatePresence mode="wait">
 
             {/* ── EMAIL ── */}
             {step === "email" && (
@@ -542,15 +545,14 @@ export default function Auth() {
               </motion.div>
             )}
 
-          </AnimatePresence>
-        </div>
-      </div>
+        </AnimatePresence>
 
-      <p className="relative z-10 text-center text-xs text-muted-foreground pb-6 px-6">
-        By continuing, you agree to our{" "}
-        <a href="/terms" className="underline hover:text-foreground">Terms</a> and{" "}
-        <a href="/privacy" className="underline hover:text-foreground">Privacy Policy</a>.
-      </p>
+        <p className="text-center text-xs text-white/30 mt-5">
+          By continuing, you agree to our{" "}
+          <a href="/terms" className="underline hover:text-white/60">Terms</a> and{" "}
+          <a href="/privacy" className="underline hover:text-white/60">Privacy Policy</a>.
+        </p>
+      </div>
     </div>
   );
 }

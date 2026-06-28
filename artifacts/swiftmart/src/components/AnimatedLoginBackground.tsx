@@ -117,7 +117,7 @@ export function AnimatedLoginBackground() {
       {/* ── 3-D category display ──────────────────────────────────────── */}
       <div
         className="absolute inset-0 flex items-center justify-center select-none pointer-events-none"
-        style={{ perspective: "900px" }}
+        style={{ perspective: "900px", paddingBottom: "28vh" }}
       >
         <AnimatePresence mode="wait">
           <motion.div
