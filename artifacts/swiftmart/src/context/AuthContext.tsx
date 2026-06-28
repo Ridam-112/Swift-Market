@@ -351,18 +351,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updateUser({ pincode });
   };
 
-  // ─── Neon Auth (email-based) ──────────────────────────────────────────────
+  // ─── Email Auth (self-hosted) ─────────────────────────────────────────────
 
   const signInWithEmail = async (email: string, password: string): Promise<{ needsProfile: boolean; user?: User }> => {
     const { data, error } = await authClient.signIn.email({ email, password });
     if (error || !data?.token) {
-      throw new Error(
-        error?.message === "Invalid email or password"
-          ? "Incorrect password. Please try again."
-          : (error?.message ?? "Sign-in failed. Please try again.")
-      );
+      throw new Error(error?.message ?? "Sign-in failed. Please try again.");
     }
-    return neonBridge(data.token);
+    setTokens(data.token, data.refreshToken ?? "");
+    const u = applyAuthResult(data.user as ApiUser);
+    return { needsProfile: data.needsProfile ?? false, user: u };
   };
 
   const signUpWithEmail = async (name: string, email: string, password: string): Promise<{ needsProfile: boolean; user?: User }> => {
@@ -371,10 +369,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(error.message ?? "Sign-up failed. Please try again.");
     }
     if (!data?.token) {
-      // Email verification is pending — Better Auth will send a verification email
-      throw new Error("Account created! Please check your email to verify your address before signing in.");
+      throw new Error("Account created! Please sign in to continue.");
     }
-    return neonBridge(data.token);
+    setTokens(data.token, data.refreshToken ?? "");
+    const u = applyAuthResult(data.user as ApiUser);
+    return { needsProfile: data.needsProfile ?? true, user: u };
   };
 
   const signInWithGoogle = async (sessionToken: string): Promise<{ needsProfile: boolean; user?: User }> => {
@@ -382,16 +381,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const forgotPassword = async (email: string): Promise<void> => {
-    const callbackURL = `${window.location.origin}/auth?step=reset`;
-    // Better Auth v1.x uses forgetPassword for requesting a reset email
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const client = authClient as any;
-    const result = typeof client.forgetPassword === "function"
-      ? await (client.forgetPassword({ email, redirectTo: callbackURL }) as Promise<{ error?: { message?: string } | null }>)
-      : await (client.requestPasswordReset?.({ email, redirectTo: callbackURL }) as Promise<{ error?: { message?: string } | null }> | undefined);
-    const err = result?.error;
-    if (err) {
-      throw new Error(err.message ?? "Failed to send reset email");
+    const { error } = await authClient.forgetPassword({ email });
+    if (error) {
+      throw new Error(error.message ?? "Failed to send reset email");
     }
   };
 

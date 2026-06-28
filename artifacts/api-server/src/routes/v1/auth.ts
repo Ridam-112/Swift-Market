@@ -556,6 +556,203 @@ router.post("/logout", authenticate, async (req: AuthRequest, res: Response): Pr
   }
 });
 
+// ─── POST /api/auth/email-signup ─────────────────────────────────────────────
+// Sign up with email + password. Returns JWT tokens on success.
+router.post("/email-signup", signupLimiter, async (req: Request, res: Response): Promise<void> => {
+  const { name, email, password } = req.body as { name?: string; email?: string; password?: string };
+
+  if (!name || name.trim().length < 2) {
+    res.status(400).json({ success: false, message: "Full name must be at least 2 characters" });
+    return;
+  }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ success: false, message: "Valid email address required" });
+    return;
+  }
+  if (!password || password.length < 8) {
+    res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
+    return;
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  try {
+    const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, normalizedEmail)).limit(1);
+    if (existing) {
+      res.status(409).json({ success: false, message: "An account with this email already exists. Please sign in." });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const [user] = await db.insert(users).values({
+      name: name.trim(),
+      email: normalizedEmail,
+      passwordHash,
+      authProvider: "email",
+      role: "customer",
+      status: "active",
+    }).returning();
+
+    await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+
+    req.log.info({ email: normalizedEmail }, "New user signed up via email");
+    res.status(201).json({
+      success: true,
+      isNewUser: true,
+      needsProfile: true,
+      ...issueTokens(updated),
+      user: formatUser(updated),
+    });
+  } catch (err) {
+    req.log.error({ err, email: normalizedEmail }, "Email signup failed");
+    res.status(500).json({ success: false, message: "Signup failed. Please try again." });
+  }
+});
+
+// ─── POST /api/auth/email-login ──────────────────────────────────────────────
+// Sign in with email + password. Returns JWT tokens on success.
+router.post("/email-login", loginLimiter, async (req: Request, res: Response): Promise<void> => {
+  const { email, password } = req.body as { email?: string; password?: string };
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ success: false, message: "Valid email address required" });
+    return;
+  }
+  if (!password) {
+    res.status(400).json({ success: false, message: "Password required" });
+    return;
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  try {
+    const [user] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
+
+    if (!user) {
+      res.status(401).json({ success: false, message: "Invalid email or password" });
+      return;
+    }
+    if (user.status === "banned") {
+      res.status(403).json({ success: false, message: "Your account has been suspended. Please contact support." });
+      return;
+    }
+    if (!user.passwordHash) {
+      res.status(401).json({ success: false, message: "This account uses a different sign-in method." });
+      return;
+    }
+
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      res.status(401).json({ success: false, message: "Invalid email or password" });
+      return;
+    }
+
+    await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+
+    req.log.info({ email: normalizedEmail, role: user.role }, "User signed in via email");
+    res.json({
+      success: true,
+      isNewUser: false,
+      needsProfile: !user.phone,
+      ...issueTokens(updated),
+      user: formatUser(updated),
+    });
+  } catch (err) {
+    req.log.error({ err, email: normalizedEmail }, "Email login failed");
+    res.status(500).json({ success: false, message: "Login failed. Please try again." });
+  }
+});
+
+// ─── POST /api/auth/email-forgot-password ────────────────────────────────────
+// Send a password reset code to the user's email (logged to console in demo mode).
+router.post("/email-forgot-password", resetPasswordLimiter, async (req: Request, res: Response): Promise<void> => {
+  const { email } = req.body as { email?: string };
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ success: false, message: "Valid email address required" });
+    return;
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  try {
+    const [user] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
+
+    if (user && user.status !== "banned") {
+      const { randomBytes } = await import("node:crypto");
+      const token = randomBytes(32).toString("hex");
+      const expires = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
+
+      await db.update(users)
+        .set({ passwordResetTokenHash: hashToken(token), passwordResetExpires: expires })
+        .where(eq(users.id, user.id));
+
+      // In production, send the token via email. For now, log it.
+      const resetUrl = `/auth?step=reset&token=${token}`;
+      req.log.info({ email: normalizedEmail }, "Password reset token generated");
+      console.log(`\n🔑 PASSWORD RESET for ${normalizedEmail}:\n   Token: ${token}\n   URL: ${resetUrl}\n   (expires ${expires.toISOString()})\n`);
+    }
+
+    // Always return success to prevent email enumeration
+    res.json({ success: true, message: "If an account with that email exists, a reset link has been sent." });
+  } catch (err) {
+    req.log.error({ err, email: normalizedEmail }, "Email forgot-password failed");
+    res.status(500).json({ success: false, message: "Request failed. Please try again." });
+  }
+});
+
+// ─── POST /api/auth/email-reset-password ─────────────────────────────────────
+// Reset password using a hex token from the reset email.
+router.post("/email-reset-password", async (req: Request, res: Response): Promise<void> => {
+  const { token, newPassword } = req.body as { token?: string; newPassword?: string };
+
+  if (!token || !token.trim()) {
+    res.status(400).json({ success: false, message: "Reset token required" });
+    return;
+  }
+  if (!newPassword || newPassword.length < 8) {
+    res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
+    return;
+  }
+
+  try {
+    const tokenHash = hashToken(token.trim());
+    const [user] = await db.select().from(users)
+      .where(eq(users.passwordResetTokenHash, tokenHash))
+      .limit(1);
+
+    if (!user || !user.passwordResetExpires) {
+      res.status(400).json({ success: false, message: "Invalid or expired reset token." });
+      return;
+    }
+    if (user.passwordResetExpires < new Date()) {
+      res.status(400).json({ success: false, message: "Reset token has expired. Please request a new one." });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await db.update(users)
+      .set({
+        passwordHash,
+        authProvider: "email",
+        passwordResetTokenHash: null,
+        passwordResetExpires: null,
+        tokenVersion: (user.tokenVersion ?? 1) + 1,
+        lastLoginAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+
+    const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+    req.log.info({ userId: user.id }, "Email password reset successful");
+    res.json({ success: true, isNewUser: false, ...issueTokens(updated), user: formatUser(updated) });
+  } catch (err) {
+    req.log.error({ err }, "Email reset-password failed");
+    res.status(500).json({ success: false, message: "Password reset failed. Please try again." });
+  }
+});
+
 // ─── POST /api/auth/check-email ───────────────────────────────────────────────
 // Returns whether an email address is already registered.
 // Used by the frontend to route to sign-in vs sign-up.
