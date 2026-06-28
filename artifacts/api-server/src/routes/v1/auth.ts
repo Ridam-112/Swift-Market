@@ -94,6 +94,7 @@ router.get("/config", async (_req: Request, res: Response): Promise<void> => {
       servicePincodes = envPincodes.map(p => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal" }));
     }
 
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate");
     res.json({
       success: true,
       authMode,
@@ -103,6 +104,7 @@ router.get("/config", async (_req: Request, res: Response): Promise<void> => {
     });
   } catch (err) {
     logger.error({ err }, "/api/auth/config unexpected error — returning safe defaults");
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate");
     res.status(200).json({
       success: true,
       authMode: AUTH_MODE,
