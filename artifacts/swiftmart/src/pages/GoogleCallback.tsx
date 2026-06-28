@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import { setTokens } from "@/lib/api";
 import { Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ interface ApiUser {
 
 export default function GoogleCallback() {
   const [, setLocation] = useLocation();
+  const { refreshUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const ran = useRef(false);
 
@@ -26,9 +28,9 @@ export default function GoogleCallback() {
     if (ran.current) return;
     ran.current = true;
 
-    const params = new URLSearchParams(window.location.search);
-    const code  = params.get("code");
-    const state = params.get("state");
+    const params   = new URLSearchParams(window.location.search);
+    const code     = params.get("code");
+    const state    = params.get("state");
     const errParam = params.get("error");
 
     if (errParam) {
@@ -47,6 +49,8 @@ export default function GoogleCallback() {
 
     (async () => {
       try {
+        console.log("[GoogleCallback] exchanging code with backend…");
+
         const res = await fetch("/api/auth/google/exchange", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -73,20 +77,39 @@ export default function GoogleCallback() {
           return;
         }
 
+        console.log("[GoogleCallback] exchange succeeded — saving tokens…");
+
+        // 1. Persist tokens to localStorage so api.ts picks them up.
         setTokens(data.accessToken, data.refreshToken);
         localStorage.setItem("sm_user", JSON.stringify(data.user));
         localStorage.setItem("sm_role", data.user.role);
 
-        if (data.needsProfile || !data.user.phone || data.user.phone.startsWith("g_")) {
-          setLocation("/complete-profile");
-        } else {
-          setLocation("/");
-        }
+        console.log("[GoogleCallback] tokens saved — calling refreshUser()…");
+
+        // 2. Hydrate AuthContext React state BEFORE navigating.
+        //    Without this, AuthContext.user is still null when we setLocation(),
+        //    and AuthGuard immediately bounces us back to /auth.
+        await refreshUser();
+
+        console.log("[GoogleCallback] refreshUser() done — determining redirect…");
+
+        const needsProfile =
+          data.needsProfile ||
+          !data.user.phone ||
+          data.user.phone.startsWith("g_");
+
+        const target = needsProfile ? "/complete-profile" : "/";
+        console.log("[GoogleCallback] redirecting to:", target);
+
+        setLocation(target);
       } catch (err) {
+        console.error("[GoogleCallback] error:", err);
         setError(err instanceof Error ? err.message : "Network error. Please try again.");
       }
     })();
-  }, [setLocation]);
+  // refreshUser is stable (defined outside component state) — safe to omit
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (error) {
     return (
