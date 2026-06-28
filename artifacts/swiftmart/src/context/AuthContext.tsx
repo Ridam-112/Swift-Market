@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect } from "react";
 import { User, Address, VendorApplication, AdminCustomer, PlatformOrder, Report } from "@/types";
 import { toast } from "sonner";
 import { api, setTokens, clearTokens } from "@/lib/api";
+import { authClient } from "@/lib/betterAuthClient";
 
 export type UserRole = 'customer' | 'vendor' | 'admin' | 'super_admin';
 
@@ -22,22 +23,21 @@ interface AuthContextType {
   updateAddress: (address: Address) => void;
   updatePincode: (pincode: string) => Promise<void>;
 
-  // Phone-first check
-  checkPhone: (phone: string) => Promise<{ exists: boolean; hasPassword: boolean }>;
-
-  // Password auth
-  loginWithPassword: (phone: string, password: string) => Promise<{ isNewUser: boolean; user?: User }>;
-  setPasswordForOtpUser: (phone: string, password: string) => Promise<{ user?: User }>;
-  signup: (name: string, phone: string, password: string) => Promise<{ isNewUser: boolean; user?: User }>;
-  forgotPassword: (phone: string) => Promise<void>;
-  resetPassword: (phone: string, token: string, newPassword: string) => Promise<{ user?: User }>;
-
-  // Google auth
-  loginWithGoogle: (token: string, type?: "credential" | "accessToken") => Promise<{ isNewUser: boolean; user?: User }>;
+  // ── Neon Auth (email-based) ──────────────────────────────────────
+  signInWithEmail: (email: string, password: string) => Promise<{ needsProfile: boolean; user?: User }>;
+  signUpWithEmail: (name: string, email: string, password: string) => Promise<{ needsProfile: boolean; user?: User }>;
+  signInWithGoogle: (sessionToken: string) => Promise<{ needsProfile: boolean; user?: User }>;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (newPassword: string, token: string) => Promise<void>;
 
   completeOnboarding: (name: string, phone: string, address: Address, email?: string) => Promise<void>;
 
-  // Legacy stubs — kept so any old import sites compile
+  // ── Legacy stubs ──────────────────────────────────────────────────
+  checkPhone: (phone: string) => Promise<{ exists: boolean; hasPassword: boolean }>;
+  loginWithPassword: (phone: string, password: string) => Promise<{ isNewUser: boolean; user?: User }>;
+  setPasswordForOtpUser: (phone: string, password: string) => Promise<{ user?: User }>;
+  signup: (name: string, phone: string, password: string) => Promise<{ isNewUser: boolean; user?: User }>;
+  loginWithGoogle: (token: string, type?: "credential" | "accessToken") => Promise<{ isNewUser: boolean; user?: User }>;
   loginWithPhone: (phone: string) => Promise<void>;
   verifyOtp: (otp: string, phone: string) => Promise<{ isNewUser: boolean; user?: User }>;
 
@@ -106,6 +106,14 @@ interface ApiReport {
   description: string;
   status: 'open' | 'resolved' | 'ignored';
   createdAt: string;
+}
+
+interface NeonBridgeResult {
+  success: boolean;
+  needsProfile: boolean;
+  accessToken: string;
+  refreshToken: string;
+  user: ApiUser;
 }
 
 function mapApiReport(r: ApiReport): Report {
@@ -216,7 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchReports();
   }, [isAdmin, isLoading]);
 
-  // ─── Internal helpers ───────────────────────────────────────────────────────
+  // ─── Internal helpers ─────────────────────────────────────────────────────
 
   const applyAuthResult = (apiUser: ApiUser) => {
     const u = apiUserToFrontend(apiUser);
@@ -229,8 +237,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRoleState(dashRole);
     localStorage.setItem("swiftmart_role", dashRole);
 
-    // Background refresh: fetch /auth/me to populate vendorProfile and any other
-    // fields not returned by login/set-password (e.g. shop data for vendors).
     api.get<{ success: boolean; user: ApiUser }>("/auth/me")
       .then(d => {
         const fullUser = apiUserToFrontend(d.user);
@@ -240,19 +246,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem("sm_role", d.user.role);
         if (fullUser.addresses?.length > 0) setSelectedDeliveryAddress(fullUser.addresses[0]);
       })
-      .catch(() => { /* silent — initial data already set above */ });
+      .catch(() => { /* silent */ });
 
     return u;
   };
 
-  // ─── Auth actions ───────────────────────────────────────────────────────────
+  // Exchange a Better Auth session token for a SwiftMart JWT
+  const neonBridge = async (sessionToken: string): Promise<{ needsProfile: boolean; user: User }> => {
+    const data = await api.post<NeonBridgeResult>("/auth/neon-bridge", { sessionToken });
+    setTokens(data.accessToken, data.refreshToken);
+    const u = applyAuthResult(data.user);
+    return { needsProfile: data.needsProfile, user: u };
+  };
+
+  // ─── Auth actions ─────────────────────────────────────────────────────────
 
   const login = (_phone: string, _name: string) => {
-    throw new Error("login() is not implemented — use loginWithPassword() or loginWithGoogle()");
+    throw new Error("login() is not implemented — use signInWithEmail()");
   };
 
   const logout = async () => {
     try { await api.post("/auth/logout"); } catch { /* ignore */ }
+    // Also sign out from Better Auth so the Neon session is invalidated
+    try { await authClient.signOut(); } catch { /* ignore */ }
     clearTokens();
     setUser(null);
     setUserRole('customer');
@@ -335,94 +351,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updateUser({ pincode });
   };
 
-  // ─── Phone-first check ──────────────────────────────────────────────────────
+  // ─── Neon Auth (email-based) ──────────────────────────────────────────────
 
-  const checkPhone = async (phone: string): Promise<{ exists: boolean; hasPassword: boolean }> => {
-    const data = await api.post<{ success: boolean; exists: boolean; hasPassword: boolean }>(
-      "/auth/check-phone",
-      { phone }
-    );
-    return { exists: data.exists, hasPassword: data.hasPassword };
+  const signInWithEmail = async (email: string, password: string): Promise<{ needsProfile: boolean; user?: User }> => {
+    const { data, error } = await authClient.signIn.email({ email, password });
+    if (error || !data?.session?.token) {
+      throw new Error(
+        error?.message === "Invalid email or password"
+          ? "Incorrect password. Please try again."
+          : (error?.message ?? "Sign-in failed. Please try again.")
+      );
+    }
+    return neonBridge(data.session.token);
   };
 
-  // ─── Password auth ──────────────────────────────────────────────────────────
-
-  const loginWithPassword = async (phone: string, password: string): Promise<{ isNewUser: boolean; user?: User }> => {
-    const data = await api.post<{
-      success: boolean;
-      isNewUser?: boolean;
-      accessToken: string;
-      refreshToken: string;
-      user: ApiUser;
-    }>("/auth/login", { phone, password });
-
-    setTokens(data.accessToken, data.refreshToken);
-    const u = applyAuthResult(data.user);
-    return { isNewUser: data.isNewUser ?? false, user: u };
+  const signUpWithEmail = async (name: string, email: string, password: string): Promise<{ needsProfile: boolean; user?: User }> => {
+    const { data, error } = await authClient.signUp.email({ name, email, password });
+    if (error || !data?.session?.token) {
+      throw new Error(error?.message ?? "Sign-up failed. Please try again.");
+    }
+    return neonBridge(data.session.token);
   };
 
-  const setPasswordForOtpUser = async (phone: string, password: string): Promise<{ user?: User }> => {
-    const data = await api.post<{
-      success: boolean;
-      accessToken: string;
-      refreshToken: string;
-      user: ApiUser;
-    }>("/auth/set-password", { phone, password });
-
-    setTokens(data.accessToken, data.refreshToken);
-    const u = applyAuthResult(data.user);
-    return { user: u };
+  const signInWithGoogle = async (sessionToken: string): Promise<{ needsProfile: boolean; user?: User }> => {
+    return neonBridge(sessionToken);
   };
 
-  const signup = async (name: string, phone: string, password: string): Promise<{ isNewUser: boolean; user?: User }> => {
-    const data = await api.post<{
-      success: boolean;
-      isNewUser: boolean;
-      accessToken: string;
-      refreshToken: string;
-      user: ApiUser;
-    }>("/auth/signup", { name, phone, password });
-
-    setTokens(data.accessToken, data.refreshToken);
-    const u = applyAuthResult(data.user);
-    return { isNewUser: data.isNewUser, user: u };
+  const forgotPassword = async (email: string): Promise<void> => {
+    const callbackURL = `${window.location.origin}/auth?step=reset`;
+    const { error } = await authClient.forgetPassword({ email, redirectTo: callbackURL });
+    if (error) {
+      throw new Error(error.message ?? "Failed to send reset email");
+    }
   };
 
-  const forgotPassword = async (phone: string): Promise<void> => {
-    await api.post<{ success: boolean; message: string }>("/auth/forgot-password", { phone });
+  const resetPassword = async (newPassword: string, token: string): Promise<void> => {
+    const { error } = await authClient.resetPassword({ newPassword, token });
+    if (error) {
+      throw new Error(error.message ?? "Failed to reset password. The link may have expired.");
+    }
   };
 
-  const resetPassword = async (phone: string, token: string, newPassword: string): Promise<{ user?: User }> => {
-    const data = await api.post<{
-      success: boolean;
-      accessToken: string;
-      refreshToken: string;
-      user: ApiUser;
-    }>("/auth/reset-password", { phone, token, newPassword });
-
-    setTokens(data.accessToken, data.refreshToken);
-    const u = applyAuthResult(data.user);
-    return { user: u };
-  };
-
-  // ─── Google auth ────────────────────────────────────────────────────────────
-
-  const loginWithGoogle = async (token: string, type: "credential" | "accessToken" = "credential"): Promise<{ isNewUser: boolean; user?: User }> => {
-    const body = type === "accessToken" ? { accessToken: token } : { credential: token };
-    const data = await api.post<{
-      success: boolean;
-      isNewUser: boolean;
-      accessToken: string;
-      refreshToken: string;
-      user: ApiUser;
-    }>("/auth/google", body);
-
-    setTokens(data.accessToken, data.refreshToken);
-    const u = applyAuthResult(data.user);
-    return { isNewUser: data.isNewUser, user: u };
-  };
-
-  // ─── Onboarding ─────────────────────────────────────────────────────────────
+  // ─── Onboarding ───────────────────────────────────────────────────────────
 
   const completeOnboarding = async (name: string, phone: string, address: Address, email?: string): Promise<void> => {
     const data = await api.patch<{ success: boolean; user: ApiUser }>("/users/me/profile", {
@@ -439,15 +409,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSelectedDeliveryAddress(u.addresses.length > 0 ? u.addresses[0] : address);
   };
 
-  // ─── Legacy OTP stubs ───────────────────────────────────────────────────────
+  // ─── Legacy stubs ─────────────────────────────────────────────────────────
+
+  const checkPhone = async (_phone: string): Promise<{ exists: boolean; hasPassword: boolean }> => {
+    throw new Error("Phone login is no longer supported. Please use email.");
+  };
+  const loginWithPassword = async (_phone: string, _password: string): Promise<{ isNewUser: boolean; user?: User }> => {
+    throw new Error("Phone login is no longer supported. Please use email.");
+  };
+  const setPasswordForOtpUser = async (_phone: string, _password: string): Promise<{ user?: User }> => {
+    throw new Error("Phone login is no longer supported. Please use email.");
+  };
+  const signup = async (_name: string, _phone: string, _password: string): Promise<{ isNewUser: boolean; user?: User }> => {
+    throw new Error("Phone signup is no longer supported. Please use email.");
+  };
+  const loginWithGoogle = async (_token: string, _type?: "credential" | "accessToken"): Promise<{ isNewUser: boolean; user?: User }> => {
+    throw new Error("Use signInWithGoogle() with a session token instead.");
+  };
   const loginWithPhone = async (_phone: string): Promise<void> => {
-    throw new Error("OTP login has been removed. Please use mobile number + password.");
+    throw new Error("OTP login has been removed. Please use email.");
   };
   const verifyOtp = async (_otp: string, _phone: string): Promise<{ isNewUser: boolean; user?: User }> => {
-    throw new Error("OTP login has been removed. Please use mobile number + password.");
+    throw new Error("OTP login has been removed. Please use email.");
   };
 
-  // ─── Vendor & admin helpers ─────────────────────────────────────────────────
+  // ─── Vendor & admin helpers ───────────────────────────────────────────────
 
   const submitVendorApplication = async (appData: Omit<VendorApplication, 'id' | 'userId' | 'userName' | 'userPhone' | 'submittedAt' | 'status'>): Promise<void> => {
     if (!user) return;
@@ -456,7 +442,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       id: `va_${Date.now()}`,
       userId: user.id,
       userName: user.name,
-      userPhone: user.phone,
+      userPhone: user.phone || "",
       submittedAt: new Date().toISOString(),
       status: 'pending',
     };
@@ -464,7 +450,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await api.post("/shops", {
       shopName: appData.storeName,
       ownerName: appData.ownerName,
-      phone: user.phone,
+      phone: user.phone || "",
       shopType: appData.storeCategory,
       category: appData.storeCategory,
       subcategory: appData.storeSubcategory,
@@ -545,9 +531,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       user, userRole, role, isAdmin, isLoading, selectedDeliveryAddress, setSelectedDeliveryAddress,
       login, logout, setRole, updateUser, addAddress, deleteAddress, updateAddress, updatePincode,
-      checkPhone,
-      loginWithPassword, setPasswordForOtpUser, signup, forgotPassword, resetPassword,
-      loginWithGoogle, completeOnboarding,
+      signInWithEmail, signUpWithEmail, signInWithGoogle, forgotPassword, resetPassword,
+      completeOnboarding,
+      checkPhone, loginWithPassword, setPasswordForOtpUser, signup, loginWithGoogle,
       loginWithPhone, verifyOtp,
       applications, submitVendorApplication, approveApplication, rejectApplication,
       adminCustomers, banCustomer, unbanCustomer, bannedVendorIds, banVendor, unbanVendor, removeVendor,

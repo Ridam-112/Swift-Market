@@ -556,12 +556,194 @@ router.post("/logout", authenticate, async (req: AuthRequest, res: Response): Pr
   }
 });
 
+// ─── POST /api/auth/check-email ───────────────────────────────────────────────
+// Returns whether an email address is already registered.
+// Used by the frontend to route to sign-in vs sign-up.
+router.post("/check-email", loginLimiter, async (req: Request, res: Response): Promise<void> => {
+  const { email } = req.body as { email?: string };
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ success: false, message: "Valid email address required" });
+    return;
+  }
+
+  try {
+    const [existing] = await db.select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, email.toLowerCase().trim()))
+      .limit(1);
+
+    res.json({ success: true, exists: Boolean(existing) });
+  } catch (err) {
+    req.log.error({ err }, "check-email DB error");
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// ─── POST /api/auth/neon-bridge ───────────────────────────────────────────────
+// Exchange a Neon Auth (Better Auth) session token for a SwiftMart JWT.
+// Call this immediately after any Better Auth sign-in (email or Google).
+router.post("/neon-bridge", loginLimiter, async (req: Request, res: Response): Promise<void> => {
+  const { sessionToken } = req.body as { sessionToken?: string };
+
+  if (!sessionToken || typeof sessionToken !== "string") {
+    res.status(400).json({ success: false, message: "sessionToken is required" });
+    return;
+  }
+
+  const neonAuthUrl = process.env["NEON_AUTH_BASE_URL"];
+  if (!neonAuthUrl) {
+    res.status(503).json({ success: false, message: "Auth service not configured (NEON_AUTH_BASE_URL missing)" });
+    return;
+  }
+
+  // Verify session with the Neon-hosted Better Auth instance
+  type NeonAuthUser = { id: string; email: string; name?: string | null; image?: string | null };
+  let authUser: NeonAuthUser | null = null;
+  try {
+    const resp = await fetch(`${neonAuthUrl}/get-session`, {
+      headers: { "Cookie": `better-auth.session_token=${sessionToken}` },
+    });
+    if (resp.ok) {
+      const raw = await resp.json() as { user?: NeonAuthUser | null } | null;
+      authUser = raw?.user ?? null;
+    }
+  } catch (err) {
+    req.log.error({ err }, "Neon Auth get-session call failed");
+    res.status(503).json({ success: false, message: "Auth service unavailable" });
+    return;
+  }
+
+  if (!authUser || !authUser.email) {
+    res.status(401).json({ success: false, message: "Invalid or expired session" });
+    return;
+  }
+
+  const { email, name: authName, image, id: authUserId } = authUser;
+  const normalizedEmail = email.toLowerCase().trim();
+
+  try {
+    // Find or create the SwiftMart user, linked by email
+    let [user] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
+
+    if (!user) {
+      // First sign-in — create a minimal record; phone & address collected in /complete-profile
+      const newId = crypto.randomUUID();
+      const rows = await db.insert(users).values({
+        id: newId,
+        email: normalizedEmail,
+        name: authName?.trim() || "User",
+        phone: null,
+        authUserId,
+        authProvider: "email",
+        profilePhoto: image ?? null,
+        role: "customer",
+        status: "active",
+        vendorStatus: "none",
+        tokenVersion: 1,
+      }).returning();
+      user = rows[0];
+    } else {
+      // Existing user — link auth ID and update last-login
+      const updates: Record<string, unknown> = { lastLoginAt: new Date() };
+      if (!user.authUserId) updates["authUserId"] = authUserId;
+      if (image && !user.profilePhoto) updates["profilePhoto"] = image;
+      await db.update(users).set(updates).where(eq(users.id, user.id));
+      const rows = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+      user = rows[0];
+    }
+
+    if (!user) {
+      res.status(500).json({ success: false, message: "Failed to create user record" });
+      return;
+    }
+
+    // Profile is "complete" when the user has set a non-generic name and a phone number
+    const needsProfile = !user.phone || user.name === "User" || !user.name?.trim();
+
+    req.log.info({ userId: user.id, email: normalizedEmail, needsProfile }, "Neon Auth bridge: user authenticated");
+
+    res.json({
+      success: true,
+      needsProfile,
+      ...issueTokens(user),
+      user: formatUser(user),
+    });
+  } catch (err) {
+    req.log.error({ err }, "neon-bridge DB error");
+    res.status(500).json({ success: false, message: "Server error during sign-in" });
+  }
+});
+
+// ─── POST /api/auth/complete-profile ─────────────────────────────────────────
+// Save name, phone, pincode and optionally a first delivery address for a user
+// who just signed in via Neon Auth for the first time.
+router.post("/complete-profile", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const { name, phone, pincode, address } = req.body as {
+    name?: string;
+    phone?: string;
+    pincode?: string;
+    address?: { label: string; line1: string; line2?: string; city: string; pincode: string };
+  };
+
+  if (!name?.trim()) {
+    res.status(400).json({ success: false, message: "Name is required" });
+    return;
+  }
+  if (phone && !/^[6-9]\d{9}$/.test(phone)) {
+    res.status(400).json({ success: false, message: "Invalid mobile number" });
+    return;
+  }
+
+  try {
+    const [existing] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!existing) {
+      res.status(404).json({ success: false, message: "User not found" });
+      return;
+    }
+
+    // Ensure phone uniqueness if provided
+    if (phone) {
+      const [taken] = await db.select({ id: users.id })
+        .from(users)
+        .where(eq(users.phone, phone))
+        .limit(1);
+      if (taken && taken.id !== userId) {
+        res.status(409).json({ success: false, message: "This mobile number is already linked to another account" });
+        return;
+      }
+    }
+
+    const currentAddresses = (existing.addresses as unknown[]) ?? [];
+    const addresses = address
+      ? [...currentAddresses, { id: crypto.randomUUID(), ...address }]
+      : currentAddresses;
+
+    const updates: Record<string, unknown> = {
+      name: name.trim(),
+      updatedAt: new Date(),
+      addresses,
+    };
+    if (phone) updates["phone"] = phone;
+    if (pincode) updates["pincode"] = pincode;
+
+    await db.update(users).set(updates).where(eq(users.id, userId));
+    const [updated] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+
+    res.json({ success: true, user: formatUser(updated) });
+  } catch (err) {
+    req.log.error({ err, userId }, "complete-profile error");
+    res.status(500).json({ success: false, message: "Failed to save profile" });
+  }
+});
+
 // ─── Legacy OTP routes (410 Gone) ─────────────────────────────────────────────
 router.post("/send-otp", (_req: Request, res: Response): void => {
-  res.status(410).json({ success: false, message: "OTP login is no longer supported. Please use mobile number + password." });
+  res.status(410).json({ success: false, message: "OTP login is no longer supported. Please use email + password." });
 });
 router.post("/verify-otp", (_req: Request, res: Response): void => {
-  res.status(410).json({ success: false, message: "OTP login is no longer supported. Please use mobile number + password." });
+  res.status(410).json({ success: false, message: "OTP login is no longer supported. Please use email + password." });
 });
 
 // Suppress unused import warnings

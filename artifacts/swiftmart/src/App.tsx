@@ -29,14 +29,15 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ── Critical customer path — eagerly bundled for fast first load ──────────────
-import Home         from "@/pages/Home";
-import Category     from "@/pages/Category";
-import Product      from "@/pages/Product";
-import Cart         from "@/pages/Cart";
-import Checkout     from "@/pages/Checkout";
-import OrderSuccess from "@/pages/OrderSuccess";
-import Orders       from "@/pages/Orders";
-import Auth         from "@/pages/Auth";
+import Home            from "@/pages/Home";
+import Category        from "@/pages/Category";
+import Product         from "@/pages/Product";
+import Cart            from "@/pages/Cart";
+import Checkout        from "@/pages/Checkout";
+import OrderSuccess    from "@/pages/OrderSuccess";
+import Orders          from "@/pages/Orders";
+import Auth            from "@/pages/Auth";
+import CompleteProfile from "@/pages/CompleteProfile";
 
 // ── Lazy-loaded — split into separate chunks to shrink the initial bundle ──────
 const Profile        = lazy(() => import("@/pages/Profile"));
@@ -259,6 +260,11 @@ function Router() {
     <ThemedShell>
       <Switch>
         <Route path="/auth" component={Auth} />
+
+        {/* Complete profile — logged-in users who signed up via email for first time */}
+        <Route path="/complete-profile">
+          <AuthGuard><CompleteProfile /></AuthGuard>
+        </Route>
 
         {/* Public legal / support pages — no auth required */}
         <Route path="/privacy"             component={Privacy} />
