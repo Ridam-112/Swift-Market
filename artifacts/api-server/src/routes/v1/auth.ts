@@ -61,35 +61,55 @@ function issueTokens(u: typeof users.$inferSelect) {
 }
 
 // ─── GET /api/auth/config ─────────────────────────────────────────────────────
+// This endpoint must NEVER crash — it is called on every page load and controls
+// which login methods are shown. All errors are caught and a safe 200 is returned.
 router.get("/config", async (_req: Request, res: Response): Promise<void> => {
-  const firebaseConfig = AUTH_MODE !== "otp" ? {
-    apiKey:            process.env["VITE_FIREBASE_API_KEY"]      ?? "",
-    authDomain:        process.env["VITE_FIREBASE_AUTH_DOMAIN"]  ?? "",
-    projectId:         process.env["VITE_FIREBASE_PROJECT_ID"]   ?? "",
-    appId:             process.env["VITE_FIREBASE_APP_ID"]       ?? "",
-    messagingSenderId: process.env["FIREBASE_MESSAGING_SENDER_ID"] ?? process.env["VITE_FIREBASE_MESSAGING_SENDER_ID"] ?? "",
-  } : null;
-
-  const rawPincodes = process.env["SERVICE_PINCODES"] ?? "733101,733102,733103";
-  const envPincodes = rawPincodes.split(",").map(p => p.trim()).filter(Boolean);
-
-  let servicePincodes: Array<{ pincode: string; area: string; state: string }>;
   try {
-    const rows = await db.select().from(servicePincodesTable).where(eq(servicePincodesTable.isActive, true));
-    servicePincodes = rows.length > 0
-      ? rows.map(r => ({ pincode: r.pincode, area: r.area, state: r.state }))
-      : envPincodes.map(p => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal" }));
-  } catch {
-    servicePincodes = envPincodes.map(p => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal" }));
-  }
+    const googleClientId = process.env["GOOGLE_CLIENT_ID"] ?? "";
+    const authMode = AUTH_MODE;
 
-  res.json({
-    success: true,
-    authMode: AUTH_MODE,
-    googleClientId: AUTH_MODE !== "otp" ? (process.env["GOOGLE_CLIENT_ID"] ?? "") : "",
-    firebaseConfig,
-    servicePincodes,
-  });
+    if (!googleClientId && authMode !== "otp") {
+      logger.warn({ authMode }, "GOOGLE_CLIENT_ID is not set — Google Sign-In will be unavailable");
+    }
+
+    const firebaseConfig = authMode !== "otp" ? {
+      apiKey:            process.env["VITE_FIREBASE_API_KEY"]      ?? "",
+      authDomain:        process.env["VITE_FIREBASE_AUTH_DOMAIN"]  ?? "",
+      projectId:         process.env["VITE_FIREBASE_PROJECT_ID"]   ?? "",
+      appId:             process.env["VITE_FIREBASE_APP_ID"]       ?? "",
+      messagingSenderId: process.env["FIREBASE_MESSAGING_SENDER_ID"] ?? process.env["VITE_FIREBASE_MESSAGING_SENDER_ID"] ?? "",
+    } : null;
+
+    const rawPincodes = process.env["SERVICE_PINCODES"] ?? "733101,733102,733103";
+    const envPincodes = rawPincodes.split(",").map(p => p.trim()).filter(Boolean);
+
+    let servicePincodes: Array<{ pincode: string; area: string; state: string }>;
+    try {
+      const rows = await db.select().from(servicePincodesTable).where(eq(servicePincodesTable.isActive, true));
+      servicePincodes = rows.length > 0
+        ? rows.map(r => ({ pincode: r.pincode, area: r.area, state: r.state }))
+        : envPincodes.map(p => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal" }));
+    } catch {
+      servicePincodes = envPincodes.map(p => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal" }));
+    }
+
+    res.json({
+      success: true,
+      authMode,
+      googleClientId: authMode !== "otp" ? googleClientId : "",
+      firebaseConfig,
+      servicePincodes,
+    });
+  } catch (err) {
+    logger.error({ err }, "/api/auth/config unexpected error — returning safe defaults");
+    res.status(200).json({
+      success: true,
+      authMode: AUTH_MODE,
+      googleClientId: process.env["GOOGLE_CLIENT_ID"] ?? "",
+      firebaseConfig: null,
+      servicePincodes: [],
+    });
+  }
 });
 
 // ─── POST /api/auth/check-phone ───────────────────────────────────────────────
