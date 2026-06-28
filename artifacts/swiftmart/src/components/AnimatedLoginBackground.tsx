@@ -1,34 +1,73 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { ShoppingCart, Pill, ShoppingBasket, Carrot } from "lucide-react";
+import { ShoppingBasket, Stethoscope, Sparkles, Pencil, Layers } from "lucide-react";
 
 const CATEGORIES = [
-  { id: "swiftmart",   label: "SWIFTMART",  Icon: ShoppingCart,  color: "#f59e0b" },
-  { id: "medicine",    label: "MEDICINE",   Icon: Pill,          color: "#e2e8f0" },
-  { id: "grocery",     label: "GROCERY",    Icon: ShoppingBasket,color: "#f59e0b" },
-  { id: "vegetables",  label: "VEGETABLES", Icon: Carrot,        color: "#e2e8f0" },
+  {
+    id: "grocery",
+    label: "GROCERY",
+    Icon: ShoppingBasket,
+    color: "#4ade80",
+    glow: "#4ade80",
+  },
+  {
+    id: "medicine",
+    label: "MEDICINE",
+    Icon: Stethoscope,
+    color: "#60a5fa",
+    glow: "#60a5fa",
+  },
+  {
+    id: "cosmetics",
+    label: "COSMETICS",
+    Icon: Sparkles,
+    color: "#f472b6",
+    glow: "#f472b6",
+  },
+  {
+    id: "stationary",
+    label: "STATIONARY",
+    Icon: Pencil,
+    color: "#fbbf24",
+    glow: "#fbbf24",
+  },
+  {
+    id: "all",
+    label: "ALL IN ONE",
+    sublabel: "IN JUST ONE CLICK",
+    Icon: Layers,
+    color: "#c084fc",
+    glow: "#c084fc",
+  },
 ] as const;
 
-const HOLD_MS  = 2300;  // ms each item is held after entering
-const ENTER_S  = 0.65;  // enter animation seconds
-const EXIT_S   = 0.55;  // exit animation seconds
-const FAST_MS  = 750;   // ms per-item during reveal sequence
+const HOLD_MS  = 2000;
+const ENTER_S  = 0.7;
+const EXIT_S   = 0.5;
+const FAST_MS  = 700;
 
 type Mode = "idle" | "revealing";
 
+function neonText(color: string) {
+  return `0 0 4px #fff, 0 0 8px #fff, 0 0 18px ${color}, 0 0 38px ${color}, 0 0 70px ${color}55`;
+}
+
+function neonDrop(color: string) {
+  return `drop-shadow(0 0 6px ${color}) drop-shadow(0 0 18px ${color}) drop-shadow(0 0 36px ${color}88)`;
+}
+
 export function AnimatedLoginBackground() {
   const shouldReduce = useReducedMotion();
-  const [index, setIndex]               = useState(0);
-  const [mode, setMode]                 = useState<Mode>("idle");
-  const [opacity, setOpacity]           = useState(0.40);
-  const [revealed, setRevealed]         = useState(false);
-  const timerRef                        = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [index, setIndex]     = useState(0);
+  const [mode, setMode]       = useState<Mode>("idle");
+  const [opacity, setOpacity] = useState(0.45);
+  const [revealed, setRevealed] = useState(false);
+  const timerRef              = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearT = () => {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
   };
 
-  // Normal idle loop — advance index after hold + transition time
   useEffect(() => {
     if (mode !== "idle") return;
     clearT();
@@ -40,49 +79,38 @@ export function AnimatedLoginBackground() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, mode]);
 
-  // First-tap reveal: quickly cycle all 4 at full opacity then settle back
   const handleClick = () => {
     if (revealed || mode === "revealing") return;
     setRevealed(true);
     setMode("revealing");
-    setOpacity(0.65);
+    setOpacity(0.75);
     clearT();
-
     let i = 0;
     const step = () => {
       setIndex(i);
       if (i < CATEGORIES.length - 1) {
         timerRef.current = setTimeout(() => { i++; step(); }, FAST_MS);
       } else {
-        timerRef.current = setTimeout(() => {
-          setOpacity(0.17);
-          setMode("idle");
-        }, FAST_MS + 400);
+        timerRef.current = setTimeout(() => { setOpacity(0.45); setMode("idle"); }, FAST_MS + 400);
       }
     };
     step();
   };
 
-  // Static background when user prefers reduced motion
   if (shouldReduce) {
     return (
       <div className="fixed inset-0 z-0 bg-[#080808]" aria-hidden="true">
-        <div className="absolute inset-0 flex items-center justify-center opacity-10 select-none pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center opacity-20 select-none pointer-events-none">
           <div className="text-center">
-            <ShoppingCart className="w-32 h-32 mx-auto mb-6 text-amber-400" />
-            <div
-              className="font-black tracking-[0.2em] text-amber-400"
-              style={{ fontSize: "clamp(3rem,10vw,7rem)" }}
-            >
-              SWIFTMART
-            </div>
+            <ShoppingBasket className="w-28 h-28 mx-auto mb-4" style={{ color: "#4ade80" }} />
+            <div className="text-6xl font-black tracking-widest" style={{ color: "#4ade80" }}>GROCERY</div>
           </div>
         </div>
       </div>
     );
   }
 
-  const { label, Icon, color } = CATEGORIES[index];
+  const cat = CATEGORIES[index];
 
   return (
     <div
@@ -90,39 +118,39 @@ export function AnimatedLoginBackground() {
       onClick={handleClick}
       aria-hidden="true"
     >
-      {/* ── Ambient glow blobs ────────────────────────────────────────── */}
+      {/* ── Ambient colour-matched glow blobs ── */}
       <motion.div
         className="absolute rounded-full pointer-events-none"
         style={{
-          background: "radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)",
-          width: "70vw", height: "70vw",
-          top: "-15%", left: "-15%",
+          background: `radial-gradient(circle, ${cat.glow}18 0%, transparent 70%)`,
+          width: "80vw", height: "80vw",
+          top: "-20%", left: "-20%",
           filter: "blur(60px)",
         }}
-        animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
+        animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
         transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
         className="absolute rounded-full pointer-events-none"
         style={{
-          background: "radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%)",
-          width: "55vw", height: "55vw",
-          bottom: "-10%", right: "-10%",
+          background: `radial-gradient(circle, ${cat.glow}10 0%, transparent 70%)`,
+          width: "60vw", height: "60vw",
+          bottom: "0%", right: "-10%",
           filter: "blur(60px)",
         }}
-        animate={{ x: [0, -30, 0], y: [0, 30, 0] }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 3 }}
+        animate={{ x: [0, -20, 0], y: [0, 20, 0] }}
+        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }}
       />
 
-      {/* ── 3-D category display ──────────────────────────────────────── */}
+      {/* ── Main 3-D category display ── */}
       <div
         className="absolute inset-0 flex items-center justify-center select-none pointer-events-none"
         style={{ perspective: "900px", paddingBottom: "28vh" }}
       >
         <AnimatePresence mode="wait">
           <motion.div
-            key={index}
-            className="flex flex-col items-center gap-6 text-center"
+            key={cat.id}
+            className="flex flex-col items-center gap-5 text-center"
             style={{ transformStyle: "preserve-3d" }}
             initial={{ opacity: 0, scale: 0.25, rotateX: 35 }}
             animate={{ opacity, scale: 1, rotateX: 0 }}
@@ -134,34 +162,62 @@ export function AnimatedLoginBackground() {
             }}
             transition={{ duration: ENTER_S, ease: [0.22, 1, 0.36, 1] }}
           >
-            <Icon
-              style={{
-                width:  "clamp(56px, 11vw, 128px)",
-                height: "clamp(56px, 11vw, 128px)",
-                color,
-                filter: `drop-shadow(0 0 48px ${color}90)`,
-              }}
-            />
-            <div
+            {/* Neon icon */}
+            <motion.div
+              animate={{ opacity: [1, 0.85, 1, 0.92, 1] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", times: [0, 0.2, 0.5, 0.7, 1] }}
+            >
+              <cat.Icon
+                style={{
+                  width:  "clamp(52px, 10vw, 110px)",
+                  height: "clamp(52px, 10vw, 110px)",
+                  color: cat.color,
+                  filter: neonDrop(cat.glow),
+                }}
+              />
+            </motion.div>
+
+            {/* Neon main label */}
+            <motion.div
+              animate={{ opacity: [1, 0.88, 1, 0.94, 1] }}
+              transition={{ duration: 3.1, repeat: Infinity, ease: "easeInOut", times: [0, 0.15, 0.45, 0.75, 1] }}
               className="font-black leading-none"
               style={{
-                fontSize: "clamp(2rem, 8.5vw, 7rem)",
-                letterSpacing: "0.18em",
-                color,
-                textShadow: `0 0 90px ${color}55, 0 0 180px ${color}22`,
+                fontSize: "clamp(2rem, 8vw, 6.5rem)",
+                letterSpacing: "0.16em",
+                color: cat.color,
+                textShadow: neonText(cat.glow),
               }}
             >
-              {label}
-            </div>
+              {cat.label}
+            </motion.div>
+
+            {/* Sublabel for "ALL IN ONE" slide */}
+            {"sublabel" in cat && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 0.75, y: 0 }}
+                transition={{ delay: 0.25, duration: 0.5 }}
+                className="font-semibold tracking-[0.22em] uppercase"
+                style={{
+                  fontSize: "clamp(0.7rem, 2.5vw, 1.1rem)",
+                  color: cat.color,
+                  textShadow: `0 0 8px ${cat.glow}, 0 0 20px ${cat.glow}`,
+                }}
+              >
+                {cat.sublabel}
+              </motion.div>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* ── Tap hint (fades in after 3s, fades out on first tap) ──────── */}
+      {/* ── Tap hint ── */}
       <AnimatePresence>
         {!revealed && (
           <motion.p
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/22 text-[10px] tracking-[0.35em] uppercase pointer-events-none select-none"
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 text-[10px] tracking-[0.35em] uppercase pointer-events-none select-none"
+            style={{ color: "rgba(255,255,255,0.25)" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.4 } }}
