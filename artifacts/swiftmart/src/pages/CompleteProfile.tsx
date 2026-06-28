@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, User, Phone, MapPin, ChevronRight } from "lucide-react";
+import { Loader2, User, Phone, MapPin, ChevronRight, Link2 } from "lucide-react";
 import { api, setTokens } from "@/lib/api";
 
 interface Address {
@@ -15,6 +15,8 @@ interface Address {
   city: string;
   pincode: string;
 }
+
+const PHONE_RE = /^[6-9]\d{9}$/;
 
 export default function CompleteProfile() {
   const { user, updateUser, refreshUser } = useAuth();
@@ -27,6 +29,8 @@ export default function CompleteProfile() {
   const [pincode, setPincode] = useState(user?.pincode || "");
   const [loading, setLoading] = useState(false);
 
+  const phoneValid = PHONE_RE.test(phone);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -34,7 +38,11 @@ export default function CompleteProfile() {
       toast.error("Please enter your full name");
       return;
     }
-    if (phone && !/^[6-9]\d{9}$/.test(phone)) {
+    if (!phone) {
+      toast.error("Mobile number is required");
+      return;
+    }
+    if (!phoneValid) {
       toast.error("Enter a valid 10-digit Indian mobile number");
       return;
     }
@@ -45,8 +53,7 @@ export default function CompleteProfile() {
 
     setLoading(true);
     try {
-      const payload: Record<string, unknown> = { name: name.trim() };
-      if (phone) payload.phone = phone;
+      const payload: Record<string, unknown> = { name: name.trim(), phone };
       if (pincode) payload.pincode = pincode;
 
       if (line1.trim() && city.trim() && pincode) {
@@ -69,14 +76,13 @@ export default function CompleteProfile() {
       }>("/auth/complete-profile", payload);
 
       if (result.merged && result.accessToken && result.refreshToken) {
-        // Phone matched an existing account — swap tokens then reload full user (preserves role/vendorStatus/etc.)
         setTokens(result.accessToken, result.refreshToken);
         await refreshUser();
-        toast.success("Account linked! Welcome back.");
+        toast.success("Account linked! Your existing account and data have been restored.");
       } else {
         updateUser({
           name: name.trim(),
-          phone: phone || undefined,
+          phone,
           pincode: pincode || undefined,
         });
         toast.success("Profile saved! Welcome to SwiftMart.");
@@ -100,7 +106,7 @@ export default function CompleteProfile() {
             </div>
             <h1 className="text-2xl font-bold text-foreground">Complete your profile</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              A few details to get you started
+              Enter your mobile number to link or create your account
             </p>
           </div>
 
@@ -124,7 +130,7 @@ export default function CompleteProfile() {
             <div className="space-y-2">
               <Label htmlFor="phone" className="flex items-center gap-2 text-sm font-medium">
                 <Phone className="w-4 h-4 text-muted-foreground" />
-                Mobile number <span className="text-muted-foreground text-xs">(optional)</span>
+                Mobile number <span className="text-destructive">*</span>
               </Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">
@@ -140,6 +146,15 @@ export default function CompleteProfile() {
                   inputMode="numeric"
                 />
               </div>
+              {phone.length > 0 && !phoneValid && (
+                <p className="text-xs text-destructive mt-1">Enter a valid 10-digit number starting with 6–9</p>
+              )}
+              {phoneValid && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                  <Link2 className="w-3 h-3" />
+                  If this number has an existing account, your data will be linked automatically
+                </p>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -175,26 +190,18 @@ export default function CompleteProfile() {
 
             <Button
               type="submit"
-              disabled={loading || !name.trim()}
+              disabled={loading || !name.trim() || !phoneValid}
               className="w-full h-12 rounded-xl text-base font-semibold gap-2 mt-2"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>
-                  Start shopping
+                  Continue
                   <ChevronRight className="w-5 h-5" />
                 </>
               )}
             </Button>
-
-            <button
-              type="button"
-              onClick={() => setLocation("/")}
-              className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
-            >
-              Skip for now
-            </button>
           </form>
         </div>
       </div>
