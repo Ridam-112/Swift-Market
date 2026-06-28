@@ -185,7 +185,11 @@ function ServiceUnavailable() {
 
 function PincodeGuard({ children }: { children: React.ReactNode }) {
   const { user, role, isAdmin, isLoading } = useAuth();
-  if (isLoading) return null;
+  if (isLoading) return (
+    <div className="min-h-[100dvh] flex items-center justify-center bg-background">
+      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
   if (!user || isAdmin || role !== 'customer') return <>{children}</>;
   if (!user.pincode) return <PincodeSelector />;
   return <>{children}</>;

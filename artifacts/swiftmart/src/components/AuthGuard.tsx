@@ -22,7 +22,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background absolute inset-0 z-50">
+        <div className="w-20 h-20 bg-primary mx-auto rounded-3xl neu-card flex items-center justify-center text-primary-foreground font-bold text-4xl animate-pulse">
+          S
+        </div>
+      </div>
+    );
+  }
 
   return <>{children}</>;
 }
