@@ -20,7 +20,7 @@ export function AnimatedLoginBackground() {
   const shouldReduce = useReducedMotion();
   const [index, setIndex]               = useState(0);
   const [mode, setMode]                 = useState<Mode>("idle");
-  const [opacity, setOpacity]           = useState(0.17);
+  const [opacity, setOpacity]           = useState(0.40);
   const [revealed, setRevealed]         = useState(false);
   const timerRef                        = useRef<ReturnType<typeof setTimeout> | null>(null);
 

@@ -250,7 +250,7 @@ export default function Auth() {
     <div className="relative min-h-[100dvh] bg-[#080808] flex flex-col">
       <AnimatedLoginBackground />
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm bg-black/55 backdrop-blur-2xl rounded-3xl p-6 border border-white/[0.08] shadow-[0_8px_64px_rgba(0,0,0,0.8)]">
+        <div className="w-full max-w-sm bg-white/[0.04] backdrop-blur-md rounded-3xl p-6 border border-white/[0.10] shadow-[0_8px_48px_rgba(0,0,0,0.5)]">
 
           {/* Logo */}
           <div className="mb-8 text-center">
