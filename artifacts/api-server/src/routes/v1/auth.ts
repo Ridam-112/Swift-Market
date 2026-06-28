@@ -50,7 +50,7 @@ function hashToken(token: string): string {
 function issueTokens(u: typeof users.$inferSelect) {
   const payload = {
     userId: u.id,
-    phone: u.phone,
+    phone: u.phone ?? "",
     role: u.role as "customer" | "vendor" | "admin" | "super_admin",
     tokenVersion: u.tokenVersion ?? 1,
   };

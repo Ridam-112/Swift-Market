@@ -27,6 +27,13 @@ export default defineConfig({
         ]
       : []),
   ],
+  define: {
+    // Expose Neon Auth URL to the client — it may be platform-injected (not in .env)
+    // so we bridge it explicitly. Prefer VITE_NEON_AUTH_URL, fall back to NEON_AUTH_BASE_URL.
+    "import.meta.env.VITE_NEON_AUTH_URL": JSON.stringify(
+      process.env.VITE_NEON_AUTH_URL ?? process.env.NEON_AUTH_BASE_URL ?? "",
+    ),
+  },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),

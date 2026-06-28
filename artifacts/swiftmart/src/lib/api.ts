@@ -1,6 +1,9 @@
-// In Capacitor Android builds, VITE_API_URL must be set to the deployed backend URL
-// (e.g. https://your-app.replit.app). In browser/dev, relative /api is used.
-const BASE = import.meta.env.VITE_API_URL
+// In Capacitor Android builds, VITE_API_URL must be set to the deployed backend URL.
+// In any browser context (dev or production), always use relative /api.
+// Only use VITE_API_URL when running inside a Capacitor native shell (protocol = "capacitor:").
+const _isCapacitor =
+  typeof window !== "undefined" && window.location.protocol === "capacitor:";
+const BASE = (_isCapacitor && import.meta.env.VITE_API_URL)
   ? `${(import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")}/api`
   : "/api";
 

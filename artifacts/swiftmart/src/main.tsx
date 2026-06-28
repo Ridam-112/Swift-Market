@@ -6,12 +6,15 @@ import { initFirebase } from "./lib/firebase";
 import { setBaseUrl } from "@workspace/api-client-react";
 import { setServicePincodes } from "./lib/serviceArea";
 
-// When deployed to a separate host (e.g. Cloudflare Pages), VITE_API_URL must
-// point to the backend (e.g. https://your-app.onrender.com).
-// In Replit dev the Vite proxy rewrites /api → localhost:8080, so no base URL needed.
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${(import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")}`
-  : "";
+// VITE_API_URL is only used when running inside a Capacitor native shell (Android/iOS),
+// where window.location.protocol === "capacitor:" and relative /api paths don't work.
+// In any browser context (dev or production), relative /api is always correct.
+const _isCapacitorShell =
+  typeof window !== "undefined" && window.location.protocol === "capacitor:";
+const API_BASE =
+  _isCapacitorShell && import.meta.env.VITE_API_URL
+    ? `${(import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")}`
+    : "";
 
 if (API_BASE) setBaseUrl(API_BASE);
 
