@@ -251,7 +251,12 @@ export default function Auth() {
       <AnimatedLoginBackground />
 
       {/* ── Top-left branding ── */}
-      <div className="relative z-10 pt-14 px-8 flex items-center gap-3">
+      <motion.div
+        className="relative z-10 pt-14 px-8 flex items-center gap-3"
+        initial={{ x: -32, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+      >
         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-primary-foreground font-bold text-lg shadow-lg shrink-0">
           S
         </div>
@@ -259,7 +264,7 @@ export default function Auth() {
           <p className="text-white/45 text-[11px] font-medium uppercase tracking-widest leading-none mb-0.5">Welcome to</p>
           <h1 className="text-white text-xl font-bold leading-none">SwiftMart</h1>
         </div>
-      </div>
+      </motion.div>
 
       {/* ── Spacer lets the animation breathe ── */}
       <div className="flex-1" />
