@@ -265,7 +265,7 @@ export default function Auth() {
       <div className="flex-1" />
 
       {/* ── Bottom login form — no card ── */}
-      <div className="relative z-10 w-full px-8 pb-6">
+      <div className="relative z-10 w-full max-w-sm mx-auto px-8 pb-6">
         <AnimatePresence mode="wait">
 
             {/* ── EMAIL ── */}
