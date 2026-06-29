@@ -23,7 +23,10 @@ export default function CompleteProfile() {
   const [, setLocation] = useLocation();
 
   const [name, setName] = useState(user?.name && user.name !== "User" ? user.name : "");
-  const [phone, setPhone] = useState(user?.phone || "");
+  // Google users have a synthetic phone like "g_1234…" — never pre-fill it
+  const [phone, setPhone] = useState(
+    user?.phone && !user.phone.startsWith("g_") ? user.phone : ""
+  );
   const [line1, setLine1] = useState("");
   const [city, setCity] = useState("");
   const [pincode, setPincode] = useState(user?.pincode || "");

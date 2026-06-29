@@ -127,14 +127,36 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: true }));
 
+// ─── Health check — must be before rate limiter and API router ───────────────
+app.get("/health", (_req: Request, res: Response) => {
+  res.status(200).json({ ok: true, service: "swiftmart-api" });
+});
+
+// ─── Block scanner / exploit paths ───────────────────────────────────────────
+const SCANNER_RE = /^\/(\.git|\.env|\.htaccess|wp-admin|wp-includes|wp-content|xmlrpc\.php|phpmyadmin|cgi-bin|admin\.php|config\.php)/i;
+app.use((req: Request, res: Response, next: NextFunction): void => {
+  if (SCANNER_RE.test(req.path)) {
+    res.status(404).end();
+    return;
+  }
+  next();
+});
+
 app.use("/api/uploads", express.static(path.join(__dirname, "..", "uploads")));
 app.use("/api", globalApiLimiter, router);
 
-// In production: serve the built React frontend and handle SPA routing
+// In production: serve the built React frontend and handle SPA routing.
+// Dotfiles and suspicious paths never receive index.html.
 if (process.env.NODE_ENV === "production") {
   const frontendDist = path.join(__dirname, "..", "..", "swiftmart", "dist", "public");
   app.use(express.static(frontendDist));
-  app.get("/{*splat}", (_req: Request, res: Response) => {
+  app.get("/{*splat}", (req: Request, res: Response) => {
+    // Never serve SPA for dotfiles or scanner paths (already blocked above,
+    // but guard here too so static middleware bypasses don't sneak through)
+    if (/\/\./.test(req.path) || SCANNER_RE.test(req.path)) {
+      res.status(404).end();
+      return;
+    }
     res.sendFile(path.join(frontendDist, "index.html"));
   });
 }

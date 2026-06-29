@@ -15,7 +15,8 @@ const AUTH_MODE: AuthMode = (process.env["AUTH_MODE"] as AuthMode | undefined) ?
 // Fail fast on missing required secrets; warn on missing optional ones at boot time
 // so issues surface in logs immediately rather than on first customer request.
 function validateEnv(): void {
-  const required = ["DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET", "PORT"];
+  // PORT is injected by Render at runtime — warn only, do not crash
+  const required = ["DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET"];
   const missing = required.filter(k => !process.env[k]);
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
@@ -45,38 +46,47 @@ function validateEnv(): void {
 
 validateEnv();
 
-const rawPort = process.env["PORT"];
-if (!rawPort) throw new Error("PORT environment variable is required but was not provided.");
-const port = Number(rawPort);
-if (Number.isNaN(port) || port <= 0) throw new Error(`Invalid PORT value: "${rawPort}"`);
+const PORT = Number(process.env["PORT"] ?? 10000);
 
 async function main() {
-  // Start HTTP server first so health endpoint responds immediately
-  await new Promise<void>((resolve, reject) => {
-    app.listen(port, (err) => {
+  // Bind immediately so the health check passes before seeds run
+  const server = await new Promise<ReturnType<typeof app.listen>>((resolve, reject) => {
+    const s = app.listen(PORT, "0.0.0.0", (err?: Error) => {
       if (err) { reject(err); return; }
-      logger.info({ port }, "SwiftMart API Server listening");
+      logger.info({ port: PORT }, "SwiftMart API Server listening");
       logger.info(
         { otpMode: OTP_MODE, authMode: AUTH_MODE, twoFactorKeyPresent: !!process.env["TWO_FACTOR_API_KEY"] },
         `Auth mode: ${AUTH_MODE} | OTP mode: ${OTP_MODE} | 2Factor key present: ${!!process.env["TWO_FACTOR_API_KEY"]}`
       );
-      resolve();
+      resolve(s);
     });
   });
 
-  // Run seeds against PostgreSQL (Drizzle / Neon)
-  try {
-    await seedSuperAdmins();
-    await seedShopTypes();
-    await seedCategories();
-    await clearDemoData();
-    logger.info("Seed complete");
-  } catch (err) {
-    logger.error({ err }, "Seed error (non-fatal)");
-  }
+  // Graceful shutdown — Render sends SIGTERM before replacing the instance
+  process.on("SIGTERM", () => {
+    logger.info("SIGTERM received — shutting down gracefully");
+    server.close(() => {
+      logger.info("HTTP server closed");
+      process.exit(0);
+    });
+    // Force-exit after 10 s if connections linger
+    setTimeout(() => process.exit(0), 10_000).unref();
+  });
+
+  // Seeds run AFTER server is already listening (non-blocking for health check)
+  setImmediate(async () => {
+    try {
+      await seedSuperAdmins();
+      await seedShopTypes();
+      await seedCategories();
+      await clearDemoData();
+      logger.info("Seed complete");
+    } catch (err) {
+      logger.error({ err }, "Seed error (non-fatal)");
+    }
+  });
 
   // Background job: cancel online-payment orders stuck pending > 15 min
-  // Run once on startup, then every 10 minutes
   const runCleanup = async () => {
     try {
       const count = await cleanupAbandonedOrders();
