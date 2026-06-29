@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { AnimatedLoginBackground } from "@/components/AnimatedLoginBackground";
+import HandwritingBackground from "@/components/HandwritingBackground";
+import { signInWithGoogleGIS } from "@/lib/googleGIS";
+import { getGoogleClientId, setAuthConfig } from "@/lib/authConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -101,7 +103,7 @@ function PasswordInput({
 }
 
 export default function Auth() {
-  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, forgotPassword, resetPassword } = useAuth();
+  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, forgotPassword, resetPassword, signInWithGoogle } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
 
@@ -112,6 +114,29 @@ export default function Auth() {
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetToken, setResetToken] = useState("");
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [resolvedClientId, setResolvedClientId] = useState<string | null>(null);
+  const [configFetching, setConfigFetching] = useState(true);
+
+  // ─── Bootstrap auth config (Google Client ID) ────────────────────────────────
+  useEffect(() => {
+    setConfigFetching(true);
+    fetch("/api/auth/config")
+      .then(r => r.json())
+      .then((d: { authMode?: string; googleClientId?: string }) => {
+        const clientId = d.googleClientId ?? "";
+        setAuthConfig((d.authMode ?? "both") as Parameters<typeof setAuthConfig>[0], clientId);
+        setResolvedClientId(clientId || null);
+        console.log("[SwiftMart] /api/auth/config bootstrap response:", {
+          authMode: d.authMode,
+          googleClientIdPresent: !!clientId,
+          googleClientIdLength: clientId.length,
+        });
+      })
+      .catch(() => {})
+      .finally(() => setConfigFetching(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Detect reset-password token in URL query params
   useEffect(() => {
@@ -195,9 +220,43 @@ export default function Auth() {
     }
   };
 
-  // ─── Google sign-in — standard OAuth redirect flow ──────────────────────────
-  const handleGoogleSignIn = () => {
-    window.location.href = "/api/auth/google/redirect";
+  // ─── Google sign-in — popup flow ────────────────────────────────────────────
+  const handleGoogleSignIn = async () => {
+    let clientId = resolvedClientId ?? getGoogleClientId();
+    if (!clientId || clientId === "placeholder") {
+      setConfigFetching(true);
+      try {
+        const resp = await fetch("/api/auth/config");
+        const d = await resp.json() as { authMode?: string; googleClientId?: string };
+        clientId = d.googleClientId ?? "";
+        setAuthConfig((d.authMode ?? "both") as Parameters<typeof setAuthConfig>[0], clientId);
+        setResolvedClientId(clientId || null);
+      } catch {
+        toast.error("Could not load Google sign-in config. Please try again.");
+        return;
+      } finally {
+        setConfigFetching(false);
+      }
+    }
+    if (!clientId) {
+      toast.error("Google sign-in is not configured on this server.");
+      return;
+    }
+    setGoogleLoading(true);
+    try {
+      const credential = await signInWithGoogleGIS(clientId);
+      const authResult = await signInWithGoogle(credential);
+      if (authResult.needsProfile) {
+        setLocation("/complete-profile");
+      } else {
+        setLocation("/");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Google sign-in failed";
+      toast.error(msg);
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   // ─── Forgot password ─────────────────────────────────────────────────────────
@@ -248,7 +307,7 @@ export default function Auth() {
 
   return (
     <div className="relative min-h-[100dvh] bg-[#080808] flex flex-col overflow-hidden">
-      <AnimatedLoginBackground />
+      <HandwritingBackground />
 
       {/* ── Top-left branding ── */}
       <motion.div
@@ -310,7 +369,7 @@ export default function Auth() {
                   </div>
                 </div>
 
-                <GoogleButton onClick={handleGoogleSignIn} loading={false} />
+                <GoogleButton onClick={handleGoogleSignIn} loading={googleLoading} configFetching={configFetching} />
               </motion.form>
             )}
 
