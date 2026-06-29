@@ -546,6 +546,8 @@ router.get("/google/redirect", (req: Request, res: Response): void => {
   const host  = ((req.headers["x-forwarded-host"]  as string | undefined) ?? req.headers.host ?? "").split(",")[0]!.trim();
   const redirectUri = `${proto}://${host}/auth/google/callback`;
 
+  req.log.info({ redirectUri }, "Google OAuth redirect — using this redirect_uri (must be registered in Google Cloud Console)");
+
   const nonce = randomBytes(16).toString("hex");
   const state = jwt.sign(
     { oauth: true, nonce, redirectUri },
@@ -612,15 +614,22 @@ router.post("/google/exchange", googleAuthLimiter, async (req: Request, res: Res
     });
 
     if (!tokenRes.ok) {
-      const errText = await tokenRes.text();
-      req.log.error({ errText }, "Google token exchange failed");
-      res.status(400).json({ success: false, message: "Failed to exchange authorization code with Google." });
+      let googleError: { error?: string; error_description?: string } = {};
+      try { googleError = await tokenRes.json() as typeof googleError; } catch { /* ignore */ }
+      req.log.error({ googleError, redirectUri }, "Google token exchange failed");
+      const detail = googleError.error_description ?? googleError.error ?? `HTTP ${tokenRes.status}`;
+      res.status(400).json({
+        success: false,
+        message: `Google sign-in failed: ${detail}`,
+        googleError: googleError.error,
+      });
       return;
     }
 
-    const tokenData = await tokenRes.json() as { id_token?: string; access_token?: string; error?: string };
+    const tokenData = await tokenRes.json() as { id_token?: string; access_token?: string; error?: string; error_description?: string };
     if (tokenData.error) {
-      res.status(400).json({ success: false, message: tokenData.error });
+      req.log.error({ tokenData, redirectUri }, "Google token response contained error");
+      res.status(400).json({ success: false, message: tokenData.error_description ?? tokenData.error });
       return;
     }
 
