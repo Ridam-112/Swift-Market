@@ -31,6 +31,7 @@ interface ApiProduct {
   colors?: string[];
   sizes?: string[];
   colorImages?: Record<string, string>;
+  shopName?: string;
 }
 
 function mapApiProduct(p: ApiProduct): Product {
@@ -47,6 +48,8 @@ function mapApiProduct(p: ApiProduct): Product {
     stock: p.stock ?? 0,
     rating: p.rating ?? 0,
     vendorId: p.shopId ?? "",
+    shopId: p.shopId ?? "",
+    shopName: p.shopName,
     trending: p.trending ?? false,
     colors: p.colors,
     sizes: p.sizes,

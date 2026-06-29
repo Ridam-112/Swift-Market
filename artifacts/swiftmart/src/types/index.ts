@@ -50,6 +50,8 @@ export interface Product {
   colors?: string[];
   sizes?: string[];
   colorImages?: Record<string, string>;
+  shopName?: string;
+  shopId?: string;
 }
 
 export interface CartItem {

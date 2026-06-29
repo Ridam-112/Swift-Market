@@ -7,6 +7,7 @@ import { Button } from "./ui/button";
 import { motion } from "framer-motion";
 import { categories } from "@/data/categories";
 import { cartKey } from "@/context/CartContext";
+import { Store } from "lucide-react";
 
 interface ProductCardProps {
   product: Product;
@@ -92,9 +93,17 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         <div className="text-xs text-muted-foreground mb-1 font-medium bg-background/50 w-max px-2 py-0.5 rounded-md neu-inset">
           {product.unit}
         </div>
-        <Link href={`/product/${product.id}`} className="font-semibold text-sm text-foreground line-clamp-2 leading-tight mb-2 hover:text-primary transition-colors cursor-pointer">
+        <Link href={`/product/${product.id}`} className="font-semibold text-sm text-foreground line-clamp-2 leading-tight mb-1 hover:text-primary transition-colors cursor-pointer">
           {product.name}
         </Link>
+        {product.shopName && (
+          <Link href={`/shop/${product.shopId}`} className="flex items-center gap-1 mb-1.5 w-max max-w-full">
+            <Store className="w-2.5 h-2.5 text-primary shrink-0" />
+            <span className="text-[10px] text-primary font-medium truncate hover:underline">
+              {product.shopName}
+            </span>
+          </Link>
+        )}
 
         {hasVariants && (
           <div className="flex gap-1 flex-wrap mb-1">
