@@ -7,4 +7,4 @@
 - [FCM Push Migration](fcm-migration.md) — Replaced VAPID/web-push with Firebase Cloud Messaging; 3 new secrets required before push works
 - [Replit migration secrets](swiftmart-replit-migration.md) — All secrets needed to run on Replit; run scripts/check-secrets.mjs to verify; duplicate artifact workflows fail on port conflicts (expected, main workflow owns ports)
 - [Password Auth Migration](password-auth.md) — OTP removed; mobile+password+Google; existing OTP users preserved with needsPasswordSetup flow; token-based reset logged to console in dev
-- [BetterAuth bypass](betterauth-bypass.md) — authClient (better-auth) removed; all auth calls go directly to app's own API endpoints; Google uses openGoogleSigninWindow popup
+- [Google OAuth2 server-side flow](google-oauth2-flow.md) — Firebase/GIS removed from Google login; pure server-side OAuth2 redirect; firebase.ts kept only for FCM

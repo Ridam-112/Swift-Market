@@ -519,10 +519,26 @@ router.post("/google", googleAuthLimiter, async (req: Request, res: Response): P
 // ─── GET /api/auth/google/redirect ───────────────────────────────────────────
 // Starts the standard OAuth 2.0 authorization code flow.
 // Redirects the browser to Google's consent page.
+// Backward-compat: existing Google users (googleId / email already in DB from
+// the old Firebase ID-token flow) are matched in /google/exchange by googleId
+// OR email, so their accounts and all data are preserved automatically.
 router.get("/google/redirect", (req: Request, res: Response): void => {
-  const clientId = process.env["GOOGLE_CLIENT_ID"];
-  if (!clientId || AUTH_MODE === "otp") {
-    res.status(400).send("Google login is not configured.");
+  const clientId     = process.env["GOOGLE_CLIENT_ID"];
+  const clientSecret = process.env["GOOGLE_CLIENT_SECRET"];
+  if (AUTH_MODE === "otp") {
+    res.status(400).send("Google login is not enabled on this server (AUTH_MODE=otp).");
+    return;
+  }
+  if (!clientId) {
+    res.status(503).send("Google login is not configured — GOOGLE_CLIENT_ID is missing.");
+    return;
+  }
+  if (!clientSecret) {
+    res.status(503).send(
+      "Google login is not fully configured — GOOGLE_CLIENT_SECRET is missing. " +
+      "Add it in Replit → Tools → Secrets (get it from Google Cloud Console → " +
+      "APIs & Services → Credentials → your OAuth 2.0 Client)."
+    );
     return;
   }
 

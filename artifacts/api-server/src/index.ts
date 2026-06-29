@@ -36,6 +36,16 @@ function validateEnv(): void {
   ];
   if (process.env["GOOGLE_CLIENT_ID"]) {
     logger.info({ googleClientIdLength: process.env["GOOGLE_CLIENT_ID"].length }, "GOOGLE_CLIENT_ID is set — Google Sign-In enabled");
+    // GOOGLE_CLIENT_SECRET is required for the server-side OAuth2 code exchange.
+    // Without it the user will see an error after choosing their Google account.
+    if (!process.env["GOOGLE_CLIENT_SECRET"]) {
+      logger.error(
+        "GOOGLE_CLIENT_SECRET is NOT set — server-side Google OAuth2 will fail at the code exchange step. " +
+        "Add it in Tools → Secrets. Get it from Google Cloud Console → APIs & Services → Credentials → your OAuth 2.0 Client."
+      );
+    } else {
+      logger.info("GOOGLE_CLIENT_SECRET is set — server-side OAuth2 exchange enabled");
+    }
   }
   for (const [key, impact] of optionalWarnings) {
     if (!process.env[key]) {
