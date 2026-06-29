@@ -120,41 +120,68 @@ export function AnimatedLoginBackground() {
               />
             </motion.div>
 
-            {/* ── Glass neon 3-D letter text ── */}
-            <motion.div
-              animate={{ opacity: [1, 0.88, 1, 0.95, 1] }}
-              transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
-              style={{
-                fontWeight: 900,
-                lineHeight: 1,
-                letterSpacing: "0.15em",
-                fontSize: "clamp(2.2rem, 8vw, 6.5rem)",
+            {/* ── Glass neon 3-D letter text + holographic sweep ── */}
+            <div style={{ position: "relative", overflow: "hidden", lineHeight: 1 }}>
+              <motion.div
+                animate={{ opacity: [1, 0.88, 1, 0.95, 1] }}
+                transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+                style={{
+                  fontWeight: 900,
+                  lineHeight: 1,
+                  letterSpacing: "0.15em",
+                  fontSize: "clamp(2.2rem, 8vw, 6.5rem)",
 
-                /* Glass gradient fill on each letter */
-                background: `linear-gradient(
-                  160deg,
-                  rgba(255,255,255,0.95) 0%,
-                  ${cat.color} 45%,
-                  rgba(255,255,255,0.6) 70%,
-                  ${cat.color}bb 100%
-                )`,
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                color: "transparent",
+                  /* Glass gradient fill on each letter */
+                  background: `linear-gradient(
+                    160deg,
+                    rgba(255,255,255,0.95) 0%,
+                    ${cat.color} 45%,
+                    rgba(255,255,255,0.6) 70%,
+                    ${cat.color}bb 100%
+                  )`,
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  color: "transparent",
 
-                /* Thin neon border on each letter */
-                WebkitTextStroke: `1.5px ${cat.color}`,
+                  /* Thin neon border on each letter */
+                  WebkitTextStroke: `1.5px ${cat.color}`,
 
-                /* 3-D neon depth shadows */
-                textShadow: neonText3D(cat.color),
+                  /* 3-D neon depth shadows */
+                  textShadow: neonText3D(cat.color),
 
-                WebkitFontSmoothing: "antialiased",
-                MozOsxFontSmoothing: "grayscale",
-              }}
-            >
-              {cat.label}
-            </motion.div>
+                  WebkitFontSmoothing: "antialiased",
+                  MozOsxFontSmoothing: "grayscale",
+                }}
+              >
+                {cat.label}
+              </motion.div>
+
+              {/* Holographic light sweep — slides across on every category change */}
+              <motion.div
+                key={cat.id + "-sweep"}
+                aria-hidden="true"
+                initial={{ x: "-130%" }}
+                animate={{ x: "160%" }}
+                transition={{ duration: 0.85, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.25 }}
+                style={{
+                  position: "absolute",
+                  inset: "-20% 0",
+                  width: "55%",
+                  background: `linear-gradient(
+                    105deg,
+                    transparent 0%,
+                    ${cat.color}22 30%,
+                    rgba(255,255,255,0.55) 50%,
+                    ${cat.color}22 70%,
+                    transparent 100%
+                  )`,
+                  mixBlendMode: "screen",
+                  pointerEvents: "none",
+                  transform: "skewX(-12deg)",
+                }}
+              />
+            </div>
 
             {/* Sublabel — only "ALL IN ONE" */}
             {"sublabel" in cat && (
