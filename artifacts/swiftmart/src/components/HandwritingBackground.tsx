@@ -87,6 +87,21 @@ export default function HandwritingBackground() {
           opacity: 1,
         };
 
+  // Edge/corner glow intensities per phase
+  const edgeOpacity = phase === "holding" ? 1 : phase === "writing" ? 0.45 : 0;
+  const edgeTransition =
+    phase === "holding"
+      ? `opacity ${WRITE_MS * 0.6}ms ease-out`
+      : phase === "fading"
+      ? `opacity ${FADE_MS}ms ease-in`
+      : `opacity ${WRITE_MS * 0.5}ms ease-out`;
+
+  const edgeStyle = (base: React.CSSProperties): React.CSSProperties => ({
+    ...base,
+    opacity: edgeOpacity,
+    transition: edgeTransition,
+  });
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
@@ -95,7 +110,7 @@ export default function HandwritingBackground() {
         className="absolute inset-0 pointer-events-none select-none overflow-hidden"
         aria-hidden="true"
       >
-        {/* Amber glow orb — top-centre */}
+        {/* ── Ambient centre orb ─────────────────────────────────────────────── */}
         <div
           style={{
             position: "absolute",
@@ -111,7 +126,7 @@ export default function HandwritingBackground() {
           }}
         />
 
-        {/* Softer secondary orb — lower right */}
+        {/* Lower-right secondary orb */}
         <div
           style={{
             position: "absolute",
@@ -126,7 +141,69 @@ export default function HandwritingBackground() {
           }}
         />
 
-        {/* SVG handwriting canvas */}
+        {/* ── Edge & corner reflections ───────────────────────────────────────── */}
+
+        {/* Top-left corner */}
+        <div style={edgeStyle({
+          position: "absolute",
+          top: 0, left: 0,
+          width: "38vw", height: "38vh",
+          background: "radial-gradient(ellipse at top left, rgba(255,180,0,0.22) 0%, rgba(255,120,0,0.08) 40%, transparent 70%)",
+          borderRadius: "0 0 100% 0",
+        })} />
+
+        {/* Top-right corner */}
+        <div style={edgeStyle({
+          position: "absolute",
+          top: 0, right: 0,
+          width: "38vw", height: "38vh",
+          background: "radial-gradient(ellipse at top right, rgba(255,180,0,0.22) 0%, rgba(255,120,0,0.08) 40%, transparent 70%)",
+          borderRadius: "0 0 0 100%",
+        })} />
+
+        {/* Bottom-left corner */}
+        <div style={edgeStyle({
+          position: "absolute",
+          bottom: 0, left: 0,
+          width: "28vw", height: "28vh",
+          background: "radial-gradient(ellipse at bottom left, rgba(255,150,0,0.14) 0%, rgba(255,100,0,0.05) 45%, transparent 70%)",
+          borderRadius: "0 100% 0 0",
+        })} />
+
+        {/* Bottom-right corner */}
+        <div style={edgeStyle({
+          position: "absolute",
+          bottom: 0, right: 0,
+          width: "28vw", height: "28vh",
+          background: "radial-gradient(ellipse at bottom right, rgba(255,150,0,0.14) 0%, rgba(255,100,0,0.05) 45%, transparent 70%)",
+          borderRadius: "100% 0 0 0",
+        })} />
+
+        {/* Left edge streak */}
+        <div style={edgeStyle({
+          position: "absolute",
+          top: 0, left: 0,
+          width: "6px", height: "100%",
+          background: "linear-gradient(to bottom, transparent 0%, rgba(255,190,0,0.55) 35%, rgba(255,190,0,0.55) 65%, transparent 100%)",
+        })} />
+
+        {/* Right edge streak */}
+        <div style={edgeStyle({
+          position: "absolute",
+          top: 0, right: 0,
+          width: "6px", height: "100%",
+          background: "linear-gradient(to bottom, transparent 0%, rgba(255,190,0,0.55) 35%, rgba(255,190,0,0.55) 65%, transparent 100%)",
+        })} />
+
+        {/* Top edge streak */}
+        <div style={edgeStyle({
+          position: "absolute",
+          top: 0, left: 0,
+          height: "4px", width: "100%",
+          background: "linear-gradient(to right, transparent 0%, rgba(255,190,0,0.5) 30%, rgba(255,220,80,0.7) 50%, rgba(255,190,0,0.5) 70%, transparent 100%)",
+        })} />
+
+        {/* ── SVG handwriting canvas ──────────────────────────────────────────── */}
         <svg
           width="100%"
           height="60%"
@@ -135,9 +212,7 @@ export default function HandwritingBackground() {
           style={{ position: "absolute", top: "10%", left: 0 }}
         >
           <defs>
-            {/* Layered glow: amber outer + white inner */}
             <filter id="hw-glow" x="-40%" y="-40%" width="180%" height="180%">
-              {/* Wide amber halo */}
               <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="bigBlur" />
               <feColorMatrix
                 in="bigBlur"
@@ -148,9 +223,7 @@ export default function HandwritingBackground() {
                         0   0   0   0.9 0"
                 result="amberHalo"
               />
-              {/* Tight white glow */}
               <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="tightBlur" />
-              {/* Stack them */}
               <feMerge>
                 <feMergeNode in="amberHalo" />
                 <feMergeNode in="tightBlur" />
@@ -159,7 +232,6 @@ export default function HandwritingBackground() {
             </filter>
           </defs>
 
-          {/* Main animated text — remounted on each new word via key */}
           <text
             key={wordIndex}
             x="400"
@@ -190,7 +262,7 @@ export default function HandwritingBackground() {
           }}
         />
 
-        {/* Subtle film-grain texture for premium feel */}
+        {/* Film-grain texture */}
         <div
           style={{
             position: "absolute",
