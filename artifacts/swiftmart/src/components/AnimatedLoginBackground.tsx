@@ -120,8 +120,8 @@ export function AnimatedLoginBackground() {
               />
             </motion.div>
 
-            {/* ── Glass neon 3-D letter text + holographic sweep ── */}
-            <div style={{ position: "relative", overflow: "hidden", lineHeight: 1 }}>
+            {/* ── Glass neon 3-D letter text ── */}
+            <div style={{ position: "relative", lineHeight: 1 }}>
               <motion.div
                 animate={{ opacity: [1, 0.88, 1, 0.95, 1] }}
                 transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
@@ -157,30 +157,6 @@ export function AnimatedLoginBackground() {
                 {cat.label}
               </motion.div>
 
-              {/* Holographic light sweep — slides across on every category change */}
-              <motion.div
-                key={cat.id + "-sweep"}
-                aria-hidden="true"
-                initial={{ x: "-130%" }}
-                animate={{ x: "160%" }}
-                transition={{ duration: 0.85, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.25 }}
-                style={{
-                  position: "absolute",
-                  inset: "-20% 0",
-                  width: "55%",
-                  background: `linear-gradient(
-                    105deg,
-                    transparent 0%,
-                    ${cat.color}22 30%,
-                    rgba(255,255,255,0.55) 50%,
-                    ${cat.color}22 70%,
-                    transparent 100%
-                  )`,
-                  mixBlendMode: "screen",
-                  pointerEvents: "none",
-                  transform: "skewX(-12deg)",
-                }}
-              />
             </div>
 
             {/* Sublabel — only "ALL IN ONE" */}
