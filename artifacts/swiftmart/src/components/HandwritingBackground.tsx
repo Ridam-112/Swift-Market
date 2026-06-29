@@ -20,32 +20,14 @@ const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
 
 @keyframes hw-write {
-  from {
-    stroke-dashoffset: 3200;
-    opacity: 0;
-  }
-  8% {
-    opacity: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
+  from { stroke-dashoffset: 3200; opacity: 0; }
+  8%   { opacity: 1; }
+  to   { stroke-dashoffset: 0; opacity: 1; }
 }
 
 @keyframes hw-fade-out {
   from { opacity: 1; }
   to   { opacity: 0; transform: scale(1.04); }
-}
-
-@keyframes hw-orb-pulse {
-  0%, 100% { opacity: 0.12; transform: translate(-50%, -50%) scale(1);   }
-  50%       { opacity: 0.22; transform: translate(-50%, -50%) scale(1.12); }
-}
-
-@keyframes hw-orb-pulse2 {
-  0%, 100% { opacity: 0.07; transform: scale(1);   }
-  50%       { opacity: 0.15; transform: scale(1.08); }
 }
 `;
 
@@ -87,20 +69,14 @@ export default function HandwritingBackground() {
           opacity: 1,
         };
 
-  // Edge/corner glow intensities per phase
-  const edgeOpacity = phase === "holding" ? 1 : phase === "writing" ? 0.45 : 0;
-  const edgeTransition =
+  // Room-fill light opacity — peaks on "holding", builds during "writing", off on "fading"
+  const roomOpacity  = phase === "holding" ? 1 : phase === "writing" ? 0.5 : 0;
+  const roomTransition =
     phase === "holding"
-      ? `opacity ${WRITE_MS * 0.6}ms ease-out`
+      ? `opacity ${WRITE_MS * 0.55}ms ease-out`
       : phase === "fading"
-      ? `opacity ${FADE_MS}ms ease-in`
-      : `opacity ${WRITE_MS * 0.5}ms ease-out`;
-
-  const edgeStyle = (base: React.CSSProperties): React.CSSProperties => ({
-    ...base,
-    opacity: edgeOpacity,
-    transition: edgeTransition,
-  });
+      ? `opacity ${FADE_MS * 0.8}ms ease-in`
+      : "none";
 
   return (
     <>
@@ -110,100 +86,92 @@ export default function HandwritingBackground() {
         className="absolute inset-0 pointer-events-none select-none overflow-hidden"
         aria-hidden="true"
       >
-        {/* ── Ambient centre orb ─────────────────────────────────────────────── */}
-        <div
-          style={{
-            position: "absolute",
-            width: "min(600px, 90vw)",
-            aspectRatio: "1",
-            borderRadius: "50%",
-            top: "22%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            background:
-              "radial-gradient(circle, rgba(255,190,0,0.18) 0%, rgba(255,120,0,0.06) 50%, transparent 70%)",
-            animation: "hw-orb-pulse 7s ease-in-out infinite",
-          }}
-        />
 
-        {/* Lower-right secondary orb */}
-        <div
-          style={{
-            position: "absolute",
-            width: "min(380px, 60vw)",
-            aspectRatio: "1",
-            borderRadius: "50%",
-            bottom: "28%",
-            right: "8%",
-            background:
-              "radial-gradient(circle, rgba(255,160,0,0.10) 0%, transparent 65%)",
-            animation: "hw-orb-pulse2 9s ease-in-out infinite 2s",
-          }}
-        />
+        {/* ── Main room-fill: neon text as light source ───────────────────────
+            One giant radial centred exactly on the text (50%, ~38% from top).
+            Amber core → warm orange mid → transparent edges.
+            This naturally illuminates the screen and fades to dark at corners,
+            just like a neon sign in a dark room.
+        ─────────────────────────────────────────────────────────────────── */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          background: `
+            radial-gradient(
+              ellipse 140% 110% at 50% 38%,
+              rgba(255, 210, 60, 0.22)   0%,
+              rgba(255, 160, 20, 0.15)  25%,
+              rgba(255, 110,  0, 0.08)  50%,
+              rgba(200,  80,  0, 0.03)  70%,
+              transparent               88%
+            )
+          `,
+          opacity: roomOpacity,
+          transition: roomTransition,
+        }} />
 
-        {/* ── Edge & corner reflections ───────────────────────────────────────── */}
+        {/* ── Edge bleeds — thin amber strips on left / right / top ────────────
+            The strips are brightest at the text's vertical position (38%)
+            and fade to nothing at top and bottom.
+            Left and right strips simulate light reaching the side walls.
+        ─────────────────────────────────────────────────────────────────── */}
 
-        {/* Top-left corner */}
-        <div style={edgeStyle({
+        {/* Left wall bleed */}
+        <div style={{
           position: "absolute",
           top: 0, left: 0,
-          width: "38vw", height: "38vh",
-          background: "radial-gradient(ellipse at top left, rgba(255,180,0,0.22) 0%, rgba(255,120,0,0.08) 40%, transparent 70%)",
-          borderRadius: "0 0 100% 0",
-        })} />
+          width: "18vw", height: "100%",
+          background: `
+            linear-gradient(
+              to right,
+              rgba(255, 180, 0, 0.18) 0%,
+              rgba(255, 140, 0, 0.08) 35%,
+              transparent 100%
+            )
+          `,
+          maskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 25%, black 45%, rgba(0,0,0,0.6) 65%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 25%, black 45%, rgba(0,0,0,0.6) 65%, transparent 100%)",
+          opacity: roomOpacity,
+          transition: roomTransition,
+        }} />
 
-        {/* Top-right corner */}
-        <div style={edgeStyle({
+        {/* Right wall bleed */}
+        <div style={{
           position: "absolute",
           top: 0, right: 0,
-          width: "38vw", height: "38vh",
-          background: "radial-gradient(ellipse at top right, rgba(255,180,0,0.22) 0%, rgba(255,120,0,0.08) 40%, transparent 70%)",
-          borderRadius: "0 0 0 100%",
-        })} />
+          width: "18vw", height: "100%",
+          background: `
+            linear-gradient(
+              to left,
+              rgba(255, 180, 0, 0.18) 0%,
+              rgba(255, 140, 0, 0.08) 35%,
+              transparent 100%
+            )
+          `,
+          maskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 25%, black 45%, rgba(0,0,0,0.6) 65%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 25%, black 45%, rgba(0,0,0,0.6) 65%, transparent 100%)",
+          opacity: roomOpacity,
+          transition: roomTransition,
+        }} />
 
-        {/* Bottom-left corner */}
-        <div style={edgeStyle({
-          position: "absolute",
-          bottom: 0, left: 0,
-          width: "28vw", height: "28vh",
-          background: "radial-gradient(ellipse at bottom left, rgba(255,150,0,0.14) 0%, rgba(255,100,0,0.05) 45%, transparent 70%)",
-          borderRadius: "0 100% 0 0",
-        })} />
-
-        {/* Bottom-right corner */}
-        <div style={edgeStyle({
-          position: "absolute",
-          bottom: 0, right: 0,
-          width: "28vw", height: "28vh",
-          background: "radial-gradient(ellipse at bottom right, rgba(255,150,0,0.14) 0%, rgba(255,100,0,0.05) 45%, transparent 70%)",
-          borderRadius: "100% 0 0 0",
-        })} />
-
-        {/* Left edge streak */}
-        <div style={edgeStyle({
+        {/* Top ceiling bleed */}
+        <div style={{
           position: "absolute",
           top: 0, left: 0,
-          width: "6px", height: "100%",
-          background: "linear-gradient(to bottom, transparent 0%, rgba(255,190,0,0.55) 35%, rgba(255,190,0,0.55) 65%, transparent 100%)",
-        })} />
+          height: "22vh", width: "100%",
+          background: `
+            linear-gradient(
+              to bottom,
+              rgba(255, 180, 0, 0.14) 0%,
+              rgba(255, 140, 0, 0.06) 55%,
+              transparent 100%
+            )
+          `,
+          opacity: roomOpacity,
+          transition: roomTransition,
+        }} />
 
-        {/* Right edge streak */}
-        <div style={edgeStyle({
-          position: "absolute",
-          top: 0, right: 0,
-          width: "6px", height: "100%",
-          background: "linear-gradient(to bottom, transparent 0%, rgba(255,190,0,0.55) 35%, rgba(255,190,0,0.55) 65%, transparent 100%)",
-        })} />
-
-        {/* Top edge streak */}
-        <div style={edgeStyle({
-          position: "absolute",
-          top: 0, left: 0,
-          height: "4px", width: "100%",
-          background: "linear-gradient(to right, transparent 0%, rgba(255,190,0,0.5) 30%, rgba(255,220,80,0.7) 50%, rgba(255,190,0,0.5) 70%, transparent 100%)",
-        })} />
-
-        {/* ── SVG handwriting canvas ──────────────────────────────────────────── */}
+        {/* ── SVG handwriting ─────────────────────────────────────────────────── */}
         <svg
           width="100%"
           height="60%"
@@ -215,8 +183,7 @@ export default function HandwritingBackground() {
             <filter id="hw-glow" x="-40%" y="-40%" width="180%" height="180%">
               <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="bigBlur" />
               <feColorMatrix
-                in="bigBlur"
-                type="matrix"
+                in="bigBlur" type="matrix"
                 values="1 0.6 0   0 0
                         0.7 0.5 0   0 0
                         0   0   0   0 0
@@ -234,8 +201,7 @@ export default function HandwritingBackground() {
 
           <text
             key={wordIndex}
-            x="400"
-            y="160"
+            x="400" y="160"
             textAnchor="middle"
             fontFamily="'Dancing Script', cursive"
             fontSize={fs}
@@ -252,30 +218,26 @@ export default function HandwritingBackground() {
           </text>
         </svg>
 
-        {/* Gradient so the login form at bottom stays readable */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to top, rgba(8,8,8,0.92) 22%, rgba(8,8,8,0.30) 60%, rgba(8,8,8,0.10) 100%)",
-          }}
-        />
+        {/* Gradient keeps form readable */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "linear-gradient(to top, rgba(8,8,8,0.92) 22%, rgba(8,8,8,0.30) 60%, rgba(8,8,8,0.10) 100%)",
+        }} />
 
-        {/* Film-grain texture */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E\")",
-            backgroundRepeat: "repeat",
-            backgroundSize: "256px 256px",
-            mixBlendMode: "overlay",
-            opacity: 0.35,
-            pointerEvents: "none",
-          }}
-        />
+        {/* Film grain */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E\")",
+          backgroundRepeat: "repeat",
+          backgroundSize: "256px 256px",
+          mixBlendMode: "overlay",
+          opacity: 0.35,
+          pointerEvents: "none",
+        }} />
       </div>
     </>
   );
