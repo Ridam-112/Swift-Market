@@ -3,6 +3,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithRedirect,
+  signInWithPopup,
   getRedirectResult,
   type Auth,
 } from "firebase/auth";
@@ -54,6 +55,24 @@ export async function startGoogleSignIn(): Promise<void> {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
   await signInWithRedirect(auth, provider);
+}
+
+/**
+ * Initiates Google sign-in via a popup window.
+ * Works in regular browser tabs (desktop and mobile browser).
+ * Does NOT work inside iframes where window.opener postMessage is blocked,
+ * and does NOT work in Capacitor WebViews — use startGoogleSignIn() (redirect) there.
+ * Returns the Google ID token on success.
+ */
+export async function signInWithGooglePopup(): Promise<string> {
+  const auth = getFirebaseAuth();
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  const result = await signInWithPopup(auth, provider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  if (!credential?.idToken) throw new Error("Google sign-in failed — no ID token returned.");
+  await auth.signOut();
+  return credential.idToken;
 }
 
 /**

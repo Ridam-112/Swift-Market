@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import HandwritingBackground from "@/components/HandwritingBackground";
-import { signInWithGoogleGIS } from "@/lib/googleGIS";
-import { startGoogleSignIn, getGoogleRedirectResult, isFirebaseConfigured } from "@/lib/firebase";
+import { signInWithGoogleGIS, GisNotSupportedError } from "@/lib/googleGIS";
+import { startGoogleSignIn, getGoogleRedirectResult, signInWithGooglePopup, isFirebaseConfigured } from "@/lib/firebase";
 import { getGoogleClientId, setAuthConfig } from "@/lib/authConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -143,6 +143,8 @@ export default function Auth() {
   }, []);
 
   // ─── Pick up Firebase redirect result on page load (Capacitor/mobile) ────────
+  // This silently checks whether the page was just redirected back from Google.
+  // On normal page loads (no pending redirect) Firebase returns null — no error.
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
     setGoogleLoading(true);
@@ -156,11 +158,10 @@ export default function Auth() {
           setLocation("/");
         }
       })
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : "Google sign-in failed";
-        if (msg && !msg.includes("no-auth-event") && !msg.includes("null-user")) {
-          toast.error(msg);
-        }
+      .catch(() => {
+        // Silently ignore — either no pending redirect or domain not yet authorized.
+        // Errors like auth/unauthorized-domain are surfaced only when the user
+        // explicitly taps "Continue with Google".
       })
       .finally(() => setGoogleLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -292,8 +293,20 @@ export default function Auth() {
     }
     setGoogleLoading(true);
     try {
-      const credential = await signInWithGoogleGIS(clientId);
-      const authResult = await signInWithGoogle(credential);
+      // Try GIS One Tap first (best UX on desktop browsers)
+      let idToken: string;
+      try {
+        idToken = await signInWithGoogleGIS(clientId);
+      } catch (gisErr: unknown) {
+        if (gisErr instanceof GisNotSupportedError && isFirebaseConfigured()) {
+          // One Tap is blocked (FedCM disabled, iframe, browser restriction) —
+          // fall back to Firebase popup which opens a real browser window.
+          idToken = await signInWithGooglePopup();
+        } else {
+          throw gisErr;
+        }
+      }
+      const authResult = await signInWithGoogle(idToken);
       if (authResult.needsProfile) {
         setLocation("/complete-profile");
       } else {
@@ -301,16 +314,6 @@ export default function Auth() {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Google sign-in failed";
-      // If GIS fails to load (e.g. network blocks it), try Firebase redirect as fallback
-      if (msg.includes("Failed to load Google Sign-In library") && isFirebaseConfigured()) {
-        try {
-          await startGoogleSignIn();
-        } catch {
-          toast.error("Google sign-in is unavailable. Please use email login instead.");
-          setGoogleLoading(false);
-        }
-        return;
-      }
       toast.error(msg);
     } finally {
       setGoogleLoading(false);

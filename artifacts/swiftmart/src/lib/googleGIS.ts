@@ -1,8 +1,9 @@
 /**
  * Google Sign-In via Google Identity Services (GIS) One Tap.
  *
- * Renders the GIS prompt directly on the current page — no popup window needed.
- * This works at any top-level origin (swiftmart.space, etc.).
+ * Primary path: GIS One Tap prompt (works on desktop browsers at the real domain).
+ * Fallback: Signals the caller to try Firebase popup when One Tap is blocked
+ * (FedCM disabled in iframes, browser restrictions, etc.).
  */
 
 const GIS_SRC = "https://accounts.google.com/gsi/client";
@@ -39,6 +40,14 @@ declare global {
   }
 }
 
+// Sentinel thrown when the browser/context blocks One Tap — caller should use popup.
+export class GisNotSupportedError extends Error {
+  constructor(reason: string) {
+    super(reason);
+    this.name = "GisNotSupportedError";
+  }
+}
+
 let loadPromise: Promise<void> | null = null;
 
 function loadGIS(): Promise<void> {
@@ -48,7 +57,7 @@ function loadGIS(): Promise<void> {
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${GIS_SRC}"]`);
     if (existing) {
       existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () => reject(new Error("Failed to load Google Sign-In library")));
+      existing.addEventListener("error", () => reject(new GisNotSupportedError("Failed to load Google Sign-In library")));
       return;
     }
     const s = document.createElement("script");
@@ -56,15 +65,26 @@ function loadGIS(): Promise<void> {
     s.async = true;
     s.defer = true;
     s.onload = () => resolve();
-    s.onerror = () => reject(new Error("Failed to load Google Sign-In library. Check your internet connection."));
+    s.onerror = () => reject(new GisNotSupportedError("Failed to load Google Sign-In library"));
     document.head.appendChild(s);
   });
   return loadPromise;
 }
 
+// Reasons GIS gives when One Tap cannot be shown due to browser/context restrictions.
+// In these cases we should fall back to a popup flow instead.
+const FALLBACK_REASONS = new Set([
+  "browser_not_supported",
+  "invalid_client",
+  "missing_client_id",
+  "unknown_reason",
+  "suppressed_by_user", // user explicitly dismissed; try popup so they can pick an account
+]);
+
 /**
  * Sign in with Google using GIS One Tap on the current page.
  * Returns the Google ID token string on success.
+ * Throws GisNotSupportedError if the browser/context blocks One Tap — use popup fallback.
  */
 export async function signInWithGoogleGIS(clientId: string): Promise<string> {
   await loadGIS();
@@ -99,13 +119,15 @@ export async function signInWithGoogleGIS(clientId: string): Promise<string> {
     window.google!.accounts.id.prompt((n: PromptNotification) => {
       if (n.isNotDisplayed()) {
         const reason = n.getNotDisplayedReason();
-        settle(() => reject(new Error(
-          reason === "suppressed_by_user"
-            ? "Google sign-in was suppressed. Please clear site cookies and try again."
-            : reason === "opt_out_or_no_session"
-              ? "No Google session found. Please sign into Google in your browser first."
-              : "Google sign-in could not be shown. Please use email login instead."
-        )));
+        if (FALLBACK_REASONS.has(reason)) {
+          // Browser or context doesn't support One Tap — caller should use popup.
+          settle(() => reject(new GisNotSupportedError(`One Tap not supported: ${reason}`)));
+        } else if (reason === "opt_out_or_no_session") {
+          settle(() => reject(new Error("No Google account found. Please sign into Google in your browser first, then try again.")));
+        } else {
+          // Unknown reason — also try popup fallback.
+          settle(() => reject(new GisNotSupportedError(`One Tap unavailable: ${reason}`)));
+        }
       } else if (n.isDismissedMoment()) {
         if (n.getDismissedReason() !== "credential_returned") {
           settle(() => reject(new Error("Sign-in cancelled. Please try again.")));
