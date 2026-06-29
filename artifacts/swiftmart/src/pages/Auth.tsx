@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import HandwritingBackground from "@/components/HandwritingBackground";
 import { signInWithGoogleGIS } from "@/lib/googleGIS";
 import { getGoogleClientId, setAuthConfig } from "@/lib/authConfig";
+import { startGoogleSignIn, getGoogleRedirectResult, initFirebase } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,11 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ArrowLeft, Eye, EyeOff, Mail, Lock, User, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** True on phones/tablets — GIS One Tap does not work on mobile browsers */
+const isMobileBrowser = () =>
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+  (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
 
 // ─── Step machine ─────────────────────────────────────────────────────────────
 // email          → enter email → check if account exists
@@ -118,23 +124,41 @@ export default function Auth() {
   const [resolvedClientId, setResolvedClientId] = useState<string | null>(null);
   const [configFetching, setConfigFetching] = useState(true);
 
-  // ─── Bootstrap auth config (Google Client ID) ────────────────────────────────
+  // ─── Bootstrap auth config (Google Client ID + Firebase) ────────────────────
   useEffect(() => {
     setConfigFetching(true);
     fetch("/api/auth/config")
       .then(r => r.json())
-      .then((d: { authMode?: string; googleClientId?: string }) => {
+      .then((d: { authMode?: string; googleClientId?: string; firebaseConfig?: { apiKey: string; authDomain: string; projectId: string; appId: string; messagingSenderId?: string } }) => {
         const clientId = d.googleClientId ?? "";
         setAuthConfig((d.authMode ?? "both") as Parameters<typeof setAuthConfig>[0], clientId);
         setResolvedClientId(clientId || null);
-        console.log("[SwiftMart] /api/auth/config bootstrap response:", {
-          authMode: d.authMode,
-          googleClientIdPresent: !!clientId,
-          googleClientIdLength: clientId.length,
-        });
+        if (d.firebaseConfig?.apiKey) {
+          initFirebase({
+            ...d.firebaseConfig,
+            messagingSenderId: d.firebaseConfig.messagingSenderId ?? "",
+          });
+        }
       })
       .catch(() => {})
       .finally(() => setConfigFetching(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Handle Firebase redirect result (mobile Google sign-in) ───────────────
+  useEffect(() => {
+    setGoogleLoading(true);
+    getGoogleRedirectResult()
+      .then(async (idToken) => {
+        if (!idToken) return;
+        const authResult = await signInWithGoogle(idToken);
+        setLocation(authResult.needsProfile ? "/complete-profile" : "/");
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : "Google sign-in failed";
+        toast.error(msg);
+      })
+      .finally(() => setGoogleLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -220,8 +244,23 @@ export default function Auth() {
     }
   };
 
-  // ─── Google sign-in — popup flow ────────────────────────────────────────────
+  // ─── Google sign-in — GIS One Tap (desktop) or Firebase redirect (mobile) ───
   const handleGoogleSignIn = async () => {
+    // On mobile browsers, GIS One Tap fails to load — use Firebase redirect instead
+    if (isMobileBrowser()) {
+      try {
+        setGoogleLoading(true);
+        await startGoogleSignIn(); // navigates away — page reloads after Google auth
+        // Execution continues only if redirect was blocked (shouldn't normally happen)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Google sign-in failed";
+        toast.error(msg);
+        setGoogleLoading(false);
+      }
+      return;
+    }
+
+    // Desktop: use GIS One Tap
     let clientId = resolvedClientId ?? getGoogleClientId();
     if (!clientId || clientId === "placeholder") {
       setConfigFetching(true);
@@ -246,11 +285,7 @@ export default function Auth() {
     try {
       const credential = await signInWithGoogleGIS(clientId);
       const authResult = await signInWithGoogle(credential);
-      if (authResult.needsProfile) {
-        setLocation("/complete-profile");
-      } else {
-        setLocation("/");
-      }
+      setLocation(authResult.needsProfile ? "/complete-profile" : "/");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Google sign-in failed";
       toast.error(msg);

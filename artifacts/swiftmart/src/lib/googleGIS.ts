@@ -56,7 +56,10 @@ function loadGIS(): Promise<void> {
     s.async = true;
     s.defer = true;
     s.onload = () => resolve();
-    s.onerror = () => reject(new Error("Failed to load Google Sign-In library. Check your internet connection."));
+    s.onerror = () => {
+      loadPromise = null; // reset so next attempt retries
+      reject(new Error("Failed to load Google Sign-In library. Check your internet connection."));
+    };
     document.head.appendChild(s);
   });
   return loadPromise;
