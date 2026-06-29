@@ -2,9 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import HandwritingBackground from "@/components/HandwritingBackground";
-import { signInWithGoogleGIS, GisNotSupportedError } from "@/lib/googleGIS";
-import { startGoogleSignIn, getGoogleRedirectResult, signInWithGooglePopup, isFirebaseConfigured } from "@/lib/firebase";
-import { getGoogleClientId, setAuthConfig } from "@/lib/authConfig";
+import { setAuthConfig } from "@/lib/authConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -104,7 +102,7 @@ function PasswordInput({
 }
 
 export default function Auth() {
-  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, forgotPassword, resetPassword, signInWithGoogle } = useAuth();
+  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, forgotPassword, resetPassword } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
 
@@ -116,54 +114,18 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [resetToken, setResetToken] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [resolvedClientId, setResolvedClientId] = useState<string | null>(null);
   const [configFetching, setConfigFetching] = useState(true);
 
-  // Detect Capacitor (Android/iOS WebView) — GIS script is blocked in WebViews
-  const isCapacitor = typeof window !== "undefined" && window.location.protocol === "capacitor:";
-
-  // ─── Bootstrap auth config (Google Client ID) ────────────────────────────────
+  // ─── Bootstrap auth config ────────────────────────────────────────────────────
   useEffect(() => {
     setConfigFetching(true);
     fetch("/api/auth/config")
       .then(r => r.json())
       .then((d: { authMode?: string; googleClientId?: string }) => {
-        const clientId = d.googleClientId ?? "";
-        setAuthConfig((d.authMode ?? "both") as Parameters<typeof setAuthConfig>[0], clientId);
-        setResolvedClientId(clientId || null);
-        console.log("[SwiftMart] /api/auth/config bootstrap response:", {
-          authMode: d.authMode,
-          googleClientIdPresent: !!clientId,
-          googleClientIdLength: clientId.length,
-        });
+        setAuthConfig((d.authMode ?? "both") as Parameters<typeof setAuthConfig>[0], d.googleClientId ?? "");
       })
       .catch(() => {})
       .finally(() => setConfigFetching(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ─── Pick up Firebase redirect result on page load (Capacitor/mobile) ────────
-  // This silently checks whether the page was just redirected back from Google.
-  // On normal page loads (no pending redirect) Firebase returns null — no error.
-  useEffect(() => {
-    if (!isFirebaseConfigured()) return;
-    setGoogleLoading(true);
-    getGoogleRedirectResult()
-      .then(async (idToken) => {
-        if (!idToken) return;
-        const authResult = await signInWithGoogle(idToken);
-        if (authResult.needsProfile) {
-          setLocation("/complete-profile");
-        } else {
-          setLocation("/");
-        }
-      })
-      .catch(() => {
-        // Silently ignore — either no pending redirect or domain not yet authorized.
-        // Errors like auth/unauthorized-domain are surfaced only when the user
-        // explicitly taps "Continue with Google".
-      })
-      .finally(() => setGoogleLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -249,75 +211,20 @@ export default function Auth() {
     }
   };
 
-  // ─── Google sign-in — GIS on desktop, Firebase redirect on Capacitor/mobile ──
-  const handleGoogleSignIn = async () => {
-    // On Capacitor (Android/iOS WebView), Google's GIS script is blocked.
-    // Use Firebase signInWithRedirect instead — the result is picked up on the
-    // next page load via the getGoogleRedirectResult() effect above.
-    if (isCapacitor) {
-      if (!isFirebaseConfigured()) {
-        toast.error("Google sign-in is not configured on this server.");
-        return;
-      }
-      setGoogleLoading(true);
-      try {
-        await startGoogleSignIn(); // triggers full-page redirect — page will reload
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Google sign-in failed";
-        toast.error(msg);
-        setGoogleLoading(false);
-      }
-      return;
-    }
-
-    // Desktop / regular browser — use GIS One Tap
-    let clientId = resolvedClientId ?? getGoogleClientId();
-    if (!clientId || clientId === "placeholder") {
-      setConfigFetching(true);
-      try {
-        const resp = await fetch("/api/auth/config");
-        const d = await resp.json() as { authMode?: string; googleClientId?: string };
-        clientId = d.googleClientId ?? "";
-        setAuthConfig((d.authMode ?? "both") as Parameters<typeof setAuthConfig>[0], clientId);
-        setResolvedClientId(clientId || null);
-      } catch {
-        toast.error("Could not load Google sign-in config. Please try again.");
-        return;
-      } finally {
-        setConfigFetching(false);
-      }
-    }
-    if (!clientId) {
-      toast.error("Google sign-in is not configured on this server.");
-      return;
-    }
+  // ─── Google sign-in — server-side OAuth2 redirect ────────────────────────────
+  // Works everywhere: desktop browser, mobile browser, Capacitor WebView.
+  // The server at /api/auth/google/redirect builds the Google consent URL and
+  // redirects the user there. Google returns to /auth/google/callback which
+  // calls /api/auth/google/exchange to complete the flow.
+  const handleGoogleSignIn = () => {
     setGoogleLoading(true);
-    try {
-      // Try GIS One Tap first (best UX on desktop browsers)
-      let idToken: string;
-      try {
-        idToken = await signInWithGoogleGIS(clientId);
-      } catch (gisErr: unknown) {
-        if (gisErr instanceof GisNotSupportedError && isFirebaseConfigured()) {
-          // One Tap is blocked (FedCM disabled, iframe, browser restriction) —
-          // fall back to Firebase popup which opens a real browser window.
-          idToken = await signInWithGooglePopup();
-        } else {
-          throw gisErr;
-        }
-      }
-      const authResult = await signInWithGoogle(idToken);
-      if (authResult.needsProfile) {
-        setLocation("/complete-profile");
-      } else {
-        setLocation("/");
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Google sign-in failed";
-      toast.error(msg);
-    } finally {
-      setGoogleLoading(false);
-    }
+    // In Capacitor the WebView serves from capacitor://localhost — relative paths
+    // hit the WebView assets, not the API server. Use VITE_API_URL for the base.
+    const isCapacitor = typeof window !== "undefined" && window.location.protocol === "capacitor:";
+    const base = (isCapacitor && import.meta.env.VITE_API_URL)
+      ? (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
+      : "";
+    window.location.href = `${base}/api/auth/google/redirect`;
   };
 
   // ─── Forgot password ─────────────────────────────────────────────────────────
