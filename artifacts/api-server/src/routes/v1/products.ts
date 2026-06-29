@@ -105,7 +105,15 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     db.select({ total: count() }).from(products).where(where),
   ]);
 
-  res.json({ success: true, products: miArr(result), total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
+  // Batch-fetch shop names so every product card can display the seller
+  const shopIds = [...new Set(result.map(p => p.shopId))];
+  const shopRows = shopIds.length > 0
+    ? await db.select({ id: shops.id, shopName: shops.shopName }).from(shops).where(inArray(shops.id, shopIds))
+    : [];
+  const shopMap = Object.fromEntries(shopRows.map(s => [s.id, s.shopName]));
+  const enriched = result.map(p => ({ ...mi(p), shopName: shopMap[p.shopId] ?? "" }));
+
+  res.json({ success: true, products: enriched, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
 });
 
 // GET /api/products/admin-review — admin: list products for approval with shop name
