@@ -225,6 +225,10 @@ export default function EditProduct() {
     if (!name.trim() || !category || !price || !unit || !stock) {
       toast.error("Please fill all required fields"); return;
     }
+    if (discountedPrice && Number(discountedPrice) > 0 && Number(discountedPrice) >= Number(price)) {
+      toast.error("Sale price must be less than MRP");
+      return;
+    }
     if (!productId) return;
 
     setSaving(true);

@@ -203,11 +203,17 @@ router.post("/", authenticate, V, vendorWriteLimiter, async (req: AuthRequest, r
   if (isAdmin && body["shopId"]) {
     const [shopExists] = await db.select({ id: shops.id }).from(shops).where(eq(shops.id, String(body["shopId"]))).limit(1);
     if (!shopExists) { res.status(400).json({ success: false, message: "Shop not found" }); return; }
+    const adminPrice = Math.max(0, Number(body["price"] ?? 0) || 0);
+    const adminDiscounted = body["discountedPrice"] != null ? (Number(body["discountedPrice"]) || undefined) : undefined;
+    if (adminDiscounted != null && adminDiscounted >= adminPrice) {
+      res.status(400).json({ success: false, message: "Sale price must be less than MRP" });
+      return;
+    }
     const [product] = await db.insert(products).values({
       name: String(body["name"] ?? ""),
       description: body["description"] ? String(body["description"]) : undefined,
-      price: Math.max(0, Number(body["price"] ?? 0) || 0),
-      discountedPrice: body["discountedPrice"] != null ? (Number(body["discountedPrice"]) || undefined) : undefined,
+      price: adminPrice,
+      discountedPrice: adminDiscounted,
       category: String(body["category"] ?? ""),
       subcategory: body["subcategory"] ? String(body["subcategory"]) : undefined,
       shopId: String(body["shopId"]),
@@ -231,11 +237,17 @@ router.post("/", authenticate, V, vendorWriteLimiter, async (req: AuthRequest, r
 
   // Vendor uploads always start as pending — strip any status the client may have sent
   const { status: _ignored, ...safeBody } = body;
+  const vendorPrice = Math.max(0, Number(safeBody["price"] ?? 0) || 0);
+  const vendorDiscounted = safeBody["discountedPrice"] != null ? (Number(safeBody["discountedPrice"]) || undefined) : undefined;
+  if (vendorDiscounted != null && vendorDiscounted >= vendorPrice) {
+    res.status(400).json({ success: false, message: "Sale price must be less than MRP" });
+    return;
+  }
   const [product] = await db.insert(products).values({
     name: String(safeBody["name"] ?? ""),
     description: safeBody["description"] ? String(safeBody["description"]) : undefined,
-    price: Math.max(0, Number(safeBody["price"] ?? 0) || 0),
-    discountedPrice: safeBody["discountedPrice"] != null ? (Number(safeBody["discountedPrice"]) || undefined) : undefined,
+    price: vendorPrice,
+    discountedPrice: vendorDiscounted,
     category: String(safeBody["category"] ?? ""),
     subcategory: safeBody["subcategory"] ? String(safeBody["subcategory"]) : undefined,
     shopId: shop.id,
@@ -346,6 +358,17 @@ router.patch("/:id", authenticate, V, vendorWriteLimiter, async (req: AuthReques
     // Vendor edits must go through re-approval — force status back to pending
     updateData["status"] = "pending";
     delete updateData["rejectionReason"];
+  }
+  // Validate: sale price must be less than MRP when both are present
+  if ("discountedPrice" in updateData && updateData["discountedPrice"] != null) {
+    const updatedMrp = "price" in updateData
+      ? Number(updateData["price"])
+      : (await db.select({ price: products.price }).from(products).where(eq(products.id, req.params["id"] as string)).limit(1))[0]?.price ?? 0;
+    const updatedSale = Number(updateData["discountedPrice"]);
+    if (updatedSale >= updatedMrp) {
+      res.status(400).json({ success: false, message: "Sale price must be less than MRP" });
+      return;
+    }
   }
   // M6 fix: sanitize image URLs on update too
   if ("images" in updateData) {
