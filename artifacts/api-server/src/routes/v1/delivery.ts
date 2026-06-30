@@ -1,5 +1,5 @@
 import { Router, type Response } from "express";
-import { db, deliveryPartners, deliveryChargeRules, deliverySettings, orders, users } from "@workspace/db";
+import { db, deliveryPartners, deliveryChargeRules, deliverySettings, orders, users, shops } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { validateUuidParams } from "../../middlewares/validateUuid.js";
@@ -228,10 +228,20 @@ router.get("/me/orders", authenticate, async (req: AuthRequest, res: Response): 
   const userId = req.user!.userId;
   const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
   if (!partner) { res.status(404).json({ success: false, message: "Not a delivery partner" }); return; }
-  const assigned = await db.select().from(orders)
+
+  const rows = await db
+    .select({ order: orders, shopAddress: shops.address })
+    .from(orders)
+    .leftJoin(shops, eq(orders.shopId, shops.id))
     .where(eq(orders.deliveryPartnerId, partner.id))
     .orderBy(desc(orders.createdAt));
-  res.json({ success: true, orders: miArr(assigned), partner: mi(partner) });
+
+  const result = rows.map(({ order, shopAddress }) => ({
+    ...mi(order),
+    shopAddress: (shopAddress ?? {}) as Record<string, string>,
+  }));
+
+  res.json({ success: true, orders: result, partner: mi(partner) });
 });
 
 // PATCH /delivery/me/orders/:orderId/status — mark order as out_for_delivery or delivered

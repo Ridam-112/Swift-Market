@@ -12,8 +12,9 @@ import {
   LogOut, Menu, X, LayoutDashboard, ClipboardList, IndianRupee,
   ToggleLeft, ToggleRight, Truck, ChevronRight,
   RefreshCw, AlertCircle, Banknote, CreditCard, ShieldCheck,
-  TrendingUp,
+  TrendingUp, Map,
 } from "lucide-react";
+import DeliveryMapSheet from "@/components/DeliveryMapSheet";
 
 interface DeliveryPartner {
   _id: string;
@@ -32,6 +33,7 @@ interface DeliveryOrder {
   customerName: string;
   customerPhone: string;
   shopName: string;
+  shopAddress: { line1?: string; line2?: string; city?: string; pincode?: string };
   items: { name: string; qty: number; price: number }[];
   netAmount: number;
   deliveryCharge: number;
@@ -114,11 +116,13 @@ function OrderCard({
   order,
   onUpdateStatus,
   onRequestCodConfirm,
+  onOpenMap,
   updating,
 }: {
   order: DeliveryOrder;
   onUpdateStatus: (orderId: string, status: string, confirmCash?: boolean) => void;
   onRequestCodConfirm: (orderId: string, amount: number) => void;
+  onOpenMap: (orderId: string) => void;
   updating: string | null;
 }) {
   const address = order.address ?? {};
@@ -173,6 +177,16 @@ function OrderCard({
         </div>
 
         <div className="flex gap-2">
+          {isActive && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl h-9 text-xs gap-1 px-3 shadow-none"
+              onClick={() => onOpenMap(order._id)}
+            >
+              <Map className="w-3 h-3" /> Map
+            </Button>
+          )}
           {canPickUp && (
             <Button
               size="sm"
@@ -361,11 +375,13 @@ function OrdersTab({
   orders,
   onUpdateStatus,
   onRequestCodConfirm,
+  onOpenMap,
   updating,
 }: {
   orders: DeliveryOrder[];
   onUpdateStatus: (orderId: string, status: string, confirmCash?: boolean) => void;
   onRequestCodConfirm: (orderId: string, amount: number) => void;
+  onOpenMap: (orderId: string) => void;
   updating: string | null;
 }) {
   const active = orders.filter(o =>
@@ -384,7 +400,7 @@ function OrdersTab({
             <Banknote className="w-4 h-4" /> Awaiting Cash Confirmation ({needsPayment.length})
           </h3>
           {needsPayment.map(o => (
-            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} updating={updating} />
+            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} onOpenMap={onOpenMap} updating={updating} />
           ))}
         </div>
       )}
@@ -395,7 +411,7 @@ function OrdersTab({
             <Truck className="w-4 h-4" /> Active ({active.length})
           </h3>
           {active.map(o => (
-            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} updating={updating} />
+            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} onOpenMap={onOpenMap} updating={updating} />
           ))}
         </div>
       )}
@@ -406,7 +422,7 @@ function OrdersTab({
             <ClipboardList className="w-4 h-4" /> History ({past.length})
           </h3>
           {past.map(o => (
-            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} updating={updating} />
+            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} onOpenMap={onOpenMap} updating={updating} />
           ))}
         </div>
       )}
@@ -496,6 +512,7 @@ export default function DeliveryDashboard() {
   const [toggling, setToggling] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
   const [codConfirm, setCodConfirm] = useState<CodConfirm | null>(null);
+  const [mapOrderId, setMapOrderId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -577,6 +594,31 @@ export default function DeliveryDashboard() {
   };
 
   const handleExit = () => setLocation("/profile");
+
+  const handleOpenMap = (orderId: string) => setMapOrderId(orderId);
+  const handleCloseMap = () => setMapOrderId(null);
+
+  // Picked up from within the map: update status then keep map open so it
+  // automatically transitions to show the customer's location.
+  const handleMapPickedUp = async (orderId: string) => {
+    await handleUpdateStatus(orderId, "out_for_delivery");
+    // Map stays open — orders state is refreshed by fetchData inside handleUpdateStatus
+  };
+
+  // Delivered from within the map: COD orders get the cash-confirm dialog,
+  // online orders close the map and mark delivered immediately.
+  const handleMapDelivered = (orderId: string) => {
+    const order = orders.find(o => o._id === orderId);
+    const isCod = (order?.paymentMethod ?? "COD").toUpperCase() === "COD";
+    if (isCod) {
+      handleCloseMap();
+      setCodConfirm({ orderId, amount: order?.netAmount ?? 0 });
+    } else {
+      handleUpdateStatus(orderId, "delivered").then(() => handleCloseMap());
+    }
+  };
+
+  const mapOrder = mapOrderId ? orders.find(o => o._id === mapOrderId) ?? null : null;
 
   const SECTION_TITLES: Record<Section, string> = {
     overview: "Overview",
@@ -683,6 +725,7 @@ export default function DeliveryDashboard() {
                       setCodConfirm({ orderId, amount });
                     }
                   }}
+                  onOpenMap={handleOpenMap}
                   updating={updating}
                 />
               )}
@@ -690,6 +733,18 @@ export default function DeliveryDashboard() {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Delivery Map Sheet */}
+      {mapOrder && (
+        <DeliveryMapSheet
+          isOpen={!!mapOrder}
+          onClose={handleCloseMap}
+          order={mapOrder}
+          onPickedUp={handleMapPickedUp}
+          onDelivered={handleMapDelivered}
+          updating={updating}
+        />
+      )}
 
       {/* COD Cash Confirmation Modal */}
       <AnimatePresence>
