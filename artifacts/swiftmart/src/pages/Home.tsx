@@ -43,7 +43,7 @@ interface RawProduct {
   id?: unknown; _id?: unknown; name?: unknown; category?: unknown;
   price?: unknown; discountedPrice?: unknown; unit?: unknown; images?: unknown;
   image?: unknown; description?: unknown; stock?: unknown; rating?: unknown;
-  shopId?: unknown; trending?: unknown;
+  shopId?: unknown; shopName?: unknown; trending?: unknown;
 }
 
 function mapProduct(p: RawProduct): Product {
@@ -60,6 +60,8 @@ function mapProduct(p: RawProduct): Product {
     stock: Number(p.stock ?? 0),
     rating: Number(p.rating ?? 0),
     vendorId: (p.shopId ?? "") as string,
+    shopId: (p.shopId ?? "") as string,
+    shopName: p.shopName ? (p.shopName as string) : undefined,
     trending: Boolean(p.trending),
   };
 }
