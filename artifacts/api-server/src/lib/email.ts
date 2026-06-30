@@ -1,15 +1,18 @@
 import { Resend } from "resend";
 import { logger } from "./logger.js";
 
-const resend = new Resend(process.env["RESEND_API_KEY"]);
-
-// RESEND_FROM_EMAIL must use a domain verified in your Resend dashboard.
-// If not set, falls back to Resend's sandbox address (only delivers to the
-// account owner's email — useful for testing before domain is verified).
 const FROM = process.env["RESEND_FROM_EMAIL"] ?? "onboarding@resend.dev";
 
 export function isEmailConfigured(): boolean {
   return !!process.env["RESEND_API_KEY"];
+}
+
+function getResendClient(): Resend {
+  const key = process.env["RESEND_API_KEY"];
+  if (!key) {
+    throw new Error("RESEND_API_KEY is not set — email delivery is unavailable.");
+  }
+  return new Resend(key);
 }
 
 export async function sendPasswordResetEmail(opts: {
@@ -18,6 +21,8 @@ export async function sendPasswordResetEmail(opts: {
   expiresMinutes: number;
 }): Promise<void> {
   const { to, resetUrl, expiresMinutes } = opts;
+
+  const resend = getResendClient();
 
   const { error } = await resend.emails.send({
     from: FROM,
