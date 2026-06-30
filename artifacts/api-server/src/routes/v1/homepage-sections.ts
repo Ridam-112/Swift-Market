@@ -1,8 +1,17 @@
 import { Router, type Request, type Response } from "express";
-import { db, homepageSections, products } from "@workspace/db";
+import { db, homepageSections, products, shops } from "@workspace/db";
 import { eq, inArray, asc, and, gt, desc, sql } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { mi, miArr } from "../../utils/mapId.js";
+
+async function enrichWithShopNames(rows: Record<string, unknown>[]) {
+  const shopIds = [...new Set(rows.map(p => p["shopId"] as string).filter(Boolean))];
+  if (shopIds.length === 0) return rows;
+  const shopRows = await db.select({ id: shops.id, shopName: shops.shopName })
+    .from(shops).where(inArray(shops.id, shopIds));
+  const shopMap = Object.fromEntries(shopRows.map(s => [s.id, s.shopName]));
+  return rows.map(p => ({ ...p, shopName: shopMap[p["shopId"] as string] ?? "" }));
+}
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -30,7 +39,7 @@ async function resolveProducts(
       .limit(lm).offset(offset);
     const [{ total }] = await db.select({ total: sql<number>`count(*)::int` })
       .from(products).where(and(base, eq(products.trending, true)));
-    return { rows: miArr(rows), total: total ?? 0 };
+    return { rows: await enrichWithShopNames(miArr(rows)), total: total ?? 0 };
   }
 
   if (type === "category" && config.categorySlug) {
@@ -40,7 +49,7 @@ async function resolveProducts(
       .limit(lm).offset(offset);
     const [{ total }] = await db.select({ total: sql<number>`count(*)::int` })
       .from(products).where(and(base, eq(products.category, config.categorySlug)));
-    return { rows: miArr(rows), total: total ?? 0 };
+    return { rows: await enrichWithShopNames(miArr(rows)), total: total ?? 0 };
   }
 
   if (type === "manual" && Array.isArray(config.productIds) && config.productIds.length > 0) {
@@ -48,7 +57,7 @@ async function resolveProducts(
     const rows = await db.select().from(products)
       .where(and(base, inArray(products.id, ids)))
       .limit(lm).offset(offset);
-    return { rows: miArr(rows), total: ids.length };
+    return { rows: await enrichWithShopNames(miArr(rows)), total: ids.length };
   }
 
   if (type === "new_arrivals") {
@@ -58,7 +67,7 @@ async function resolveProducts(
       .limit(lm).offset(offset);
     const [{ total }] = await db.select({ total: sql<number>`count(*)::int` })
       .from(products).where(base);
-    return { rows: miArr(rows), total: total ?? 0 };
+    return { rows: await enrichWithShopNames(miArr(rows)), total: total ?? 0 };
   }
 
   // fallback: all active products by rating
@@ -68,7 +77,7 @@ async function resolveProducts(
     .limit(lm).offset(offset);
   const [{ total }] = await db.select({ total: sql<number>`count(*)::int` })
     .from(products).where(base);
-  return { rows: miArr(rows), total: total ?? 0 };
+  return { rows: await enrichWithShopNames(miArr(rows)), total: total ?? 0 };
 }
 
 // GET /api/homepage-sections — public, enabled sections with first 8 products each
