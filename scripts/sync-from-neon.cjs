@@ -38,28 +38,75 @@ async function main() {
   });
 
   await neon.connect();
-  await neon.query("SET search_path = public");
+  // Set search_path via query (not startup param — pooler rejects startup params)
+  await neon.query("SET search_path TO public");
   console.log("✅ Connected to Neon (source)");
+
   await replit.connect();
   console.log("✅ Connected to Replit PostgreSQL (destination)");
+
+  // Truncate all tables in reverse dependency order
+  console.log("\nTruncating Replit tables...");
+  await replit.query(`
+    SET session_replication_role = 'replica';
+    TRUNCATE TABLE
+      otp_sessions, notifications, push_subscriptions, fcm_tokens, reports,
+      payouts, commission_rules, coupons, delivery_charge_rules, delivery_settings,
+      delivery_partners, hero_banners, homepage_sections, service_pincodes,
+      admin_broadcasts, support_tickets, orders, products, shops,
+      categories, shop_types, admins, users
+    RESTART IDENTITY CASCADE;
+    SET session_replication_role = 'local';
+  `);
+  console.log("Tables cleared.\n");
 
   let totalInserted = 0;
 
   for (const table of TABLES_IN_ORDER) {
     try {
-      const { rows } = await neon.query(`SELECT * FROM "${table}"`);
+      // Get column names from Neon for this table
+      const colRes = await neon.query(
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = $1
+         ORDER BY ordinal_position`,
+        [table]
+      );
+      const cols = colRes.rows.map((r) => r.column_name);
+
+      // Get column names from Replit for this table
+      const colRes2 = await replit.query(
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = $1
+         ORDER BY ordinal_position`,
+        [table]
+      );
+      const replitCols = new Set(colRes2.rows.map((r) => r.column_name));
+
+      // Only copy columns that exist in BOTH databases
+      const commonCols = cols.filter((c) => replitCols.has(c));
+      const colList = commonCols.map((c) => `"${c}"`).join(", ");
+
+      const { rows } = await neon.query(
+        `SELECT ${colList} FROM "${table}"`
+      );
+
       if (rows.length === 0) {
         console.log(`   ${table}: 0 rows — skipping`);
         continue;
       }
 
-      const cols = Object.keys(rows[0]);
-      const colList = cols.map((c) => `"${c}"`).join(", ");
       let inserted = 0;
       let skipped = 0;
 
       for (const row of rows) {
-        const values = cols.map((c) => row[c]);
+        const values = commonCols.map((c) => {
+          const v = row[c];
+          // Stringify objects/arrays for jsonb columns
+          if (v !== null && typeof v === "object" && !Buffer.isBuffer(v)) {
+            return JSON.stringify(v);
+          }
+          return v;
+        });
         const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
         const sql = `INSERT INTO "${table}" (${colList}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`;
         try {
@@ -73,7 +120,7 @@ async function main() {
       }
 
       console.log(
-        `   ${table}: ${inserted} inserted, ${skipped} skipped/conflict (${rows.length} total from Neon)`
+        `   ${table}: ${inserted} inserted, ${skipped} skipped (${rows.length} total from Neon)`
       );
       totalInserted += inserted;
     } catch (err) {
@@ -81,20 +128,23 @@ async function main() {
     }
   }
 
-  // Reset all sequences so future inserts don't get PK conflicts
+  // Reset all sequences
   console.log("\nResetting sequences...");
   const { rows: seqs } = await replit.query(
-    `SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = 'public'`
+    `SELECT s.sequence_name, t.table_name
+     FROM information_schema.sequences s
+     JOIN information_schema.tables t
+       ON t.table_name = replace(s.sequence_name, '_id_seq', '')
+     WHERE s.sequence_schema = 'public' AND t.table_schema = 'public'`
   );
-  for (const { sequence_name } of seqs) {
-    const tbl = sequence_name.replace(/_id_seq$/, "");
+  for (const { sequence_name, table_name } of seqs) {
     try {
       await replit.query(
-        `SELECT setval('${sequence_name}', COALESCE((SELECT MAX(id) FROM "${tbl}"), 1), true)`
+        `SELECT setval('${sequence_name}', COALESCE((SELECT MAX(id) FROM "${table_name}"), 1), true)`
       );
     } catch (_) {}
   }
-  console.log(`Sequences reset for ${seqs.length} sequences.`);
+  console.log(`${seqs.length} sequences reset.`);
 
   await neon.end();
   await replit.end();

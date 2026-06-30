@@ -21,11 +21,17 @@ export function uploadToCloudinary(
   buffer: Buffer,
   folder: string,
   resourceType: "image" | "auto" | "raw" = "image",
+  timeoutMs = 30_000,
 ): Promise<{ url: string; publicId: string; resourceType: string }> {
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Cloudinary upload timed out after ${timeoutMs / 1000}s`));
+    }, timeoutMs);
+
     const stream = cloudinary.uploader.upload_stream(
       { folder, resource_type: resourceType },
       (error, result) => {
+        clearTimeout(timer);
         if (error || !result) return reject(error ?? new Error("Cloudinary upload failed"));
         resolve({
           url: result.secure_url,
