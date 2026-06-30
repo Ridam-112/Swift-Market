@@ -6,6 +6,7 @@ import { OAuth2Client } from "google-auth-library";
 import { db, users, shops, otpSessions, servicePincodes as servicePincodesTable } from "@workspace/db";
 import { eq, or } from "drizzle-orm";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt.js";
+import { sendPasswordResetEmail, isEmailConfigured } from "../../lib/email.js";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
 import { mi } from "../../utils/mapId.js";
 import { sendPasswordResetOtp, verify2FactorOtp, OTP_MODE } from "../../lib/sms.js";
@@ -857,7 +858,8 @@ router.post("/email-login", loginLimiter, async (req: Request, res: Response): P
 });
 
 // ─── POST /api/auth/email-forgot-password ────────────────────────────────────
-// Send a password reset code to the user's email (logged to console in demo mode).
+// Sends a password-reset link to the user's email via Resend.
+// Falls back to console logging if RESEND_API_KEY is not configured.
 router.post("/email-forgot-password", resetPasswordLimiter, async (req: Request, res: Response): Promise<void> => {
   const { email } = req.body as { email?: string };
 
@@ -872,7 +874,6 @@ router.post("/email-forgot-password", resetPasswordLimiter, async (req: Request,
     const [user] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
 
     if (user && user.status !== "banned") {
-      const { randomBytes } = await import("node:crypto");
       const token = randomBytes(32).toString("hex");
       const expires = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
 
@@ -880,10 +881,19 @@ router.post("/email-forgot-password", resetPasswordLimiter, async (req: Request,
         .set({ passwordResetTokenHash: hashToken(token), passwordResetExpires: expires })
         .where(eq(users.id, user.id));
 
-      // In production, send the token via email. For now, log it.
-      const resetUrl = `/auth?step=reset&token=${token}`;
-      req.log.info({ email: normalizedEmail }, "Password reset token generated");
-      console.log(`\n🔑 PASSWORD RESET for ${normalizedEmail}:\n   Token: ${token}\n   URL: ${resetUrl}\n   (expires ${expires.toISOString()})\n`);
+      const proto = "https";
+      const host  = process.env["REPLIT_DEV_DOMAIN"] ?? process.env["APP_DOMAIN"] ?? "swiftmart.space";
+      const resetUrl = `${proto}://${host}/auth?step=reset&token=${token}`;
+      const expiresMinutes = Math.round(RESET_TOKEN_EXPIRY_MS / 60_000);
+
+      if (isEmailConfigured()) {
+        await sendPasswordResetEmail({ to: normalizedEmail, resetUrl, expiresMinutes });
+      } else {
+        req.log.warn({ email: normalizedEmail }, "RESEND_API_KEY not set — logging reset link to console");
+        console.log(`\n🔑 PASSWORD RESET for ${normalizedEmail}:\n   URL: ${resetUrl}\n   (expires in ${expiresMinutes} min)\n`);
+      }
+
+      req.log.info({ email: normalizedEmail, emailSent: isEmailConfigured() }, "Password reset link generated");
     }
 
     // Always return success to prevent email enumeration
