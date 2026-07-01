@@ -175,6 +175,39 @@ router.get("/:id", authenticate, validateUuidParams("id"), async (req: AuthReque
   res.json({ success: true, order: mi(order) });
 });
 
+// GET /api/orders/:id/rider-location — customer fetches live rider GPS
+router.get("/:id/rider-location", authenticate, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const orderId = req.params["id"] as string;
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
+  if (req.user!.role === "customer" && order.customerId !== req.user!.userId) {
+    res.status(403).json({ success: false, message: "Forbidden" }); return;
+  }
+  if (!order.deliveryPartnerId) {
+    res.json({ success: true, location: null, message: "No rider assigned yet" }); return;
+  }
+  const [partner] = await db
+    .select({
+      name: deliveryPartners.name,
+      phone: deliveryPartners.phone,
+      vehicle: deliveryPartners.vehicle,
+      currentLat: deliveryPartners.currentLat,
+      currentLon: deliveryPartners.currentLon,
+      locationUpdatedAt: deliveryPartners.locationUpdatedAt,
+    })
+    .from(deliveryPartners)
+    .where(eq(deliveryPartners.id, order.deliveryPartnerId))
+    .limit(1);
+  if (!partner) { res.json({ success: true, location: null }); return; }
+  res.json({
+    success: true,
+    location: partner.currentLat && partner.currentLon
+      ? { lat: partner.currentLat, lon: partner.currentLon, updatedAt: partner.locationUpdatedAt }
+      : null,
+    rider: { name: partner.name, phone: partner.phone, vehicle: partner.vehicle },
+  });
+});
+
 // POST /api/orders
 // Bug fixes applied:
 //   #3 — All writes (stock, order, payout, coupon) are wrapped in a single DB transaction.

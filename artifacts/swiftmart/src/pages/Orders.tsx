@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button";
 import { LiveOrderTracker } from "@/components/LiveOrderTracker";
 import {
   PackageX, Package, Truck, CheckCircle2, Clock, Loader2,
-  AlertCircle, RefreshCw, XCircle, Ban, Radio, KeyRound,
+  AlertCircle, RefreshCw, XCircle, Ban, Radio, KeyRound, MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import RiderTrackingSheet from "@/components/RiderTrackingSheet";
 
 interface ApiOrderItem {
   productId?: string;
@@ -56,10 +57,11 @@ function getStatusDisplay(status: string) {
 
 export default function Orders() {
   const { user } = useAuth();
-  const [orders, setOrders]       = useState<ApiOrder[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState<string | null>(null);
+  const [orders, setOrders]             = useState<ApiOrder[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
 
   const fetchOrders = useCallback(() => {
     if (!user) { setLoading(false); return; }
@@ -272,6 +274,18 @@ export default function Orders() {
                 <div className="font-bold text-lg">{formatINR(total)}</div>
               </div>
 
+              {/* Track Rider button — only when out for delivery */}
+              {order.status === "out_for_delivery" && (
+                <Button
+                  size="sm"
+                  className="w-full rounded-xl h-11 gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+                  onClick={() => setTrackingOrderId(order._id)}
+                >
+                  <MapPin className="w-4 h-4" />
+                  See where my order is
+                </Button>
+              )}
+
               {canCancel && (
                 <Button
                   variant="ghost"
@@ -288,6 +302,16 @@ export default function Orders() {
           );
         })}
       </div>
+
+      {/* Rider tracking sheet */}
+      {trackingOrderId && (
+        <RiderTrackingSheet
+          isOpen={!!trackingOrderId}
+          onClose={() => setTrackingOrderId(null)}
+          orderId={trackingOrderId}
+          shopName={orders.find(o => o._id === trackingOrderId)?.shopName}
+        />
+      )}
     </div>
   );
 }

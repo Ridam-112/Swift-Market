@@ -11,6 +11,9 @@ export const deliveryPartners = pgTable("delivery_partners", {
   totalEarnings: doublePrecision("total_earnings").notNull().default(0),
   ordersDelivered: integer("orders_delivered").notNull().default(0),
   currentOrderId: text("current_order_id"),
+  currentLat: doublePrecision("current_lat"),
+  currentLon: doublePrecision("current_lon"),
+  locationUpdatedAt: timestamp("location_updated_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

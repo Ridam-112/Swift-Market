@@ -534,6 +534,30 @@ export default function DeliveryDashboard() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
+  // Push GPS location to backend every 10s when there is an active out_for_delivery order
+  useEffect(() => {
+    const hasActiveDelivery = orders.some(o => o.status === "out_for_delivery");
+    if (!hasActiveDelivery) return;
+
+    const pushLocation = () => {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          api.patch("/delivery/me/location", {
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+          }).catch(() => { /* silent */ });
+        },
+        () => { /* permission denied or error — silent */ },
+        { timeout: 6000, maximumAge: 15000 },
+      );
+    };
+
+    pushLocation();
+    const loc = setInterval(pushLocation, 10000);
+    return () => clearInterval(loc);
+  }, [orders]);
+
   const handleToggleAvailability = async () => {
     if (!partner) return;
     setToggling(true);

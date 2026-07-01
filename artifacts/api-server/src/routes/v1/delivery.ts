@@ -210,6 +210,21 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response): Promise
   res.json({ success: true, partner: mi(partner) });
 });
 
+// PATCH /delivery/me/location — rider pushes GPS coords (called every ~10s while active)
+router.patch("/me/location", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const { lat, lon } = req.body as { lat: number; lon: number };
+  if (typeof lat !== "number" || typeof lon !== "number") {
+    res.status(400).json({ success: false, message: "lat and lon required" }); return;
+  }
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) { res.status(404).json({ success: false, message: "Not a delivery partner" }); return; }
+  await db.update(deliveryPartners)
+    .set({ currentLat: lat, currentLon: lon, locationUpdatedAt: new Date(), updatedAt: new Date() })
+    .where(eq(deliveryPartners.id, partner.id));
+  res.json({ success: true });
+});
+
 // PATCH /delivery/me/availability — toggle online/offline
 router.patch("/me/availability", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user!.userId;
