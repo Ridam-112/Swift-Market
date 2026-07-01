@@ -22,7 +22,7 @@ import { PincodeSelector } from "@/components/PincodeSelector";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { useAuth } from "@/hooks/useAuth";
-import { setupPushMessageListener, playNotificationSound } from "@/lib/pushNotifications";
+import { setupPushMessageListener, playNotificationSound, playAdminOrderAlert } from "@/lib/pushNotifications";
 import { initFcmOnLoad, setupFcmForegroundListener } from "@/lib/fcm";
 
 import { MapPinOff } from "lucide-react";
@@ -381,7 +381,7 @@ function Router() {
  *    toast when a notification arrives while the app is in the foreground.
  */
 function PushManager() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   // On every page load: re-send FCM_INIT to the SW so background messages work
   useEffect(() => {
@@ -395,22 +395,34 @@ function PushManager() {
     if (!user) return;
     const cleanup = setupFcmForegroundListener((title, body) => {
       console.log("[PushManager] FCM foreground message — showing toast:", title, body);
-      playNotificationSound();
-      toast(title, { description: body, duration: 5000 });
+      const isOrderAlert = title.toLowerCase().includes("assign rider");
+      if (isAdmin && isOrderAlert) {
+        playAdminOrderAlert();
+        toast(title, { description: body, duration: 12000 });
+      } else {
+        playNotificationSound();
+        toast(title, { description: body, duration: 5000 });
+      }
     });
     return cleanup;
-  }, [user]);
+  }, [user, isAdmin]);
 
   // Legacy VAPID push message listener (sw.js path — kept as fallback)
   useEffect(() => {
     if (!user) return;
     const cleanup = setupPushMessageListener((title, body) => {
       console.log("[PushManager] VAPID push message — showing toast:", title, body);
-      playNotificationSound();
-      toast(title, { description: body, duration: 5000 });
+      const isOrderAlert = title.toLowerCase().includes("assign rider");
+      if (isAdmin && isOrderAlert) {
+        playAdminOrderAlert();
+        toast(title, { description: body, duration: 12000 });
+      } else {
+        playNotificationSound();
+        toast(title, { description: body, duration: 5000 });
+      }
     });
     return cleanup;
-  }, [user]);
+  }, [user, isAdmin]);
 
   if (!user) return null;
   return <NotificationPrompt userId={user.id} />;

@@ -204,6 +204,43 @@ export function playVendorAlert(): void {
 }
 
 /**
+ * Plays a loud, urgent cash-register style alert for admins when a new order
+ * arrives and needs a delivery partner assigned. Vibrates the device too.
+ */
+export function playAdminOrderAlert(): void {
+  try {
+    if ("vibrate" in navigator) navigator.vibrate([200, 80, 200, 80, 400]);
+
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+
+    const play = (freq: number, startAt: number, duration: number, volume = 0.4, type: OscillatorType = "sine") => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + startAt);
+      gain.gain.setValueAtTime(volume, ctx.currentTime + startAt);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startAt + duration);
+      osc.start(ctx.currentTime + startAt);
+      osc.stop(ctx.currentTime + startAt + duration);
+    };
+
+    // Rising "ding ding ding" — distinct from vendor (square beeps) and customer (soft chime)
+    play(523, 0,    0.18, 0.45);   // C5
+    play(659, 0.20, 0.18, 0.45);   // E5
+    play(784, 0.40, 0.18, 0.45);   // G5
+    play(1047, 0.60, 0.30, 0.50);  // C6 — final high note, holds longer
+
+    setTimeout(() => ctx.close().catch(() => {}), 1200);
+  } catch { /* ignore */ }
+}
+
+/**
  * Plays a two-note notification chime using the Web Audio API.
  * Works even when the device is in silent mode for web audio (not ringer).
  */
