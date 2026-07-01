@@ -171,11 +171,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   };
 
+  // ─── Session persistence helpers ─────────────────────────────────────────
+  // User stays logged in forever unless they tap Logout.
+  // Exception: if they haven't opened the app in 30 days, auto-logout.
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+  const touchLastActive = () => {
+    localStorage.setItem("sm_last_active", String(Date.now()));
+  };
+
+  const isInactive30Days = (): boolean => {
+    const raw = localStorage.getItem("sm_last_active");
+    if (!raw) return false; // first-ever login — no stamp yet
+    return Date.now() - parseInt(raw, 10) > THIRTY_DAYS_MS;
+  };
+
+  const hardLogout = () => {
+    clearTokens();
+    localStorage.removeItem("sm_last_active");
+    localStorage.removeItem("swiftmart_cart");
+    localStorage.removeItem("swiftmart_role");
+    setUser(null);
+    setUserRole('customer');
+    setRoleState('customer');
+    setSelectedDeliveryAddress(null);
+  };
+
   useEffect(() => {
     const savedUser = localStorage.getItem("sm_user");
     const savedRole = localStorage.getItem("sm_role");
     const savedDashRole = localStorage.getItem("swiftmart_role");
 
+    const { access, refresh } = api.getTokens();
+    const hasSession = !!(access || refresh);
+
+    // ── 30-day inactivity check ───────────────────────────────────────────
+    if (hasSession && isInactive30Days()) {
+      hardLogout();
+      setIsLoading(false);
+      return;
+    }
+
+    // ── Restore cached user immediately so UI doesn't flash logged-out ────
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser) as User;
@@ -186,8 +223,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (savedRole) setUserRole(savedRole as UserRole);
     if (savedDashRole) setRoleState(savedDashRole as 'customer' | 'vendor');
 
-    const { access, refresh } = api.getTokens();
-    if (access || refresh) {
+    if (hasSession) {
       api.get<{ success: boolean; user: ApiUser }>("/auth/me")
         .then(d => {
           const u = apiUserToFrontend(d.user);
@@ -196,11 +232,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem("sm_user", JSON.stringify(u));
           localStorage.setItem("sm_role", d.user.role);
           if (u.addresses?.length > 0) setSelectedDeliveryAddress(u.addresses[0]);
+          touchLastActive(); // refresh the 30-day countdown on every successful open
         })
         .catch((err: unknown) => {
-          // Only clear session for definitive auth failures (api.ts already
-          // tried the refresh cycle and redirected on total failure). If it's
-          // a transient network error keep the cached user so the UI doesn't
+          // Only wipe the session on a definitive auth failure.
+          // A transient network error keeps the cached user so the UI doesn't
           // flicker to logged-out on a bad connection.
           const isAuthFailure =
             err instanceof Error &&
@@ -208,18 +244,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               err.message.includes("401") ||
               err.message.includes("403"));
           if (isAuthFailure) {
-            clearTokens();
-            setUser(null);
-            setUserRole('customer');
-          } else {
-            // Network error — keep cached user data so user stays logged in
-            const savedUser = localStorage.getItem("sm_user");
-            const savedRole = localStorage.getItem("sm_role");
-            if (savedUser) {
-              try { setUser(JSON.parse(savedUser) as User); } catch { /* ignore */ }
-            }
-            if (savedRole) setUserRole(savedRole as UserRole);
+            hardLogout();
           }
+          // else: network error — keep cached user, try again next open
         })
         .finally(() => setIsLoading(false));
     } else {
@@ -227,6 +254,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserRole('customer');
       setIsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -246,6 +274,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const dashRole = apiUser.role === 'vendor' ? 'vendor' : 'customer';
     setRoleState(dashRole);
     localStorage.setItem("swiftmart_role", dashRole);
+    touchLastActive(); // start / refresh the 30-day inactivity clock on every login
 
     api.get<{ success: boolean; user: ApiUser }>("/auth/me")
       .then(d => {
@@ -269,14 +298,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try { await api.post("/auth/logout"); } catch { /* ignore */ }
-    clearTokens();
-    setUser(null);
-    setUserRole('customer');
-    setRoleState('customer');
-    setSelectedDeliveryAddress(null);
+    hardLogout();
     setReports([]);
-    localStorage.removeItem("swiftmart_cart");
-    localStorage.removeItem("swiftmart_role");
     localStorage.removeItem("sm_user");
     localStorage.removeItem("sm_role");
   };
