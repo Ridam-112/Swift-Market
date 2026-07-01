@@ -75,6 +75,16 @@ async function bootstrap() {
   setAuthConfig(authMode, googleClientId);
 
   createRoot(document.getElementById("root")!).render(<App />);
+
+  // Dismiss the PWA splash screen after first render
+  requestAnimationFrame(() => {
+    const splash = document.getElementById("swm-splash");
+    if (!splash) return;
+    splash.classList.add("swm-hidden");
+    const remove = () => splash.remove();
+    splash.addEventListener("transitionend", remove, { once: true });
+    setTimeout(remove, 600);
+  });
 }
 
 void bootstrap();
