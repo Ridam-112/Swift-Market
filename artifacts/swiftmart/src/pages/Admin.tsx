@@ -6418,8 +6418,14 @@ function HomepageSectionsTab() {
   const [formCategorySlug, setFormCategorySlug] = useState("");
   const [formProductSearch, setFormProductSearch] = useState("");
   const [formProductIds, setFormProductIds] = useState<string[]>([]);
+  const [formProductNames, setFormProductNames] = useState<Record<string, string>>({});
   const [productSearchResults, setProductSearchResults] = useState<ProductSearchResult[]>([]);
   const [productSearchLoading, setProductSearchLoading] = useState(false);
+  // Shop-browser for manual picker
+  const [pickerShops, setPickerShops] = useState<{ _id: string; shopName: string }[]>([]);
+  const [pickerSelectedShopId, setPickerSelectedShopId] = useState<string>("");
+  const [pickerShopProducts, setPickerShopProducts] = useState<ProductSearchResult[]>([]);
+  const [pickerShopLoading, setPickerShopLoading] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -6437,11 +6443,26 @@ function HomepageSectionsTab() {
       .catch(() => {});
   }, []);
 
+  // Load shops once for the manual picker
+  useEffect(() => {
+    api.get<{ success: boolean; shops: { _id: string; shopName: string }[] }>('/shops?status=approved&limit=200')
+      .then(d => setPickerShops(d.shops ?? []))
+      .catch(() => {});
+  }, []);
+
+  function resetPickerState() {
+    setPickerSelectedShopId("");
+    setPickerShopProducts([]);
+    setFormProductSearch("");
+    setProductSearchResults([]);
+  }
+
   function openCreate() {
     setEditingSection(null);
     setFormTitle(""); setFormType("trending"); setFormLayout("scroll");
     setFormLimit(10); setFormCategorySlug(""); setFormProductIds([]);
-    setFormProductSearch(""); setProductSearchResults([]);
+    setFormProductNames({});
+    resetPickerState();
     setShowForm(true);
   }
 
@@ -6451,8 +6472,21 @@ function HomepageSectionsTab() {
     setFormLayout(s.config.layout ?? "scroll");
     setFormLimit(s.config.limit ?? 10);
     setFormCategorySlug(s.config.categorySlug ?? "");
-    setFormProductIds(s.config.productIds ?? []);
-    setFormProductSearch(""); setProductSearchResults([]);
+    const ids = s.config.productIds ?? [];
+    setFormProductIds(ids);
+    // Load names for existing IDs so chips show names not UUIDs
+    if (ids.length > 0) {
+      api.get<{ success: boolean; products: ProductSearchResult[] }>(`/products?ids=${ids.join(',')}&limit=40`)
+        .then(d => {
+          const names: Record<string, string> = {};
+          for (const p of d.products ?? []) names[p._id] = p.name;
+          setFormProductNames(names);
+        })
+        .catch(() => {});
+    } else {
+      setFormProductNames({});
+    }
+    resetPickerState();
     setShowForm(true);
   }
 
@@ -6529,17 +6563,37 @@ function HomepageSectionsTab() {
     }
   }
 
+  // Global search (across all shops)
   useEffect(() => {
     if (!formProductSearch.trim() || formType !== "manual") { setProductSearchResults([]); return; }
     const t = setTimeout(() => {
       setProductSearchLoading(true);
-      api.get<{ success: boolean; products: ProductSearchResult[] }>(`/products?search=${encodeURIComponent(formProductSearch)}&limit=10`)
+      api.get<{ success: boolean; products: ProductSearchResult[] }>(`/products?search=${encodeURIComponent(formProductSearch)}&limit=20`)
         .then(d => setProductSearchResults(d.products ?? []))
         .catch(() => {})
         .finally(() => setProductSearchLoading(false));
     }, 400);
     return () => clearTimeout(t);
   }, [formProductSearch, formType]);
+
+  // Load products for the selected shop in the picker
+  useEffect(() => {
+    if (!pickerSelectedShopId || formType !== "manual") { setPickerShopProducts([]); return; }
+    setPickerShopLoading(true);
+    api.get<{ success: boolean; products: ProductSearchResult[] }>(`/products?shopId=${pickerSelectedShopId}&status=all&limit=100`)
+      .then(d => setPickerShopProducts(d.products ?? []))
+      .catch(() => {})
+      .finally(() => setPickerShopLoading(false));
+  }, [pickerSelectedShopId, formType]);
+
+  function togglePickerProduct(p: ProductSearchResult) {
+    if (formProductIds.includes(p._id)) {
+      setFormProductIds(prev => prev.filter(x => x !== p._id));
+    } else {
+      setFormProductIds(prev => [...prev, p._id]);
+      setFormProductNames(prev => ({ ...prev, [p._id]: p.name }));
+    }
+  }
 
   const sorted = [...sections].sort((a, b) => a.sortOrder - b.sortOrder);
 
@@ -6689,40 +6743,106 @@ function HomepageSectionsTab() {
 
             {/* Manual product picker */}
             {formType === "manual" && (
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Products ({formProductIds.length} selected)</label>
-                <Input
-                  value={formProductSearch}
-                  onChange={e => setFormProductSearch(e.target.value)}
-                  placeholder="Search products to add…"
-                  className="rounded-xl"
-                />
-                {productSearchLoading && <p className="text-xs text-muted-foreground">Searching…</p>}
-                {productSearchResults.length > 0 && (
-                  <div className="neu-inset rounded-xl divide-y divide-border max-h-40 overflow-y-auto">
-                    {productSearchResults.map(p => (
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block">
+                  Select Products <span className="text-primary font-bold">({formProductIds.length} selected)</span>
+                </label>
+
+                {/* ── Step 1: Pick a shop to browse ── */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Browse by shop — pick one to see its products:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {pickerShops.map(sh => (
                       <button
-                        key={p._id}
-                        onClick={() => {
-                          if (!formProductIds.includes(p._id)) setFormProductIds(prev => [...prev, p._id]);
-                          setFormProductSearch(""); setProductSearchResults([]);
-                        }}
-                        className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors text-left"
+                        key={sh._id}
+                        onClick={() => setPickerSelectedShopId(prev => prev === sh._id ? "" : sh._id)}
+                        className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${
+                          pickerSelectedShopId === sh._id
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-muted text-muted-foreground hover:border-primary/50"
+                        }`}
                       >
-                        <span className="text-sm font-medium truncate">{p.name}</span>
-                        <Plus className="w-3.5 h-3.5 text-primary shrink-0 ml-2" />
+                        {sh.shopName}
                       </button>
                     ))}
+                    {pickerShops.length === 0 && <p className="text-xs text-muted-foreground">Loading shops…</p>}
+                  </div>
+                </div>
+
+                {/* ── Step 2: Products from selected shop ── */}
+                {pickerSelectedShopId && (
+                  <div className="neu-inset rounded-xl overflow-hidden">
+                    {pickerShopLoading ? (
+                      <div className="p-4 text-center text-xs text-muted-foreground">Loading products…</div>
+                    ) : pickerShopProducts.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-muted-foreground">No active products in this shop</div>
+                    ) : (
+                      <div className="max-h-52 overflow-y-auto divide-y divide-border">
+                        {pickerShopProducts.map(p => {
+                          const selected = formProductIds.includes(p._id);
+                          return (
+                            <button
+                              key={p._id}
+                              onClick={() => togglePickerProduct(p)}
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${selected ? "bg-primary/5" : "hover:bg-muted/50"}`}
+                            >
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${selected ? "border-primary bg-primary" : "border-muted-foreground/40"}`}>
+                                {selected && <span className="text-[10px] text-primary-foreground font-bold">✓</span>}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{p.name}</p>
+                                {p.category && <p className="text-[11px] text-muted-foreground capitalize">{p.category}</p>}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
+
+                {/* ── OR: Global search ── */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1.5">Or search across all shops:</p>
+                  <Input
+                    value={formProductSearch}
+                    onChange={e => setFormProductSearch(e.target.value)}
+                    placeholder="Type product name…"
+                    className="rounded-xl"
+                  />
+                  {productSearchLoading && <p className="text-xs text-muted-foreground mt-1">Searching…</p>}
+                  {productSearchResults.length > 0 && (
+                    <div className="neu-inset rounded-xl divide-y divide-border max-h-40 overflow-y-auto mt-1">
+                      {productSearchResults.map(p => (
+                        <button
+                          key={p._id}
+                          onClick={() => { togglePickerProduct(p); setFormProductSearch(""); setProductSearchResults([]); }}
+                          className={`w-full flex items-center gap-3 px-3 py-2 transition-colors text-left ${formProductIds.includes(p._id) ? "bg-primary/5" : "hover:bg-muted/50"}`}
+                        >
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${formProductIds.includes(p._id) ? "border-primary bg-primary" : "border-muted-foreground/40"}`}>
+                            {formProductIds.includes(p._id) && <span className="text-[10px] text-primary-foreground font-bold">✓</span>}
+                          </div>
+                          <span className="text-sm font-medium truncate">{p.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Selected chips with real names ── */}
                 {formProductIds.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {formProductIds.map(pid => (
-                      <span key={pid} className="flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-                        {pid.slice(0, 8)}…
-                        <button onClick={() => setFormProductIds(prev => prev.filter(x => x !== pid))}><X className="w-3 h-3" /></button>
-                      </span>
-                    ))}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-1.5">Selected ({formProductIds.length}):</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {formProductIds.map(pid => (
+                        <span key={pid} className="flex items-center gap-1 text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium max-w-[180px]">
+                          <span className="truncate">{formProductNames[pid] ?? pid.slice(0, 8) + "…"}</span>
+                          <button onClick={() => setFormProductIds(prev => prev.filter(x => x !== pid))} className="shrink-0">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
