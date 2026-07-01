@@ -204,14 +204,14 @@ export default function RiderTrackingSheet({ isOpen, onClose, orderId, shopName,
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 z-50"
+            className="fixed inset-0 bg-black/60 z-[60]"
             onClick={onClose}
           />
           <motion.div
             initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 220 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-background rounded-t-3xl overflow-hidden flex flex-col"
-            style={{ height: "88dvh" }}
+            className="fixed bottom-0 left-0 right-0 z-[61] bg-background rounded-t-3xl overflow-hidden flex flex-col"
+            style={{ height: "92dvh" }}
           >
             {/* ─── Header ──────────────────────────────────────────── */}
             <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border flex-shrink-0">
