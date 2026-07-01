@@ -66,6 +66,8 @@ export function HeroBannerSlider() {
   const [banners, setBanners] = useState<ApiBanner[] | null>(null);
   const [, setLocation] = useLocation();
   const viewTrackedRef = useRef(false);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   useEffect(() => {
     fetch("/api/hero-banners")
@@ -119,13 +121,32 @@ export function HeroBannerSlider() {
     );
   }
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    setPaused(true);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    setPaused(false);
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    // Only treat as a horizontal swipe if wider than tall (avoids scroll conflicts)
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      if (dx < 0) next(); else prev();
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
   const sharedContainer = (children: React.ReactNode, slideCount: number) => (
     <div
       className="relative w-full aspect-video rounded-2xl overflow-hidden my-2 select-none"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      onTouchStart={() => setPaused(true)}
-      onTouchEnd={() => setPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {children}
 
