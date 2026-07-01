@@ -3518,12 +3518,12 @@ type ProductForm = {
   stock: string;
   unit: string;
   status: 'active' | 'inactive';
-  imageUrl: string;
+  images: string[];
 };
 
 const emptyProductForm = (): ProductForm => ({
   name: '', description: '', price: '', discountedPrice: '',
-  category: 'groceries', stock: '0', unit: 'piece', status: 'active', imageUrl: '',
+  category: 'groceries', stock: '0', unit: 'piece', status: 'active', images: [],
 });
 
 function ShopsManagementTab() {
@@ -4128,12 +4128,18 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
       stock: String(p.stock),
       unit: p.unit ?? 'piece',
       status: p.status === 'inactive' ? 'inactive' : 'active',
-      imageUrl: p.images?.[0] ?? '',
+      images: p.images ?? [],
     });
     setShowForm(true);
   };
 
+  const MAX_IMAGES = 5;
+
   const handleImageUpload = async (file: File) => {
+    if (form.images.length >= MAX_IMAGES) {
+      toast.error(`Maximum ${MAX_IMAGES} images allowed`);
+      return;
+    }
     setUploadingImage(true);
     try {
       const fd = new FormData();
@@ -4145,10 +4151,14 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
         body: fd,
       });
       const data = await res.json() as { success: boolean; imageUrl: string };
-      if (data.success) setF('imageUrl', data.imageUrl);
+      if (data.success) setF('images', [...form.images, data.imageUrl]);
       else toast.error('Upload failed');
     } catch { toast.error('Upload failed'); }
     finally { setUploadingImage(false); }
+  };
+
+  const handleRemoveImage = (idx: number) => {
+    setF('images', form.images.filter((_, i) => i !== idx));
   };
 
   const handleSave = async () => {
@@ -4164,7 +4174,7 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
       stock: Number(form.stock) || 0,
       unit: form.unit.trim() || 'piece',
       status: form.status,
-      images: form.imageUrl ? [form.imageUrl] : [],
+      images: form.images,
       shopId: shop._id,
     };
     try {
@@ -4250,20 +4260,38 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
             </div>
 
             <div>
-              <label className="text-sm font-semibold block mb-2">Product Image</label>
-              {form.imageUrl ? (
-                <div className="relative w-28 h-28 rounded-2xl overflow-hidden border border-border/50">
-                  <img src={form.imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                  <button className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors" onClick={() => setF('imageUrl', '')}>
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-2xl p-5 cursor-pointer hover:border-primary/60 transition-colors text-center w-28 h-28">
-                  {uploadingImage ? <RefreshCw className="w-6 h-6 text-primary animate-spin" /> : <><ImageIcon className="w-7 h-7 text-muted-foreground/50" /><span className="text-xs text-muted-foreground">Upload</span></>}
-                  <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp" onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0])} disabled={uploadingImage} />
-                </label>
-              )}
+              <label className="text-sm font-semibold block mb-1">Product Photos</label>
+              <p className="text-xs text-muted-foreground mb-3">Upload up to {MAX_IMAGES} photos · First photo is the main image</p>
+              <div className="flex flex-wrap gap-3">
+                {form.images.map((url, idx) => (
+                  <div key={idx} className="relative w-24 h-24 rounded-2xl overflow-hidden border border-border/50 flex-shrink-0">
+                    <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                    {idx === 0 && (
+                      <span className="absolute bottom-0 left-0 right-0 text-[10px] font-bold text-center bg-primary/80 text-primary-foreground py-0.5">Main</span>
+                    )}
+                    <button
+                      className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
+                      onClick={() => handleRemoveImage(idx)}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                {form.images.length < MAX_IMAGES && (
+                  <label className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-border rounded-2xl cursor-pointer hover:border-primary/60 transition-colors text-center w-24 h-24 flex-shrink-0">
+                    {uploadingImage
+                      ? <RefreshCw className="w-5 h-5 text-primary animate-spin" />
+                      : <>
+                          <ImageIcon className="w-6 h-6 text-muted-foreground/50" />
+                          <span className="text-[11px] text-muted-foreground leading-tight">
+                            {form.images.length === 0 ? 'Add photo' : `Add more\n(${form.images.length}/${MAX_IMAGES})`}
+                          </span>
+                        </>
+                    }
+                    <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp" onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0])} disabled={uploadingImage} />
+                  </label>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
