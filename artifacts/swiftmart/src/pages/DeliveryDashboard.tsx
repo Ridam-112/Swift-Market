@@ -530,7 +530,7 @@ export default function DeliveryDashboard() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 10000);
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -554,7 +554,7 @@ export default function DeliveryDashboard() {
     };
 
     pushLocation();
-    const loc = setInterval(pushLocation, 10000);
+    const loc = setInterval(pushLocation, 5000);
     return () => clearInterval(loc);
   }, [orders]);
 

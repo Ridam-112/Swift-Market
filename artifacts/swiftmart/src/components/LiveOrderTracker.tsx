@@ -104,7 +104,7 @@ export function LiveOrderTracker({ orderId, initialStatus, createdAt, onStatusCh
   useEffect(() => {
     // Start polling only for active orders
     if (ACTIVE_STATUSES.has(status)) {
-      intervalRef.current = setInterval(poll, 8000);
+      intervalRef.current = setInterval(poll, 5000);
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);

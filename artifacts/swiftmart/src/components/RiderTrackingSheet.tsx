@@ -186,7 +186,7 @@ export default function RiderTrackingSheet({ isOpen, onClose, orderId, shopName,
     setDistanceM(null);
     geocodedRef.current = false;
     fetchLocation();
-    intervalRef.current = setInterval(fetchLocation, 8000);
+    intervalRef.current = setInterval(fetchLocation, 5000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isOpen, orderId, fetchLocation]);
 
