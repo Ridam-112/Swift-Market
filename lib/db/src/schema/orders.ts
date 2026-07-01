@@ -27,6 +27,7 @@ export const orders = pgTable("orders", {
   razorpayPaymentId: text("razorpay_payment_id"),
   refundedAt: timestamp("refunded_at"),
   cancelReason: text("cancel_reason"),
+  deliveryOtp: text("delivery_otp"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [

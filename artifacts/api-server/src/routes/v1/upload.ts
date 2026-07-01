@@ -44,7 +44,7 @@ router.post(
       res.json({ success: true, imageUrl: url });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
-      res.status(500).json({ success: false, message: `Image upload failed: ${msg}` });
+      res.status(502).json({ success: false, message: msg });
     }
   },
 );
@@ -64,7 +64,7 @@ router.post(
       res.json({ success: true, imageUrl: url });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
-      res.status(500).json({ success: false, message: `Image upload failed: ${msg}` });
+      res.status(502).json({ success: false, message: msg });
     }
   },
 );
@@ -84,7 +84,7 @@ router.post(
       res.json({ success: true, imageUrl: url });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
-      res.status(500).json({ success: false, message: `Image upload failed: ${msg}` });
+      res.status(502).json({ success: false, message: msg });
     }
   },
 );
@@ -104,7 +104,7 @@ router.post(
       res.json({ success: true, fileUrl: url });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
-      res.status(500).json({ success: false, message: `File upload failed: ${msg}` });
+      res.status(502).json({ success: false, message: msg });
     }
   },
 );

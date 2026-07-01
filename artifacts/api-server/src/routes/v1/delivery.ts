@@ -1,5 +1,5 @@
 import { Router, type Response } from "express";
-import { db, deliveryPartners, deliveryChargeRules, deliverySettings, orders, users } from "@workspace/db";
+import { db, deliveryPartners, deliveryChargeRules, deliverySettings, orders, users, shops } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { validateUuidParams } from "../../middlewares/validateUuid.js";
@@ -210,6 +210,21 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response): Promise
   res.json({ success: true, partner: mi(partner) });
 });
 
+// PATCH /delivery/me/location — rider pushes GPS coords (called every ~10s while active)
+router.patch("/me/location", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const { lat, lon } = req.body as { lat: number; lon: number };
+  if (typeof lat !== "number" || typeof lon !== "number") {
+    res.status(400).json({ success: false, message: "lat and lon required" }); return;
+  }
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) { res.status(404).json({ success: false, message: "Not a delivery partner" }); return; }
+  await db.update(deliveryPartners)
+    .set({ currentLat: lat, currentLon: lon, locationUpdatedAt: new Date(), updatedAt: new Date() })
+    .where(eq(deliveryPartners.id, partner.id));
+  res.json({ success: true });
+});
+
 // PATCH /delivery/me/availability — toggle online/offline
 router.patch("/me/availability", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user!.userId;
@@ -228,10 +243,20 @@ router.get("/me/orders", authenticate, async (req: AuthRequest, res: Response): 
   const userId = req.user!.userId;
   const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
   if (!partner) { res.status(404).json({ success: false, message: "Not a delivery partner" }); return; }
-  const assigned = await db.select().from(orders)
+
+  const rows = await db
+    .select({ order: orders, shopAddress: shops.address })
+    .from(orders)
+    .leftJoin(shops, eq(orders.shopId, shops.id))
     .where(eq(orders.deliveryPartnerId, partner.id))
     .orderBy(desc(orders.createdAt));
-  res.json({ success: true, orders: miArr(assigned), partner: mi(partner) });
+
+  const result = rows.map(({ order, shopAddress }) => ({
+    ...mi(order),
+    shopAddress: (shopAddress ?? {}) as Record<string, string>,
+  }));
+
+  res.json({ success: true, orders: result, partner: mi(partner) });
 });
 
 // PATCH /delivery/me/orders/:orderId/status — mark order as out_for_delivery or delivered
@@ -298,6 +323,54 @@ router.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("ord
       });
     } catch { /* ignore */ }
   }
+
+  res.json({ success: true, order: mi(updated!) });
+});
+
+// POST /delivery/me/orders/:orderId/verify-otp — rider enters customer OTP to confirm delivery
+router.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams("orderId"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const orderId = req.params["orderId"] as string;
+  const { otp, confirmCash } = req.body as { otp: string; confirmCash?: boolean };
+
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) { res.status(403).json({ success: false, message: "Not a delivery partner" }); return; }
+
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
+  if (order.deliveryPartnerId !== partner.id) {
+    res.status(403).json({ success: false, message: "This order is not assigned to you" }); return;
+  }
+  if (order.status !== "out_for_delivery") {
+    res.status(400).json({ success: false, message: "Order is not out for delivery" }); return;
+  }
+  if (!order.deliveryOtp || order.deliveryOtp !== String(otp ?? "").trim()) {
+    res.status(400).json({ success: false, message: "Incorrect OTP. Please ask the customer for the correct code." }); return;
+  }
+
+  const isCod = (order.paymentMethod ?? "COD").toUpperCase() === "COD";
+  const paymentStatusUpdate = (isCod && confirmCash) ? { paymentStatus: "paid" } : {};
+
+  await db.update(deliveryPartners).set({
+    ordersDelivered: partner.ordersDelivered + 1,
+    totalEarnings: partner.totalEarnings + (order.deliveryCharge ?? 0),
+    currentOrderId: null,
+    updatedAt: new Date(),
+  }).where(eq(deliveryPartners.id, partner.id));
+
+  const [updated] = await db.update(orders)
+    .set({ status: "delivered", ...paymentStatusUpdate, updatedAt: new Date() })
+    .where(eq(orders.id, orderId))
+    .returning();
+
+  try {
+    await createNotificationLimited(order.customerId, {
+      type: "order_update",
+      title: "Order Delivered! ✅",
+      message: `Order #${orderId.slice(-6).toUpperCase()} has been delivered. Enjoy!`,
+      data: { orderId, url: `/orders/${orderId}` },
+    });
+  } catch { /* ignore */ }
 
   res.json({ success: true, order: mi(updated!) });
 });
