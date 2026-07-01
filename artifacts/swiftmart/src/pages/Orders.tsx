@@ -304,14 +304,20 @@ export default function Orders() {
       </div>
 
       {/* Rider tracking sheet */}
-      {trackingOrderId && (
-        <RiderTrackingSheet
-          isOpen={!!trackingOrderId}
-          onClose={() => setTrackingOrderId(null)}
-          orderId={trackingOrderId}
-          shopName={orders.find(o => o._id === trackingOrderId)?.shopName}
-        />
-      )}
+      {trackingOrderId && (() => {
+        const tracked = orders.find(o => o._id === trackingOrderId);
+        return (
+          <RiderTrackingSheet
+            isOpen={!!trackingOrderId}
+            onClose={() => setTrackingOrderId(null)}
+            orderId={trackingOrderId}
+            shopName={tracked?.shopName}
+            deliveryAddress={tracked?.address
+              ? { line1: tracked.address.line1, city: tracked.address.city, pincode: tracked.address.pincode }
+              : undefined}
+          />
+        );
+      })()}
     </div>
   );
 }
