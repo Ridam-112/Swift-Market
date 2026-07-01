@@ -33,11 +33,11 @@ app.use(helmet({
     useDefaults: false,
     directives: {
       defaultSrc:    ["'self'"],
-      scriptSrc:     ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com"],
+      scriptSrc:     ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com", "https://www.gstatic.com", "https://apis.google.com"],
       styleSrc:      ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc:       ["'self'", "https://fonts.gstatic.com", "data:"],
       imgSrc:        ["'self'", "data:", "blob:", "https:"],
-      connectSrc:    ["'self'", "https:", "wss:"],
+      connectSrc:    ["'self'", "https:", "wss:", "https://www.googleapis.com", "https://firebaseinstallations.googleapis.com", "https://fcmregistrations.googleapis.com"],
       manifestSrc:   ["'self'"],
       workerSrc:     ["'self'", "blob:"],
       frameAncestors:["'none'"],
