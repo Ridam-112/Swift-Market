@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import { api } from "@/lib/api";
@@ -11,16 +11,161 @@ import { AddressCard } from "@/components/AddressCard";
 import { AddressForm } from "@/components/AddressForm";
 import { PincodeSelector } from "@/components/PincodeSelector";
 import { toast } from "sonner";
-import { LogOut, MapPin, Store, Clock, XCircle, Shield, HelpCircle, ChevronDown, ChevronUp, Send, Bike } from "lucide-react";
+import { LogOut, MapPin, Store, Clock, XCircle, Shield, HelpCircle, ChevronDown, ChevronUp, Send, Bike, Bell, BellOff, BellRing, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { cn } from "@/lib/utils";
+import { registerFcmToken, unregisterFcmToken, getFcmState } from "@/lib/fcm";
 
 const SUPPORTED_PINCODES = [
   { code: "733101", city: "Balurghat" },
   { code: "733103", city: "Balurghat" },
 ];
+
+type FcmPermState = "subscribed" | "granted" | "denied" | "default" | "unsupported" | "loading";
+
+function NotificationSettings() {
+  const [permState, setPermState] = useState<FcmPermState>("loading");
+  const [swActive, setSwActive] = useState<boolean | null>(null);
+  const [tokenPresent, setTokenPresent] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [testBusy, setTestBusy] = useState(false);
+
+  const refresh = useCallback(async () => {
+    const state = await getFcmState();
+    setPermState(state);
+
+    // Check SW
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration("/").catch(() => undefined);
+      setSwActive(!!(reg?.active));
+    }
+
+    // Check token in backend
+    try {
+      const d = await api.get<{ success: boolean; hasToken: boolean; platform?: string; lastSeen?: string }>("/fcm/my-token");
+      setTokenPresent(d.hasToken);
+    } catch {
+      setTokenPresent(null);
+    }
+  }, []);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const handleEnable = async () => {
+    setBusy(true);
+    try {
+      const result = await registerFcmToken();
+      if (result.success) {
+        toast.success("Notifications enabled!");
+        await refresh();
+      } else {
+        toast.error(result.error);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDisable = async () => {
+    setBusy(true);
+    try {
+      await unregisterFcmToken();
+      toast.success("Notifications disabled");
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleTestPush = async () => {
+    setTestBusy(true);
+    try {
+      const d = await api.post<{ success: boolean; message?: string; sent?: number; failed?: number; errors?: Array<{ code?: string; message?: string }> }>("/fcm/test", {});
+      if (d.success) {
+        toast.success(d.message ?? `Test push sent to ${d.sent} device(s)!`);
+      } else {
+        const errDetail = d.errors?.map(e => e.code ?? e.message).join(", ");
+        toast.error((d.message ?? "Push failed") + (errDetail ? `: ${errDetail}` : ""));
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Test push failed");
+    } finally {
+      setTestBusy(false);
+    }
+  };
+
+  const StatusRow = ({ label, ok, value }: { label: string; ok: boolean | null; value: string }) => (
+    <div className="flex items-center justify-between text-sm py-1.5">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={cn("flex items-center gap-1.5 font-medium text-xs", ok === true ? "text-green-600 dark:text-green-400" : ok === false ? "text-red-500" : "text-muted-foreground")}>
+        {ok === true ? <CheckCircle2 className="w-3.5 h-3.5" /> : ok === false ? <AlertCircle className="w-3.5 h-3.5" /> : null}
+        {value}
+      </span>
+    </div>
+  );
+
+  const permOk = permState === "granted" || permState === "subscribed";
+  const permValue = permState === "loading" ? "Checking…"
+    : (permState === "granted" || permState === "subscribed") ? "Granted"
+    : permState === "denied" ? "Blocked"
+    : permState === "default" ? "Not asked"
+    : "Unsupported";
+
+  return (
+    <section className="bg-card p-5 rounded-3xl neu-card space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center text-primary neu-inset">
+          <BellRing className="w-5 h-5" />
+        </div>
+        <h3 className="font-bold text-lg">Push Notifications</h3>
+      </div>
+
+      {/* Status rows */}
+      <div className="bg-background rounded-2xl neu-inset px-4 py-2 divide-y divide-border/40">
+        <StatusRow label="Browser permission" ok={permState === "loading" ? null : permOk} value={permValue} />
+        <StatusRow label="Service worker" ok={swActive} value={swActive === null ? "Checking…" : swActive ? "Active" : "Not registered"} />
+        <StatusRow label="FCM token in DB" ok={tokenPresent} value={tokenPresent === null ? "Checking…" : tokenPresent ? "Saved ✓" : "Not saved"} />
+      </div>
+
+      {/* Actions */}
+      <div className="space-y-2">
+        {permState === "denied" ? (
+          <div className="text-xs text-muted-foreground bg-muted/50 rounded-xl p-3">
+            Notifications are blocked in your browser settings. Go to <strong>browser Settings → Notifications → swiftmart.space</strong> and set it to Allow, then refresh.
+          </div>
+        ) : permState !== "unsupported" && (
+          permOk ? (
+            <Button variant="outline" className="w-full rounded-xl shadow-none neu-inset border-none" onClick={handleDisable} disabled={busy}>
+              {busy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <BellOff className="w-4 h-4 mr-2" />}
+              {busy ? "Disabling…" : "Disable Notifications"}
+            </Button>
+          ) : (
+            <Button className="w-full rounded-xl shadow-none" onClick={handleEnable} disabled={busy}>
+              {busy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Bell className="w-4 h-4 mr-2" />}
+              {busy ? "Enabling…" : "Enable Notifications"}
+            </Button>
+          )
+        )}
+
+        {permOk && tokenPresent && (
+          <Button variant="outline" className="w-full rounded-xl shadow-none neu-inset border-none" onClick={handleTestPush} disabled={testBusy}>
+            {testBusy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+            {testBusy ? "Sending…" : "Send Test Push"}
+          </Button>
+        )}
+
+        {permOk && !tokenPresent && tokenPresent !== null && (
+          <Button variant="outline" className="w-full rounded-xl shadow-none neu-inset border-none" onClick={handleEnable} disabled={busy}>
+            {busy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Bell className="w-4 h-4 mr-2" />}
+            {busy ? "Re-registering…" : "Re-register Token"}
+          </Button>
+        )}
+      </div>
+    </section>
+  );
+}
 
 export default function Profile() {
   const { user, logout, updateUser, addAddress, deleteAddress, updateAddress, setRole, role, isAdmin } = useAuth();
@@ -317,6 +462,9 @@ export default function Profile() {
           </Link>
         </section>
       )}
+
+      {/* Notifications */}
+      <NotificationSettings />
 
       {/* Help & Complaints */}
       <section className="bg-card p-5 rounded-3xl neu-card space-y-4">

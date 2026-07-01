@@ -80,7 +80,9 @@ export type FcmResult =
 
 /**
  * Called on every page load for users who have already granted notification permission.
- * Re-sends FCM_INIT to the existing service worker so background messages keep working.
+ * 1. Re-sends FCM_INIT to the existing SW so background messages keep working.
+ * 2. Gets/refreshes the FCM token and saves it to the backend — covers users who
+ *    granted permission before the FCM migration (they never called registerFcmToken).
  */
 export async function initFcmOnLoad(): Promise<void> {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
@@ -93,12 +95,53 @@ export async function initFcmOnLoad(): Promise<void> {
     return;
   }
 
+  const supported = await isSupported().catch(() => false);
+  if (!supported) {
+    console.log("[FCM] initFcmOnLoad: Firebase Messaging not supported — skipping");
+    return;
+  }
+
   try {
-    // Register (or get existing) firebase-messaging-sw.js
     const reg = await navigator.serviceWorker.register(SW_PATH, { scope: "/" });
     await navigator.serviceWorker.ready;
-    console.log("[FCM] initFcmOnLoad: SW registered/found:", reg.scope, "active:", !!reg.active);
+    console.log("[FCM] initFcmOnLoad: SW registered/found:", reg.scope, "| active:", !!reg.active);
+
+    // Always send FCM_INIT so SW can handle background messages
     await sendConfigToSW(reg);
+
+    // Also get/refresh the FCM token and save to backend silently
+    const app = getFirebaseAppSafe();
+    if (!app) return;
+
+    const vapidKey = await fetchVapidKey();
+    if (!vapidKey) {
+      console.warn("[FCM] initFcmOnLoad: No VAPID key from server — cannot refresh token");
+      return;
+    }
+
+    // Give SW 300ms after FCM_INIT to initialise before getToken
+    await new Promise(r => setTimeout(r, 300));
+
+    try {
+      const messaging = getMessaging(app);
+      const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: reg });
+      if (token) {
+        console.log("[FCM] initFcmOnLoad: Token refreshed:", token.substring(0, 20) + "...");
+        // Save silently — don't block or throw on failure
+        await api.post("/fcm/register-token", {
+          token,
+          platform: /android/i.test(navigator.userAgent) ? "android"
+                  : /iphone|ipad|ipod/i.test(navigator.userAgent) ? "ios" : "web",
+        }).catch((err: unknown) => {
+          console.warn("[FCM] initFcmOnLoad: token save failed (non-fatal):", err);
+        });
+        console.log("[FCM] initFcmOnLoad: Token saved to backend ✅");
+      } else {
+        console.warn("[FCM] initFcmOnLoad: getToken returned empty token");
+      }
+    } catch (tokenErr) {
+      console.warn("[FCM] initFcmOnLoad: getToken failed (non-fatal):", tokenErr);
+    }
   } catch (err) {
     console.error("[FCM] initFcmOnLoad: error:", err);
   }
