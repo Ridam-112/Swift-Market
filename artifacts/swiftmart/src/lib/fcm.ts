@@ -148,9 +148,45 @@ export async function initFcmOnLoad(): Promise<void> {
 }
 
 /**
+ * Shows a real system notification via the active service worker registration.
+ * This is required for foreground messages because Firebase's onMessage()
+ * intentionally suppresses the push notification when the app tab is open.
+ * Using registration.showNotification() bypasses that suppression.
+ */
+async function showSystemNotification(
+  title: string,
+  body: string,
+  data: Record<string, string> = {}
+): Promise<void> {
+  if (Notification.permission !== "granted") return;
+  if (!("serviceWorker" in navigator)) return;
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const url = data["url"] ?? "/notifications";
+    const fullUrl = url.startsWith("http")
+      ? url
+      : window.location.origin + (url.startsWith("/") ? url : "/" + url);
+
+    await reg.showNotification(title, {
+      body,
+      icon:               "/icon-192.png",
+      badge:              "/logo.png",
+      tag:                data["type"] ?? "swiftmart-fg",
+      requireInteraction: false,
+      data:               { ...data, url: fullUrl },
+    });
+    console.log("[FCM] System notification shown via SW registration");
+  } catch (err) {
+    console.warn("[FCM] showSystemNotification failed (non-fatal):", err);
+  }
+}
+
+/**
  * Sets up an onMessage() listener for foreground FCM messages.
  * Firebase calls this (not the SW) when the app is open in the browser.
- * Returns a cleanup function — call it on component unmount.
+ * Shows BOTH a real system notification panel entry AND calls onReceive for
+ * the in-app toast. Returns a cleanup function — call it on component unmount.
  */
 export function setupFcmForegroundListener(
   onReceive: (title: string, body: string) => void
@@ -167,6 +203,12 @@ export function setupFcmForegroundListener(
       console.log("[FCM] Foreground message received:", JSON.stringify(payload));
       const title = payload.notification?.title ?? (payload.data?.["title"] as string) ?? "SwiftMart";
       const body  = payload.notification?.body  ?? (payload.data?.["body"]  as string) ?? "";
+      const data  = (payload.data ?? {}) as Record<string, string>;
+
+      // 1. Real system notification in the device/browser notification panel
+      void showSystemNotification(title, body, data);
+
+      // 2. In-app toast + sound (keeps UX consistent when tab is focused)
       onReceive(title, body);
     });
     console.log("[FCM] Foreground message listener active");

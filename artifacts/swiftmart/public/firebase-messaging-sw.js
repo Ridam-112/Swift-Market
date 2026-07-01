@@ -40,14 +40,20 @@ function initFirebase(config) {
       const title = payload.notification?.title ?? payload.data?.title ?? "SwiftMart";
       const body  = payload.notification?.body  ?? payload.data?.body  ?? "";
 
+      // Build the deep-link URL for notification click
+      const rawUrl = payload.data?.url ?? "/notifications";
+      const fullUrl = rawUrl.startsWith("http")
+        ? rawUrl
+        : self.location.origin + (rawUrl.startsWith("/") ? rawUrl : "/" + rawUrl);
+
       // Show the system notification
       self.registration.showNotification(title, {
         body,
-        icon:               "/logo.png",
+        icon:               "/icon-192.png",
         badge:              "/logo.png",
         tag:                payload.data?.type ?? "swiftmart",
         requireInteraction: false,
-        data:               payload.data ?? {},
+        data:               { ...(payload.data ?? {}), url: fullUrl },
       });
 
       // Also post PUSH_RECEIVED to any open app windows so foreground toast fires
