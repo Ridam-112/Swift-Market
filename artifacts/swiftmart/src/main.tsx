@@ -40,10 +40,15 @@ async function bootstrap() {
       firebaseConfig?: FirebaseConfig | null;
       servicePincodes?: Array<{ pincode: string; area: string; state: string }>;
     };
-    console.log("[SwiftMart] /api/auth/config bootstrap response:", {
+    const fc = data.firebaseConfig;
+    console.log("[SwiftMart] /api/auth/config bootstrap:", {
       authMode: data.authMode,
       googleClientIdPresent: !!data.googleClientId,
-      googleClientIdLength: data.googleClientId?.length ?? 0,
+      firebaseConfigPresent: !!fc,
+      firebaseApiKey: fc?.apiKey ? fc.apiKey.substring(0, 10) + "..." : "MISSING",
+      firebaseProjectId: fc?.projectId ?? "MISSING",
+      firebaseAppId: fc?.appId ? fc.appId.substring(0, 25) + "..." : "MISSING",
+      firebaseMessagingSenderId: fc?.messagingSenderId ?? "MISSING",
     });
     authMode = data.authMode ?? "otp";
     googleClientId = data.googleClientId ?? "";
@@ -52,13 +57,18 @@ async function bootstrap() {
       setServicePincodes(data.servicePincodes);
     }
 
-    if (data.firebaseConfig?.apiKey) {
-      initFirebase({
-        ...data.firebaseConfig,
-        messagingSenderId: data.firebaseConfig.messagingSenderId ?? "",
-      });
+    if (fc?.apiKey) {
+      const config = {
+        ...fc,
+        messagingSenderId: fc.messagingSenderId ?? "",
+      };
+      initFirebase(config);
+      console.log("[SwiftMart] Firebase initialised ✅ projectId:", config.projectId, "| messagingSenderId:", config.messagingSenderId);
+    } else {
+      console.warn("[SwiftMart] Firebase config missing from /api/auth/config — push notifications will not work");
     }
-  } catch {
+  } catch (err) {
+    console.error("[SwiftMart] bootstrap /api/auth/config error:", err);
     // non-fatal — falls back to OTP-only mode
   }
 
