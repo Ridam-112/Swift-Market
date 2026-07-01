@@ -117,7 +117,7 @@ export function HeroBannerSlider() {
 
   if (banners === null) {
     return (
-      <div className="w-full aspect-video rounded-2xl bg-muted animate-pulse my-2" />
+      <div className="w-full aspect-video max-h-64 rounded-2xl bg-muted animate-pulse my-2" />
     );
   }
 
@@ -142,7 +142,7 @@ export function HeroBannerSlider() {
 
   const sharedContainer = (children: React.ReactNode, slideCount: number) => (
     <div
-      className="relative w-full aspect-video rounded-2xl overflow-hidden my-2 select-none"
+      className="relative w-full aspect-video max-h-64 rounded-2xl overflow-hidden my-2 select-none"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={handleTouchStart}
