@@ -270,9 +270,14 @@ router.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("ord
   const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
   if (!partner) { res.status(403).json({ success: false, message: "Not a delivery partner" }); return; }
 
-  const allowed = ["out_for_delivery", "delivered"];
+  const allowed = ["out_for_delivery"];
   if (!allowed.includes(status)) {
-    res.status(400).json({ success: false, message: "Delivery partners can only set out_for_delivery or delivered" });
+    res.status(400).json({
+      success: false,
+      message: status === "delivered"
+        ? "To mark an order as delivered, enter the customer's delivery OTP."
+        : "Delivery partners can only set out_for_delivery via this endpoint.",
+    });
     return;
   }
 
