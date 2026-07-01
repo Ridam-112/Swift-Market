@@ -2,7 +2,7 @@ import { Router, type Response } from "express";
 import { db, notifications, adminBroadcasts, users } from "@workspace/db";
 import { eq, and, desc, count } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
-import { createNotificationLimited, sendPushToUsers } from "../../utils/notification.js";
+import { createNotificationLimited, sendPushToUsers, trimNotificationsForUser } from "../../utils/notification.js";
 import { miArr } from "../../utils/mapId.js";
 
 const router = Router();
@@ -11,7 +11,7 @@ const A = requireRole("admin", "super_admin");
 // GET /api/notifications — current user's notifications with pagination (L7)
 router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const uid = req.user!.userId;
-  const limit = Math.min(parseInt((req.query["limit"] as string) ?? "20"), 50);
+  const limit = Math.min(parseInt((req.query["limit"] as string) ?? "10"), 10);
   const page = Math.max(parseInt((req.query["page"] as string) ?? "1"), 1);
   const offset = (page - 1) * limit;
 
@@ -122,6 +122,32 @@ router.post("/broadcast", authenticate, A, async (req: AuthRequest, res: Respons
 router.get("/broadcasts", authenticate, A, async (_req: AuthRequest, res: Response): Promise<void> => {
   const broadcasts = await db.select().from(adminBroadcasts).orderBy(desc(adminBroadcasts.createdAt)).limit(50);
   res.json({ success: true, broadcasts: miArr(broadcasts) });
+});
+
+// POST /api/notifications/admin/cleanup — admin: trim all users to 10-notification cap
+router.post("/admin/cleanup", authenticate, A, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const allUsers = await db
+      .select({ userId: notifications.userId, cnt: count() })
+      .from(notifications)
+      .groupBy(notifications.userId)
+      .having(({ cnt }) => cnt > 10);
+
+    if (allUsers.length === 0) {
+      res.json({ success: true, message: "All users already within the 10-notification limit.", trimmed: 0 });
+      return;
+    }
+
+    await Promise.all(allUsers.map(({ userId }) => trimNotificationsForUser(userId)));
+
+    res.json({
+      success: true,
+      message: `Trimmed notifications for ${allUsers.length} user(s) to the 10-item cap.`,
+      trimmed: allUsers.length,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Cleanup failed", error: String(err) });
+  }
 });
 
 export default router;
