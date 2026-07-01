@@ -440,6 +440,28 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
     }
   } catch { /* ignore vendor notification errors */ }
 
+  // Notify all admins so they can assign a delivery partner
+  try {
+    const adminUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(or(eq(users.role, "admin"), eq(users.role, "super_admin")));
+
+    const shortId = createdOrder.id.slice(-6).toUpperCase();
+    const shopName = shop?.name ?? "a shop";
+
+    await Promise.all(
+      adminUsers.map(admin =>
+        createNotificationLimited(admin.id, {
+          type: "order_update",
+          title: "🛵 New Order — Assign Rider",
+          message: `Order #${shortId} from ${shopName} needs a delivery partner. Tap to assign.`,
+          data: { orderId: createdOrder.id, url: "/admin?tab=orders" },
+        }).catch(() => {})
+      )
+    );
+  } catch { /* ignore admin notification errors */ }
+
   res.status(201).json({ success: true, order: mi(createdOrder) });
 });
 
