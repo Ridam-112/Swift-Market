@@ -171,6 +171,10 @@ export default function AddProduct() {
       toast.error("Please fill all required fields and upload at least one image");
       return;
     }
+    if (discountedPrice && Number(discountedPrice) > 0 && Number(discountedPrice) >= Number(price)) {
+      toast.error("Sale price must be less than MRP");
+      return;
+    }
     if (!shopId) { toast.error("Could not find your shop. Please refresh and try again."); return; }
 
     setSaving(true);

@@ -39,8 +39,13 @@ router.post(
       res.status(400).json({ success: false, message: "No file uploaded" });
       return;
     }
-    const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/products");
-    res.json({ success: true, imageUrl: url });
+    try {
+      const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/products");
+      res.json({ success: true, imageUrl: url });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      res.status(502).json({ success: false, message: msg });
+    }
   },
 );
 
@@ -54,8 +59,13 @@ router.post(
       res.status(400).json({ success: false, message: "No file uploaded" });
       return;
     }
-    const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/banners");
-    res.json({ success: true, imageUrl: url });
+    try {
+      const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/banners");
+      res.json({ success: true, imageUrl: url });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      res.status(502).json({ success: false, message: msg });
+    }
   },
 );
 
@@ -69,8 +79,13 @@ router.post(
       res.status(400).json({ success: false, message: "No file uploaded" });
       return;
     }
-    const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/shops");
-    res.json({ success: true, imageUrl: url });
+    try {
+      const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/shops");
+      res.json({ success: true, imageUrl: url });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      res.status(502).json({ success: false, message: msg });
+    }
   },
 );
 
@@ -84,11 +99,13 @@ router.post(
       res.status(400).json({ success: false, message: "No file uploaded" });
       return;
     }
-    // Use "auto" so Cloudinary accepts both image files (jpg/png/webp)
-    // and PDF documents. Without this, PDFs fail silently at Cloudinary
-    // even though multer allows them.
-    const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/certificates", "auto");
-    res.json({ success: true, fileUrl: url });
+    try {
+      const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/certificates", "auto");
+      res.json({ success: true, fileUrl: url });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      res.status(502).json({ success: false, message: msg });
+    }
   },
 );
 

@@ -75,6 +75,32 @@ router.post("/unregister-all", authenticate, async (req: AuthRequest, res: Respo
   res.json({ success: true });
 });
 
+// GET /api/fcm/my-token — check if the current user has an active FCM token
+router.get("/my-token", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const rows = await db
+      .select({ token: fcmTokens.token, platform: fcmTokens.platform, lastSeenAt: fcmTokens.lastSeenAt, isActive: fcmTokens.isActive })
+      .from(fcmTokens)
+      .where(and(eq(fcmTokens.userId, userId), eq(fcmTokens.isActive, true)))
+      .limit(5);
+
+    res.json({
+      success: true,
+      hasToken: rows.length > 0,
+      count: rows.length,
+      tokens: rows.map((r: typeof rows[number]) => ({
+        platform: r.platform,
+        lastSeen: r.lastSeenAt,
+        tokenPreview: r.token.substring(0, 20) + "...",
+      })),
+    });
+  } catch (err) {
+    logger.error({ err }, "[FCM] my-token error");
+    res.status(500).json({ success: false, message: "Failed to check token" });
+  }
+});
+
 // POST /api/fcm/test — send a test FCM push to yourself
 router.post("/test", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {

@@ -23,6 +23,7 @@ import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { useAuth } from "@/hooks/useAuth";
 import { setupPushMessageListener, playNotificationSound } from "@/lib/pushNotifications";
+import { initFcmOnLoad, setupFcmForegroundListener } from "@/lib/fcm";
 
 import { MapPinOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -382,9 +383,29 @@ function Router() {
 function PushManager() {
   const { user } = useAuth();
 
+  // On every page load: re-send FCM_INIT to the SW so background messages work
+  useEffect(() => {
+    if (!user) return;
+    console.log("[PushManager] User logged in — initialising FCM for page load");
+    void initFcmOnLoad();
+  }, [user]);
+
+  // Firebase foreground message handler (app open in browser tab)
+  useEffect(() => {
+    if (!user) return;
+    const cleanup = setupFcmForegroundListener((title, body) => {
+      console.log("[PushManager] FCM foreground message — showing toast:", title, body);
+      playNotificationSound();
+      toast(title, { description: body, duration: 5000 });
+    });
+    return cleanup;
+  }, [user]);
+
+  // Legacy VAPID push message listener (sw.js path — kept as fallback)
   useEffect(() => {
     if (!user) return;
     const cleanup = setupPushMessageListener((title, body) => {
+      console.log("[PushManager] VAPID push message — showing toast:", title, body);
       playNotificationSound();
       toast(title, { description: body, duration: 5000 });
     });

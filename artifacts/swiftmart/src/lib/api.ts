@@ -63,7 +63,10 @@ async function request<T>(path: string, options: RequestInit = {}, retry = true)
 
   const res = await fetch(`${BASE}${path}`, { ...options, headers });
 
-  if (res.status === 401 && retry) {
+  // Only attempt token-refresh + redirect for authenticated calls (not login/signup endpoints).
+  // Auth endpoints return 401 to mean "wrong credentials", not "session expired".
+  const isAuthEndpoint = path.startsWith("/auth/");
+  if (res.status === 401 && retry && !isAuthEndpoint) {
     const newToken = await refreshTokens();
     if (newToken) return request<T>(path, options, false);
     clearTokens();

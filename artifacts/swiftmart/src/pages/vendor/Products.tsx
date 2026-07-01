@@ -16,6 +16,7 @@ interface ApiProduct {
   name: string;
   category: string;
   price: number;
+  discountedPrice?: number;
   unit?: string;
   image?: string;
   images?: string[];
@@ -225,7 +226,16 @@ export default function VendorProducts() {
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                    <span className="text-primary font-bold">{formatINR(product.price)}</span>
+                    <span className="flex items-baseline gap-1.5">
+                      <span className="text-primary font-bold">
+                        {formatINR(product.discountedPrice != null && product.discountedPrice < product.price
+                          ? product.discountedPrice
+                          : product.price)}
+                      </span>
+                      {product.discountedPrice != null && product.discountedPrice < product.price && (
+                        <span className="text-muted-foreground line-through text-xs">{formatINR(product.price)} MRP</span>
+                      )}
+                    </span>
                     <span className="text-muted-foreground capitalize">{product.category}</span>
                     <span className={cn("font-medium", (product.stock ?? 0) < 20 ? "text-destructive" : "text-emerald-500")}>
                       Stock: {product.stock ?? 0}

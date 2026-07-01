@@ -35,7 +35,7 @@ export const categories: Category[] = [
   },
   {
     id: "dairy",
-    name: "Dairy & Eggs",
+    name: "Dairy & Ice Creams",
     emoji: "🥛",
     color: "hsl(200, 70%, 55%)",
     icon: "milk",

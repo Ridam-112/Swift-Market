@@ -2,9 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import HandwritingBackground from "@/components/HandwritingBackground";
-import { signInWithGoogleGIS } from "@/lib/googleGIS";
-import { getGoogleClientId, setAuthConfig } from "@/lib/authConfig";
-import { startGoogleSignIn, getGoogleRedirectResult, initFirebase } from "@/lib/firebase";
+import { setAuthConfig } from "@/lib/authConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,11 +10,6 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ArrowLeft, Eye, EyeOff, Mail, Lock, User, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-/** True on phones/tablets — GIS One Tap does not work on mobile browsers */
-const isMobileBrowser = () =>
-  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-  (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
 
 // ─── Step machine ─────────────────────────────────────────────────────────────
 // email          → enter email → check if account exists
@@ -109,7 +102,7 @@ function PasswordInput({
 }
 
 export default function Auth() {
-  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, forgotPassword, resetPassword, signInWithGoogle } = useAuth();
+  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, forgotPassword, resetPassword } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
 
@@ -121,44 +114,18 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [resetToken, setResetToken] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [resolvedClientId, setResolvedClientId] = useState<string | null>(null);
   const [configFetching, setConfigFetching] = useState(true);
 
-  // ─── Bootstrap auth config (Google Client ID + Firebase) ────────────────────
+  // ─── Bootstrap auth config ────────────────────────────────────────────────────
   useEffect(() => {
     setConfigFetching(true);
     fetch("/api/auth/config")
       .then(r => r.json())
-      .then((d: { authMode?: string; googleClientId?: string; firebaseConfig?: { apiKey: string; authDomain: string; projectId: string; appId: string; messagingSenderId?: string } }) => {
-        const clientId = d.googleClientId ?? "";
-        setAuthConfig((d.authMode ?? "both") as Parameters<typeof setAuthConfig>[0], clientId);
-        setResolvedClientId(clientId || null);
-        if (d.firebaseConfig?.apiKey) {
-          initFirebase({
-            ...d.firebaseConfig,
-            messagingSenderId: d.firebaseConfig.messagingSenderId ?? "",
-          });
-        }
+      .then((d: { authMode?: string; googleClientId?: string }) => {
+        setAuthConfig((d.authMode ?? "both") as Parameters<typeof setAuthConfig>[0], d.googleClientId ?? "");
       })
       .catch(() => {})
       .finally(() => setConfigFetching(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ─── Handle Firebase redirect result (mobile Google sign-in) ───────────────
-  useEffect(() => {
-    setGoogleLoading(true);
-    getGoogleRedirectResult()
-      .then(async (idToken) => {
-        if (!idToken) return;
-        const authResult = await signInWithGoogle(idToken);
-        setLocation(authResult.needsProfile ? "/complete-profile" : "/");
-      })
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : "Google sign-in failed";
-        toast.error(msg);
-      })
-      .finally(() => setGoogleLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -244,54 +211,20 @@ export default function Auth() {
     }
   };
 
-  // ─── Google sign-in — GIS One Tap (desktop) or Firebase redirect (mobile) ───
-  const handleGoogleSignIn = async () => {
-    // On mobile browsers, GIS One Tap fails to load — use Firebase redirect instead
-    if (isMobileBrowser()) {
-      try {
-        setGoogleLoading(true);
-        await startGoogleSignIn(); // navigates away — page reloads after Google auth
-        // Execution continues only if redirect was blocked (shouldn't normally happen)
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Google sign-in failed";
-        toast.error(msg);
-        setGoogleLoading(false);
-      }
-      return;
-    }
-
-    // Desktop: use GIS One Tap
-    let clientId = resolvedClientId ?? getGoogleClientId();
-    if (!clientId || clientId === "placeholder") {
-      setConfigFetching(true);
-      try {
-        const resp = await fetch("/api/auth/config");
-        const d = await resp.json() as { authMode?: string; googleClientId?: string };
-        clientId = d.googleClientId ?? "";
-        setAuthConfig((d.authMode ?? "both") as Parameters<typeof setAuthConfig>[0], clientId);
-        setResolvedClientId(clientId || null);
-      } catch {
-        toast.error("Could not load Google sign-in config. Please try again.");
-        return;
-      } finally {
-        setConfigFetching(false);
-      }
-    }
-    if (!clientId) {
-      toast.error("Google sign-in is not configured on this server.");
-      return;
-    }
+  // ─── Google sign-in — server-side OAuth2 redirect ────────────────────────────
+  // Works everywhere: desktop browser, mobile browser, Capacitor WebView.
+  // The server at /api/auth/google/redirect builds the Google consent URL and
+  // redirects the user there. Google returns to /auth/google/callback which
+  // calls /api/auth/google/exchange to complete the flow.
+  const handleGoogleSignIn = () => {
     setGoogleLoading(true);
-    try {
-      const credential = await signInWithGoogleGIS(clientId);
-      const authResult = await signInWithGoogle(credential);
-      setLocation(authResult.needsProfile ? "/complete-profile" : "/");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Google sign-in failed";
-      toast.error(msg);
-    } finally {
-      setGoogleLoading(false);
-    }
+    // In Capacitor the WebView serves from capacitor://localhost — relative paths
+    // hit the WebView assets, not the API server. Use VITE_API_URL for the base.
+    const isCapacitor = typeof window !== "undefined" && window.location.protocol === "capacitor:";
+    const base = (isCapacitor && import.meta.env.VITE_API_URL)
+      ? (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
+      : "";
+    window.location.href = `${base}/api/auth/google/redirect`;
   };
 
   // ─── Forgot password ─────────────────────────────────────────────────────────

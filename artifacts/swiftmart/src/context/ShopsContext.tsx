@@ -95,7 +95,7 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
   // This prevents a blank page while auth resolves on fresh PWA installs.
   useEffect(() => {
     fetchShops(true);
-    const interval = setInterval(() => fetchShops(false), 30000);
+    const interval = setInterval(() => fetchShops(false), 5000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

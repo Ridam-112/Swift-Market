@@ -61,9 +61,11 @@ export function CartItemRow({ item }: { item: CartItem }) {
         )}
         <div className="flex items-baseline gap-1.5 mt-1">
           <span className="font-bold text-primary">
-            {formatINR(product.discountedPrice ?? product.price)}
+            {formatINR(product.discountedPrice != null && product.discountedPrice < product.price
+              ? product.discountedPrice
+              : product.price)}
           </span>
-          {product.discountedPrice && product.discountedPrice < product.price && (
+          {product.discountedPrice != null && product.discountedPrice < product.price && (
             <span className="text-xs text-muted-foreground line-through">
               {formatINR(product.price)}
             </span>

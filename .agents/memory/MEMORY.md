@@ -7,4 +7,7 @@
 - [FCM Push Migration](fcm-migration.md) — Replaced VAPID/web-push with Firebase Cloud Messaging; 3 new secrets required before push works
 - [Replit migration secrets](swiftmart-replit-migration.md) — All secrets needed to run on Replit; run scripts/check-secrets.mjs to verify; duplicate artifact workflows fail on port conflicts (expected, main workflow owns ports)
 - [Password Auth Migration](password-auth.md) — OTP removed; mobile+password+Google; existing OTP users preserved with needsPasswordSetup flow; token-based reset logged to console in dev
-- [BetterAuth bypass](betterauth-bypass.md) — authClient (better-auth) removed; all auth calls go directly to app's own API endpoints; Google uses openGoogleSigninWindow popup
+- [Google OAuth2 server-side flow](google-oauth2-flow.md) — Firebase/GIS removed from Google login; pure server-side OAuth2 redirect; firebase.ts kept only for FCM
+- [Resend email integration](resend-email.md) — Password reset emails via Resend; sender domain swiftmart.space verified; RESEND_FROM_EMAIL env var set
+- [Delivery Map & OTP](delivery-map-otp.md) — In-app OSRM routing (blue line, no API key), Carto Voyager tiles, 4-digit delivery OTP verified by rider, customer sees OTP only when out_for_delivery
+- [Rider Live Tracking](rider-tracking.md) — currentLat/currentLon/locationUpdatedAt on deliveryPartners; rider pushes GPS every 10s when out_for_delivery; customer sees live map via GET /orders/:id/rider-location; pulsing 🛵 DivIcon

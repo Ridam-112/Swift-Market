@@ -14,7 +14,7 @@ export const MASTER_CATEGORIES: CategorySeed[] = [
   { name: "Grocery", slug: "grocery", emoji: "🛒", color: "hsl(35, 90%, 55%)", subcategories: ["Rice", "Atta", "Dal", "Oil", "Spices", "Biscuits", "Packaged Foods", "Pulses", "Daily Needs"] },
   { name: "Vegetables", slug: "vegetables", emoji: "🥦", color: "hsl(140, 60%, 45%)", subcategories: ["Leafy Greens", "Root Vegetables", "Gourds", "Seasonal Vegetables", "Herbs"] },
   { name: "Fruits", slug: "fruits", emoji: "🍎", color: "hsl(10, 80%, 55%)", subcategories: ["Seasonal Fruits", "Tropical Fruits", "Citrus", "Berries", "Dry Fruits"] },
-  { name: "Dairy & Eggs", slug: "dairy", emoji: "🥛", color: "hsl(200, 70%, 55%)", subcategories: ["Milk", "Curd", "Paneer", "Butter", "Cheese", "Eggs", "Ghee"] },
+  { name: "Dairy & Ice Creams", slug: "dairy", emoji: "🥛", color: "hsl(200, 70%, 55%)", subcategories: ["Milk", "Curd", "Paneer", "Butter", "Cheese", "Ice Cream", "Ghee"] },
   { name: "Sweet Shop", slug: "sweet-shop", emoji: "🍬", color: "hsl(350, 80%, 60%)", subcategories: ["Rasgulla", "Gulab Jamun", "Ladoo", "Barfi", "Peda", "Mishti Doi", "Traditional Sweets"] },
   { name: "Bakery", slug: "bakery", emoji: "🍞", color: "hsl(30, 75%, 55%)", subcategories: ["Bread", "Cakes", "Pastries", "Cookies", "Muffins", "Croissants"] },
   { name: "Restaurant", slug: "restaurant", emoji: "🍽️", color: "hsl(20, 90%, 55%)", subcategories: ["Biryani", "Thali", "Chinese", "South Indian", "Tandoor", "Desserts", "Beverages"] },

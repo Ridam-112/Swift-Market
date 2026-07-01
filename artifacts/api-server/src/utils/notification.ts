@@ -1,9 +1,8 @@
 import { db, notifications, fcmTokens } from "@workspace/db";
-import { eq, count, asc, inArray, and, not } from "drizzle-orm";
+import { eq, count, asc, inArray, and } from "drizzle-orm";
 import { getMessagingInstance } from "../lib/firebase-admin.js";
 
-const NOTIFICATION_LIMIT = 50;
-const CRITICAL_TYPES = ["order_update", "delivery_update"] as const;
+const NOTIFICATION_LIMIT = 10;
 
 export type NotificationPayload = {
   type: "order_update" | "shop_approval" | "delivery_update" | "coupon" | "promo" | "system";
@@ -185,37 +184,63 @@ export async function createNotificationLimited(
 ): Promise<void> {
   await db.insert(notifications).values({ userId, ...payload });
 
+  await trimNotificationsForUser(userId);
+
+  if (!opts.noPush) {
+    void sendFcm(userId, payload);
+  }
+}
+
+/**
+ * Enforces the per-user notification cap (NOTIFICATION_LIMIT = 10).
+ * Deletion priority:
+ *   1. Oldest READ notifications first — user has already seen them, safest to drop.
+ *   2. If still over cap, oldest overall (including unread) — limit must be enforced.
+ * The most recent notifications are always preserved.
+ * Safe to call independently for bulk cleanup of existing users.
+ */
+export async function trimNotificationsForUser(userId: string): Promise<void> {
   const [{ cnt }] = await db
     .select({ cnt: count() })
     .from(notifications)
     .where(eq(notifications.userId, userId));
 
   const total = Number(cnt);
-  if (total > NOTIFICATION_LIMIT) {
-    const excessCount = total - NOTIFICATION_LIMIT;
-    const nonCritical = await db
+  if (total <= NOTIFICATION_LIMIT) return;
+
+  let stillNeedToDelete = total - NOTIFICATION_LIMIT;
+  const toDeleteIds: string[] = [];
+
+  // Pass 1: oldest READ notifications (already seen — safest to prune)
+  const readOld = await db
+    .select({ id: notifications.id })
+    .from(notifications)
+    .where(and(eq(notifications.userId, userId), eq(notifications.isRead, true)))
+    .orderBy(asc(notifications.createdAt))
+    .limit(stillNeedToDelete);
+
+  for (const r of readOld) toDeleteIds.push(r.id);
+  stillNeedToDelete -= readOld.length;
+
+  // Pass 2: oldest overall (unread) — only if still over cap
+  if (stillNeedToDelete > 0) {
+    const anyOld = await db
       .select({ id: notifications.id })
       .from(notifications)
-      .where(and(eq(notifications.userId, userId), not(inArray(notifications.type, [...CRITICAL_TYPES]))))
+      .where(eq(notifications.userId, userId))
       .orderBy(asc(notifications.createdAt))
-      .limit(excessCount);
-    const toDelete =
-      nonCritical.length >= excessCount
-        ? nonCritical
-        : await db
-            .select({ id: notifications.id })
-            .from(notifications)
-            .where(eq(notifications.userId, userId))
-            .orderBy(asc(notifications.createdAt))
-            .limit(excessCount);
-    if (toDelete.length > 0) {
-      await db
-        .delete(notifications)
-        .where(inArray(notifications.id, toDelete.map((n) => n.id)));
+      .limit(stillNeedToDelete + toDeleteIds.length);
+
+    const alreadySelected = new Set(toDeleteIds);
+    for (const r of anyOld) {
+      if (!alreadySelected.has(r.id) && stillNeedToDelete > 0) {
+        toDeleteIds.push(r.id);
+        stillNeedToDelete--;
+      }
     }
   }
 
-  if (!opts.noPush) {
-    void sendFcm(userId, payload);
+  if (toDeleteIds.length > 0) {
+    await db.delete(notifications).where(inArray(notifications.id, toDeleteIds));
   }
 }

@@ -42,6 +42,101 @@
     <!-- Razorpay -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
+    <!-- PWA Splash Screen -->
+    <style>
+      #swm-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        background: #111111;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        font-family: system-ui, -apple-system, Arial, sans-serif;
+        transition: opacity 0.45s ease;
+      }
+      #swm-splash.swm-hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .swm-blob-tr {
+        position: absolute;
+        top: -90px;
+        right: -90px;
+        width: 240px;
+        height: 240px;
+        background: #f59e0b;
+        border-radius: 54% 46% 38% 62% / 58% 34% 66% 42%;
+      }
+      .swm-blob-bl {
+        position: absolute;
+        bottom: -90px;
+        left: -90px;
+        width: 240px;
+        height: 240px;
+        background: #f59e0b;
+        border-radius: 42% 58% 62% 38% / 42% 66% 34% 58%;
+      }
+      .swm-logo {
+        width: 150px;
+        height: auto;
+        margin-bottom: 22px;
+        position: relative;
+        z-index: 1;
+        filter: drop-shadow(0 0 24px rgba(245,158,11,0.18));
+      }
+      .swm-brand {
+        font-size: 38px;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        position: relative;
+        z-index: 1;
+        line-height: 1;
+      }
+      .swm-brand-swift { color: #ffffff; }
+      .swm-brand-mart  { color: #f59e0b; }
+      .swm-tagline {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.22em;
+        color: #f59e0b;
+        margin-top: 8px;
+        position: relative;
+        z-index: 1;
+      }
+      .swm-dots {
+        display: flex;
+        gap: 9px;
+        margin-top: 72px;
+        position: relative;
+        z-index: 1;
+      }
+      .swm-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #555;
+        animation: swm-pulse 1.3s infinite ease-in-out;
+      }
+      .swm-dot:nth-child(2) { animation-delay: 0.22s; }
+      .swm-dot:nth-child(3) { animation-delay: 0.44s; }
+      @keyframes swm-pulse {
+        0%, 80%, 100% { transform: scale(0.75); opacity: 0.35; }
+        40%           { transform: scale(1.25); opacity: 1; background: #888; }
+      }
+      .swm-loading-text {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.28em;
+        color: #555;
+        margin-top: 11px;
+        position: relative;
+        z-index: 1;
+      }
+    </style>
+
     <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
     {
@@ -99,6 +194,21 @@
     </script>
   </head>
   <body>
+    <div id="swm-splash" aria-hidden="true">
+      <div class="swm-blob-tr"></div>
+      <div class="swm-blob-bl"></div>
+      <img class="swm-logo" src="/logo.png" alt="SwiftMart" />
+      <div class="swm-brand">
+        <span class="swm-brand-swift">SWIFT </span><span class="swm-brand-mart">MART</span>
+      </div>
+      <div class="swm-tagline">&#8212; LOCAL SHOPS, FAST DELIVERY &#8212;</div>
+      <div class="swm-dots">
+        <div class="swm-dot"></div>
+        <div class="swm-dot"></div>
+        <div class="swm-dot"></div>
+      </div>
+      <div class="swm-loading-text">LOADING...</div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

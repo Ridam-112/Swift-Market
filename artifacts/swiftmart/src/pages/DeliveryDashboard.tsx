@@ -12,8 +12,9 @@ import {
   LogOut, Menu, X, LayoutDashboard, ClipboardList, IndianRupee,
   ToggleLeft, ToggleRight, Truck, ChevronRight,
   RefreshCw, AlertCircle, Banknote, CreditCard, ShieldCheck,
-  TrendingUp,
+  TrendingUp, Map, KeyRound, Loader2,
 } from "lucide-react";
+import DeliveryMapSheet from "@/components/DeliveryMapSheet";
 
 interface DeliveryPartner {
   _id: string;
@@ -32,6 +33,7 @@ interface DeliveryOrder {
   customerName: string;
   customerPhone: string;
   shopName: string;
+  shopAddress: { line1?: string; line2?: string; city?: string; pincode?: string };
   items: { name: string; qty: number; price: number }[];
   netAmount: number;
   deliveryCharge: number;
@@ -44,8 +46,9 @@ interface DeliveryOrder {
 
 type Section = "overview" | "orders";
 
-interface CodConfirm {
+interface OtpDialog {
   orderId: string;
+  isCod: boolean;
   amount: number;
 }
 
@@ -114,11 +117,15 @@ function OrderCard({
   order,
   onUpdateStatus,
   onRequestCodConfirm,
+  onRequestOtp,
+  onOpenMap,
   updating,
 }: {
   order: DeliveryOrder;
-  onUpdateStatus: (orderId: string, status: string, confirmCash?: boolean) => void;
+  onUpdateStatus: (orderId: string, status: string) => void;
   onRequestCodConfirm: (orderId: string, amount: number) => void;
+  onRequestOtp: (orderId: string) => void;
+  onOpenMap: (orderId: string) => void;
   updating: string | null;
 }) {
   const address = order.address ?? {};
@@ -173,6 +180,16 @@ function OrderCard({
         </div>
 
         <div className="flex gap-2">
+          {isActive && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl h-9 text-xs gap-1 px-3 shadow-none"
+              onClick={() => onOpenMap(order._id)}
+            >
+              <Map className="w-3 h-3" /> Map
+            </Button>
+          )}
           {canPickUp && (
             <Button
               size="sm"
@@ -190,17 +207,9 @@ function OrderCard({
               size="sm"
               className="flex-1 rounded-xl h-9 text-xs shadow-none bg-green-600 hover:bg-green-700 text-white"
               disabled={updating === order._id}
-              onClick={() => {
-                if (isCod) {
-                  onRequestCodConfirm(order._id, order.netAmount);
-                } else {
-                  onUpdateStatus(order._id, "delivered");
-                }
-              }}
+              onClick={() => onRequestOtp(order._id)}
             >
-              {updating === order._id
-                ? <RefreshCw className="w-3 h-3 animate-spin" />
-                : <><CheckCircle className="w-3 h-3 mr-1" />Delivered</>}
+              <KeyRound className="w-3 h-3 mr-1" />Enter OTP
             </Button>
           )}
         </div>
@@ -361,11 +370,15 @@ function OrdersTab({
   orders,
   onUpdateStatus,
   onRequestCodConfirm,
+  onRequestOtp,
+  onOpenMap,
   updating,
 }: {
   orders: DeliveryOrder[];
-  onUpdateStatus: (orderId: string, status: string, confirmCash?: boolean) => void;
+  onUpdateStatus: (orderId: string, status: string) => void;
   onRequestCodConfirm: (orderId: string, amount: number) => void;
+  onRequestOtp: (orderId: string) => void;
+  onOpenMap: (orderId: string) => void;
   updating: string | null;
 }) {
   const active = orders.filter(o =>
@@ -384,7 +397,7 @@ function OrdersTab({
             <Banknote className="w-4 h-4" /> Awaiting Cash Confirmation ({needsPayment.length})
           </h3>
           {needsPayment.map(o => (
-            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} updating={updating} />
+            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} onRequestOtp={onRequestOtp} onOpenMap={onOpenMap} updating={updating} />
           ))}
         </div>
       )}
@@ -395,7 +408,7 @@ function OrdersTab({
             <Truck className="w-4 h-4" /> Active ({active.length})
           </h3>
           {active.map(o => (
-            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} updating={updating} />
+            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} onRequestOtp={onRequestOtp} onOpenMap={onOpenMap} updating={updating} />
           ))}
         </div>
       )}
@@ -406,7 +419,7 @@ function OrdersTab({
             <ClipboardList className="w-4 h-4" /> History ({past.length})
           </h3>
           {past.map(o => (
-            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} updating={updating} />
+            <OrderCard key={o._id} order={o} onUpdateStatus={onUpdateStatus} onRequestCodConfirm={onRequestCodConfirm} onRequestOtp={onRequestOtp} onOpenMap={onOpenMap} updating={updating} />
           ))}
         </div>
       )}
@@ -495,7 +508,11 @@ export default function DeliveryDashboard() {
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
-  const [codConfirm, setCodConfirm] = useState<CodConfirm | null>(null);
+  const [otpDialog, setOtpDialog] = useState<OtpDialog | null>(null);
+  const [otpDigits, setOtpDigits] = useState(["", "", "", ""]);
+  const [confirmCashOtp, setConfirmCashOtp] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [mapOrderId, setMapOrderId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -513,9 +530,33 @@ export default function DeliveryDashboard() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000);
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, [fetchData]);
+
+  // Push GPS location to backend every 10s when there is an active out_for_delivery order
+  useEffect(() => {
+    const hasActiveDelivery = orders.some(o => o.status === "out_for_delivery");
+    if (!hasActiveDelivery) return;
+
+    const pushLocation = () => {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          api.patch("/delivery/me/location", {
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+          }).catch(() => { /* silent */ });
+        },
+        () => { /* permission denied or error — silent */ },
+        { timeout: 6000, maximumAge: 15000 },
+      );
+    };
+
+    pushLocation();
+    const loc = setInterval(pushLocation, 5000);
+    return () => clearInterval(loc);
+  }, [orders]);
 
   const handleToggleAvailability = async () => {
     if (!partner) return;
@@ -533,18 +574,12 @@ export default function DeliveryDashboard() {
     }
   };
 
-  const handleUpdateStatus = async (orderId: string, status: string, confirmCash?: boolean) => {
+  const handleUpdateStatus = async (orderId: string, status: string) => {
     setUpdating(orderId);
     try {
-      const body: Record<string, unknown> = { status };
-      if (confirmCash !== undefined) body["confirmCash"] = confirmCash;
-      const data = await api.patch<{ success: boolean }>(`/delivery/me/orders/${orderId}/status`, body);
+      const data = await api.patch<{ success: boolean }>(`/delivery/me/orders/${orderId}/status`, { status });
       if (data.success) {
-        if (status === "delivered") {
-          toast.success(confirmCash ? "Delivered & cash collected! 💰" : "Order marked as delivered!");
-        } else {
-          toast.success("Order picked up!");
-        }
+        toast.success("Order picked up!");
         await fetchData();
       }
     } catch {
@@ -554,11 +589,33 @@ export default function DeliveryDashboard() {
     }
   };
 
-  const handleCodDeliver = async (confirmCash: boolean) => {
-    if (!codConfirm) return;
-    const { orderId } = codConfirm;
-    setCodConfirm(null);
-    await handleUpdateStatus(orderId, "delivered", confirmCash);
+  const handleRequestOtp = (orderId: string) => {
+    const order = orders.find(o => o._id === orderId);
+    if (!order) return;
+    const isCod = (order.paymentMethod ?? "COD").toUpperCase() === "COD";
+    setOtpDigits(["", "", "", ""]);
+    setConfirmCashOtp(false);
+    setOtpDialog({ orderId, isCod, amount: order.netAmount });
+  };
+
+  const handleOtpVerify = async () => {
+    if (!otpDialog) return;
+    const otp = otpDigits.join("");
+    if (otp.length < 4) { toast.error("Enter all 4 digits"); return; }
+    setOtpLoading(true);
+    try {
+      await api.post(`/delivery/me/orders/${otpDialog.orderId}/verify-otp`, {
+        otp,
+        confirmCash: otpDialog.isCod ? confirmCashOtp : undefined,
+      });
+      toast.success(confirmCashOtp ? "Delivered & cash collected! 💰" : "Order delivered ✅");
+      setOtpDialog(null);
+      await fetchData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Incorrect OTP");
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
   const handleCodConfirmPaymentOnly = async (orderId: string) => {
@@ -577,6 +634,24 @@ export default function DeliveryDashboard() {
   };
 
   const handleExit = () => setLocation("/profile");
+
+  const handleOpenMap = (orderId: string) => setMapOrderId(orderId);
+  const handleCloseMap = () => setMapOrderId(null);
+
+  // Picked up from within the map: update status then keep map open so it
+  // automatically transitions to show the customer's location.
+  const handleMapPickedUp = async (orderId: string) => {
+    await handleUpdateStatus(orderId, "out_for_delivery");
+    // Map stays open — orders state is refreshed by fetchData inside handleUpdateStatus
+  };
+
+  // Delivered from within the map: OTP was already verified inside DeliveryMapSheet,
+  // so just refresh data. The sheet handles its own close.
+  const handleMapDelivered = (_orderId: string) => {
+    fetchData();
+  };
+
+  const mapOrder = mapOrderId ? orders.find(o => o._id === mapOrderId) ?? null : null;
 
   const SECTION_TITLES: Record<Section, string> = {
     overview: "Overview",
@@ -675,14 +750,11 @@ export default function DeliveryDashboard() {
                 <OrdersTab
                   orders={orders}
                   onUpdateStatus={handleUpdateStatus}
-                  onRequestCodConfirm={(orderId, amount) => {
-                    const order = orders.find(o => o._id === orderId);
-                    if (order?.status === "delivered") {
-                      handleCodConfirmPaymentOnly(orderId);
-                    } else {
-                      setCodConfirm({ orderId, amount });
-                    }
+                  onRequestCodConfirm={(orderId, _amount) => {
+                    handleCodConfirmPaymentOnly(orderId);
                   }}
+                  onRequestOtp={handleRequestOtp}
+                  onOpenMap={handleOpenMap}
                   updating={updating}
                 />
               )}
@@ -691,14 +763,26 @@ export default function DeliveryDashboard() {
         </div>
       </div>
 
-      {/* COD Cash Confirmation Modal */}
+      {/* Delivery Map Sheet */}
+      {mapOrder && (
+        <DeliveryMapSheet
+          isOpen={!!mapOrder}
+          onClose={handleCloseMap}
+          order={mapOrder}
+          onPickedUp={handleMapPickedUp}
+          onDelivered={handleMapDelivered}
+          updating={updating}
+        />
+      )}
+
+      {/* OTP Delivery Verification Dialog */}
       <AnimatePresence>
-        {codConfirm && (
+        {otpDialog && (
           <>
             <motion.div
               className="fixed inset-0 z-50 bg-black/60"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setCodConfirm(null)}
+              onClick={() => !otpLoading && setOtpDialog(null)}
             />
             <motion.div
               className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-3xl p-6 space-y-5 shadow-2xl"
@@ -707,33 +791,71 @@ export default function DeliveryDashboard() {
             >
               <div className="w-10 h-1 bg-border rounded-full mx-auto" />
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                  <Banknote className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+                <div className="w-14 h-14 rounded-2xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <KeyRound className="w-7 h-7 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-lg">Collect Cash on Delivery</h2>
-                  <p className="text-muted-foreground text-sm">Order total: <span className="font-bold text-foreground">{formatINR(codConfirm.amount)}</span></p>
+                  <h2 className="font-bold text-lg">Enter Delivery OTP</h2>
+                  <p className="text-muted-foreground text-sm">Ask the customer for their 4-digit code</p>
                 </div>
               </div>
 
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 text-sm text-amber-900 dark:text-amber-200">
-                <p className="font-semibold">This is a Cash on Delivery order.</p>
-                <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">Please collect <strong>{formatINR(codConfirm.amount)}</strong> from the customer before marking as delivered. Did you collect the cash?</p>
+              <div className="flex justify-center gap-3">
+                {otpDigits.map((d, i) => (
+                  <input
+                    key={i}
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={d}
+                    onChange={e => {
+                      const v = e.target.value.replace(/\D/, "");
+                      const next = [...otpDigits];
+                      next[i] = v;
+                      setOtpDigits(next);
+                      if (v && i < 3) (e.target.nextElementSibling as HTMLInputElement | null)?.focus();
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === "Backspace" && !otpDigits[i] && i > 0) {
+                        (e.currentTarget.previousElementSibling as HTMLInputElement | null)?.focus();
+                      }
+                    }}
+                    className="w-14 h-14 text-center text-2xl font-bold border-2 border-border rounded-2xl bg-background focus:border-primary focus:outline-none"
+                  />
+                ))}
               </div>
+
+              {otpDialog.isCod && (
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl border-2 border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 text-left"
+                  onClick={() => setConfirmCashOtp(c => !c)}
+                >
+                  <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors ${confirmCashOtp ? "bg-green-600 border-green-600" : "border-border bg-background"}`}>
+                    {confirmCashOtp && <CheckCircle className="w-4 h-4 text-white" />}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm text-amber-900 dark:text-amber-200">I collected {formatINR(otpDialog.amount)} cash</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400">Tick this if the customer paid in cash</p>
+                  </div>
+                </button>
+              )}
 
               <div className="space-y-2.5">
                 <Button
                   className="w-full h-14 rounded-2xl text-base font-bold bg-green-600 hover:bg-green-700 text-white shadow-none"
-                  onClick={() => handleCodDeliver(true)}
-                  disabled={!!updating}
+                  onClick={handleOtpVerify}
+                  disabled={otpLoading || otpDigits.join("").length < 4}
                 >
-                  <ShieldCheck className="w-5 h-5 mr-2" />
-                  Yes, I collected {formatINR(codConfirm.amount)}
+                  {otpLoading
+                    ? <Loader2 className="w-5 h-5 animate-spin" />
+                    : <><CheckCircle className="w-5 h-5 mr-2" />Confirm Delivery</>}
                 </Button>
                 <Button
                   variant="ghost"
                   className="w-full h-12 rounded-2xl text-sm"
-                  onClick={() => setCodConfirm(null)}
+                  onClick={() => setOtpDialog(null)}
+                  disabled={otpLoading}
                 >
                   Cancel
                 </Button>

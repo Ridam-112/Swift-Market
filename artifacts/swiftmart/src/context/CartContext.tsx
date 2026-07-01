@@ -78,11 +78,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clearCart = () => setItems([]);
 
   const totalItems = items.reduce((sum, item) => sum + item.qty, 0);
-  // Use discountedPrice (offer price) when set, otherwise fall back to regular price
-  const subtotal = items.reduce(
-    (sum, item) => sum + ((item.product.discountedPrice ?? item.product.price) * item.qty),
-    0,
-  );
+  // Use sale price only when it is strictly less than MRP
+  const subtotal = items.reduce((sum, item) => {
+    const p = item.product;
+    const unitPrice = p.discountedPrice != null && p.discountedPrice < p.price
+      ? p.discountedPrice
+      : p.price;
+    return sum + unitPrice * item.qty;
+  }, 0);
 
   return (
     <CartContext.Provider value={{ items, addToCart, removeFromCart, updateQty, clearCart, totalItems, subtotal }}>

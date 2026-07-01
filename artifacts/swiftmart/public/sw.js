@@ -21,7 +21,7 @@ self.addEventListener("push", (event) => {
   const title = data.title ?? "SwiftMart";
   const options = {
     body:               data.body ?? data.message ?? "",
-    icon:               data.icon  ?? "/logo.png",
+    icon:               data.icon  ?? "/icon-192.png",
     badge:              data.badge ?? "/logo.png",
     tag:                data.tag   ?? "swiftmart-notification",
     data:               data.data  ?? {},

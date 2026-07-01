@@ -148,7 +148,7 @@ export default function Checkout() {
       })),
       subtotal,
       deliveryCharge: totalDeliveryFee,
-      deliveryType: deliverySlot === 'instant' ? 'instant' : deliverySlot === 'standard' ? 'scheduled' : 'saver',
+      deliveryType: deliverySlot === 'instant' ? 'instant' : 'scheduled',
       couponDiscount,
       ...(couponApplied ? { couponCode: couponApplied.code } : {}),
       ...(razorpayOrderId ? { razorpayOrderId } : {}),
