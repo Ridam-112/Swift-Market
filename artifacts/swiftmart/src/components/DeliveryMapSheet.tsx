@@ -1,40 +1,46 @@
-import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
-  Navigation, Truck, CheckCircle, Loader2,
+  Navigation2, Truck, CheckCircle, Loader2,
   Store, User, X, MapPin, AlertCircle, Phone,
+  KeyRound, RefreshCw,
 } from "lucide-react";
 import { formatINR } from "@/lib/currency";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 type AddressObj = { line1?: string; line2?: string; city?: string; pincode?: string };
 
-// Session-level geocode cache (avoids repeat Nominatim requests)
 const geoCache = new Map<string, [number, number]>();
 
-// Pure-CSS pin icons — avoids all Vite/Leaflet asset-path issues
-const makePinIcon = (bg: string, emoji: string) =>
+const makePinIcon = (color: string, emoji: string) =>
   new L.DivIcon({
-    html: `<div style="background:${bg};width:38px;height:38px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.35);border:2.5px solid white"><span style="transform:rotate(45deg);font-size:16px">${emoji}</span></div>`,
+    html: `<div style="width:42px;height:42px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.3);border:3px solid white"><span style="transform:rotate(45deg);font-size:17px;line-height:1">${emoji}</span></div>`,
     className: "",
-    iconSize: [38, 38],
-    iconAnchor: [19, 38],
-    popupAnchor: [0, -44],
+    iconSize: [42, 42],
+    iconAnchor: [21, 42],
+    popupAnchor: [0, -48],
   });
 
-const SHOP_ICON = makePinIcon("#2563eb", "🏪");
+const RIDER_ICON = new L.DivIcon({
+  html: `<div style="width:36px;height:36px;background:#7c3aed;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px rgba(124,58,237,.25);border:3px solid white"><span style="font-size:16px">🛵</span></div>`,
+  className: "",
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+});
+
+const SHOP_ICON    = makePinIcon("#2563eb", "🏪");
 const CUSTOMER_ICON = makePinIcon("#16a34a", "🏠");
 
 async function geocodeAddress(addr: AddressObj): Promise<[number, number] | null> {
   const parts = [addr.line1, addr.city, addr.pincode].filter(Boolean);
   if (parts.length === 0) return null;
-
   const query = [...parts, "India"].join(", ");
   if (geoCache.has(query)) return geoCache.get(query)!;
-
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=in`,
@@ -42,35 +48,56 @@ async function geocodeAddress(addr: AddressObj): Promise<[number, number] | null
     );
     const data = await res.json() as { lat: string; lon: string }[];
     if (data[0]) {
-      const coords: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-      geoCache.set(query, coords);
-      return coords;
+      const c: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      geoCache.set(query, c);
+      return c;
     }
-
-    // Fallback: pincode + city only
     if (addr.pincode && addr.city) {
-      const fallback = `${addr.pincode}, ${addr.city}, India`;
-      if (geoCache.has(fallback)) return geoCache.get(fallback)!;
+      const fb = `${addr.pincode}, ${addr.city}, India`;
+      if (geoCache.has(fb)) return geoCache.get(fb)!;
       const r2 = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fallback)}&format=json&limit=1&countrycodes=in`,
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fb)}&format=json&limit=1&countrycodes=in`,
         { headers: { "User-Agent": "SwiftMart-Delivery/1.0" } },
       );
       const d2 = await r2.json() as { lat: string; lon: string }[];
       if (d2[0]) {
-        const coords: [number, number] = [parseFloat(d2[0].lat), parseFloat(d2[0].lon)];
-        geoCache.set(fallback, coords);
-        return coords;
+        const c: [number, number] = [parseFloat(d2[0].lat), parseFloat(d2[0].lon)];
+        geoCache.set(fb, c);
+        return c;
       }
     }
   } catch { /* network error */ }
   return null;
 }
 
-function FlyTo({ center }: { center: [number, number] }) {
+async function fetchRoute(from: [number, number], to: [number, number]): Promise<{ path: [number, number][]; distanceKm: number } | null> {
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    const data = await res.json() as {
+      routes?: { geometry: { coordinates: [number, number][] }; distance: number }[];
+    };
+    if (data.routes?.[0]) {
+      const coords = data.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon] as [number, number]);
+      const distanceKm = +(data.routes[0].distance / 1000).toFixed(1);
+      return { path: coords, distanceKm };
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+function FitBounds({ positions }: { positions: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
-    map.flyTo(center, 15, { animate: true, duration: 0.8 });
-  }, [map, center[0], center[1]]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (positions.length === 0) return;
+    if (positions.length === 1) {
+      map.flyTo(positions[0], 15, { animate: true, duration: 0.9 });
+    } else {
+      const bounds = L.latLngBounds(positions);
+      map.flyToBounds(bounds, { padding: [48, 48], animate: true, duration: 0.9 });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positions.map(p => p.join(",")).join("|")]);
   return null;
 }
 
@@ -100,173 +127,245 @@ interface Props {
   updating: string | null;
 }
 
-export default function DeliveryMapSheet({
-  isOpen, onClose, order, onPickedUp, onDelivered, updating,
-}: Props) {
-  const isPickup = ["packed", "confirmed", "accepted", "preparing"].includes(order.status);
+export default function DeliveryMapSheet({ isOpen, onClose, order, onPickedUp, onDelivered, updating }: Props) {
+  const isPickup   = ["packed", "confirmed", "accepted", "preparing"].includes(order.status);
   const isDelivery = order.status === "out_for_delivery";
 
   const targetAddress = isPickup ? order.shopAddress : order.address;
-  const [coords, setCoords] = useState<[number, number] | null>(null);
-  const [geocoding, setGeocoding] = useState(false);
-  const [geoError, setGeoError] = useState(false);
+
+  const [riderPos, setRiderPos]         = useState<[number, number] | null>(null);
+  const [destPos, setDestPos]           = useState<[number, number] | null>(null);
+  const [routePath, setRoutePath]       = useState<[number, number][] | null>(null);
+  const [distanceKm, setDistanceKm]     = useState<number | null>(null);
+  const [geocoding, setGeocoding]       = useState(false);
+  const [geoError, setGeoError]         = useState(false);
+
+  const [showOtp, setShowOtp]           = useState(false);
+  const [otpDigits, setOtpDigits]       = useState(["", "", "", ""]);
+  const [otpLoading, setOtpLoading]     = useState(false);
+  const [isCodCollect, setIsCodCollect] = useState(false);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const isCod      = (order.paymentMethod ?? "COD").toUpperCase() === "COD";
+  const isUpdating = updating === order._id;
+
+  const loadMap = useCallback(async () => {
+    setGeoError(false);
+    setDestPos(null);
+    setRoutePath(null);
+    setDistanceKm(null);
+    setGeocoding(true);
+
+    const [gpsResult, destResult] = await Promise.allSettled([
+      new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 6000, maximumAge: 30000 })
+      ),
+      geocodeAddress(targetAddress),
+    ]);
+
+    const rider: [number, number] | null =
+      gpsResult.status === "fulfilled"
+        ? [gpsResult.value.coords.latitude, gpsResult.value.coords.longitude]
+        : null;
+    const dest: [number, number] | null =
+      destResult.status === "fulfilled" ? destResult.value : null;
+
+    setRiderPos(rider);
+    setGeocoding(false);
+
+    if (!dest) { setGeoError(true); return; }
+    setDestPos(dest);
+
+    if (rider) {
+      const route = await fetchRoute(rider, dest);
+      if (route) {
+        setRoutePath(route.path);
+        setDistanceKm(route.distanceKm);
+      }
+    }
+  }, [order.status, JSON.stringify(targetAddress)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!isOpen) return;
-    setGeoError(false);
-    setCoords(null);
-    setGeocoding(true);
-    geocodeAddress(targetAddress).then(result => {
-      if (result) {
-        setCoords(result);
-      } else {
-        setGeoError(true);
-      }
-      setGeocoding(false);
-    });
-  }, [isOpen, order.status, JSON.stringify(targetAddress)]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!isOpen) { setShowOtp(false); setOtpDigits(["", "", "", ""]); return; }
+    loadMap();
+  }, [isOpen, loadMap]);
 
-  const openGoogleMaps = () => {
-    const q = encodeURIComponent(formatAddr(targetAddress));
-    window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
+  const handleOtpChange = (idx: number, val: string) => {
+    const digit = val.replace(/\D/g, "").slice(-1);
+    const next = [...otpDigits];
+    next[idx] = digit;
+    setOtpDigits(next);
+    if (digit && idx < 3) inputRefs.current[idx + 1]?.focus();
   };
 
-  const isUpdating = updating === order._id;
-  const isCod = (order.paymentMethod ?? "COD").toUpperCase() === "COD";
+  const handleOtpKeyDown = (idx: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !otpDigits[idx] && idx > 0) inputRefs.current[idx - 1]?.focus();
+  };
+
+  const handleOtpSubmit = async () => {
+    const otp = otpDigits.join("");
+    if (otp.length < 4) { toast.error("Enter all 4 digits"); return; }
+    setOtpLoading(true);
+    try {
+      await api.post(`/delivery/me/orders/${order._id}/verify-otp`, {
+        otp,
+        confirmCash: isCodCollect,
+      });
+      toast.success("OTP verified! Order delivered ✅");
+      setShowOtp(false);
+      onDelivered(order._id);
+      onClose();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Incorrect OTP";
+      toast.error(msg);
+      setOtpDigits(["", "", "", ""]);
+      inputRefs.current[0]?.focus();
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const fitPositions: [number, number][] = [];
+  if (riderPos) fitPositions.push(riderPos);
+  if (destPos)  fitPositions.push(destPos);
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/60 z-50"
             onClick={onClose}
           />
 
-          {/* Sheet */}
           <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
+            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 220 }}
             className="fixed bottom-0 left-0 right-0 z-50 bg-background rounded-t-3xl overflow-hidden flex flex-col"
-            style={{ height: "92dvh", maxHeight: "92dvh" }}
+            style={{ height: "92dvh" }}
           >
-            {/* Header */}
-            <div className="flex items-center gap-3 px-4 pt-5 pb-3 border-b border-border flex-shrink-0">
+            {/* ─── Header ─────────────────────────────────────────── */}
+            <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border flex-shrink-0">
               <div className={`w-9 h-9 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                isPickup
-                  ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                  : "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
+                isPickup ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+                         : "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
               }`}>
                 {isPickup ? <Store className="w-4 h-4" /> : <User className="w-4 h-4" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm truncate">
-                  {isPickup ? `Pick up from ${order.shopName}` : `Deliver to ${order.customerName}`}
+                  {isPickup ? `Pick up · ${order.shopName}` : `Deliver to ${order.customerName}`}
                 </p>
-                <div className="flex items-center gap-1.5">
-                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${isPickup ? "bg-blue-500" : "bg-green-500"}`} />
-                  <p className="text-xs text-muted-foreground">
-                    {isPickup ? "Go to shop · pick up order" : "Go to customer · hand over order"}
+                {distanceKm !== null && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Navigation2 className="w-3 h-3" />
+                    {distanceKm} km away
                   </p>
-                </div>
+                )}
               </div>
-              <button
-                onClick={onClose}
-                className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0"
-              >
+              <button onClick={onClose} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Map (takes remaining space up to ~55%) */}
-            <div className="relative flex-shrink-0" style={{ height: "52%" }}>
+            {/* ─── Map ────────────────────────────────────────────── */}
+            <div className="relative flex-shrink-0" style={{ height: "50%" }}>
               {geocoding && (
-                <div className="absolute inset-0 bg-muted/80 flex flex-col items-center justify-center gap-3 z-10">
+                <div className="absolute inset-0 bg-background/90 flex flex-col items-center justify-center gap-3 z-10">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">Locating address…</p>
+                  <p className="text-sm text-muted-foreground">Loading map…</p>
                 </div>
               )}
 
               {geoError && !geocoding && (
-                <div className="absolute inset-0 bg-muted/80 flex flex-col items-center justify-center gap-3 z-10 px-8">
+                <div className="absolute inset-0 bg-muted/90 flex flex-col items-center justify-center gap-3 z-10 px-8">
                   <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
                     <AlertCircle className="w-7 h-7 text-amber-500" />
                   </div>
                   <p className="text-sm text-center text-muted-foreground">
-                    Map could not load for this address.<br />
-                    Use the <strong>Navigate</strong> button to open Google Maps.
+                    Could not locate this address on the map.
                   </p>
+                  <button onClick={loadMap} className="text-xs text-primary font-semibold flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Try again
+                  </button>
                 </div>
               )}
 
-              {!geocoding && !geoError && !coords && (
-                <div className="absolute inset-0 bg-muted flex items-center justify-center">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                </div>
-              )}
-
-              {coords && (
+              {!geocoding && !geoError && destPos && (
                 <MapContainer
-                  center={coords}
-                  zoom={15}
+                  center={destPos}
+                  zoom={14}
                   style={{ width: "100%", height: "100%" }}
                   zoomControl={false}
                   attributionControl={false}
                 >
                   <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='© OpenStreetMap contributors'
+                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                    subdomains="abcd"
+                    attribution='© <a href="https://openstreetmap.org">OSM</a> © <a href="https://carto.com">CARTO</a>'
                   />
-                  <Marker position={coords} icon={isPickup ? SHOP_ICON : CUSTOMER_ICON}>
-                    <Popup className="text-sm font-medium">
+
+                  {riderPos && (
+                    <Marker position={riderPos} icon={RIDER_ICON}>
+                      <Popup className="text-xs font-semibold">You are here</Popup>
+                    </Marker>
+                  )}
+
+                  <Marker position={destPos} icon={isPickup ? SHOP_ICON : CUSTOMER_ICON}>
+                    <Popup className="text-xs font-semibold">
                       {isPickup ? order.shopName : order.customerName}
                     </Popup>
                   </Marker>
-                  <FlyTo center={coords} />
+
+                  {routePath && routePath.length > 0 && (
+                    <Polyline
+                      positions={routePath}
+                      pathOptions={{ color: "#2563eb", weight: 5, opacity: 0.85, dashArray: undefined }}
+                    />
+                  )}
+
+                  <FitBounds positions={fitPositions} />
                 </MapContainer>
               )}
 
-              {/* Phase pill overlay on map */}
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[400]">
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur ${
-                  isPickup
-                    ? "bg-blue-600/90 text-white"
-                    : "bg-green-600/90 text-white"
+              {/* Phase pill */}
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[400] pointer-events-none">
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm ${
+                  isPickup ? "bg-blue-600/90 text-white" : "bg-green-600/90 text-white"
                 }`}>
                   {isPickup ? <><Store className="w-3 h-3" /> Shop Location</> : <><User className="w-3 h-3" /> Customer Location</>}
                 </div>
               </div>
+
+              {/* Refresh GPS button */}
+              <button
+                onClick={loadMap}
+                className="absolute bottom-3 right-3 z-[400] w-9 h-9 rounded-xl bg-background shadow-lg border border-border flex items-center justify-center"
+              >
+                <RefreshCw className="w-4 h-4 text-muted-foreground" />
+              </button>
             </div>
 
-            {/* Info panel */}
+            {/* ─── Info + Actions panel ───────────────────────────── */}
             <div className="flex-1 overflow-auto px-4 py-3 space-y-3">
-              {/* Address */}
+
+              {/* Address card */}
               <div className={`rounded-2xl p-3.5 border ${
-                isPickup
-                  ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
-                  : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                isPickup ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                         : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
               }`}>
                 <div className="flex items-start gap-2.5">
                   <MapPin className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isPickup ? "text-blue-600 dark:text-blue-400" : "text-green-600 dark:text-green-400"}`} />
                   <div>
-                    <p className="text-xs font-semibold mb-0.5">
-                      {isPickup ? "Shop Address" : "Delivery Address"}
-                    </p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {formatAddr(targetAddress)}
-                    </p>
+                    <p className="text-xs font-semibold mb-0.5">{isPickup ? "Shop Address" : "Delivery Address"}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{formatAddr(targetAddress)}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Customer */}
-              <div className="bg-muted/50 rounded-2xl p-3.5 flex items-center justify-between">
+              {/* Customer row */}
+              <div className="bg-muted/40 rounded-2xl p-3.5 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center">
                     <User className="w-4 h-4 text-muted-foreground" />
@@ -284,7 +383,7 @@ export default function DeliveryMapSheet({
                 </a>
               </div>
 
-              {/* Earnings row */}
+              {/* Amount row */}
               <div className="flex items-center justify-between px-1">
                 <span className="text-xs text-muted-foreground">
                   {isCod ? "COD · Collect cash on delivery" : "Online · Already paid"}
@@ -294,44 +393,106 @@ export default function DeliveryMapSheet({
                 </span>
               </div>
 
-              {/* Action buttons */}
-              <div className="flex gap-2 pb-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl h-11 text-xs gap-1.5 flex-shrink-0"
-                  onClick={openGoogleMaps}
-                >
-                  <Navigation className="w-3.5 h-3.5" />
-                  Navigate
-                </Button>
-
-                {isPickup && (
-                  <Button
-                    size="sm"
-                    className="flex-1 rounded-xl h-11 text-xs gap-1.5"
-                    disabled={isUpdating}
-                    onClick={() => onPickedUp(order._id)}
+              {/* ─── OTP entry panel (delivery phase) ─────────────── */}
+              <AnimatePresence>
+                {showOtp && isDelivery && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
                   >
-                    {isUpdating
-                      ? <Loader2 className="w-4 h-4 animate-spin" />
-                      : <><Truck className="w-3.5 h-3.5" /> Order is Picked Up</>}
-                  </Button>
-                )}
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <KeyRound className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">Enter Delivery OTP</p>
+                      </div>
+                      <p className="text-xs text-amber-700 dark:text-amber-300 -mt-2">
+                        Ask the customer for the 4-digit code shown on their order.
+                      </p>
 
-                {isDelivery && (
-                  <Button
-                    size="sm"
-                    className="flex-1 rounded-xl h-11 text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white"
-                    disabled={isUpdating}
-                    onClick={() => onDelivered(order._id)}
-                  >
-                    {isUpdating
-                      ? <Loader2 className="w-4 h-4 animate-spin" />
-                      : <><CheckCircle className="w-3.5 h-3.5" /> Order Delivered Successfully</>}
-                  </Button>
+                      {/* 4-box OTP input */}
+                      <div className="flex gap-3 justify-center">
+                        {[0, 1, 2, 3].map(i => (
+                          <input
+                            key={i}
+                            ref={el => { inputRefs.current[i] = el; }}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={otpDigits[i]}
+                            onChange={e => handleOtpChange(i, e.target.value)}
+                            onKeyDown={e => handleOtpKeyDown(i, e)}
+                            className="w-14 h-14 text-center text-2xl font-bold rounded-xl border-2 border-amber-300 dark:border-amber-700 bg-white dark:bg-amber-950/30 text-foreground focus:outline-none focus:border-amber-500 dark:focus:border-amber-400 transition-colors"
+                          />
+                        ))}
+                      </div>
+
+                      {/* COD checkbox */}
+                      {isCod && (
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isCodCollect}
+                            onChange={e => setIsCodCollect(e.target.checked)}
+                            className="w-4 h-4 accent-amber-600 rounded"
+                          />
+                          <span className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                            I collected ₹{order.netAmount.toLocaleString("en-IN")} cash from customer
+                          </span>
+                        </label>
+                      )}
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-xl h-11 flex-1 text-xs"
+                          onClick={() => { setShowOtp(false); setOtpDigits(["", "", "", ""]); }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="rounded-xl h-11 flex-1 text-xs bg-green-600 hover:bg-green-700 text-white gap-1.5"
+                          disabled={otpLoading || otpDigits.join("").length < 4}
+                          onClick={handleOtpSubmit}
+                        >
+                          {otpLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle className="w-3.5 h-3.5" /> Confirm Delivery</>}
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
                 )}
-              </div>
+              </AnimatePresence>
+
+              {/* ─── Action buttons ─────────────────────────────────── */}
+              {!showOtp && (
+                <div className="flex gap-2 pb-2">
+                  {isPickup && (
+                    <Button
+                      size="sm"
+                      className="flex-1 rounded-xl h-11 text-xs gap-1.5"
+                      disabled={isUpdating}
+                      onClick={() => onPickedUp(order._id)}
+                    >
+                      {isUpdating
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <><Truck className="w-3.5 h-3.5" /> Picked Up from Shop</>}
+                    </Button>
+                  )}
+
+                  {isDelivery && (
+                    <Button
+                      size="sm"
+                      className="flex-1 rounded-xl h-11 text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => { setShowOtp(true); setTimeout(() => inputRefs.current[0]?.focus(), 300); }}
+                    >
+                      <KeyRound className="w-3.5 h-3.5" /> Enter OTP & Deliver
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </motion.div>
         </>

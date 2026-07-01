@@ -324,6 +324,7 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
 
       // 5. Insert order record
       const paymentMethod = String(body["paymentMethod"] ?? "COD");
+      const deliveryOtp = String(Math.floor(1000 + Math.random() * 9000));
       const [order] = await tx.insert(orders).values({
         customerId: req.user!.userId,
         customerName: String(body["customerName"] ?? ""),
@@ -344,6 +345,7 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
         paymentStatus: "pending",
         address: (body["address"] ?? {}) as Record<string, string>,
         couponCode: couponCode ?? undefined,
+        deliveryOtp,
         razorpayOrderId: typeof body["razorpayOrderId"] === "string" && body["razorpayOrderId"].trim()
           ? body["razorpayOrderId"].trim()
           : undefined,

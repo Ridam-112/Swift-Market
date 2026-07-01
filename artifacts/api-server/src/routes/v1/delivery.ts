@@ -312,6 +312,54 @@ router.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("ord
   res.json({ success: true, order: mi(updated!) });
 });
 
+// POST /delivery/me/orders/:orderId/verify-otp — rider enters customer OTP to confirm delivery
+router.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams("orderId"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const orderId = req.params["orderId"] as string;
+  const { otp, confirmCash } = req.body as { otp: string; confirmCash?: boolean };
+
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) { res.status(403).json({ success: false, message: "Not a delivery partner" }); return; }
+
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
+  if (order.deliveryPartnerId !== partner.id) {
+    res.status(403).json({ success: false, message: "This order is not assigned to you" }); return;
+  }
+  if (order.status !== "out_for_delivery") {
+    res.status(400).json({ success: false, message: "Order is not out for delivery" }); return;
+  }
+  if (!order.deliveryOtp || order.deliveryOtp !== String(otp ?? "").trim()) {
+    res.status(400).json({ success: false, message: "Incorrect OTP. Please ask the customer for the correct code." }); return;
+  }
+
+  const isCod = (order.paymentMethod ?? "COD").toUpperCase() === "COD";
+  const paymentStatusUpdate = (isCod && confirmCash) ? { paymentStatus: "paid" } : {};
+
+  await db.update(deliveryPartners).set({
+    ordersDelivered: partner.ordersDelivered + 1,
+    totalEarnings: partner.totalEarnings + (order.deliveryCharge ?? 0),
+    currentOrderId: null,
+    updatedAt: new Date(),
+  }).where(eq(deliveryPartners.id, partner.id));
+
+  const [updated] = await db.update(orders)
+    .set({ status: "delivered", ...paymentStatusUpdate, updatedAt: new Date() })
+    .where(eq(orders.id, orderId))
+    .returning();
+
+  try {
+    await createNotificationLimited(order.customerId, {
+      type: "order_update",
+      title: "Order Delivered! ✅",
+      message: `Order #${orderId.slice(-6).toUpperCase()} has been delivered. Enjoy!`,
+      data: { orderId, url: `/orders/${orderId}` },
+    });
+  } catch { /* ignore */ }
+
+  res.json({ success: true, order: mi(updated!) });
+});
+
 // PATCH /delivery/me/orders/:orderId/confirm-payment — rider confirms COD cash collected
 // Can be called after delivery for COD orders to set paymentStatus="paid".
 router.patch("/me/orders/:orderId/confirm-payment", authenticate, validateUuidParams("orderId"), async (req: AuthRequest, res: Response): Promise<void> => {

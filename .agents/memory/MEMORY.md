@@ -9,3 +9,4 @@
 - [Password Auth Migration](password-auth.md) — OTP removed; mobile+password+Google; existing OTP users preserved with needsPasswordSetup flow; token-based reset logged to console in dev
 - [Google OAuth2 server-side flow](google-oauth2-flow.md) — Firebase/GIS removed from Google login; pure server-side OAuth2 redirect; firebase.ts kept only for FCM
 - [Resend email integration](resend-email.md) — Password reset emails via Resend; sender domain swiftmart.space verified; RESEND_FROM_EMAIL env var set
+- [Delivery Map & OTP](delivery-map-otp.md) — In-app OSRM routing (blue line, no API key), Carto Voyager tiles, 4-digit delivery OTP verified by rider, customer sees OTP only when out_for_delivery

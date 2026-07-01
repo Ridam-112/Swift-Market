@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { LiveOrderTracker } from "@/components/LiveOrderTracker";
 import {
   PackageX, Package, Truck, CheckCircle2, Clock, Loader2,
-  AlertCircle, RefreshCw, XCircle, Ban, Radio,
+  AlertCircle, RefreshCw, XCircle, Ban, Radio, KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,6 +35,7 @@ interface ApiOrder {
   paymentMethod?: string;
   address?: { label: string; line1: string; city: string; pincode: string };
   createdAt: string;
+  deliveryOtp?: string;
 }
 
 const ACTIVE_STATUSES = new Set(["placed", "accepted", "preparing", "packed", "out_for_delivery"]);
@@ -211,6 +212,29 @@ export default function Orders() {
                     onStatusChange={(s) => handleStatusChange(order._id, s)}
                     compact
                   />
+                </div>
+              )}
+
+              {/* OTP badge — show only when rider is on the way */}
+              {order.status === "out_for_delivery" && order.deliveryOtp && (
+                <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-2xl px-4 py-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
+                    <KeyRound className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">Delivery OTP</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300">Share this with the rider when they arrive</p>
+                  </div>
+                  <div className="flex gap-1">
+                    {order.deliveryOtp.split("").map((d, i) => (
+                      <span
+                        key={i}
+                        className="w-8 h-9 flex items-center justify-center rounded-lg bg-amber-600 text-white text-base font-bold tracking-tight shadow-sm"
+                      >
+                        {d}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
 

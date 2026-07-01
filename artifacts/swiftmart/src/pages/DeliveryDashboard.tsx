@@ -530,7 +530,7 @@ export default function DeliveryDashboard() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000);
+    const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -605,17 +605,10 @@ export default function DeliveryDashboard() {
     // Map stays open — orders state is refreshed by fetchData inside handleUpdateStatus
   };
 
-  // Delivered from within the map: COD orders get the cash-confirm dialog,
-  // online orders close the map and mark delivered immediately.
-  const handleMapDelivered = (orderId: string) => {
-    const order = orders.find(o => o._id === orderId);
-    const isCod = (order?.paymentMethod ?? "COD").toUpperCase() === "COD";
-    if (isCod) {
-      handleCloseMap();
-      setCodConfirm({ orderId, amount: order?.netAmount ?? 0 });
-    } else {
-      handleUpdateStatus(orderId, "delivered").then(() => handleCloseMap());
-    }
+  // Delivered from within the map: OTP was already verified inside DeliveryMapSheet,
+  // so just refresh data. The sheet handles its own close.
+  const handleMapDelivered = (_orderId: string) => {
+    fetchData();
   };
 
   const mapOrder = mapOrderId ? orders.find(o => o._id === mapOrderId) ?? null : null;
