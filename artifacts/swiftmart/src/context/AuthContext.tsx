@@ -186,8 +186,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (savedRole) setUserRole(savedRole as UserRole);
     if (savedDashRole) setRoleState(savedDashRole as 'customer' | 'vendor');
 
-    const { access } = api.getTokens();
-    if (access) {
+    const { access, refresh } = api.getTokens();
+    if (access || refresh) {
       api.get<{ success: boolean; user: ApiUser }>("/auth/me")
         .then(d => {
           const u = apiUserToFrontend(d.user);
@@ -197,14 +197,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem("sm_role", d.user.role);
           if (u.addresses?.length > 0) setSelectedDeliveryAddress(u.addresses[0]);
         })
-        .catch(() => {
-          clearTokens();
-          setUser(null);
-          setUserRole('customer');
+        .catch((err: unknown) => {
+          // Only clear session for definitive auth failures (api.ts already
+          // tried the refresh cycle and redirected on total failure). If it's
+          // a transient network error keep the cached user so the UI doesn't
+          // flicker to logged-out on a bad connection.
+          const isAuthFailure =
+            err instanceof Error &&
+            (err.message === "Session expired" ||
+              err.message.includes("401") ||
+              err.message.includes("403"));
+          if (isAuthFailure) {
+            clearTokens();
+            setUser(null);
+            setUserRole('customer');
+          } else {
+            // Network error — keep cached user data so user stays logged in
+            const savedUser = localStorage.getItem("sm_user");
+            const savedRole = localStorage.getItem("sm_role");
+            if (savedUser) {
+              try { setUser(JSON.parse(savedUser) as User); } catch { /* ignore */ }
+            }
+            if (savedRole) setUserRole(savedRole as UserRole);
+          }
         })
         .finally(() => setIsLoading(false));
     } else {
-      clearTokens();
       setUser(null);
       setUserRole('customer');
       setIsLoading(false);
