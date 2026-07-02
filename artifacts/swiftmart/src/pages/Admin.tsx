@@ -122,6 +122,8 @@ function buildDaySeries(orders: ApiOrder[]) {
 
 type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'service-areas' | 'delivery-partners';
 
+import { SEO } from "@/components/SEO";
+
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -135,6 +137,7 @@ export default function Admin() {
 
   return (
     <div className="min-h-[100dvh] flex bg-background font-sans selection:bg-primary selection:text-primary-foreground">
+      <SEO noIndex />
       {/* Mobile Top Bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-card border-b border-border z-50 flex items-center justify-between px-4">
         <button onClick={() => setMobileMenuOpen(true)} className="p-2 -ml-2 text-foreground">

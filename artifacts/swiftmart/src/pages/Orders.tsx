@@ -55,6 +55,8 @@ function getStatusDisplay(status: string) {
   }
 }
 
+import { SEO } from "@/components/SEO";
+
 export default function Orders() {
   const { user } = useAuth();
   const [orders, setOrders]             = useState<ApiOrder[]>([]);
@@ -140,6 +142,7 @@ export default function Orders() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-3xl mx-auto space-y-6">
+      <SEO noIndex />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <SectionHeader title="Your Orders" />

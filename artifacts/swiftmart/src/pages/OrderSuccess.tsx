@@ -12,6 +12,8 @@ interface ApiOrder {
   createdAt: string;
 }
 
+import { SEO } from "@/components/SEO";
+
 export default function OrderSuccess() {
   const [, params] = useRoute("/order/success/:id");
   const id = params?.id ?? "";
@@ -42,6 +44,7 @@ export default function OrderSuccess() {
 
   return (
     <div className="min-h-[calc(100vh-140px)] flex items-center justify-center p-4 relative overflow-hidden">
+      <SEO noIndex />
 
       {/* Green animated splash overlay */}
       <AnimatePresence>

@@ -62,6 +62,8 @@ function statusColor(s: string) {
   return STATUS_FLOW[s]?.color ?? 'text-muted-foreground bg-background';
 }
 
+import { SEO } from "@/components/SEO";
+
 export default function VendorOrders() {
   const { user, isLoading: authLoading } = useAuth();
 
@@ -222,6 +224,7 @@ export default function VendorOrders() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-4xl mx-auto space-y-6">
+      <SEO noIndex />
       <div className="flex items-center justify-between">
         <SectionHeader title="Incoming Orders" />
         {shopId && (

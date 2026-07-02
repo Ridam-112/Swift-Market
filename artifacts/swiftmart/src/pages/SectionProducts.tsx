@@ -34,6 +34,8 @@ function mapProduct(p: RawProduct): Product {
 
 const PAGE_SIZE = 20;
 
+import { SEO } from "@/components/SEO";
+
 export default function SectionProducts() {
   const params = useParams<{ id: string }>();
   const sectionId = params.id ?? "";
@@ -81,6 +83,7 @@ export default function SectionProducts() {
 
   return (
     <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto">
+      <SEO noIndex />
       {/* Header */}
       <div className="flex items-center gap-3 mb-5">
         <button

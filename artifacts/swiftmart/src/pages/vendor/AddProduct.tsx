@@ -46,6 +46,8 @@ async function uploadImageFile(file: File): Promise<string> {
   throw new Error(data.message ?? "Upload failed");
 }
 
+import { SEO } from "@/components/SEO";
+
 export default function AddProduct() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
@@ -210,6 +212,7 @@ export default function AddProduct() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-2xl mx-auto space-y-6">
+      <SEO noIndex />
       <SectionHeader title="Add New Product" />
 
       <form onSubmit={handleSubmit} className="space-y-5">

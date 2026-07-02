@@ -18,6 +18,8 @@ interface ApiUser {
   profilePhoto?: string | null;
 }
 
+import { SEO } from "@/components/SEO";
+
 export default function GoogleCallback() {
   const [, setLocation] = useLocation();
   const { refreshUser } = useAuth();
@@ -133,6 +135,7 @@ export default function GoogleCallback() {
 
   return (
     <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background gap-4">
+      <SEO noIndex />
       <Loader2 className="w-10 h-10 animate-spin text-primary" />
       <p className="text-muted-foreground text-sm">Completing Google sign-in…</p>
     </div>

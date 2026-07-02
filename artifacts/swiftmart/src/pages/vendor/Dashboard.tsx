@@ -86,6 +86,8 @@ const TOOLTIP_STYLE = {
   boxShadow: "8px 8px 24px hsl(var(--neu-shadow-dark)/.18), -8px -8px 24px hsl(var(--neu-shadow-light)/.9)",
 };
 
+import { SEO } from "@/components/SEO";
+
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -198,6 +200,7 @@ export default function Dashboard() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-5xl mx-auto space-y-8">
+      <SEO noIndex />
 
       {/* Header */}
       <div className="flex items-center justify-between">

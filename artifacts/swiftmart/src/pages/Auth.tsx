@@ -101,6 +101,8 @@ function PasswordInput({
   );
 }
 
+import { SEO } from "@/components/SEO";
+
 export default function Auth() {
   const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, forgotPassword, resetPassword } = useAuth();
   const [, setLocation] = useLocation();
@@ -275,6 +277,7 @@ export default function Auth() {
 
   return (
     <div className="relative min-h-[100dvh] bg-[#080808] flex flex-col overflow-hidden">
+      <SEO noIndex />
       <HandwritingBackground />
 
       {/* ── Top-left branding ── */}

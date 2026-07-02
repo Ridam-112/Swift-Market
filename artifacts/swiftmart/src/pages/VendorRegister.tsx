@@ -97,6 +97,8 @@ function ImageUploadBox({ label, url, onUpload, uploading, required, accept = "i
   );
 }
 
+import { SEO } from "@/components/SEO";
+
 export default function VendorRegister() {
   const [, setLocation] = useLocation();
   const { user, submitVendorApplication } = useAuth();
@@ -238,6 +240,7 @@ export default function VendorRegister() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-md mx-auto relative overflow-hidden bg-background">
+      <SEO noIndex />
       <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
 
       <div className="flex items-center gap-3 mb-8 relative z-10">

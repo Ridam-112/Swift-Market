@@ -142,6 +142,8 @@ function ImageUploader({
   );
 }
 
+import { SEO } from "@/components/SEO";
+
 export default function ShopProfile() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -255,6 +257,7 @@ export default function ShopProfile() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-2xl mx-auto space-y-6">
+      <SEO noIndex />
       <SectionHeader title="Edit Shop Profile" />
 
       <form onSubmit={handleSave} className="space-y-6">

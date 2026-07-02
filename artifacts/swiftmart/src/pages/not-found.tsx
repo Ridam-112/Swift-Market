@@ -2,9 +2,12 @@ import { AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 
+import { SEO } from "@/components/SEO";
+
 export default function NotFound() {
   return (
     <div className="min-h-[calc(100vh-140px)] w-full flex items-center justify-center p-4">
+      <SEO noIndex />
       <div className="w-full max-w-md bg-card p-8 rounded-3xl neu-card text-center">
         <div className="w-20 h-20 bg-background rounded-full flex items-center justify-center mx-auto mb-6 neu-inset text-destructive">
           <AlertCircle className="h-10 w-10" />

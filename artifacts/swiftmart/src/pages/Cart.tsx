@@ -11,6 +11,8 @@ import { cartKey } from "@/context/CartContext";
 
 const MINIMUM_ORDER_AMOUNT = 99;
 
+import { SEO } from "@/components/SEO";
+
 export default function Cart() {
   const { items, subtotal } = useCart();
   const { shops } = useShops();
@@ -42,6 +44,7 @@ export default function Cart() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-3xl mx-auto space-y-6">
+      <SEO noIndex />
       <SectionHeader title="Your Cart" />
       
       {shopClosed && (

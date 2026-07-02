@@ -36,6 +36,8 @@ const STATUS_CONFIG = {
 
 type StatusFilter = "all" | "pending" | "active" | "rejected" | "low_stock";
 
+import { SEO } from "@/components/SEO";
+
 export default function VendorProducts() {
   const { user, isLoading: authLoading } = useAuth();
   const [shopId, setShopId] = useState<string | null>(null);
@@ -137,6 +139,7 @@ export default function VendorProducts() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-5xl mx-auto space-y-6">
+      <SEO noIndex />
       <SectionHeader
         title="My Products"
         action={

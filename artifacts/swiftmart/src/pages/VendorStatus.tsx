@@ -34,6 +34,8 @@ const CERT_NAMES: Record<string, string> = {
   drug_license: "Drug License",
 };
 
+import { SEO } from "@/components/SEO";
+
 export default function VendorStatus() {
   const { user, setRole } = useAuth();
   const [, setLocation] = useLocation();
@@ -104,6 +106,7 @@ export default function VendorStatus() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-md mx-auto min-h-[100dvh] flex flex-col justify-center relative overflow-hidden bg-background">
+      <SEO noIndex />
 
       {user.vendorStatus === "pending" && (
         <div className="space-y-4">

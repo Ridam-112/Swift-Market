@@ -30,6 +30,8 @@ const TYPE_ICONS: Record<string, { icon: React.ComponentType<{ className?: strin
 
 type FcmDisplayState = "subscribed" | "denied" | "default" | "unsupported";
 
+import { SEO } from "@/components/SEO";
+
 export default function Notifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -157,6 +159,7 @@ export default function Notifications() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-2xl mx-auto space-y-4">
+      <SEO noIndex />
       <div className="flex items-center justify-between">
         <SectionHeader title="Notifications" />
         {unreadCount > 0 && (

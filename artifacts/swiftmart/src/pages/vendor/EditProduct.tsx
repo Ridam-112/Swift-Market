@@ -64,6 +64,8 @@ async function uploadImageFile(file: File): Promise<string> {
   throw new Error(data.message ?? "Upload failed");
 }
 
+import { SEO } from "@/components/SEO";
+
 export default function EditProduct() {
   const params = useParams<{ id: string }>();
   const productId = params.id;
@@ -295,6 +297,7 @@ export default function EditProduct() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-2xl mx-auto space-y-6">
+      <SEO noIndex />
       <SectionHeader title="Edit Product" />
 
       <div className="flex items-start gap-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">

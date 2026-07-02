@@ -35,6 +35,8 @@ interface DeliveryChargeResponse {
   total: number;
 }
 
+import { SEO } from "@/components/SEO";
+
 export default function Checkout() {
   const [, setLocation] = useLocation();
   const { items, subtotal, clearCart } = useCart();
@@ -231,6 +233,7 @@ export default function Checkout() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-3xl mx-auto space-y-8">
+      <SEO noIndex />
       <SectionHeader title="Checkout" />
 
       <div className="space-y-8">

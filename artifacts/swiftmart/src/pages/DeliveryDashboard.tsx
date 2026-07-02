@@ -498,6 +498,8 @@ function SidebarContent({
   );
 }
 
+import { SEO } from "@/components/SEO";
+
 export default function DeliveryDashboard() {
   const { logout } = useAuth();
   const [, setLocation] = useLocation();
@@ -668,6 +670,7 @@ export default function DeliveryDashboard() {
 
   return (
     <div className="min-h-[100dvh] flex bg-background font-sans selection:bg-primary selection:text-primary-foreground">
+      <SEO noIndex />
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-card border-b border-border z-50 flex items-center justify-between px-4">
         <button onClick={() => setMobileMenuOpen(true)} className="p-2 -ml-2 text-foreground">

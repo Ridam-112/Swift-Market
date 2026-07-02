@@ -1,8 +1,12 @@
 import { LegalLayout, Section, InfoBox, SUPPORT_EMAIL, APP_NAME } from "./LegalLayout";
 import { Link } from "wouter";
 
+import { SEO } from "@/components/SEO";
+
 export default function DeleteAccount() {
   return (
+    <>
+    <SEO noIndex />
     <LegalLayout
       title="Delete Your Account"
       subtitle="Permanent account deletion"
@@ -103,5 +107,6 @@ export default function DeleteAccount() {
         first — we may be able to help without deleting your account.
       </div>
     </LegalLayout>
+    </>
   );
 }

@@ -21,6 +21,8 @@ const SUPPORTED_PINCODES = [
   { code: "733103", city: "Balurghat" },
 ];
 
+import { SEO } from "@/components/SEO";
+
 export default function Profile() {
   const { user, logout, updateUser, addAddress, deleteAddress, updateAddress, setRole, role, isAdmin } = useAuth();
   const [, setLocation] = useLocation();
@@ -87,6 +89,7 @@ export default function Profile() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-2xl mx-auto space-y-8">
+      <SEO noIndex />
       <SectionHeader title="Profile" />
 
       {/* User Info */}
