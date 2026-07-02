@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Upload, X, Loader2, ChevronDown, AlertCircle, Clock, Plus, Palette, Ruler } from "lucide-react";
 import { api } from "@/lib/api";
+import { compressIfNeeded } from "@/lib/imageCompression";
 
 interface ApiProduct {
   _id: string;
@@ -49,8 +50,9 @@ const COLOR_HEX: Record<string, string> = {
 };
 
 async function uploadImageFile(file: File): Promise<string> {
+  const compressed = await compressIfNeeded(file);
   const formData = new FormData();
-  formData.append("image", file);
+  formData.append("image", compressed);
   const token = localStorage.getItem("sm_at");
   const res = await fetch("/api/upload/product-image", {
     method: "POST",
