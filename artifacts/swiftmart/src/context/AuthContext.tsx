@@ -37,7 +37,7 @@ interface AuthContextType {
   loginWithPassword: (phone: string, password: string) => Promise<{ isNewUser: boolean; user?: User }>;
   setPasswordForOtpUser: (phone: string, password: string) => Promise<{ user?: User }>;
   signup: (name: string, phone: string, password: string) => Promise<{ isNewUser: boolean; user?: User }>;
-  loginWithGoogle: (token: string, type?: "credential" | "accessToken") => Promise<{ isNewUser: boolean; user?: User }>;
+  loginWithGoogle: (token: string, type?: "credential" | "accessToken") => Promise<{ isNewUser: boolean; needsProfile?: boolean; user?: User }>;
   loginWithPhone: (phone: string) => Promise<void>;
   verifyOtp: (otp: string, phone: string) => Promise<{ isNewUser: boolean; user?: User }>;
 
@@ -447,8 +447,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = async (_name: string, _phone: string, _password: string): Promise<{ isNewUser: boolean; user?: User }> => {
     throw new Error("Phone signup is no longer supported. Please use email.");
   };
-  const loginWithGoogle = async (_token: string, _type?: "credential" | "accessToken"): Promise<{ isNewUser: boolean; user?: User }> => {
-    throw new Error("Use signInWithGoogle() with a session token instead.");
+  const loginWithGoogle = async (token: string, type: "credential" | "accessToken" = "credential"): Promise<{ isNewUser: boolean; needsProfile?: boolean; user?: User }> => {
+    const body = type === "credential" ? { credential: token } : { accessToken: token };
+    const data = await api.post<{
+      success: boolean; isNewUser: boolean; needsProfile?: boolean;
+      accessToken: string; refreshToken: string; user: ApiUser;
+    }>("/auth/google", body);
+    setTokens(data.accessToken, data.refreshToken);
+    const u = applyAuthResult(data.user);
+    return { isNewUser: data.isNewUser, needsProfile: data.needsProfile, user: u };
   };
   const loginWithPhone = async (_phone: string): Promise<void> => {
     throw new Error("OTP login has been removed. Please use email.");

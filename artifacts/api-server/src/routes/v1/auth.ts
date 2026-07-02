@@ -31,11 +31,13 @@ const AUTH_MODE: AuthMode = (process.env["AUTH_MODE"] as AuthMode | undefined) ?
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatUser(u: typeof users.$inferSelect) {
+  // Mask legacy fake-phone placeholders (g_<googleId>) — they should never reach the client
+  const phone = u.phone?.startsWith("g_") ? "" : (u.phone ?? "");
   return {
     id: u.id,
     _id: u.id,
     name: u.name,
-    phone: u.phone,
+    phone,
     email: u.email ?? "",
     role: u.role,
     status: u.status,
@@ -496,7 +498,7 @@ router.post("/google", googleAuthLimiter, async (req: Request, res: Response): P
 
     if (!user) {
       [user] = await db.insert(users).values({
-        name: name ?? "User", email, googleId, phone: `g_${googleId}`,
+        name: name ?? "User", email, googleId, phone: null,
         role: "customer", status: "active", authProvider: "google", profilePhoto: profilePhoto ?? null,
       }).returning();
     } else {
@@ -510,7 +512,8 @@ router.post("/google", googleAuthLimiter, async (req: Request, res: Response): P
     await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
     const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
 
-    res.json({ success: true, isNewUser, ...issueTokens(updated), user: formatUser(updated) });
+    const needsProfile = isNewUser || !updated.phone || updated.phone.startsWith("g_");
+    res.json({ success: true, isNewUser, needsProfile, ...issueTokens(updated), user: formatUser(updated) });
   } catch (err) {
     req.log.error({ err }, "Google auth failed");
     res.status(401).json({ success: false, message: err instanceof Error ? err.message : "Google authentication failed" });
@@ -660,7 +663,7 @@ router.post("/google/exchange", googleAuthLimiter, async (req: Request, res: Res
 
     if (!user) {
       [user] = await db.insert(users).values({
-        name: name ?? "User", email, googleId, phone: `g_${googleId}`,
+        name: name ?? "User", email, googleId, phone: null,
         role: "customer", status: "active", authProvider: "google", profilePhoto: profilePhoto ?? null,
       }).returning();
     } else {
