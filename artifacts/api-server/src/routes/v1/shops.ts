@@ -347,11 +347,11 @@ router.post("/:id/approve", authenticate, A, async (req: AuthRequest, res: Respo
       .set({ status: "approved", isOpen: true, ...certUpdate })
       .where(eq(shops.id, shopId)).returning();
     if (!shop) return null;
-    const [owner] = await tx.select({ role: users.role }).from(users).where(eq(users.phone, shop.phone)).limit(1);
+    const [owner] = await tx.select({ id: users.id, role: users.role }).from(users).where(eq(users.id, shop.ownerId)).limit(1);
     if (owner) {
       const updates: Record<string, string> = { vendorStatus: "approved" };
       if (!ADMIN_ROLES.has(owner.role)) updates["role"] = "vendor";
-      await tx.update(users).set(updates).where(eq(users.phone, shop.phone));
+      await tx.update(users).set(updates).where(eq(users.id, owner.id));
     }
     return shop;
   });
@@ -368,7 +368,7 @@ router.post("/:id/reject", authenticate, A, async (req: AuthRequest, res: Respon
       .where(eq(shops.id, req.params["id"] as string))
       .returning();
     if (!shop) return null;
-    await tx.update(users).set({ vendorStatus: "rejected" }).where(eq(users.phone, shop.phone));
+    await tx.update(users).set({ vendorStatus: "rejected" }).where(eq(users.id, shop.ownerId));
     return shop;
   });
   if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
@@ -457,6 +457,59 @@ router.patch("/:id/owner", authenticate, A, async (req: AuthRequest, res: Respon
   });
 
   res.json({ success: true, shop: mi(updatedShop), owner: mi(newOwner) });
+});
+
+// PATCH /api/shops/:id/link-owner — admin fixes a vendor account that has the wrong credentials
+// (e.g. Google-login user got a separate customer account instead of the vendor account)
+// Strategy:
+//   1. If a user already exists with the given email → promote that user to vendor and point the shop at them.
+//   2. Otherwise → update the current owner's phone + email and promote them.
+router.patch("/:id/link-owner", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { phone, email } = req.body as { phone?: string; email?: string };
+  if (!phone && !email) {
+    res.status(400).json({ success: false, message: "At least one of phone or email is required" });
+    return;
+  }
+
+  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"] as string)).limit(1);
+  if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+
+  const result = await db.transaction(async (tx) => {
+    let targetUser: typeof users.$inferSelect | undefined;
+
+    if (email) {
+      const [byEmail] = await tx.select().from(users).where(eq(users.email, email)).limit(1);
+      if (byEmail) targetUser = byEmail;
+    }
+
+    if (!targetUser && phone) {
+      const [byPhone] = await tx.select().from(users).where(eq(users.phone, phone)).limit(1);
+      if (byPhone) targetUser = byPhone;
+    }
+
+    if (!targetUser) {
+      const [currentOwner] = await tx.select().from(users).where(eq(users.id, shop.ownerId)).limit(1);
+      targetUser = currentOwner;
+    }
+
+    if (!targetUser) return null;
+
+    const updates: Record<string, unknown> = { vendorStatus: "approved" };
+    if (!ADMIN_ROLES.has(targetUser.role)) updates["role"] = "vendor";
+    if (phone && phone !== targetUser.phone) updates["phone"] = phone;
+    if (email && email !== targetUser.email) updates["email"] = email;
+
+    const [updatedUser] = await tx.update(users).set(updates).where(eq(users.id, targetUser.id)).returning();
+
+    const shopUpdates: Record<string, unknown> = { ownerId: targetUser.id };
+    if (phone) shopUpdates["phone"] = phone;
+    const [updatedShop] = await tx.update(shops).set(shopUpdates).where(eq(shops.id, shop.id)).returning();
+
+    return { user: updatedUser, shop: updatedShop };
+  });
+
+  if (!result) { res.status(404).json({ success: false, message: "Owner not found" }); return; }
+  res.json({ success: true, user: mi(result.user!), shop: mi(result.shop!) });
 });
 
 // DELETE /api/shops/:id

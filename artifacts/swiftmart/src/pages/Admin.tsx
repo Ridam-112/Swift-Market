@@ -14,6 +14,7 @@ import {
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
   ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown, Home,
   Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin, Truck, Bike,
+  UserCheck,
   type LucideIcon,
 } from "lucide-react";
 import { categories } from "@/data/categories";
@@ -3561,6 +3562,10 @@ function ShopListPanel({ onManageProducts }: { onManageProducts: (shop: ApiShopF
   const [ownerPhone, setOwnerPhone] = useState('');
   const [ownerNameInput, setOwnerNameInput] = useState('');
   const [ownerSaving, setOwnerSaving] = useState(false);
+  const [linkingOwnerId, setLinkingOwnerId] = useState<string | null>(null);
+  const [linkPhone, setLinkPhone] = useState('');
+  const [linkEmail, setLinkEmail] = useState('');
+  const [linkSaving, setLinkSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const load = useCallback(async () => {
@@ -3716,6 +3721,26 @@ function ShopListPanel({ onManageProducts }: { onManageProducts: (shop: ApiShopF
       toast.error((e as Error).message ?? 'Failed to change owner');
     } finally {
       setOwnerSaving(false);
+    }
+  };
+
+  const handleLinkOwner = async (shopId: string) => {
+    if (!linkPhone.trim() && !linkEmail.trim()) { toast.error('Enter phone or email to link'); return; }
+    setLinkSaving(true);
+    try {
+      await api.patch(`/shops/${shopId}/link-owner`, {
+        phone: linkPhone.trim() || undefined,
+        email: linkEmail.trim() || undefined,
+      });
+      toast.success('Owner account linked — vendor can now upload products');
+      setLinkingOwnerId(null);
+      setLinkPhone('');
+      setLinkEmail('');
+      load();
+    } catch (e) {
+      toast.error((e as Error).message ?? 'Failed to link owner');
+    } finally {
+      setLinkSaving(false);
     }
   };
 
@@ -3910,6 +3935,7 @@ function ShopListPanel({ onManageProducts }: { onManageProducts: (shop: ApiShopF
             {filteredShops.map(shop => {
               const isDeleting = deleteConfirm === shop._id;
               const isChangingOwner = changingOwnerId === shop._id;
+              const isLinkingOwner = linkingOwnerId === shop._id;
               const isToggling = togglingId === shop._id;
               return (
                 <div key={shop._id}>
@@ -3952,11 +3978,18 @@ function ShopListPanel({ onManageProducts }: { onManageProducts: (shop: ApiShopF
                         <Package className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => { setChangingOwnerId(isChangingOwner ? null : shop._id); setOwnerPhone(''); setOwnerNameInput(''); }}
+                        onClick={() => { setChangingOwnerId(isChangingOwner ? null : shop._id); setOwnerPhone(''); setOwnerNameInput(''); setLinkingOwnerId(null); }}
                         title="Change owner"
                         className={`p-2 rounded-xl hover:bg-muted transition-colors ${isChangingOwner ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
                       >
                         <User className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => { setLinkingOwnerId(isLinkingOwner ? null : shop._id); setLinkPhone(''); setLinkEmail(''); setChangingOwnerId(null); }}
+                        title="Fix vendor login (link Google account)"
+                        className={`p-2 rounded-xl hover:bg-muted transition-colors ${isLinkingOwner ? 'text-emerald-600 bg-emerald-500/10' : 'text-muted-foreground'}`}
+                      >
+                        <UserCheck className="w-4 h-4" />
                       </button>
                       <button onClick={() => openEdit(shop)} title="Edit" className="p-2 rounded-xl hover:bg-muted text-muted-foreground transition-colors">
                         <Edit2 className="w-4 h-4" />
@@ -3985,6 +4018,30 @@ function ShopListPanel({ onManageProducts }: { onManageProducts: (shop: ApiShopF
                         <Button size="sm" variant="outline" onClick={() => setChangingOwnerId(null)} className="rounded-xl h-9">Cancel</Button>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">A new vendor account will be created automatically if the phone doesn't exist.</p>
+                    </div>
+                  )}
+
+                  {isLinkingOwner && (
+                    <div className="px-4 pb-4 bg-emerald-500/5 border-t border-emerald-500/20">
+                      <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide pt-3 mb-1">Fix Vendor Login</p>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Use this when a vendor gets "Forbidden" uploading products — usually because their Google account is separate from their vendor account.
+                        Enter the vendor's real phone and/or Google email to merge the accounts.
+                      </p>
+                      <div className="flex flex-wrap gap-2 items-end">
+                        <div className="flex-1 min-w-[160px]">
+                          <label className="text-xs font-medium block mb-1">Vendor Phone</label>
+                          <Input value={linkPhone} onChange={e => setLinkPhone(e.target.value)} placeholder="e.g. 7431813135" className="bg-background neu-inset border-none h-9 text-sm" />
+                        </div>
+                        <div className="flex-1 min-w-[200px]">
+                          <label className="text-xs font-medium block mb-1">Google Email</label>
+                          <Input value={linkEmail} onChange={e => setLinkEmail(e.target.value)} placeholder="e.g. vendor@gmail.com" className="bg-background neu-inset border-none h-9 text-sm" type="email" />
+                        </div>
+                        <Button size="sm" onClick={() => handleLinkOwner(shop._id)} disabled={linkSaving} className="rounded-xl h-9 shadow-none neu-card bg-emerald-600 text-white hover:bg-emerald-700">
+                          {linkSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <><UserCheck className="w-3.5 h-3.5 mr-1" />Fix Account</>}
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setLinkingOwnerId(null)} className="rounded-xl h-9">Cancel</Button>
+                      </div>
                     </div>
                   )}
 

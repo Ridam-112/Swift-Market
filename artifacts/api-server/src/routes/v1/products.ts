@@ -195,8 +195,26 @@ router.get("/:id", optionalAuth, async (req: Request, res: Response): Promise<vo
 });
 
 // POST /api/products
-router.post("/", authenticate, V, vendorWriteLimiter, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post("/", authenticate, vendorWriteLimiter, async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body as Record<string, unknown>;
+  const VENDOR_ROLES = new Set(["vendor", "admin", "super_admin"]);
+
+  // Self-heal: if the user's JWT says "customer" but they own an approved shop,
+  // their role was never updated (e.g. Google-login account linking gap). Fix it now.
+  if (!VENDOR_ROLES.has(req.user!.role)) {
+    const [ownedShop] = await db.select({ id: shops.id })
+      .from(shops)
+      .where(and(eq(shops.ownerId, req.user!.userId), eq(shops.status, "approved")))
+      .limit(1);
+    if (ownedShop) {
+      await db.update(users).set({ role: "vendor", vendorStatus: "approved" }).where(eq(users.id, req.user!.userId));
+      req.user!.role = "vendor";
+    } else {
+      res.status(403).json({ success: false, message: "Forbidden: insufficient role" });
+      return;
+    }
+  }
+
   const isAdmin = req.user!.role === "admin" || req.user!.role === "super_admin";
 
   // Admin can create a product for any shop by passing shopId directly (may specify status)
