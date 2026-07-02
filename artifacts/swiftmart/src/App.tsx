@@ -217,6 +217,34 @@ function ScrollToTop() {
   return null;
 }
 
+// PublicLayout — no AuthGuard. Used for all browsable/SEO pages so Googlebot
+// never gets redirected to /auth (which would make it see noindex,nofollow).
+function PublicLayout({ children }: { children: React.ReactNode }) {
+  const [location] = useLocation();
+  return (
+    <PincodeGuard>
+      <ScrollToTop />
+      <Header />
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.main
+          key={location}
+          className="flex-1 w-full bg-background"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.16, ease: "easeOut" }}
+        >
+          <Suspense fallback={<PageLoader />}>
+            {children}
+          </Suspense>
+        </motion.main>
+      </AnimatePresence>
+      <BottomNav />
+    </PincodeGuard>
+  );
+}
+
+// ProtectedLayout — AuthGuard included. Used only for private/transactional routes.
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   return (
@@ -281,34 +309,36 @@ function Router() {
         <Route path="/contact-support"     component={ContactSupport} />
         <Route path="/delete-account"      component={DeleteAccount} />
 
+        {/* ── Public browsable pages — no auth gate, Google can index these ── */}
         <Route path="/">
-          <ProtectedLayout><Home /></ProtectedLayout>
+          <PublicLayout><Home /></PublicLayout>
         </Route>
         <Route path="/categories">
-          <ProtectedLayout><Categories /></ProtectedLayout>
+          <PublicLayout><Categories /></PublicLayout>
         </Route>
         <Route path="/shops">
-          <ProtectedLayout><Shops /></ProtectedLayout>
+          <PublicLayout><Shops /></PublicLayout>
         </Route>
         <Route path="/shop/:vendorId">
-          <ProtectedLayout><ShopDetail /></ProtectedLayout>
+          <PublicLayout><ShopDetail /></PublicLayout>
         </Route>
         <Route path="/search">
-          <ProtectedLayout><Search /></ProtectedLayout>
+          <PublicLayout><Search /></PublicLayout>
         </Route>
         <Route path="/products">
-          <ProtectedLayout><AllProducts /></ProtectedLayout>
+          <PublicLayout><AllProducts /></PublicLayout>
         </Route>
         <Route path="/section/:id">
-          <ProtectedLayout><SectionProducts /></ProtectedLayout>
+          <PublicLayout><SectionProducts /></PublicLayout>
         </Route>
         <Route path="/category/:slug">
-          <ProtectedLayout><Category /></ProtectedLayout>
+          <PublicLayout><Category /></PublicLayout>
         </Route>
         <Route path="/product/:id">
-          <ProtectedLayout><Product /></ProtectedLayout>
+          <PublicLayout><Product /></PublicLayout>
         </Route>
 
+        {/* ── Private / transactional pages — AuthGuard blocks unauthenticated users ── */}
         <Route path="/cart">
           <ProtectedLayout><RoleGuard requiredRole="customer"><Cart /></RoleGuard></ProtectedLayout>
         </Route>
@@ -368,7 +398,7 @@ function Router() {
         </Route>
 
         <Route>
-          <ProtectedLayout><NotFound /></ProtectedLayout>
+          <PublicLayout><NotFound /></PublicLayout>
         </Route>
       </Switch>
     </ThemedShell>

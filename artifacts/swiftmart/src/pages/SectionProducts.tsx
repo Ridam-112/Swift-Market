@@ -83,7 +83,7 @@ export default function SectionProducts() {
 
   return (
     <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto">
-      <SEO noIndex />
+      <SEO />
       {/* Header */}
       <div className="flex items-center gap-3 mb-5">
         <button
