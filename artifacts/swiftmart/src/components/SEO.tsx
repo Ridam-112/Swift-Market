@@ -1,3 +1,4 @@
+import { useLocation } from "wouter";
 import { Helmet } from "react-helmet-async";
 
 const SITE_NAME = "SwiftMart";
@@ -68,3 +69,41 @@ export function SEO({
 }
 
 export { DEFAULT_TITLE, DEFAULT_DESCRIPTION, BASE_URL, SITE_NAME };
+
+// ── Route-based robots manager ────────────────────────────────────────────────
+// Mount once inside <WouterRouter>. Automatically sets noindex,nofollow on
+// private/auth/account routes and index,follow on all public pages.
+
+const NOINDEX_PREFIXES: string[] = [
+  "/auth",
+  "/complete-profile",
+  "/cart",
+  "/checkout",
+  "/order",        // covers /order/success/:id and /orders
+  "/orders",
+  "/profile",
+  "/notifications",
+  "/vendor-register",
+  "/vendor-status",
+  "/vendor",
+  "/admin",
+  "/delivery-dashboard",
+  "/delivery",
+  "/delete-account",
+];
+
+function isPrivateRoute(path: string): boolean {
+  return NOINDEX_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(prefix + "/"),
+  );
+}
+
+export function RobotsManager() {
+  const [location] = useLocation();
+  const robots = isPrivateRoute(location) ? "noindex,nofollow" : "index,follow";
+  return (
+    <Helmet>
+      <meta name="robots" content={robots} />
+    </Helmet>
+  );
+}
