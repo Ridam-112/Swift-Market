@@ -25,6 +25,7 @@ When you fork or move this project to a new Replit account, set these in **Tools
 | Secret key | Where to get it |
 |---|---|
 | `GOOGLE_CLIENT_ID` | Firebase Console → Project Settings → General → Web app → SDK config |
+| `GOOGLE_CLIENT_SECRET` | Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client → Client Secret |
 | `VITE_FIREBASE_API_KEY` | Firebase Console → Project Settings → General → Web app → SDK config |
 | `VITE_FIREBASE_AUTH_DOMAIN` | e.g. `your-project.firebaseapp.com` |
 | `VITE_FIREBASE_PROJECT_ID` | e.g. `your-project-id` |

@@ -13,6 +13,7 @@ const REQUIRED = [
 
 const GOOGLE_AUTH = [
   { key: "GOOGLE_CLIENT_ID",          desc: "Firebase Console → Project Settings → Web app" },
+  { key: "GOOGLE_CLIENT_SECRET",      desc: "Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client" },
   { key: "VITE_FIREBASE_API_KEY",     desc: "Firebase Console → Project Settings → Web app" },
   { key: "VITE_FIREBASE_AUTH_DOMAIN", desc: "e.g. your-project.firebaseapp.com" },
   { key: "VITE_FIREBASE_PROJECT_ID",  desc: "e.g. your-project-id" },
