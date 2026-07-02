@@ -1,8 +1,10 @@
 import { CartItem } from "@/types";
 import { formatINR } from "@/lib/currency";
 import { QuantityStepper } from "./QuantityStepper";
+import { WeightStepper } from "./WeightStepper";
 import { useCart } from "@/hooks/useCart";
 import { cartKey } from "@/context/CartContext";
+import { parseUnit, weightPresets, priceForWeight, formatWeight } from "@/lib/weightUtils";
 
 const COLOR_HEX: Record<string, string> = {
   Red: "#ef4444", Blue: "#3b82f6", Green: "#22c55e", Yellow: "#eab308",
@@ -12,11 +14,25 @@ const COLOR_HEX: Record<string, string> = {
 };
 
 export function CartItemRow({ item }: { item: CartItem }) {
-  const { updateQty } = useCart();
-  const { product, qty, selectedColor, selectedSize } = item;
+  const { updateQty, updateWeight } = useCart();
+  const { product, qty, selectedColor, selectedSize, selectedGrams } = item;
   const key = cartKey(product.id, selectedColor, selectedSize);
 
+  const unitInfo = parseUnit(product.unit);
+  const isWeightBased = unitInfo.type === "weight";
+  const baseGrams = isWeightBased && unitInfo.type === "weight" ? unitInfo.baseGrams : 1000;
+  const maxGrams = product.stock > 0 ? product.stock * baseGrams : undefined;
+  const presets = weightPresets(maxGrams);
+
   const isLowStock = product.stock > 0 && product.stock <= 5;
+
+  const unitPrice = product.discountedPrice != null && product.discountedPrice < product.price
+    ? product.discountedPrice
+    : product.price;
+
+  const lineTotal = isWeightBased && selectedGrams
+    ? priceForWeight(unitPrice, baseGrams, selectedGrams)
+    : unitPrice * qty;
 
   return (
     <div className="flex gap-4 p-3 bg-card rounded-2xl neu-card mb-3 items-center">
@@ -33,7 +49,15 @@ export function CartItemRow({ item }: { item: CartItem }) {
 
       <div className="flex-1 min-w-0">
         <h4 className="font-semibold text-sm line-clamp-1">{product.name}</h4>
-        <div className="text-xs text-muted-foreground mt-0.5">{product.unit}</div>
+
+        {/* Weight badge for weight-based products */}
+        {isWeightBased && selectedGrams ? (
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {formatWeight(selectedGrams)} · {formatWeight(baseGrams)} @ {formatINR(unitPrice)}
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground mt-0.5">{product.unit}</div>
+        )}
 
         {(selectedColor || selectedSize) && (
           <div className="flex flex-wrap gap-1 mt-1">
@@ -60,26 +84,32 @@ export function CartItemRow({ item }: { item: CartItem }) {
           </div>
         )}
         <div className="flex items-baseline gap-1.5 mt-1">
-          <span className="font-bold text-primary">
-            {formatINR(product.discountedPrice != null && product.discountedPrice < product.price
-              ? product.discountedPrice
-              : product.price)}
-          </span>
-          {product.discountedPrice != null && product.discountedPrice < product.price && (
+          <span className="font-bold text-primary">{formatINR(lineTotal)}</span>
+          {product.discountedPrice != null && product.discountedPrice < product.price && !isWeightBased && (
             <span className="text-xs text-muted-foreground line-through">
-              {formatINR(product.price)}
+              {formatINR(product.price * qty)}
             </span>
           )}
         </div>
       </div>
 
       <div className="flex-shrink-0">
-        <QuantityStepper
-          qty={qty}
-          maxQty={product.stock}
-          onChange={(newQty) => updateQty(key, newQty)}
-          size="sm"
-        />
+        {isWeightBased && selectedGrams ? (
+          <WeightStepper
+            selectedGrams={selectedGrams}
+            presets={presets}
+            maxGrams={maxGrams}
+            onChange={(grams) => updateWeight(key, grams)}
+            size="sm"
+          />
+        ) : (
+          <QuantityStepper
+            qty={qty}
+            maxQty={product.stock}
+            onChange={(newQty) => updateQty(key, newQty)}
+            size="sm"
+          />
+        )}
       </div>
     </div>
   );

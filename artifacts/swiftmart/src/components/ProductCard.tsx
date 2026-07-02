@@ -2,12 +2,14 @@ import { Product } from "@/types";
 import { Link, useLocation } from "wouter";
 import { formatINR } from "@/lib/currency";
 import { QuantityStepper } from "./QuantityStepper";
+import { WeightStepper } from "./WeightStepper";
 import { useCart } from "@/hooks/useCart";
 import { Button } from "./ui/button";
 import { motion } from "framer-motion";
 import { categories } from "@/data/categories";
 import { cartKey } from "@/context/CartContext";
 import { Store } from "lucide-react";
+import { parseUnit, weightPresets, priceForWeight, formatWeight } from "@/lib/weightUtils";
 
 interface ProductCardProps {
   product: Product;
@@ -15,25 +17,46 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, index = 0 }: ProductCardProps) {
-  const { items, addToCart, updateQty } = useCart();
+  const { items, addToCart, updateQty, updateWeight } = useCart();
   const [, navigate] = useLocation();
 
   const hasVariants = (product.colors?.length ?? 0) > 0 || (product.sizes?.length ?? 0) > 0;
+  const unitInfo = parseUnit(product.unit);
+  const isWeightBased = unitInfo.type === "weight";
+
+  const simpleKey = cartKey(product.id, undefined, undefined);
+  const cartItem = items.find(item => item.product.id === product.id && !item.selectedColor && !item.selectedSize);
 
   // For variant products, sum qty across all variants for display
   const totalQtyInCart = hasVariants
     ? items.filter(item => item.product.id === product.id).reduce((s, i) => s + i.qty, 0)
-    : (items.find(item => item.product.id === product.id)?.qty ?? 0);
-
-  const simpleKey = cartKey(product.id, undefined, undefined);
+    : (cartItem?.qty ?? 0);
 
   const category = categories.find(c => c.id === product.category);
   const isOutOfStock = product.stock === 0;
   const isLowStock = product.stock > 0 && product.stock <= 5;
 
+  // Weight-based helpers
+  const baseGrams = isWeightBased && unitInfo.type === "weight" ? unitInfo.baseGrams : 1000;
+  const maxGrams = product.stock > 0 ? product.stock * baseGrams : undefined;
+  const presets = weightPresets(maxGrams);
+  const selectedGrams = cartItem?.selectedGrams;
+  const weightInCart = isWeightBased && selectedGrams != null && selectedGrams > 0;
+
+  const effectivePrice = product.discountedPrice && product.discountedPrice < product.price
+    ? product.discountedPrice
+    : product.price;
+
+  const displayPrice = isWeightBased && weightInCart && selectedGrams
+    ? priceForWeight(effectivePrice, baseGrams, selectedGrams)
+    : effectivePrice;
+
   const handleAdd = () => {
     if (hasVariants) {
       navigate(`/product/${product.id}`);
+    } else if (isWeightBased) {
+      const defaultGrams = presets[1] ?? presets[0]; // default to 250g or smallest
+      addToCart(product, 1, undefined, undefined, defaultGrams);
     } else {
       addToCart(product);
     }
@@ -45,6 +68,10 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
     } else {
       updateQty(simpleKey, newQty);
     }
+  };
+
+  const handleWeightChange = (grams: number) => {
+    updateWeight(simpleKey, grams);
   };
 
   return (
@@ -124,22 +151,27 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           </div>
         )}
 
-        <div className="mt-auto flex items-center justify-between">
-          <div className="flex flex-col">
+        <div className="mt-auto flex items-center justify-between gap-1">
+          <div className="flex flex-col min-w-0">
             <div className="font-bold text-base text-primary">
-              {formatINR(product.discountedPrice && product.discountedPrice < product.price ? product.discountedPrice : product.price)}
+              {formatINR(displayPrice)}
             </div>
-            {product.discountedPrice && product.discountedPrice < product.price && (
+            {/* Show "per kg" label or original MRP if discounted */}
+            {isWeightBased && weightInCart && selectedGrams ? (
+              <div className="text-[10px] text-muted-foreground leading-tight">
+                {formatWeight(selectedGrams)} · {formatINR(effectivePrice)}/{formatWeight(baseGrams)}
+              </div>
+            ) : product.discountedPrice && product.discountedPrice < product.price ? (
               <div className="text-[11px] text-muted-foreground line-through leading-tight">
                 {formatINR(product.price)}
               </div>
-            )}
+            ) : null}
           </div>
-          <div className="z-10">
+          <div className="z-10 shrink-0">
             {isOutOfStock ? (
               <span className="text-[10px] font-semibold text-muted-foreground">Unavailable</span>
-            ) : totalQtyInCart > 0 ? (
-              hasVariants ? (
+            ) : hasVariants ? (
+              totalQtyInCart > 0 ? (
                 <Button
                   size="sm"
                   variant="outline"
@@ -149,21 +181,49 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
                   {totalQtyInCart} in cart
                 </Button>
               ) : (
+                <Button
+                  size="sm"
+                  className="rounded-full font-bold shadow-none neu-card px-4 h-8"
+                  onClick={handleAdd}
+                >
+                  OPTIONS
+                </Button>
+              )
+            ) : isWeightBased ? (
+              weightInCart && selectedGrams ? (
+                <WeightStepper
+                  selectedGrams={selectedGrams}
+                  presets={presets}
+                  maxGrams={maxGrams}
+                  onChange={handleWeightChange}
+                  size="sm"
+                />
+              ) : (
+                <Button
+                  size="sm"
+                  className="rounded-full font-bold shadow-none neu-card px-4 h-8"
+                  onClick={handleAdd}
+                >
+                  ADD
+                </Button>
+              )
+            ) : (
+              totalQtyInCart > 0 ? (
                 <QuantityStepper
                   qty={totalQtyInCart}
                   maxQty={product.stock}
                   onChange={handleStepperChange}
                   size="sm"
                 />
+              ) : (
+                <Button
+                  size="sm"
+                  className="rounded-full font-bold shadow-none neu-card px-4 h-8"
+                  onClick={handleAdd}
+                >
+                  ADD
+                </Button>
               )
-            ) : (
-              <Button
-                size="sm"
-                className="rounded-full font-bold shadow-none neu-card px-4 h-8"
-                onClick={handleAdd}
-              >
-                {hasVariants ? "OPTIONS" : "ADD"}
-              </Button>
             )}
           </div>
         </div>

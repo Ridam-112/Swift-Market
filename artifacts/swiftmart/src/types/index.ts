@@ -59,6 +59,7 @@ export interface CartItem {
   qty: number;
   selectedColor?: string;
   selectedSize?: string;
+  selectedGrams?: number;
 }
 
 export interface Address {

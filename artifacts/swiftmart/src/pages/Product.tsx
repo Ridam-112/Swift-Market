@@ -4,12 +4,14 @@ import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/hooks/useCart";
 import { formatINR } from "@/lib/currency";
 import { QuantityStepper } from "@/components/QuantityStepper";
+import { WeightStepper } from "@/components/WeightStepper";
 import { Button } from "@/components/ui/button";
 import { Star, ShieldCheck, Clock, AlertTriangle } from "lucide-react";
 import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { categories } from "@/data/categories";
 import { cartKey } from "@/context/CartContext";
+import { parseUnit, weightPresets, priceForWeight, formatWeight } from "@/lib/weightUtils";
 
 const COLOR_HEX: Record<string, string> = {
   Red: "#ef4444", Blue: "#3b82f6", Green: "#22c55e", Yellow: "#eab308",
@@ -22,7 +24,7 @@ export default function Product() {
   const [, params] = useRoute("/product/:id");
   const id = params?.id;
   const { products } = useProducts();
-  const { items, addToCart, updateQty } = useCart();
+  const { items, addToCart, updateQty, updateWeight } = useCart();
 
   const product = products.find(p => p.id === id);
 
@@ -46,6 +48,13 @@ export default function Product() {
   const displayImage = selectedColor && product.colorImages?.[selectedColor]
     ? product.colorImages[selectedColor]
     : allImages[activeImageIndex] ?? product.image;
+
+  // Weight-based unit detection
+  const unitInfo = parseUnit(product.unit);
+  const isWeightBased = !hasColors && !hasSizes && unitInfo.type === "weight";
+  const baseGrams = isWeightBased && unitInfo.type === "weight" ? unitInfo.baseGrams : 1000;
+  const maxGrams = product.stock > 0 ? product.stock * baseGrams : undefined;
+  const weightPresetList = weightPresets(maxGrams);
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(prev => prev === color ? null : color);
@@ -76,18 +85,30 @@ export default function Product() {
     item => cartKey(item.product.id, item.selectedColor, item.selectedSize) === itemKey
   );
   const qty = cartItem?.qty || 0;
+  const selectedGrams = cartItem?.selectedGrams;
+
+  const effectivePrice = product.discountedPrice && product.discountedPrice < product.price
+    ? product.discountedPrice : product.price;
+  const displayPrice = isWeightBased && selectedGrams
+    ? priceForWeight(effectivePrice, baseGrams, selectedGrams)
+    : effectivePrice;
 
   const handleAddToCart = () => {
     if (!variantSelectionValid()) {
       setShowVariantError(true);
       return;
     }
-    addToCart(
-      product,
-      1,
-      hasColors ? selectedColor ?? undefined : undefined,
-      hasSizes ? selectedSize ?? undefined : undefined,
-    );
+    if (isWeightBased) {
+      const defaultGrams = weightPresetList[1] ?? weightPresetList[0];
+      addToCart(product, 1, undefined, undefined, defaultGrams);
+    } else {
+      addToCart(
+        product,
+        1,
+        hasColors ? selectedColor ?? undefined : undefined,
+        hasSizes ? selectedSize ?? undefined : undefined,
+      );
+    }
   };
 
   return (
@@ -141,11 +162,13 @@ export default function Product() {
 
           <div className="flex items-end gap-3 mb-4">
             <div className="text-3xl font-bold text-primary">
-              {formatINR(product.discountedPrice && product.discountedPrice < product.price
-                ? product.discountedPrice
-                : product.price)}
+              {formatINR(displayPrice)}
             </div>
-            {product.discountedPrice && product.discountedPrice < product.price && (
+            {isWeightBased && selectedGrams ? (
+              <div className="text-sm text-muted-foreground mb-1">
+                {formatWeight(selectedGrams)} · {formatINR(effectivePrice)}/{formatWeight(baseGrams)}
+              </div>
+            ) : product.discountedPrice && product.discountedPrice < product.price ? (
               <>
                 <div className="text-lg text-muted-foreground line-through mb-0.5">
                   {formatINR(product.price)}
@@ -154,7 +177,7 @@ export default function Product() {
                   {Math.round((1 - product.discountedPrice / product.price) * 100)}% off
                 </div>
               </>
-            )}
+            ) : null}
           </div>
 
           {/* Color selector */}
@@ -257,6 +280,36 @@ export default function Product() {
                 className="w-full md:w-auto rounded-full text-lg font-bold shadow-none h-14 px-12 opacity-50 cursor-not-allowed">
                 Out of Stock
               </Button>
+            ) : isWeightBased ? (
+              selectedGrams ? (
+                <div className="flex items-center gap-4">
+                  <WeightStepper
+                    selectedGrams={selectedGrams}
+                    presets={weightPresetList}
+                    maxGrams={maxGrams}
+                    onChange={(grams) => updateWeight(itemKey, grams)}
+                  />
+                  <div className="text-sm text-muted-foreground font-medium">
+                    {formatWeight(selectedGrams)} added to cart
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="text-sm font-semibold text-muted-foreground">Select quantity:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {weightPresetList.map(grams => (
+                      <button
+                        key={grams}
+                        type="button"
+                        onClick={() => addToCart(product, 1, undefined, undefined, grams)}
+                        className="px-4 py-2 rounded-full text-sm font-bold border-2 border-primary/30 bg-background hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all neu-card"
+                      >
+                        {formatWeight(grams)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
             ) : qty > 0 ? (
               <div className="flex items-center gap-4">
                 <QuantityStepper qty={qty} maxQty={product.stock} onChange={(newQty) => updateQty(itemKey, newQty)} />
