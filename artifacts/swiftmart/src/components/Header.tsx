@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, MapPin, ShoppingBag, Store, Clock, User, Shield, LayoutDashboard, Package, ClipboardList, Plus, Bell } from "lucide-react";
+import { Search, MapPin, ShoppingBag, Store, Clock, User, Shield, LayoutDashboard, Package, ClipboardList, Plus, Bell, LogIn } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { Input } from "./ui/input";
@@ -90,6 +90,19 @@ export function Header() {
                   onKeyDown={handleSearch}
                 />
               </div>
+            </div>
+          )}
+
+          {/* Guest login prompt — shown only when not logged in */}
+          {!user && (
+            <div className="ml-auto shrink-0">
+              <Link href="/auth">
+                <button className="flex items-center gap-2 bg-primary text-primary-foreground font-semibold text-sm px-4 py-2 rounded-2xl neu-card shadow-none hover:opacity-90 transition-opacity">
+                  <LogIn className="w-4 h-4" />
+                  <span className="hidden sm:inline">Login</span>
+                  <span className="hidden md:inline">/ Sign Up</span>
+                </button>
+              </Link>
             </div>
           )}
 
