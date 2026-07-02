@@ -97,3 +97,4 @@ ALLOWED_ORIGINS = "https://swiftmart.space,https://www.swiftmart.space,https://4
 VITE_API_URL = "https://4328a60e-26fa-4938-8c46-085be69dbd35-00-2ew42qj7wf2sl.sisko.replit.dev"
 RESEND_FROM_EMAIL = "SwiftMart <noreply@swiftmart.space>"
 FIREBASE_MESSAGING_SENDER_ID = "556854517102"
+SUPER_ADMIN_EMAILS = ""

@@ -19,6 +19,8 @@ import {
   tokenRefreshLimiter,
 } from "../../middlewares/rateLimiter.js";
 
+import { isSuperAdminEmail } from "../../utils/seedAdmins.js";
+
 const googleClient = new OAuth2Client(process.env["GOOGLE_CLIENT_ID"]);
 const router = Router();
 
@@ -781,19 +783,24 @@ router.post("/email-signup", signupLimiter, async (req: Request, res: Response):
     }
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const inferredRole = isSuperAdminEmail(normalizedEmail) ? "super_admin" : "customer";
     const [user] = await db.insert(users).values({
       name: name.trim(),
       email: normalizedEmail,
       passwordHash,
       authProvider: "email",
-      role: "customer",
+      role: inferredRole,
       status: "active",
     }).returning();
+
+    if (inferredRole === "super_admin") {
+      req.log.info({ email: normalizedEmail }, "New user signed up and granted super_admin via SUPER_ADMIN_EMAILS");
+    }
 
     await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
     const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
 
-    req.log.info({ email: normalizedEmail }, "New user signed up via email");
+    req.log.info({ email: normalizedEmail, role: inferredRole }, "New user signed up via email");
     res.status(201).json({
       success: true,
       isNewUser: true,
@@ -845,10 +852,16 @@ router.post("/email-login", loginLimiter, async (req: Request, res: Response): P
       return;
     }
 
+    // Auto-promote to super_admin if this email is in SUPER_ADMIN_EMAILS
+    if (isSuperAdminEmail(normalizedEmail) && user.role !== "super_admin") {
+      await db.update(users).set({ role: "super_admin" }).where(eq(users.id, user.id));
+      req.log.info({ email: normalizedEmail }, "Promoted email user to super_admin via SUPER_ADMIN_EMAILS on login");
+    }
+
     await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
     const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
 
-    req.log.info({ email: normalizedEmail, role: user.role }, "User signed in via email");
+    req.log.info({ email: normalizedEmail, role: updated.role }, "User signed in via email");
     res.json({
       success: true,
       isNewUser: false,
