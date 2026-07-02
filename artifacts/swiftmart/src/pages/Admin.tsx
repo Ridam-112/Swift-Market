@@ -12,7 +12,7 @@ import {
   XCircle, Clock, Search, Shield, Star, ShoppingBag, Trash2, Eye, EyeOff,
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
-  ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown, Home,
+  ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown, Home, Mail,
   Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin, Truck, Bike,
   UserCheck,
   type LucideIcon,
@@ -60,6 +60,7 @@ interface ApiUser {
   name: string;
   phone: string;
   email?: string;
+  hasPassword?: boolean;
   role: string;
   status: string;
   createdAt: string;
@@ -898,6 +899,8 @@ function CustomersList() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<'all' | 'active' | 'banned'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [setupEmailInput, setSetupEmailInput] = useState<Record<string, string>>({});
+  const [sendingSetup, setSendingSetup] = useState<Set<string>>(new Set());
 
   const fetchCustomers = () => {
     setLoadingCustomers(true);
@@ -916,6 +919,7 @@ function CustomersList() {
             name: u.name,
             phone: u.phone,
             email: u.email ?? "",
+            hasPassword: u.hasPassword ?? false,
             joinedAt: u.createdAt,
             totalOrders: customerOrders.length,
             totalSpent,
@@ -949,6 +953,23 @@ function CustomersList() {
   };
 
   useEffect(() => { fetchCustomers(); }, []);
+
+  const sendSetupEmail = async (customerId: string, emailOverride?: string) => {
+    setSendingSetup(prev => new Set(prev).add(customerId));
+    try {
+      const body = emailOverride ? { email: emailOverride } : {};
+      const res = await api.post<{ success: boolean; message: string; email?: string }>(`/users/${customerId}/send-setup-email`, body);
+      toast.success(res.message ?? "Setup email sent");
+      if (res.email) {
+        setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, email: res.email! } : c));
+        setSetupEmailInput(prev => ({ ...prev, [customerId]: "" }));
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send setup email");
+    } finally {
+      setSendingSetup(prev => { const s = new Set(prev); s.delete(customerId); return s; });
+    }
+  };
 
   const banCustomer = async (customerId: string) => {
     try {
@@ -1068,7 +1089,13 @@ function CustomersList() {
                         {new Date(c.joinedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground">Email:</span>{" "}{c.email || 'N/A'}
+                        <span className="font-medium text-foreground">Email:</span>{" "}{c.email || <span className="italic text-muted-foreground/60">not set</span>}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">Password:</span>{" "}
+                        {c.hasPassword
+                          ? <span className="text-green-600 font-medium">Set</span>
+                          : <span className="text-amber-600 font-medium">Not set</span>}
                       </p>
                       {c.addresses.length > 0 && (
                         <div className="mt-2 space-y-1">
@@ -1101,6 +1128,43 @@ function CustomersList() {
                       )}
                     </div>
                   </div>
+
+                  {/* ── Account Setup Email ───────────────────────────────── */}
+                  {!c.hasPassword && (
+                    <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl">
+                      <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-2">
+                        No password set — send account setup link
+                      </p>
+                      {c.email ? (
+                        <Button
+                          size="sm"
+                          disabled={sendingSetup.has(c.id)}
+                          onClick={e => { e.stopPropagation(); sendSetupEmail(c.id); }}
+                          className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-8 text-xs"
+                        >
+                          {sendingSetup.has(c.id) ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Mail className="w-3 h-3 mr-1" />}
+                          Send setup link to {c.email}
+                        </Button>
+                      ) : (
+                        <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                          <Input
+                            placeholder="Enter email address…"
+                            value={setupEmailInput[c.id] ?? ""}
+                            onChange={e => setSetupEmailInput(prev => ({ ...prev, [c.id]: e.target.value }))}
+                            className="h-8 text-xs rounded-xl bg-background border-amber-300 dark:border-amber-700 flex-1"
+                          />
+                          <Button
+                            size="sm"
+                            disabled={sendingSetup.has(c.id) || !(setupEmailInput[c.id] ?? "").includes("@")}
+                            onClick={() => sendSetupEmail(c.id, setupEmailInput[c.id])}
+                            className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-8 text-xs shrink-0"
+                          >
+                            {sendingSetup.has(c.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : "Send link"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {c.orders.length > 0 ? (
                     <div className="space-y-3 mt-4">

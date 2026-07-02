@@ -146,6 +146,7 @@ export interface AdminCustomer {
   name: string;
   phone: string;
   email: string;
+  hasPassword: boolean;
   joinedAt: string;
   totalOrders: number;
   totalSpent: number;
