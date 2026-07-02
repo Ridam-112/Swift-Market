@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <!-- Default: all public pages are indexable. Private routes override this via RobotsManager in React. -->
+    <meta name="robots" content="index,follow" />
 
     <!-- react-helmet-async manages all per-page title/meta/canonical/JSON-LD.
          These tags are fallbacks used only before React hydrates (e.g. opengraph crawlers

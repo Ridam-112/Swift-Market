@@ -21,6 +21,7 @@ import { DeliveryGuard } from "@/components/DeliveryGuard";
 import { PincodeSelector } from "@/components/PincodeSelector";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { RobotsManager } from "@/components/SEO";
 import { useAuth } from "@/hooks/useAuth";
 import { setupPushMessageListener, playNotificationSound, playAdminOrderAlert } from "@/lib/pushNotifications";
 import { initFcmOnLoad, setupFcmForegroundListener } from "@/lib/fcm";
@@ -438,6 +439,7 @@ function App() {
               <ShopsProvider>
                 <CartProvider>
                   <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                    <RobotsManager />
                     <Router />
                   </WouterRouter>
                   <PushManager />
