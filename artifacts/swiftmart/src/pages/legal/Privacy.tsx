@@ -1,7 +1,14 @@
 import { LegalLayout, Section, InfoBox, SUPPORT_EMAIL, APP_NAME } from "./LegalLayout";
+import { SEO } from "@/components/SEO";
 
 export default function Privacy() {
   return (
+    <>
+    <SEO
+      title="Privacy Policy"
+      description="Read SwiftMart's privacy policy. Learn how we collect, use and protect your personal data on our hyperlocal delivery platform in Balurghat."
+      canonical="/privacy"
+    />
     <LegalLayout
       title="Privacy Policy"
       subtitle="Last updated: June 2025"
@@ -106,5 +113,6 @@ export default function Privacy() {
         </p>
       </Section>
     </LegalLayout>
+    </>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
+import { SEO } from "@/components/SEO";
 import { Star, Clock, SlidersHorizontal, X, Search, Zap } from "lucide-react";
 import { useShops } from "@/hooks/useShops";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,6 +57,12 @@ export default function Shops() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-7xl mx-auto space-y-4">
+      <SEO
+        title="Local Shops in Balurghat"
+        description="Browse grocery, food, medicine, dairy, bakery and daily essentials shops in Balurghat on SwiftMart. Find open shops near you for fast local delivery."
+        canonical="/shops"
+        keywords="shops in Balurghat, grocery shops Balurghat, medicine shops Balurghat, local stores Balurghat"
+      />
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-foreground">Shops Near You</h2>

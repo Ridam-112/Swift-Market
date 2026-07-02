@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
 import { Link } from "wouter";
+import { SEO } from "@/components/SEO";
 import { ShopListing, mapApiShop } from "@/context/ShopsContext";
 import { useShops } from "@/hooks/useShops";
 import { useProducts } from "@/hooks/useProducts";
@@ -107,10 +108,16 @@ export default function ShopDetail() {
 
   return (
     <div className="pb-24 min-h-[100dvh]">
+      <SEO
+        title={shop.storeName}
+        description={`Order from ${shop.storeName} in Balurghat on SwiftMart. ${shop.category ? `${shop.category} — ` : ""}Fast local delivery in 10 minutes. ${vendorProducts.length > 0 ? `${vendorProducts.length} products available.` : ""}`}
+        canonical={`/shop/${vendorId}`}
+        ogImage={shop.image && shop.image !== "/assets/shop-placeholder.png" ? shop.image : undefined}
+      />
       <div className="relative h-48 md:h-64 w-full bg-muted">
         <img
           src={shop.image}
-          alt={shop.storeName}
+          alt={`${shop.storeName} — local shop in Balurghat`}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />

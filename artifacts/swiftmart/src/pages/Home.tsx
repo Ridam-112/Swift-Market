@@ -7,11 +7,68 @@ import { CategoryBubble, type DisplayCategory } from "@/components/CategoryBubbl
 import { ProductCard } from "@/components/ProductCard";
 import { SkeletonGrid } from "@/components/SkeletonGrid";
 import { SectionHeader } from "@/components/SectionHeader";
+import { SEO } from "@/components/SEO";
 import { api } from "@/lib/api";
 import { Star, ChevronRight, Zap, MapPin } from "lucide-react";
 import type { Product } from "@/types";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+
+const HOME_JSON_LD = [
+  {
+    "@type": "Organization",
+    "@id": "https://swiftmart.space/#organization",
+    "name": "SwiftMart",
+    "url": "https://swiftmart.space/",
+    "logo": { "@type": "ImageObject", "url": "https://swiftmart.space/logo.png" },
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "telephone": "+916296118949",
+      "contactType": "customer support",
+      "availableLanguage": ["English", "Bengali"]
+    },
+    "sameAs": []
+  },
+  {
+    "@type": "WebSite",
+    "@id": "https://swiftmart.space/#website",
+    "url": "https://swiftmart.space/",
+    "name": "SwiftMart",
+    "description": "Order groceries, vegetables, fruits, food, medicines, dairy, bakery, sweets and daily essentials from trusted local shops in Balurghat with SwiftMart.",
+    "inLanguage": "en-IN",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": { "@type": "EntryPoint", "urlTemplate": "https://swiftmart.space/search?q={search_term_string}" },
+      "query-input": "required name=search_term_string"
+    }
+  },
+  {
+    "@type": ["LocalBusiness", "Store"],
+    "@id": "https://swiftmart.space/#business",
+    "name": "SwiftMart",
+    "url": "https://swiftmart.space/",
+    "logo": { "@type": "ImageObject", "url": "https://swiftmart.space/logo.png" },
+    "image": "https://swiftmart.space/opengraph.jpg",
+    "description": "Hyper-local online marketplace delivering groceries, food, medicine and daily essentials from local Balurghat shops in 10 minutes.",
+    "telephone": "+916296118949",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Balurghat",
+      "addressRegion": "West Bengal",
+      "addressCountry": "IN"
+    },
+    "areaServed": { "@type": "City", "name": "Balurghat" },
+    "priceRange": "₹"
+  },
+  {
+    "@type": "WebApplication",
+    "name": "SwiftMart",
+    "url": "https://swiftmart.space/",
+    "applicationCategory": "ShoppingApplication",
+    "operatingSystem": "All",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" }
+  }
+];
 
 const VISIBLE_CATEGORIES = 8;
 
@@ -162,6 +219,13 @@ export default function Home() {
 
   return (
     <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto space-y-6 overflow-x-hidden">
+      <SEO
+        title="SwiftMart Balurghat | Grocery, Food, Medicine & Quick Commerce Delivery"
+        description="Order groceries, vegetables, fruits, food, medicines, dairy, bakery, sweets and daily essentials from trusted local shops in Balurghat with SwiftMart. Fast local delivery."
+        canonical="/"
+        keywords="SwiftMart, SwiftMart Balurghat, Balurghat Grocery, Balurghat Online Shopping, Quick Commerce Balurghat, Food Delivery Balurghat, Medicine Delivery Balurghat, Vegetable Delivery Balurghat, Local Marketplace Balurghat"
+        jsonLd={HOME_JSON_LD}
+      />
       <HeroBannerSlider />
 
       {/* Shop by Category */}

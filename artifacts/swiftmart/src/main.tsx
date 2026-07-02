@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import "./index.css";
 import { setAuthConfig, type AuthMode } from "./lib/authConfig";
@@ -74,7 +75,11 @@ async function bootstrap() {
 
   setAuthConfig(authMode, googleClientId);
 
-  createRoot(document.getElementById("root")!).render(<App />);
+  createRoot(document.getElementById("root")!).render(
+    <HelmetProvider>
+      <App />
+    </HelmetProvider>
+  );
 
   // Dismiss the PWA splash screen after first render
   requestAnimationFrame(() => {

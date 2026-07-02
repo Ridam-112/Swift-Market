@@ -1,7 +1,14 @@
 import { LegalLayout, Section, InfoBox, SUPPORT_EMAIL, APP_NAME } from "./LegalLayout";
+import { SEO } from "@/components/SEO";
 
 export default function Terms() {
   return (
+    <>
+    <SEO
+      title="Terms of Service"
+      description="Read SwiftMart's terms of service. Understand the rules and conditions for using our hyperlocal delivery platform in Balurghat, West Bengal."
+      canonical="/terms"
+    />
     <LegalLayout
       title="Terms of Service"
       subtitle="Last updated: June 2025"
@@ -94,5 +101,6 @@ export default function Terms() {
         </p>
       </Section>
     </LegalLayout>
+    </>
   );
 }

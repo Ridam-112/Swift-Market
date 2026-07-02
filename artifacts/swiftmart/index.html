@@ -4,24 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
 
-    <title>SwiftMart - Balurghat's Local Online Marketplace</title>
-    <meta name="description" content="Order groceries, sweets, dairy, gifts, electronics accessories and more from local shops in Balurghat with SwiftMart." />
+    <!-- react-helmet-async manages all per-page title/meta/canonical/JSON-LD.
+         These tags are fallbacks used only before React hydrates (e.g. opengraph crawlers
+         that don't execute JS). Do NOT add duplicate meta here. -->
+    <title>SwiftMart Balurghat | Grocery, Food, Medicine &amp; Quick Commerce Delivery</title>
+    <meta name="description" content="Order groceries, vegetables, fruits, food, medicines, dairy, bakery, sweets and daily essentials from trusted local shops in Balurghat with SwiftMart. Fast local delivery." />
+    <meta name="keywords" content="SwiftMart, SwiftMart Balurghat, Balurghat Grocery, Balurghat Online Shopping, Quick Commerce Balurghat, Food Delivery Balurghat" />
+    <meta name="robots" content="index,follow" />
 
-    <!-- Open Graph -->
+    <!-- Open Graph (static fallback — overridden per-page by react-helmet-async) -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="SwiftMart" />
-    <meta property="og:title" content="SwiftMart - Balurghat's Local Online Marketplace" />
-    <meta property="og:description" content="Order groceries, sweets, dairy, gifts, electronics accessories and more from local shops in Balurghat with SwiftMart." />
+    <meta property="og:title" content="SwiftMart Balurghat | Grocery, Food, Medicine &amp; Quick Commerce Delivery" />
+    <meta property="og:description" content="Order groceries, vegetables, fruits, food, medicines, dairy, bakery, sweets and daily essentials from trusted local shops in Balurghat with SwiftMart." />
     <meta property="og:url" content="https://swiftmart.space/" />
     <meta property="og:image" content="https://swiftmart.space/opengraph.jpg" />
 
-    <!-- Twitter Card -->
+    <!-- Twitter Card (static fallback) -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="SwiftMart - Balurghat's Local Online Marketplace" />
-    <meta name="twitter:description" content="Order groceries, sweets, dairy, gifts, electronics accessories and more from local shops in Balurghat with SwiftMart." />
+    <meta name="twitter:title" content="SwiftMart Balurghat | Grocery, Food, Medicine &amp; Quick Commerce Delivery" />
+    <meta name="twitter:description" content="Order groceries, vegetables, fruits, food, medicines, dairy, bakery, sweets and daily essentials from trusted local shops in Balurghat with SwiftMart." />
     <meta name="twitter:image" content="https://swiftmart.space/opengraph.jpg" />
 
-    <!-- Canonical -->
+    <!-- Canonical (static fallback for homepage) -->
     <link rel="canonical" href="https://swiftmart.space/" />
 
     <!-- Icons & PWA -->
@@ -138,61 +143,9 @@
       }
     </style>
 
-    <!-- JSON-LD Structured Data -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "WebSite",
-          "@id": "https://swiftmart.space/#website",
-          "url": "https://swiftmart.space/",
-          "name": "SwiftMart",
-          "description": "Order groceries, sweets, dairy, gifts, electronics accessories and more from local shops in Balurghat with SwiftMart.",
-          "inLanguage": "en-IN"
-        },
-        {
-          "@type": ["LocalBusiness", "Store"],
-          "@id": "https://swiftmart.space/#business",
-          "name": "SwiftMart",
-          "url": "https://swiftmart.space/",
-          "logo": {
-            "@type": "ImageObject",
-            "url": "https://swiftmart.space/logo.png"
-          },
-          "image": "https://swiftmart.space/opengraph.jpg",
-          "description": "Hyper-local online marketplace delivering groceries, sweets, dairy, gifts, electronics accessories and more from local Balurghat shops in 10 minutes.",
-          "telephone": "+916296118949",
-          "address": {
-            "@type": "PostalAddress",
-            "addressLocality": "Balurghat",
-            "addressRegion": "West Bengal",
-            "addressCountry": "IN"
-          },
-          "areaServed": {
-            "@type": "City",
-            "name": "Balurghat",
-            "containedInPlace": {
-              "@type": "State",
-              "name": "West Bengal",
-              "containedInPlace": {
-                "@type": "Country",
-                "name": "India"
-              }
-            }
-          },
-          "contactPoint": {
-            "@type": "ContactPoint",
-            "telephone": "+916296118949",
-            "contactType": "customer support",
-            "availableLanguage": ["English", "Bengali"]
-          },
-          "sameAs": [],
-          "priceRange": "₹"
-        }
-      ]
-    }
-    </script>
+    <!-- JSON-LD is injected per-page by react-helmet-async (see Home.tsx for homepage schema).
+         Organization · WebSite · SearchAction · LocalBusiness · WebApplication · Product schemas
+         are all managed dynamically so they stay accurate and de-duplicated. -->
   </head>
   <body>
     <div id="swm-splash" aria-hidden="true">

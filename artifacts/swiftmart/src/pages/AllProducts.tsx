@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "wouter";
+import { SEO } from "@/components/SEO";
 import { useProducts } from "@/hooks/useProducts";
 import { ProductCard } from "@/components/ProductCard";
 import { SkeletonGrid } from "@/components/SkeletonGrid";
@@ -70,6 +71,12 @@ export default function AllProducts() {
 
   return (
     <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto space-y-4">
+      <SEO
+        title="All Products"
+        description="Shop all grocery, food, medicine, dairy, bakery and daily essentials from local Balurghat stores on SwiftMart. Delivered in 10 minutes."
+        canonical="/products"
+        keywords="products Balurghat, grocery products, medicine products, food products Balurghat"
+      />
 
       <div className="flex items-center gap-3">
         <Link href="/" className="w-10 h-10 bg-card rounded-xl flex items-center justify-center neu-card shrink-0 text-foreground">

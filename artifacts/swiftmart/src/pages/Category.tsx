@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
+import { SEO } from "@/components/SEO";
 import { useProducts } from "@/hooks/useProducts";
 import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -84,6 +85,12 @@ export default function Category() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-7xl mx-auto space-y-6">
+      <SEO
+        title={`${category.name} in Balurghat`}
+        description={`Order ${category.name.toLowerCase()} from local shops in Balurghat on SwiftMart. ${filteredProducts.length > 0 ? `${filteredProducts.length} products available` : "Fresh stock, fast delivery"}. Order now for 10-minute delivery.`}
+        canonical={`/category/${slug}`}
+        keywords={`${category.name} Balurghat, buy ${category.name.toLowerCase()} online Balurghat, ${category.name} delivery Balurghat`}
+      />
       <div
         className="h-32 rounded-3xl neu-card flex items-center justify-between px-8 relative overflow-hidden"
         style={{ backgroundColor: `${category.color}15` }}

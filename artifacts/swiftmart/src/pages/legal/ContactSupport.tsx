@@ -1,8 +1,15 @@
 import { LegalLayout, Section, InfoBox, SUPPORT_EMAIL, SUPPORT_PHONE, APP_NAME } from "./LegalLayout";
 import { Link } from "wouter";
+import { SEO } from "@/components/SEO";
 
 export default function ContactSupport() {
   return (
+    <>
+    <SEO
+      title="Contact & Support"
+      description="Contact SwiftMart customer support. Get help with your orders, account, delivery or any issue on our Balurghat hyperlocal delivery platform."
+      canonical="/contact-support"
+    />
     <LegalLayout
       title="Contact & Support"
       subtitle="We're here to help"
@@ -111,5 +118,6 @@ export default function ContactSupport() {
         <p>We love hearing from our users. If you have suggestions to make {APP_NAME} better, email us at <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline">{SUPPORT_EMAIL}</a> with the subject "Feedback".</p>
       </Section>
     </LegalLayout>
+    </>
   );
 }

@@ -1,0 +1,375 @@
+Perform a complete enterprise-level SEO optimization for the SwiftMart website.
+
+IMPORTANT:
+Do NOT redesign the UI.
+Do NOT change business logic.
+Do NOT modify authentication, checkout, products, orders, APIs or database.
+Only improve SEO, metadata, structured data, accessibility and performance.
+
+==================================================
+1. HOMEPAGE SEO
+==================================================
+
+Homepage Title:
+SwiftMart Balurghat | Grocery, Food, Medicine & Quick Commerce Delivery
+
+Homepage Meta Description:
+Order groceries, vegetables, fruits, food, medicines, dairy, bakery, sweets and daily essentials from trusted local shops in Balurghat with SwiftMart. Fast local delivery.
+
+Homepage Keywords:
+SwiftMart,
+SwiftMart Balurghat,
+Balurghat Grocery,
+Balurghat Online Shopping,
+Quick Commerce Balurghat,
+Food Delivery Balurghat,
+Medicine Delivery Balurghat,
+Vegetable Delivery Balurghat,
+Local Marketplace Balurghat
+
+==================================================
+2. CANONICAL
+==================================================
+
+Add canonical URLs to every page.
+
+Example:
+
+https://swiftmart.space/
+https://swiftmart.space/shops
+https://swiftmart.space/profile
+https://swiftmart.space/contact
+https://swiftmart.space/privacy
+https://swiftmart.space/terms
+
+==================================================
+3. OPEN GRAPH
+==================================================
+
+Generate complete Open Graph tags.
+
+og:title
+og:description
+og:image
+og:url
+og:type
+og:site_name
+
+Use SwiftMart branding.
+
+==================================================
+4. TWITTER CARD
+==================================================
+
+Add
+
+twitter:title
+twitter:description
+twitter:image
+twitter:card
+
+==================================================
+5. JSON-LD STRUCTURED DATA
+==================================================
+
+Generate Schema.org structured data.
+
+Add:
+
+Organization
+
+WebSite
+
+LocalBusiness
+
+WebApplication
+
+SearchAction
+
+BreadcrumbList
+
+FAQPage (if FAQ exists)
+
+Use:
+
+Business Name:
+SwiftMart
+
+City:
+Balurghat
+
+State:
+West Bengal
+
+Country:
+India
+
+Website:
+https://swiftmart.space
+
+==================================================
+6. ROBOTS
+==================================================
+
+Verify robots.txt
+
+Allow:
+
+User-agent: *
+Allow: /
+
+Disallow nothing.
+
+Reference sitemap.
+
+==================================================
+7. SITEMAP
+==================================================
+
+Generate dynamic sitemap.
+
+Include ALL public pages.
+
+Homepage
+
+Shops
+
+Categories
+
+Contact
+
+Privacy
+
+Terms
+
+Refund
+
+Shipping
+
+About
+
+FAQ
+
+==================================================
+8. META TAGS
+==================================================
+
+Generate unique meta title and description for EVERY public page.
+
+No duplicate titles.
+
+==================================================
+9. H1 H2 H3
+==================================================
+
+Ensure only ONE H1 exists on each page.
+
+Generate proper heading hierarchy.
+
+==================================================
+10. IMAGE SEO
+==================================================
+
+Automatically generate meaningful ALT text.
+
+Example:
+
+SwiftMart Grocery Delivery Balurghat
+
+Vegetable Delivery Balurghat
+
+Fresh Grocery Balurghat
+
+==================================================
+11. PERFORMANCE
+==================================================
+
+Improve Core Web Vitals.
+
+Lazy load images.
+
+Preload fonts.
+
+Compress assets.
+
+Remove render blocking resources.
+
+Minify CSS.
+
+Minify JS.
+
+Optimize bundle.
+
+==================================================
+12. ACCESSIBILITY
+==================================================
+
+Add
+
+aria-label
+
+aria-description
+
+button labels
+
+form labels
+
+proper semantic HTML
+
+==================================================
+13. LOCAL SEO
+==================================================
+
+Mention naturally throughout homepage:
+
+Balurghat
+
+West Bengal
+
+India
+
+Do NOT keyword stuff.
+
+Create a short section:
+
+"Serving Balurghat"
+
+Include:
+
+Grocery
+
+Food
+
+Medicine
+
+Vegetables
+
+Fruits
+
+Bakery
+
+Daily Essentials
+
+==================================================
+14. INTERNAL LINKING
+==================================================
+
+Improve internal links.
+
+Homepage should link to
+
+Categories
+
+Shops
+
+Contact
+
+Privacy
+
+Terms
+
+About
+
+==================================================
+15. GOOGLE INDEXING
+==================================================
+
+Ensure
+
+No page has
+
+noindex
+
+nofollow
+
+unless intentionally private.
+
+==================================================
+16. SOCIAL LINKS
+==================================================
+
+Add SameAs schema for official profiles if available.
+
+Facebook
+
+Instagram
+
+LinkedIn
+
+YouTube
+
+==================================================
+17. FAVICON
+==================================================
+
+Verify favicon.
+
+Apple touch icon.
+
+Android icon.
+
+Manifest.
+
+==================================================
+18. PWA SEO
+==================================================
+
+Verify manifest.
+
+Theme color.
+
+Background color.
+
+Application name.
+
+==================================================
+19. TECHNICAL SEO AUDIT
+==================================================
+
+Check and fix:
+
+Broken links
+
+Duplicate meta
+
+Missing descriptions
+
+Missing alt text
+
+Duplicate H1
+
+Canonical issues
+
+Robots issues
+
+Sitemap issues
+
+Structured data validation
+
+404 issues
+
+Redirect issues
+
+==================================================
+20. FINAL REPORT
+==================================================
+
+After completing everything provide a report:
+
+Files changed
+
+SEO score improvements
+
+Pages optimized
+
+Structured data added
+
+Meta tags added
+
+Performance improvements
+
+Accessibility improvements
+
+Potential remaining SEO recommendations
+
+Do not stop until every SEO issue has been fixed.

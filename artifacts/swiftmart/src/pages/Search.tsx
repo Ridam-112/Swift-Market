@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { SEO } from "@/components/SEO";
 import { Search, PackageSearch } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { ProductGrid } from "@/components/ProductGrid";
@@ -27,8 +28,19 @@ export default function SearchPage() {
     return matchesSearch && matchesCategory;
   });
 
+  const searchTitle = query ? `"${query}" — Search` : "Search Products";
+  const searchDesc = query
+    ? `Search results for "${query}" on SwiftMart — grocery, food, vegetables, fruits, medicines and daily essentials in Balurghat.`
+    : "Search grocery, food, vegetables, fruits, medicines and daily essentials on SwiftMart Balurghat.";
+
   return (
     <div className="pb-24 pt-4 px-4 max-w-7xl mx-auto space-y-6 min-h-[100dvh]">
+      <SEO
+        title={searchTitle}
+        description={searchDesc}
+        canonical="/search"
+        noIndex={!!query}
+      />
       <div className="sticky top-[72px] z-40 bg-background/80 backdrop-blur-xl pb-4 -mx-4 px-4">
         <div className="relative max-w-xl mx-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />

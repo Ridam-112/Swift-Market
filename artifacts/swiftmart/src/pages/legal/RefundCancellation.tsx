@@ -1,7 +1,14 @@
 import { LegalLayout, Section, InfoBox, SUPPORT_EMAIL } from "./LegalLayout";
+import { SEO } from "@/components/SEO";
 
 export default function RefundCancellation() {
   return (
+    <>
+    <SEO
+      title="Refund & Cancellation Policy"
+      description="SwiftMart's refund and cancellation policy. Learn how to cancel orders and request refunds for purchases made on our Balurghat delivery platform."
+      canonical="/refund-cancellation"
+    />
     <LegalLayout
       title="Refund & Cancellation"
       subtitle="Last updated: June 2025"
@@ -76,5 +83,6 @@ export default function RefundCancellation() {
         </p>
       </Section>
     </LegalLayout>
+    </>
   );
 }

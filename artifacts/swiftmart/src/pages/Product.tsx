@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRoute } from "wouter";
+import { SEO } from "@/components/SEO";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/hooks/useCart";
 import { formatINR } from "@/lib/currency";
@@ -38,6 +39,28 @@ export default function Product() {
   const [showVariantError, setShowVariantError] = useState(false);
 
   if (!product) return <div className="p-8 text-center">Product not found</div>;
+
+  const productSeo = {
+    title: product.name,
+    description: product.description
+      ? `${product.description.substring(0, 140)}… Buy ${product.name} from local shops in Balurghat on SwiftMart.`
+      : `Buy ${product.name} from local shops in Balurghat on SwiftMart. Fast 10-minute delivery.`,
+    image: product.image && !product.image.includes("placeholder") ? product.image : undefined,
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": product.name,
+      "description": product.description || `${product.name} available on SwiftMart Balurghat`,
+      "image": product.image,
+      "offers": {
+        "@type": "Offer",
+        "price": product.discountedPrice ?? product.price,
+        "priceCurrency": "INR",
+        "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+        "seller": { "@type": "Organization", "name": "SwiftMart" }
+      }
+    }
+  };
 
   const isOutOfStock = product.stock === 0;
   const isLowStock = product.stock > 0 && product.stock <= 5;
@@ -113,6 +136,14 @@ export default function Product() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-4xl mx-auto space-y-8">
+      <SEO
+        title={productSeo.title}
+        description={productSeo.description}
+        canonical={`/product/${id}`}
+        ogImage={productSeo.image}
+        ogType="product"
+        jsonLd={productSeo.jsonLd}
+      />
       <div className="flex flex-col md:flex-row gap-8">
         {/* Image Gallery */}
         <div className="w-full md:w-1/2 space-y-3">

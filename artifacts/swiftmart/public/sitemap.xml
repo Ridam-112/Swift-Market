@@ -6,6 +6,26 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://swiftmart.space/shops</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://swiftmart.space/products</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://swiftmart.space/search</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://swiftmart.space/contact-support</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://swiftmart.space/privacy</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
@@ -16,18 +36,8 @@
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://swiftmart.space/refunds</loc>
+    <loc>https://swiftmart.space/refund-cancellation</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://swiftmart.space/shipping</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://swiftmart.space/contact</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
   </url>
 </urlset>
