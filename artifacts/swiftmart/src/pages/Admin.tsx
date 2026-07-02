@@ -951,13 +951,19 @@ function CustomersList() {
   useEffect(() => { fetchCustomers(); }, []);
 
   const banCustomer = async (customerId: string) => {
-    await api.patch(`/users/${customerId}/ban`).catch(() => {});
-    setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, status: 'banned' as const } : c));
+    try {
+      await api.patch(`/users/${customerId}/ban`);
+      setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, status: 'banned' as const } : c));
+      toast.success("Customer banned");
+    } catch { toast.error("Failed to ban customer"); }
   };
 
   const unbanCustomer = async (customerId: string) => {
-    await api.patch(`/users/${customerId}/unban`).catch(() => {});
-    setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, status: 'active' as const } : c));
+    try {
+      await api.patch(`/users/${customerId}/unban`);
+      setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, status: 'active' as const } : c));
+      toast.success("Customer unbanned");
+    } catch { toast.error("Failed to unban customer"); }
   };
 
   const filtered = customers.filter(c => {
@@ -1182,22 +1188,28 @@ function VendorsList() {
   });
 
   const handleBan = async (id: string) => {
-    await api.patch(`/shops/${id}/ban`).catch(() => {});
-    setApiShops(prev => prev.map(s => s._id === id ? { ...s, status: 'banned' as const } : s));
-    toast.success("Shop banned");
+    try {
+      await api.patch(`/shops/${id}/ban`);
+      setApiShops(prev => prev.map(s => s._id === id ? { ...s, status: 'banned' as const } : s));
+      toast.success("Shop banned");
+    } catch { toast.error("Failed to ban shop"); }
   };
 
   const handleUnban = async (id: string) => {
-    await api.patch(`/shops/${id}/unban`).catch(() => {});
-    setApiShops(prev => prev.map(s => s._id === id ? { ...s, status: 'approved' as const } : s));
-    toast.success("Shop unbanned");
+    try {
+      await api.patch(`/shops/${id}/unban`);
+      setApiShops(prev => prev.map(s => s._id === id ? { ...s, status: 'approved' as const } : s));
+      toast.success("Shop unbanned");
+    } catch { toast.error("Failed to unban shop"); }
   };
 
   const handleRemove = async (id: string) => {
     if (confirm("Are you sure you want to permanently remove this shop?")) {
-      await api.delete(`/shops/${id}`).catch(() => {});
-      setApiShops(prev => prev.filter(s => s._id !== id));
-      toast.success("Shop removed");
+      try {
+        await api.delete(`/shops/${id}`);
+        setApiShops(prev => prev.filter(s => s._id !== id));
+        toast.success("Shop removed");
+      } catch { toast.error("Failed to remove shop"); }
     }
   };
 
@@ -1357,13 +1369,19 @@ function OrdersTab() {
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
   const updateOrderStatus = async (orderId: string, status: PlatformOrder['status']) => {
-    await api.patch(`/orders/${orderId}/status`, { status }).catch(() => {});
-    setPlatformOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+    try {
+      await api.patch(`/orders/${orderId}/status`, { status });
+      setPlatformOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+      toast.success("Order status updated");
+    } catch { toast.error("Failed to update order status"); }
   };
 
   const refundOrder = async (orderId: string) => {
-    await api.post(`/orders/${orderId}/refund`).catch(() => {});
-    setPlatformOrders(prev => prev.map(o => o.id === orderId ? { ...o, paymentStatus: 'refunded' as const } : o));
+    try {
+      await api.post(`/orders/${orderId}/refund`);
+      setPlatformOrders(prev => prev.map(o => o.id === orderId ? { ...o, paymentStatus: 'refunded' as const } : o));
+      toast.success("Refund issued");
+    } catch { toast.error("Failed to issue refund"); }
   };
 
   const handleAssignPartner = async (orderId: string) => {

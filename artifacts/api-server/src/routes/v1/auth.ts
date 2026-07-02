@@ -373,7 +373,9 @@ router.post("/forgot-password", resetPasswordLimiter, async (req: Request, res: 
           .set({ passwordResetTokenHash: hashToken(token), passwordResetExpires: expires })
           .where(eq(users.id, user.id));
         req.log.warn({ phone, err: smsResult.error }, "SMS failed — falling back to console token");
-        console.log(`\n🔑 PASSWORD RESET TOKEN for +91${phone}:\n   ${token}\n   (expires ${expires.toISOString()})\n`);
+        if (process.env["NODE_ENV"] !== "production") {
+          req.log.info({ phone, expires: expires.toISOString() }, "DEV: password reset token generated (not shown in production)");
+        }
       }
     }
 
@@ -892,8 +894,10 @@ router.post("/email-forgot-password", resetPasswordLimiter, async (req: Request,
       if (isEmailConfigured()) {
         await sendPasswordResetEmail({ to: normalizedEmail, resetUrl, expiresMinutes });
       } else {
-        req.log.warn({ email: normalizedEmail }, "RESEND_API_KEY not set — logging reset link to console");
-        console.log(`\n🔑 PASSWORD RESET for ${normalizedEmail}:\n   URL: ${resetUrl}\n   (expires in ${expiresMinutes} min)\n`);
+        req.log.warn({ email: normalizedEmail }, "RESEND_API_KEY not set — reset link not delivered");
+        if (process.env["NODE_ENV"] !== "production") {
+          req.log.info({ email: normalizedEmail, expiresMinutes }, "DEV: password reset link generated (not shown in production)");
+        }
       }
 
       req.log.info({ email: normalizedEmail, emailSent: isEmailConfigured() }, "Password reset link generated");

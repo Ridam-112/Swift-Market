@@ -33,7 +33,7 @@ router.post("/subscribe", authenticate, async (req: AuthRequest, res: Response):
     keys,
   });
 
-  console.log("[Push] Subscription saved:", { userId: req.user!.userId, endpoint: endpoint.slice(0, 60) + "…" });
+  req.log.info({ userId: req.user!.userId, endpoint: endpoint.slice(0, 60) + "…" }, "Push subscription saved");
   res.json({ success: true });
 });
 

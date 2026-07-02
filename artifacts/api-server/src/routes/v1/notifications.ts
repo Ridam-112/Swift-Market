@@ -113,7 +113,7 @@ router.post("/broadcast", authenticate, A, async (req: AuthRequest, res: Respons
     });
   }
 
-  console.log(`[Broadcast] in-app=${recipientIds.length} pushSent=${pushSent} pushFailed=${pushFailed}`);
+  req.log.info({ inApp: recipientIds.length, pushSent, pushFailed }, "Broadcast complete");
 
   res.json({ success: true, sentCount: recipientIds.length, pushSent, pushFailed });
 });

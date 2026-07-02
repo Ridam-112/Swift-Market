@@ -417,7 +417,7 @@ function PushManager() {
   // On every page load: re-send FCM_INIT to the SW so background messages work
   useEffect(() => {
     if (!user) return;
-    console.log("[PushManager] User logged in — initialising FCM for page load");
+    if (import.meta.env.DEV) console.log("[PushManager] User logged in — initialising FCM for page load");
     void initFcmOnLoad();
   }, [user]);
 
@@ -425,7 +425,7 @@ function PushManager() {
   useEffect(() => {
     if (!user) return;
     const cleanup = setupFcmForegroundListener((title, body) => {
-      console.log("[PushManager] FCM foreground message — showing toast:", title, body);
+      if (import.meta.env.DEV) console.log("[PushManager] FCM foreground message — showing toast:", title, body);
       const isOrderAlert = title.toLowerCase().includes("assign rider");
       if (isAdmin && isOrderAlert) {
         playAdminOrderAlert();
@@ -442,7 +442,7 @@ function PushManager() {
   useEffect(() => {
     if (!user) return;
     const cleanup = setupPushMessageListener((title, body) => {
-      console.log("[PushManager] VAPID push message — showing toast:", title, body);
+      if (import.meta.env.DEV) console.log("[PushManager] VAPID push message — showing toast:", title, body);
       const isOrderAlert = title.toLowerCase().includes("assign rider");
       if (isAdmin && isOrderAlert) {
         playAdminOrderAlert();

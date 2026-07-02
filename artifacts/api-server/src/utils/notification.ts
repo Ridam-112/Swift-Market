@@ -1,6 +1,7 @@
 import { db, notifications, fcmTokens } from "@workspace/db";
 import { eq, count, asc, inArray, and } from "drizzle-orm";
 import { getMessagingInstance } from "../lib/firebase-admin.js";
+import { logger } from "../lib/logger.js";
 
 const NOTIFICATION_LIMIT = 10;
 
@@ -59,7 +60,7 @@ async function sendFcm(userId: string, payload: NotificationPayload): Promise<vo
       },
     });
 
-    console.log(`[FCM] sendFcm userId=${userId} sent=${successCount} failed=${failureCount}`);
+    logger.info({ userId, successCount, failureCount }, "FCM send complete");
 
     // Deactivate tokens that Firebase says are invalid/expired
     const toDeactivate: string[] = [];
@@ -80,7 +81,7 @@ async function sendFcm(userId: string, payload: NotificationPayload): Promise<vo
       await db.update(fcmTokens).set({ isActive: false }).where(inArray(fcmTokens.id, toDeactivate));
     }
   } catch (err) {
-    console.error("[FCM] sendFcm top-level error:", err);
+    logger.error({ err }, "FCM sendFcm top-level error");
   }
 }
 
@@ -164,10 +165,10 @@ export async function sendFcmToUsers(
       await db.update(fcmTokens).set({ isActive: false }).where(inArray(fcmTokens.id, toDeactivate));
     }
 
-    console.log(`[FCM] Broadcast: sent=${totalSent} failed=${totalFailed} of ${rows.length} token(s)`);
+    logger.info({ totalSent, totalFailed, total: rows.length }, "FCM broadcast complete");
     return { sent: totalSent, failed: totalFailed };
   } catch (err) {
-    console.error("[FCM] sendFcmToUsers top-level error:", err);
+    logger.error({ err }, "FCM sendFcmToUsers top-level error");
     return { sent: 0, failed: 0 };
   }
 }
