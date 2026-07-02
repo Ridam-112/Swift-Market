@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import multer from "multer";
 import path from "path";
 import { authenticate } from "../../middlewares/auth.js";
@@ -14,7 +14,7 @@ const imageUpload = multer({
     const allowed = [".jpg", ".jpeg", ".png", ".webp"];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowed.includes(ext)) cb(null, true);
-    else cb(new Error("Only jpg, jpeg, png, webp images are allowed"));
+    else cb(new Error("Only JPG, PNG, or WEBP images are allowed"));
   },
 });
 
@@ -25,20 +25,48 @@ const certificateUpload = multer({
     const allowed = [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowed.includes(ext)) cb(null, true);
-    else cb(new Error("Only jpg, jpeg, png, webp, pdf files are allowed"));
+    else cb(new Error("Only JPG, PNG, WEBP, or PDF files are allowed"));
   },
 });
+
+/**
+ * Run a multer middleware as a promise so errors are caught inline
+ * instead of bubbling to Express's global error handler (which returns 500).
+ */
+function runMulter(
+  middleware: (req: Request, res: Response, next: NextFunction) => void,
+  req: Request,
+  res: Response,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    middleware(req, res, (err: unknown) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+}
 
 router.post(
   "/product-image",
   authenticate,
   uploadLimiter,
-  imageUpload.single("image"),
   async (req: Request, res: Response): Promise<void> => {
+    try {
+      await runMulter(imageUpload.single("image"), req, res);
+    } catch (err) {
+      const isMulterLimit = err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE";
+      const msg = isMulterLimit
+        ? "Image is too large. Maximum size is 5 MB."
+        : err instanceof Error ? err.message : "Invalid file";
+      res.status(400).json({ success: false, message: msg });
+      return;
+    }
+
     if (!req.file) {
       res.status(400).json({ success: false, message: "No file uploaded" });
       return;
     }
+
     try {
       const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/products");
       res.json({ success: true, imageUrl: url });
@@ -53,12 +81,23 @@ router.post(
   "/banner-image",
   authenticate,
   uploadLimiter,
-  imageUpload.single("image"),
   async (req: Request, res: Response): Promise<void> => {
+    try {
+      await runMulter(imageUpload.single("image"), req, res);
+    } catch (err) {
+      const isMulterLimit = err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE";
+      const msg = isMulterLimit
+        ? "Image is too large. Maximum size is 5 MB."
+        : err instanceof Error ? err.message : "Invalid file";
+      res.status(400).json({ success: false, message: msg });
+      return;
+    }
+
     if (!req.file) {
       res.status(400).json({ success: false, message: "No file uploaded" });
       return;
     }
+
     try {
       const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/banners");
       res.json({ success: true, imageUrl: url });
@@ -73,12 +112,23 @@ router.post(
   "/shop-image",
   authenticate,
   uploadLimiter,
-  imageUpload.single("image"),
   async (req: Request, res: Response): Promise<void> => {
+    try {
+      await runMulter(imageUpload.single("image"), req, res);
+    } catch (err) {
+      const isMulterLimit = err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE";
+      const msg = isMulterLimit
+        ? "Image is too large. Maximum size is 5 MB."
+        : err instanceof Error ? err.message : "Invalid file";
+      res.status(400).json({ success: false, message: msg });
+      return;
+    }
+
     if (!req.file) {
       res.status(400).json({ success: false, message: "No file uploaded" });
       return;
     }
+
     try {
       const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/shops");
       res.json({ success: true, imageUrl: url });
@@ -93,12 +143,23 @@ router.post(
   "/certificate",
   authenticate,
   uploadLimiter,
-  certificateUpload.single("file"),
   async (req: Request, res: Response): Promise<void> => {
+    try {
+      await runMulter(certificateUpload.single("file"), req, res);
+    } catch (err) {
+      const isMulterLimit = err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE";
+      const msg = isMulterLimit
+        ? "File is too large. Maximum size is 10 MB."
+        : err instanceof Error ? err.message : "Invalid file";
+      res.status(400).json({ success: false, message: msg });
+      return;
+    }
+
     if (!req.file) {
       res.status(400).json({ success: false, message: "No file uploaded" });
       return;
     }
+
     try {
       const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/certificates", "auto");
       res.json({ success: true, fileUrl: url });
