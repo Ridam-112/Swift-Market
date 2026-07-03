@@ -5,20 +5,34 @@ declare global {
 }
 
 // Detect Capacitor native runtime via both reliable signals:
-// 1. window.Capacitor.isNative — injected by the Capacitor bridge
+// 1. window.Capacitor.isNative — injected by the Capacitor bridge (most reliable)
 // 2. window.location.protocol === "capacitor:" — the WebView origin protocol
 const isCapacitorNative =
   typeof window !== "undefined" &&
   (window.Capacitor?.isNative === true ||
     window.location.protocol === "capacitor:");
 
-// Native → use VITE_API_URL if explicitly set, otherwise hardcode production URL.
-//          Never use a relative path: relative URLs resolve to capacitor://localhost/api
-//          and get intercepted by the Capacitor HTTP bridge instead of reaching the server.
-// Browser → always use relative /api so the Vite dev-server proxy handles it.
+// VITE_API_URL must be the domain only — e.g. "https://swiftmart.space" (NO trailing /api).
+// api.ts appends "/api" itself. This avoids double /api bugs.
+//
+// Native Android → VITE_API_URL domain + "/api", or fallback hardcoded production URL.
+// Browser dev    → relative "/api" (proxied by Vite → localhost:3001).
+// Browser prod   → relative "/api" (proxied by reverse proxy at the same origin).
 const BASE: string = isCapacitorNative
   ? ((import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, "") ?? "https://swiftmart.space") + "/api"
   : "/api";
+
+// ── Startup diagnostic log ──────────────────────────────────────────────────
+// Visible in Android logcat (filter tag "Capacitor/Console") and browser devtools.
+console.log(
+  "[SwiftMart API] Initialized",
+  JSON.stringify({
+    BASE,
+    isCapacitorNative,
+    protocol: typeof window !== "undefined" ? window.location.protocol : "N/A",
+    VITE_API_URL: (import.meta.env.VITE_API_URL as string | undefined) ?? "(not set)",
+  })
+);
 
 function getTokens() {
   return {
@@ -52,7 +66,9 @@ async function doRefreshTokens(): Promise<string | null> {
   const { refresh } = getTokens();
   if (!refresh) return null;
   try {
-    const res = await fetch(`${BASE}/auth/refresh`, {
+    const url = `${BASE}/auth/refresh`;
+    console.log("[API] POST", url);
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken: refresh }),
@@ -82,7 +98,10 @@ async function request<T>(path: string, options: RequestInit = {}, retry = true)
   };
   if (access) headers["Authorization"] = `Bearer ${access}`;
 
-  const res = await fetch(`${BASE}${path}`, { ...options, headers });
+  const fullUrl = `${BASE}${path}`;
+  console.log("[API]", options.method ?? "GET", fullUrl);
+
+  const res = await fetch(fullUrl, { ...options, headers });
 
   // Skip token-refresh for auth endpoints that return 401 to mean "wrong credentials"
   // (not for protected routes like /auth/me that return 401 for "session expired")
@@ -98,6 +117,12 @@ async function request<T>(path: string, options: RequestInit = {}, retry = true)
 
   const contentType = res.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) {
+    // Clone the response to read the body for diagnostics without consuming it
+    const bodyText = await res.clone().text().catch(() => "(unreadable)");
+    console.error(
+      `[API] Non-JSON response — status=${res.status} content-type="${contentType}" url="${fullUrl}"`,
+      "\nFirst 300 chars of body:", bodyText.substring(0, 300)
+    );
     throw new Error(`Server error (${res.status}) — unexpected response format`);
   }
   const data = (await res.json()) as T & { message?: string };
@@ -122,4 +147,5 @@ export const api = {
   setTokens,
   clearTokens,
   BASE,
+  isCapacitorNative,
 };

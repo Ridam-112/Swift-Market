@@ -3,13 +3,13 @@ import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import HandwritingBackground from "@/components/HandwritingBackground";
 import { setAuthConfig, showGoogleLogin } from "@/lib/authConfig";
-import { setTokens } from "@/lib/api";
+import { api, setTokens } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, ArrowLeft, Eye, EyeOff, Mail, Lock, User, CheckCircle2 } from "lucide-react";
+import { Loader2, ArrowLeft, Eye, EyeOff, Mail, Lock, User, CheckCircle2, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ─── Step machine ─────────────────────────────────────────────────────────────
@@ -119,25 +119,38 @@ export default function Auth() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [configFetching, setConfigFetching] = useState(true);
 
-  // Detect Capacitor native shell — server-side OAuth redirect doesn't work in Capacitor
-  // because Android opens external URLs in Chrome Custom Tab (separate process / localStorage).
-  // Hide Google login in Capacitor; email/password login works perfectly.
-  const isCapacitorShell =
-    typeof window !== "undefined" && window.location.protocol === "capacitor:";
+  // Detect Capacitor native shell — matches the same logic used in api.ts.
+  // Must check BOTH signals because window.location.protocol is "https:" on some Capacitor builds
+  // while window.Capacitor.isNative is always injected by the bridge.
+  const isCapacitorShell = api.isCapacitorNative;
 
   // ─── Bootstrap auth config ────────────────────────────────────────────────────
+  // Use api.BASE so we always hit the correct absolute URL on Android and the
+  // Vite-proxied relative URL in the browser — no manual URL construction needed.
   useEffect(() => {
     setConfigFetching(true);
-    // In Capacitor relative /api paths resolve to capacitor://localhost — use VITE_API_URL
-    const apiBase = isCapacitorShell && import.meta.env.VITE_API_URL
-      ? (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
-      : "";
-    fetch(`${apiBase}/api/auth/config`)
-      .then(r => r.json())
+    console.log("[Auth] Fetching config from", `${api.BASE}/auth/config`);
+    fetch(`${api.BASE}/auth/config`)
+      .then(r => {
+        const ct = r.headers.get("content-type") ?? "";
+        if (!ct.includes("application/json")) {
+          return r.text().then(t => {
+            console.error("[Auth] Config fetch got non-JSON:", r.status, t.substring(0, 200));
+            throw new Error("non-JSON config response");
+          });
+        }
+        return r.json();
+      })
       .then((d: { authMode?: string; googleClientId?: string }) => {
+        console.log("[Auth] Config loaded:", JSON.stringify(d));
         setAuthConfig((d.authMode ?? "both") as Parameters<typeof setAuthConfig>[0], d.googleClientId ?? "");
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.warn("[Auth] Config fetch failed — defaulting to 'both' mode:", err);
+        // Default to showing Google login so the button is always visible.
+        // If the backend is reachable, the real config will override this.
+        setAuthConfig("both", "");
+      })
       .finally(() => setConfigFetching(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -168,15 +181,14 @@ export default function Auth() {
     }
     setLoading(true);
     try {
-      const resp = await fetch("/api/auth/check-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed }),
-      });
-      const data = await resp.json() as { exists?: boolean };
+      // IMPORTANT: use api.post() — never raw fetch() with a relative URL.
+      // On Android/Capacitor, relative URLs resolve to capacitor://localhost/api/...
+      // which gets intercepted by the bridge and returns an HTML page (status 200, non-JSON).
+      console.log("[Auth] Checking email via", `${api.BASE}/auth/check-email`);
+      const data = await api.post<{ exists?: boolean }>("/auth/check-email", { email: trimmed });
       setStep(data.exists ? "signin" : "signup");
     } catch {
-      // Network error — just go to signin (Better Auth will give the right error)
+      // Network error — just go to signin (the backend will give the right error)
       setStep("signin");
     } finally {
       setLoading(false);
@@ -233,13 +245,24 @@ export default function Auth() {
     try {
       if (isCapacitorShell) {
         // ── Native Android Google Sign-In ──────────────────────────────────────
-        const { nativeGoogleSignIn } = await import("@/lib/googleNativeAuth");
-        console.log("[Auth] Starting native Google Sign-In…");
-        const idToken = await nativeGoogleSignIn();
-        console.log("[Auth] Got ID token — exchanging with backend…");
+        let nativeGoogleSignIn: () => Promise<string>;
+        try {
+          const mod = await import("@/lib/googleNativeAuth");
+          nativeGoogleSignIn = mod.nativeGoogleSignIn;
+        } catch (importErr) {
+          console.error("[Auth] Failed to load native Google auth module:", importErr);
+          throw new Error(
+            "Native Google Sign-In plugin is not installed. " +
+            "Run: pnpm add @codetrix-studio/capacitor-google-auth && npx cap sync android"
+          );
+        }
 
-        const apiBase = (import.meta.env.VITE_API_URL as string || "").replace(/\/+$/, "");
-        const res = await fetch(`${apiBase}/api/auth/google`, {
+        console.log("[Auth] Starting native Google Sign-In — BASE:", api.BASE);
+        const idToken = await nativeGoogleSignIn();
+        console.log("[Auth] Got ID token — exchanging with backend at", `${api.BASE}/auth/google`);
+
+        // Use api.BASE — always correct absolute URL, never relative capacitor:// path
+        const res = await fetch(`${api.BASE}/auth/google`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ credential: idToken }),
@@ -248,10 +271,11 @@ export default function Auth() {
         const ct = res.headers.get("content-type") ?? "";
         if (!ct.includes("application/json")) {
           const text = await res.text().catch(() => "(unreadable)");
-          console.error("[Auth] Non-JSON from /api/auth/google:", res.status, text.substring(0, 300));
+          console.error("[Auth] Non-JSON from /auth/google — status:", res.status, "body:", text.substring(0, 300));
           throw new Error(
-            `Server error (${res.status}). Ensure Android OAuth client with correct SHA-1 fingerprint ` +
-            "is registered in Google Cloud Console."
+            `Server error (${res.status}). Ensure:\n` +
+            "1. Android OAuth client with correct SHA-1 fingerprint is in Google Cloud Console.\n" +
+            "2. Backend is reachable at " + api.BASE
           );
         }
 
@@ -280,10 +304,8 @@ export default function Auth() {
         setLocation(goTo);
       } else {
         // ── Web: server-side OAuth2 redirect ──────────────────────────────────
-        const base = import.meta.env.VITE_API_URL
-          ? (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
-          : "";
-        window.location.href = `${base}/api/auth/google/redirect`;
+        // api.BASE is "/api" in browser → redirect goes to /api/auth/google/redirect ✓
+        window.location.href = `${api.BASE}/auth/google/redirect`;
       }
     } catch (err) {
       console.error("[Auth] Google Sign-In error:", err);
@@ -342,6 +364,17 @@ export default function Auth() {
     <div className="relative min-h-[100dvh] bg-[#080808] flex flex-col overflow-hidden">
       <SEO noIndex />
       <HandwritingBackground />
+
+      {/* ── Debug panel — visible on Android/Capacitor to diagnose API issues ── */}
+      {(isCapacitorShell || import.meta.env.DEV) && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-black/90 border-b border-green-900 text-green-400 font-mono px-3 py-1.5 space-y-0.5 text-[9px] leading-tight">
+          <div className="flex gap-3 flex-wrap">
+            <span><span className="text-green-600">isNative:</span> <span className={isCapacitorShell ? "text-green-300 font-bold" : "text-red-400"}>{String(isCapacitorShell)}</span></span>
+            <span><span className="text-green-600">protocol:</span> {typeof window !== "undefined" ? window.location.protocol : "?"}</span>
+            <span><span className="text-green-600">BASE:</span> <span className="text-yellow-300">{api.BASE}</span></span>
+          </div>
+        </div>
+      )}
 
       {/* ── Top-left branding ── */}
       <motion.div
