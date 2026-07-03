@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import HandwritingBackground from "@/components/HandwritingBackground";
-import { setAuthConfig } from "@/lib/authConfig";
+import { setAuthConfig, showGoogleLogin } from "@/lib/authConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -118,10 +118,20 @@ export default function Auth() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [configFetching, setConfigFetching] = useState(true);
 
+  // Detect Capacitor native shell — server-side OAuth redirect doesn't work in Capacitor
+  // because Android opens external URLs in Chrome Custom Tab (separate process / localStorage).
+  // Hide Google login in Capacitor; email/password login works perfectly.
+  const isCapacitorShell =
+    typeof window !== "undefined" && window.location.protocol === "capacitor:";
+
   // ─── Bootstrap auth config ────────────────────────────────────────────────────
   useEffect(() => {
     setConfigFetching(true);
-    fetch("/api/auth/config")
+    // In Capacitor relative /api paths resolve to capacitor://localhost — use VITE_API_URL
+    const apiBase = isCapacitorShell && import.meta.env.VITE_API_URL
+      ? (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
+      : "";
+    fetch(`${apiBase}/api/auth/config`)
       .then(r => r.json())
       .then((d: { authMode?: string; googleClientId?: string }) => {
         setAuthConfig((d.authMode ?? "both") as Parameters<typeof setAuthConfig>[0], d.googleClientId ?? "");
@@ -331,16 +341,19 @@ export default function Auth() {
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Continue"}
                 </Button>
 
-                <div className={cn("relative my-2")}>
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-transparent px-3 text-muted-foreground">or</span>
-                  </div>
-                </div>
-
-                <GoogleButton onClick={handleGoogleSignIn} loading={googleLoading} configFetching={configFetching} />
+                {showGoogleLogin() && !isCapacitorShell && (
+                  <>
+                    <div className={cn("relative my-2")}>
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-transparent px-3 text-muted-foreground">or</span>
+                      </div>
+                    </div>
+                    <GoogleButton onClick={handleGoogleSignIn} loading={googleLoading} configFetching={configFetching} />
+                  </>
+                )}
               </motion.form>
             )}
 

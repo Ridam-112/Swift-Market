@@ -53,11 +53,28 @@ export default function GoogleCallback() {
       try {
         console.log("[GoogleCallback] exchanging code with backend…");
 
-        const res = await fetch("/api/auth/google/exchange", {
+        // In Capacitor, relative /api paths hit capacitor://localhost — use VITE_API_URL.
+        // Also handles deep-link callbacks where window.location.protocol === "capacitor:".
+        const _isCapacitor =
+          typeof window !== "undefined" && window.location.protocol === "capacitor:";
+        const apiBase = (_isCapacitor && import.meta.env.VITE_API_URL)
+          ? (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
+          : "";
+
+        const res = await fetch(`${apiBase}/api/auth/google/exchange`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code, state }),
         });
+
+        // Log raw response if not JSON to help diagnose "unexpected format" errors
+        const contentType = res.headers.get("content-type") ?? "";
+        if (!contentType.includes("application/json")) {
+          const text = await res.text().catch(() => "(unreadable)");
+          console.error("[GoogleCallback] Non-JSON response:", res.status, text.substring(0, 300));
+          setError(`Server returned an unexpected response (HTTP ${res.status}). Please try again.`);
+          return;
+        }
 
         const data = await res.json() as {
           success: boolean;

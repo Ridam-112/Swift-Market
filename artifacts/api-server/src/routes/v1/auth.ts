@@ -534,19 +534,15 @@ router.get("/google/redirect", (req: Request, res: Response): void => {
   const clientId     = process.env["GOOGLE_CLIENT_ID"];
   const clientSecret = process.env["GOOGLE_CLIENT_SECRET"];
   if (AUTH_MODE === "otp") {
-    res.status(400).send("Google login is not enabled on this server (AUTH_MODE=otp).");
+    res.status(400).json({ success: false, message: "Google login is not enabled on this server." });
     return;
   }
   if (!clientId) {
-    res.status(503).send("Google login is not configured — GOOGLE_CLIENT_ID is missing.");
+    res.status(503).json({ success: false, message: "Google login is not configured — GOOGLE_CLIENT_ID is missing." });
     return;
   }
   if (!clientSecret) {
-    res.status(503).send(
-      "Google login is not fully configured — GOOGLE_CLIENT_SECRET is missing. " +
-      "Add it in Replit → Tools → Secrets (get it from Google Cloud Console → " +
-      "APIs & Services → Credentials → your OAuth 2.0 Client)."
-    );
+    res.status(503).json({ success: false, message: "Google login is not fully configured — GOOGLE_CLIENT_SECRET is missing. Add it in Replit → Tools → Secrets." });
     return;
   }
 
