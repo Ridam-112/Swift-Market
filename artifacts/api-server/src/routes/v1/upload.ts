@@ -3,7 +3,7 @@ import multer from "multer";
 import path from "path";
 import { authenticate } from "../../middlewares/auth.js";
 import { uploadToCloudinary } from "../../lib/cloudinary.js";
-import { uploadLimiter } from "../../middlewares/rateLimiter.js";
+
 
 const router = Router();
 
@@ -49,7 +49,6 @@ function runMulter(
 router.post(
   "/product-image",
   authenticate,
-  uploadLimiter,
   async (req: Request, res: Response): Promise<void> => {
     try {
       await runMulter(imageUpload.single("image"), req, res);
@@ -80,7 +79,6 @@ router.post(
 router.post(
   "/banner-image",
   authenticate,
-  uploadLimiter,
   async (req: Request, res: Response): Promise<void> => {
     try {
       await runMulter(imageUpload.single("image"), req, res);
@@ -111,7 +109,6 @@ router.post(
 router.post(
   "/shop-image",
   authenticate,
-  uploadLimiter,
   async (req: Request, res: Response): Promise<void> => {
     try {
       await runMulter(imageUpload.single("image"), req, res);
@@ -142,7 +139,6 @@ router.post(
 router.post(
   "/certificate",
   authenticate,
-  uploadLimiter,
   async (req: Request, res: Response): Promise<void> => {
     try {
       await runMulter(certificateUpload.single("file"), req, res);
