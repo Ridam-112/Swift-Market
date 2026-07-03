@@ -7,7 +7,7 @@
 
 export type AuthMode = "otp" | "google" | "both";
 
-let _authMode: AuthMode = "otp";
+let _authMode: AuthMode = "both";
 let _googleClientId = "placeholder";
 
 export function setAuthConfig(mode: AuthMode, clientId: string) {
