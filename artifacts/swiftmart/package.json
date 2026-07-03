@@ -81,6 +81,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "@codetrix-studio/capacitor-google-auth": "3.4.0-rc.4",
     "@react-oauth/google": "^0.13.5",
     "better-auth": "^1.6.22",
     "firebase": "^12.14.0",

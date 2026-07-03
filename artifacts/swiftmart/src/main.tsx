@@ -58,6 +58,18 @@ async function bootstrap() {
       setServicePincodes(data.servicePincodes);
     }
 
+    // ── Native Google Sign-In for Capacitor Android ───────────────────────────
+    // Initialise the plugin with the web client ID fetched from the server.
+    // This must happen before the user can tap "Continue with Google" in the app.
+    if (_isCapacitorShell && googleClientId) {
+      try {
+        const { initNativeGoogleAuth } = await import('./lib/googleNativeAuth');
+        await initNativeGoogleAuth(googleClientId);
+      } catch (err) {
+        console.warn('[SwiftMart] Native Google Auth init failed (Google login unavailable):', err);
+      }
+    }
+
     if (fc?.apiKey) {
       const config = {
         ...fc,

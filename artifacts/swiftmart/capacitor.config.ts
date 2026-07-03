@@ -39,6 +39,14 @@ const config: CapacitorConfig = {
     : {}),
 
   plugins: {
+    GoogleAuth: {
+      // The web client ID (server_client_id) is set dynamically at runtime via
+      // GoogleAuth.initialize({ clientId }) using the value from /api/auth/config.
+      // This tells Google to embed the web client ID as the token audience,
+      // so the backend can verify it with GOOGLE_CLIENT_ID.
+      scopes: ['profile', 'email'],
+      grantOfflineAccess: false,
+    },
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert'],
     },

@@ -3,6 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import HandwritingBackground from "@/components/HandwritingBackground";
 import { setAuthConfig, showGoogleLogin } from "@/lib/authConfig";
+import { setTokens } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -104,7 +105,7 @@ function PasswordInput({
 import { SEO } from "@/components/SEO";
 
 export default function Auth() {
-  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, forgotPassword, resetPassword } = useAuth();
+  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, forgotPassword, resetPassword, refreshUser } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
 
@@ -223,20 +224,72 @@ export default function Auth() {
     }
   };
 
-  // ─── Google sign-in — server-side OAuth2 redirect ────────────────────────────
-  // Works everywhere: desktop browser, mobile browser, Capacitor WebView.
-  // The server at /api/auth/google/redirect builds the Google consent URL and
-  // redirects the user there. Google returns to /auth/google/callback which
-  // calls /api/auth/google/exchange to complete the flow.
-  const handleGoogleSignIn = () => {
+  // ─── Google sign-in ───────────────────────────────────────────────────────────
+  // Capacitor (Android): uses native GoogleSignIn SDK via @codetrix-studio/capacitor-google-auth.
+  //   Returns an ID token → exchanged with POST /api/auth/google → backend mints JWT.
+  // Web: server-side OAuth2 redirect to /api/auth/google/redirect.
+  const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
-    // In Capacitor the WebView serves from capacitor://localhost — relative paths
-    // hit the WebView assets, not the API server. Use VITE_API_URL for the base.
-    const isCapacitor = typeof window !== "undefined" && window.location.protocol === "capacitor:";
-    const base = (isCapacitor && import.meta.env.VITE_API_URL)
-      ? (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
-      : "";
-    window.location.href = `${base}/api/auth/google/redirect`;
+    try {
+      if (isCapacitorShell) {
+        // ── Native Android Google Sign-In ──────────────────────────────────────
+        const { nativeGoogleSignIn } = await import("@/lib/googleNativeAuth");
+        console.log("[Auth] Starting native Google Sign-In…");
+        const idToken = await nativeGoogleSignIn();
+        console.log("[Auth] Got ID token — exchanging with backend…");
+
+        const apiBase = (import.meta.env.VITE_API_URL as string || "").replace(/\/+$/, "");
+        const res = await fetch(`${apiBase}/api/auth/google`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ credential: idToken }),
+        });
+
+        const ct = res.headers.get("content-type") ?? "";
+        if (!ct.includes("application/json")) {
+          const text = await res.text().catch(() => "(unreadable)");
+          console.error("[Auth] Non-JSON from /api/auth/google:", res.status, text.substring(0, 300));
+          throw new Error(
+            `Server error (${res.status}). Ensure Android OAuth client with correct SHA-1 fingerprint ` +
+            "is registered in Google Cloud Console."
+          );
+        }
+
+        type GoogleResp = {
+          success: boolean; message?: string;
+          accessToken?: string; refreshToken?: string;
+          needsProfile?: boolean; isNewUser?: boolean;
+          user?: { id: string; name: string; phone: string; email?: string; role: string; status: string };
+        };
+        const data = await res.json() as GoogleResp;
+        console.log("[Auth] Backend resp:", JSON.stringify({ success: data.success, isNewUser: data.isNewUser, needsProfile: data.needsProfile }));
+
+        if (!data.success || !data.accessToken || !data.refreshToken || !data.user) {
+          throw new Error(data.message ?? "Google Sign-In failed — server returned no tokens.");
+        }
+
+        setTokens(data.accessToken, data.refreshToken);
+        localStorage.setItem("sm_user", JSON.stringify(data.user));
+        localStorage.setItem("sm_role", data.user.role);
+        await refreshUser();
+
+        const goTo = (data.needsProfile || !data.user.phone || data.user.phone.startsWith("g_"))
+          ? "/complete-profile"
+          : "/";
+        console.log("[Auth] Native Google login success → navigating to", goTo);
+        setLocation(goTo);
+      } else {
+        // ── Web: server-side OAuth2 redirect ──────────────────────────────────
+        const base = import.meta.env.VITE_API_URL
+          ? (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")
+          : "";
+        window.location.href = `${base}/api/auth/google/redirect`;
+      }
+    } catch (err) {
+      console.error("[Auth] Google Sign-In error:", err);
+      toast.error(err instanceof Error ? err.message : "Google Sign-In failed. Please try again.");
+      setGoogleLoading(false);
+    }
   };
 
   // ─── Forgot password ─────────────────────────────────────────────────────────
@@ -341,7 +394,7 @@ export default function Auth() {
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Continue"}
                 </Button>
 
-                {showGoogleLogin() && !isCapacitorShell && (
+                {showGoogleLogin() && (
                   <>
                     <div className={cn("relative my-2")}>
                       <div className="absolute inset-0 flex items-center">

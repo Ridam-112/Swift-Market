@@ -4,4 +4,12 @@
     <string name="title_activity_main">SwiftMart</string>
     <string name="package_name">com.swiftmart.app</string>
     <string name="custom_url_scheme">com.swiftmart.app</string>
+    <!--
+      server_client_id = Web OAuth 2.0 Client ID from Google Cloud Console
+      (same value as GOOGLE_CLIENT_ID in Replit Secrets).
+      The app fetches this at runtime from /api/auth/config and passes it to
+      GoogleAuth.initialize() — so this placeholder is only a fallback.
+      Replace it if you want a build-time static value.
+    -->
+    <string name="server_client_id">REPLACE_WITH_YOUR_WEB_OAUTH_CLIENT_ID</string>
 </resources>
