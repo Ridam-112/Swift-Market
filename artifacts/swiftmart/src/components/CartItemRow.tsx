@@ -5,6 +5,7 @@ import { WeightStepper } from "./WeightStepper";
 import { useCart } from "@/hooks/useCart";
 import { cartKey } from "@/context/CartContext";
 import { parseUnit, weightPresets, priceForWeight, formatWeight } from "@/lib/weightUtils";
+import { Trash2 } from "lucide-react";
 
 const COLOR_HEX: Record<string, string> = {
   Red: "#ef4444", Blue: "#3b82f6", Green: "#22c55e", Yellow: "#eab308",
@@ -14,7 +15,7 @@ const COLOR_HEX: Record<string, string> = {
 };
 
 export function CartItemRow({ item }: { item: CartItem }) {
-  const { updateQty, updateWeight } = useCart();
+  const { updateQty, updateWeight, removeFromCart } = useCart();
   const { product, qty, selectedColor, selectedSize, selectedGrams } = item;
   const key = cartKey(product.id, selectedColor, selectedSize);
 
@@ -35,7 +36,7 @@ export function CartItemRow({ item }: { item: CartItem }) {
     : unitPrice * qty;
 
   return (
-    <div className="flex gap-4 p-3 bg-card rounded-2xl neu-card mb-3 items-center">
+    <div className="flex gap-3 p-3 bg-card rounded-2xl neu-card mb-3 items-center">
       <div className="w-16 h-16 rounded-xl bg-background neu-inset p-2 flex-shrink-0 relative">
         <img src={product.image} alt={product.name} className="w-full h-full object-contain" />
         {selectedColor && (
@@ -93,7 +94,15 @@ export function CartItemRow({ item }: { item: CartItem }) {
         </div>
       </div>
 
-      <div className="flex-shrink-0">
+      <div className="flex-shrink-0 flex flex-col items-center gap-2">
+        <button
+          onClick={() => removeFromCart(key)}
+          className="w-7 h-7 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 active:scale-95 transition-all shadow-sm"
+          aria-label="Remove item"
+        >
+          <Trash2 className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+        </button>
+
         {isWeightBased && selectedGrams ? (
           <WeightStepper
             selectedGrams={selectedGrams}
