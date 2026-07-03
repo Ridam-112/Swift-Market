@@ -50,7 +50,7 @@ export function QuantityStepper({ qty, onChange, maxQty, size = "md" }: Quantity
       <Button 
         variant="ghost" 
         size="icon"
-        className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover-elevate active-elevate-2 border border-transparent hover:bg-primary-foreground/20 rounded-none w-8 h-8 text-[#000000]"
+        className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover-elevate active-elevate-2 border border-transparent hover:bg-white/20 rounded-none w-8 h-8 text-white"
         onClick={handleDecrease}
       >
         {qty === 1 ? <Trash2 className={isSm ? "w-3.5 h-3.5" : "w-4 h-4"} /> : <Minus className={isSm ? "w-3.5 h-3.5" : "w-4 h-4"} />}
@@ -74,7 +74,7 @@ export function QuantityStepper({ qty, onChange, maxQty, size = "md" }: Quantity
         variant="ghost" 
         size="icon"
         className={cn(
-          "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover-elevate active-elevate-2 border border-transparent hover:bg-primary-foreground/20 rounded-none w-8 h-8 text-[#000000]",
+          "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover-elevate active-elevate-2 border border-transparent hover:bg-white/20 rounded-none w-8 h-8 text-white",
           atMax && "opacity-40 cursor-not-allowed"
         )}
         onClick={handleIncrease}

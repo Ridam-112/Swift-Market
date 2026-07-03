@@ -49,7 +49,7 @@ export function WeightStepper({ selectedGrams, presets, maxGrams, onChange, size
       <Button
         variant="ghost"
         size="icon"
-        className="inline-flex items-center justify-center hover:bg-primary-foreground/20 rounded-none text-primary-foreground w-8 h-8 shrink-0"
+        className="inline-flex items-center justify-center hover:bg-white/20 rounded-none text-white w-8 h-8 shrink-0"
         onClick={handleDecrease}
       >
         {atMin
@@ -78,7 +78,7 @@ export function WeightStepper({ selectedGrams, presets, maxGrams, onChange, size
         variant="ghost"
         size="icon"
         className={cn(
-          "inline-flex items-center justify-center hover:bg-primary-foreground/20 rounded-none text-primary-foreground w-8 h-8 shrink-0",
+          "inline-flex items-center justify-center hover:bg-white/20 rounded-none text-white w-8 h-8 shrink-0",
           atMax && "opacity-40 cursor-not-allowed"
         )}
         onClick={handleIncrease}
