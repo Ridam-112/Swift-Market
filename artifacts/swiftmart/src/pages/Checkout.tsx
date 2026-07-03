@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,11 +9,17 @@ import { CartSummary } from "@/components/CartSummary";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Wallet, Banknote, Loader2, AlertCircle, Tag, X, CloudRain, Zap } from "lucide-react";
+import { Plus, Wallet, Banknote, Loader2, AlertCircle, Tag, X, CloudRain, Zap, Clock, Store, MapPin, Bike, Package } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { isServicePincode } from "@/lib/serviceArea";
+import {
+  getCustomerCoords,
+  computeSingleShopEta,
+  type DeliveryEta,
+  type LatLng,
+} from "@/lib/deliveryEta";
 
 interface ApiOrderResponse {
   success: boolean;
@@ -62,6 +68,11 @@ export default function Checkout() {
   const [chargesLoading, setChargesLoading] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
 
+  // Delivery ETA
+  const [deliveryEta, setDeliveryEta] = useState<DeliveryEta | null>(null);
+  const [etaLoading, setEtaLoading] = useState(false);
+  const customerCoordsRef = useRef<LatLng | null>(null);
+
   useEffect(() => {
     if (items.length === 0 && !orderPlaced) {
       setLocation("/cart");
@@ -71,10 +82,44 @@ export default function Checkout() {
   const address = user?.addresses.find(a => a.id === selectedAddress);
   const addressPincodeInvalid = address && !isServicePincode(address.pincode);
 
+  // Unique shops in cart
+  const uniqueShopIds = [...new Set(items.map(i => i.product.vendorId))];
+  const isMultiShop = uniqueShopIds.length > 1;
+
   const shopId = items[0]?.product.vendorId;
   const shop = shops.find(s => s.id === shopId);
   const shopPincode = shop?.pincode ?? "";
   const isSamePincode = !!address && !!shopPincode && address.pincode === shopPincode;
+
+  // Compute delivery ETA whenever cart or address changes
+  useEffect(() => {
+    if (items.length === 0) { setDeliveryEta(null); return; }
+
+    if (isMultiShop) {
+      setDeliveryEta({ kind: "multi-shop", shopCount: uniqueShopIds.length, minMin: 30, maxMin: 45 });
+      return;
+    }
+
+    // Single shop — use GPS for precise estimate
+    setEtaLoading(true);
+    const shopForEta = shops.find(s => s.id === shopId);
+    const shopPincodeForEta = shopForEta?.pincode ?? "";
+    const shopEtaStr = shopForEta?.eta ?? "";
+
+    const run = async () => {
+      // Reuse cached coords to avoid re-prompting GPS every render
+      let coords = customerCoordsRef.current;
+      if (!coords) {
+        coords = await getCustomerCoords();
+        customerCoordsRef.current = coords;
+      }
+      const eta = computeSingleShopEta(coords, shopPincodeForEta, shopEtaStr);
+      setDeliveryEta(eta);
+      setEtaLoading(false);
+    };
+    run();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMultiShop, shopId, items.length, shops.length]);
 
   // Fetch cross-area charge whenever address or shop changes
   useEffect(() => {
@@ -321,6 +366,122 @@ export default function Checkout() {
             </div>
           )}
         </section>
+
+        {/* ── Delivery ETA Banner ── */}
+        {(etaLoading || deliveryEta) && (
+          <section>
+            <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              Delivery Estimate
+            </h3>
+
+            {etaLoading && (
+              <div className="flex items-center gap-3 bg-card rounded-2xl neu-card p-4 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                Calculating delivery time from your location…
+              </div>
+            )}
+
+            {!etaLoading && deliveryEta?.kind === "multi-shop" && (
+              <div className="rounded-2xl p-4 space-y-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
+                    <Store className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-amber-800 dark:text-amber-300 text-sm">
+                      Multiple shops in your cart
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
+                      Your items are from <strong>{deliveryEta.shopCount} different shops</strong>. Our rider will pick up from each location before delivering to you — so it takes a little longer than usual.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between bg-amber-100 dark:bg-amber-900/40 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+                    <Bike className="w-4 h-4" />
+                    <span className="text-sm font-semibold">Estimated delivery time</span>
+                  </div>
+                  <span className="font-extrabold text-amber-700 dark:text-amber-300 text-base">
+                    {deliveryEta.minMin}–{deliveryEta.maxMin} min
+                  </span>
+                </div>
+                <div className="flex gap-2 text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span>We recommend ordering from one shop at a time for faster 10-minute delivery.</span>
+                </div>
+              </div>
+            )}
+
+            {!etaLoading && deliveryEta?.kind === "single-shop" && (
+              <div className="rounded-2xl bg-card neu-card overflow-hidden">
+                {/* ETA header */}
+                <div className="flex items-center justify-between p-4 bg-primary/5 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <Bike className="w-5 h-5 text-primary" />
+                    <span className="font-bold text-sm">Estimated delivery</span>
+                  </div>
+                  <span className="font-extrabold text-primary text-lg">
+                    {deliveryEta.rangeMin}–{deliveryEta.rangeMax} min
+                  </span>
+                </div>
+
+                {/* Breakdown */}
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                      <Bike className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <span className="text-muted-foreground flex-1">Rider reaches shop</span>
+                    <span className="font-semibold">~{deliveryEta.breakdown.riderPickupMin} min</span>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="w-7 h-7 rounded-full bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center shrink-0">
+                      <Package className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <span className="text-muted-foreground flex-1">Shop packs your order</span>
+                    <span className="font-semibold">~{deliveryEta.breakdown.shopPrepMin} min</span>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center shrink-0">
+                      <MapPin className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <span className="text-muted-foreground flex-1">
+                      Ride to you
+                      {deliveryEta.breakdown.distanceKm != null && (
+                        <span className="text-xs ml-1">
+                          ({deliveryEta.breakdown.distanceKm.toFixed(1)} km
+                          {deliveryEta.breakdown.customerCoordsUsed ? " · GPS" : " · est."})
+                        </span>
+                      )}
+                    </span>
+                    <span className="font-semibold">~{deliveryEta.breakdown.transitMin} min</span>
+                  </div>
+
+                  {!deliveryEta.breakdown.customerCoordsUsed && (
+                    <button
+                      onClick={async () => {
+                        setEtaLoading(true);
+                        const coords = await getCustomerCoords();
+                        customerCoordsRef.current = coords;
+                        const shopForEta = shops.find(s => s.id === shopId);
+                        const eta = computeSingleShopEta(coords, shopForEta?.pincode ?? "", shopForEta?.eta ?? "");
+                        setDeliveryEta(eta);
+                        setEtaLoading(false);
+                      }}
+                      className="flex items-center gap-2 text-xs text-primary font-semibold hover:underline"
+                    >
+                      <MapPin className="w-3.5 h-3.5" />
+                      Use my GPS location for a more accurate estimate
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         <section>
           <h3 className="font-bold text-lg mb-1">Delivery Slot</h3>
