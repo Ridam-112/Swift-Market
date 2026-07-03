@@ -1,10 +1,23 @@
-// In Capacitor Android builds, VITE_API_URL must be set to the deployed backend URL.
-// In any browser context (dev or production), always use relative /api.
-// Only use VITE_API_URL when running inside a Capacitor native shell (protocol = "capacitor:").
-const _isCapacitor =
-  typeof window !== "undefined" && window.location.protocol === "capacitor:";
-const BASE = (_isCapacitor && import.meta.env.VITE_API_URL)
-  ? `${(import.meta.env.VITE_API_URL as string).replace(/\/+$/, "")}/api`
+declare global {
+  interface Window {
+    Capacitor?: { isNative?: boolean };
+  }
+}
+
+// Detect Capacitor native runtime via both reliable signals:
+// 1. window.Capacitor.isNative — injected by the Capacitor bridge
+// 2. window.location.protocol === "capacitor:" — the WebView origin protocol
+const isCapacitorNative =
+  typeof window !== "undefined" &&
+  (window.Capacitor?.isNative === true ||
+    window.location.protocol === "capacitor:");
+
+// Native → use VITE_API_URL if explicitly set, otherwise hardcode production URL.
+//          Never use a relative path: relative URLs resolve to capacitor://localhost/api
+//          and get intercepted by the Capacitor HTTP bridge instead of reaching the server.
+// Browser → always use relative /api so the Vite dev-server proxy handles it.
+const BASE: string = isCapacitorNative
+  ? ((import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, "") ?? "https://swiftmart.space") + "/api"
   : "/api";
 
 function getTokens() {
@@ -26,7 +39,7 @@ export function clearTokens() {
   localStorage.removeItem("sm_role");
 }
 
-// Singleton promise to prevent concurrent refresh races (M3)
+// Singleton promise to prevent concurrent refresh races
 let refreshInFlight: Promise<string | null> | null = null;
 
 async function refreshTokens(): Promise<string | null> {
@@ -53,6 +66,14 @@ async function doRefreshTokens(): Promise<string | null> {
   }
 }
 
+function redirectToAuth() {
+  if (isCapacitorNative) {
+    window.location.replace("index.html");
+  } else {
+    window.location.href = "/auth";
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
   const { access } = getTokens();
   const headers: Record<string, string> = {
@@ -63,16 +84,15 @@ async function request<T>(path: string, options: RequestInit = {}, retry = true)
 
   const res = await fetch(`${BASE}${path}`, { ...options, headers });
 
-  // Only skip token-refresh for login/signup endpoints that return 401 to mean
-  // "wrong credentials" — not for protected routes like /auth/me that return 401
-  // to mean "session expired".
+  // Skip token-refresh for auth endpoints that return 401 to mean "wrong credentials"
+  // (not for protected routes like /auth/me that return 401 for "session expired")
   const isLoginEndpoint =
     path.startsWith("/auth/") && path !== "/auth/me" && path !== "/auth/logout";
   if (res.status === 401 && retry && !isLoginEndpoint) {
     const newToken = await refreshTokens();
     if (newToken) return request<T>(path, options, false);
     clearTokens();
-    window.location.href = "/auth";
+    redirectToAuth();
     throw new Error("Session expired");
   }
 
@@ -101,4 +121,5 @@ export const api = {
   getTokens,
   setTokens,
   clearTokens,
+  BASE,
 };

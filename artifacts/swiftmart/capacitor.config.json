@@ -1,0 +1,16 @@
+{
+  "appId": "space.swiftmart.app",
+  "appName": "SwiftMart",
+  "webDir": "dist/public",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0,
+      "backgroundColor": "#FFF8F3"
+    }
+  }
+}
