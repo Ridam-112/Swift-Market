@@ -119,10 +119,15 @@ export default function Auth() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [configFetching, setConfigFetching] = useState(true);
 
-  // Detect Capacitor native shell — matches the same logic used in api.ts.
-  // Must check BOTH signals because window.location.protocol is "https:" on some Capacitor builds
-  // while window.Capacitor.isNative is always injected by the bridge.
+  // Android-only: whether the native Google Sign-In plugin is loadable.
+  // "web"         → running in a regular browser (not Capacitor) — always usable via OAuth redirect
+  // "checking"    → Android, probing the native plugin import
+  // "available"   → Android, plugin loaded successfully
+  // "unavailable" → Android, plugin missing / not synced
   const isCapacitorShell = api.isCapacitorNative;
+  const [nativeGoogleStatus, setNativeGoogleStatus] = useState<"web" | "checking" | "available" | "unavailable">(
+    isCapacitorShell ? "checking" : "web"
+  );
 
   // ─── Bootstrap auth config ────────────────────────────────────────────────────
   // Use api.BASE so we always hit the correct absolute URL on Android and the
@@ -152,6 +157,17 @@ export default function Auth() {
         setAuthConfig("both", "");
       })
       .finally(() => setConfigFetching(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Android: probe native Google plugin availability ──────────────────────
+  // Runs once on mount. Web browsers skip this entirely.
+  // This is the ONLY place isCapacitorShell affects Google button visibility.
+  useEffect(() => {
+    if (!isCapacitorShell) return; // web — "web" status already set, skip
+    import("@/lib/googleNativeAuth")
+      .then(() => setNativeGoogleStatus("available"))
+      .catch(() => setNativeGoogleStatus("unavailable"));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -427,9 +443,15 @@ export default function Auth() {
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Continue"}
                 </Button>
 
-                {showGoogleLogin() && (
+                {/* ── Google login section ──────────────────────────────────────────────
+                    Web:               always shown — uses server-side OAuth redirect.
+                    Android available: shown — uses native GoogleSignIn SDK.
+                    Android checking:  hidden briefly while probing plugin import.
+                    Android unavail:   shows a "being set up" message instead.
+                ─────────────────────────────────────────────────────────────────── */}
+                {nativeGoogleStatus !== "checking" && (
                   <>
-                    <div className={cn("relative my-2")}>
+                    <div className="relative my-2">
                       <div className="absolute inset-0 flex items-center">
                         <span className="w-full border-t" />
                       </div>
@@ -437,7 +459,19 @@ export default function Auth() {
                         <span className="bg-transparent px-3 text-muted-foreground">or</span>
                       </div>
                     </div>
-                    <GoogleButton onClick={handleGoogleSignIn} loading={googleLoading} configFetching={configFetching} />
+
+                    {nativeGoogleStatus === "unavailable" ? (
+                      <div className="w-full h-12 rounded-xl border border-dashed border-white/20 flex items-center justify-center gap-2 text-xs text-white/50 px-4 text-center">
+                        <WifiOff className="w-4 h-4 shrink-0" />
+                        Google login is being set up for the Android app
+                      </div>
+                    ) : (
+                      <GoogleButton
+                        onClick={handleGoogleSignIn}
+                        loading={googleLoading}
+                        configFetching={configFetching}
+                      />
+                    )}
                   </>
                 )}
               </motion.form>
