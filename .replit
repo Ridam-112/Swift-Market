@@ -74,15 +74,15 @@ packages = ["lsof", "nano", "gti"]
 
 [userenv.shared]
 SUPER_ADMIN_PHONES = "6296118949,7602584238"
-NODE_ENV = "development"
+NODE_ENV = "production"
 OTP_DEMO_CODE = "123456"
 PORT = "8080"
 VAPID_PUBLIC_KEY = "BEZjdv1oiRmhOwJB_gwkTHAhE8Qlm4TuSdT0UwTj_zqH0B4BvfCtIJTEOTMGBE3DtiXBMeR9H0uorkFYi6C0ZH8"
 VAPID_SUBJECT = "mailto:admin@swiftmart.com"
 OTP_MODE = "demo"
 AUTH_MODE = "both"
-ALLOWED_ORIGINS = "https://swiftmart.space,https://www.swiftmart.space,https://4328a60e-26fa-4938-8c46-085be69dbd35-00-2ew42qj7wf2sl.sisko.replit.dev"
-VITE_API_URL = "https://4328a60e-26fa-4938-8c46-085be69dbd35-00-2ew42qj7wf2sl.sisko.replit.dev"
+ALLOWED_ORIGINS = "https://swiftmart.space,https://www.swiftmart.space,https://aff31149-6eaa-4243-818d-e4de43f136fb-00-299lgh0i679s3.pike.replit.dev"
+VITE_API_URL = "https://aff31149-6eaa-4243-818d-e4de43f136fb-00-299lgh0i679s3.pike.replit.dev"
 RESEND_FROM_EMAIL = "SwiftMart <noreply@swiftmart.space>"
 FIREBASE_MESSAGING_SENDER_ID = "556854517102"
 SUPER_ADMIN_EMAILS = ""
