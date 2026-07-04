@@ -8,7 +8,19 @@ pnpm workspace monorepo · TypeScript · Express 5 · PostgreSQL + Drizzle ORM �
 
 ---
 
-## New Account / Fresh Setup Checklist
+## Running on Replit
+
+- **API server**: port 8080 (`artifacts/api-server`)
+- **Frontend (Vite dev)**: port 5000 (`artifacts/swiftmart`)
+- **Start command**: `bash start.sh` (builds API with esbuild, then starts both servers)
+- **Database**: Replit-managed PostgreSQL (`DATABASE_URL` auto-set by Replit). Run `pnpm --filter @workspace/db run push` after schema changes.
+- **Replit domain**: update `VITE_API_URL` and `ALLOWED_ORIGINS` env vars if the Replit dev domain changes.
+
+> Note: `DATABASE_URL` is managed by Replit (local PostgreSQL). `NEON_DATABASE_URL` is available as a fallback secret but the server always prefers `DATABASE_URL`.
+
+---
+
+## Fresh Setup Checklist
 
 When you fork or move this project to a new Replit account, set these in **Tools → Secrets**:
 
