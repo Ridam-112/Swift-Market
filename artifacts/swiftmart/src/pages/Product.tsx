@@ -1,18 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
 import { SEO } from "@/components/SEO";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/hooks/useCart";
+import { api } from "@/lib/api";
 import { formatINR } from "@/lib/currency";
 import { QuantityStepper } from "@/components/QuantityStepper";
 import { WeightStepper } from "@/components/WeightStepper";
 import { Button } from "@/components/ui/button";
-import { Star, ShieldCheck, Clock, AlertTriangle } from "lucide-react";
+import { Loader2, Star, ShieldCheck, Clock, AlertTriangle } from "lucide-react";
 import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { categories } from "@/data/categories";
 import { cartKey } from "@/context/CartContext";
 import { parseUnit, weightPresets, priceForWeight, formatWeight } from "@/lib/weightUtils";
+import type { Product as ProductType } from "@/types";
 
 const COLOR_HEX: Record<string, string> = {
   Red: "#ef4444", Blue: "#3b82f6", Green: "#22c55e", Yellow: "#eab308",
@@ -24,10 +26,53 @@ const COLOR_HEX: Record<string, string> = {
 export default function Product() {
   const [, params] = useRoute("/product/:id");
   const id = params?.id;
-  const { products } = useProducts();
+  const { products, isLoading: globalLoading } = useProducts();
   const { items, addToCart, updateQty, updateWeight } = useCart();
 
-  const product = products.find(p => p.id === id);
+  // Try to find the product in the globally-cached list first.
+  // If not found after the global list finishes loading, fetch it directly by ID
+  // (handles products not in the 200-item cached list, e.g. homepage section items).
+  const cached = products.find(p => p.id === id);
+  const [directProduct, setDirectProduct] = useState<ProductType | null>(null);
+  const [directLoading, setDirectLoading] = useState(false);
+  const [directFailed, setDirectFailed] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    if (cached) return; // already found in global list — no need to fetch
+    if (globalLoading) return; // wait for global list to finish before falling back
+    // Global list loaded but product not in it — fetch directly
+    setDirectLoading(true);
+    setDirectFailed(false);
+    api.get<{ success: boolean; product: { _id: string; name: string; category: string; price: number; discountedPrice?: number; unit?: string; image?: string; images?: string[]; description?: string; stock?: number; rating?: number; shopId?: string; shopName?: string; trending?: boolean; colors?: string[]; sizes?: string[]; colorImages?: Record<string, string> } }>(`/products/${id}`)
+      .then(d => {
+        const p = d.product;
+        setDirectProduct({
+          id: p._id,
+          name: p.name,
+          category: p.category as ProductType["category"],
+          price: p.price,
+          discountedPrice: p.discountedPrice,
+          unit: p.unit ?? "1 unit",
+          image: p.images?.[0] ?? p.image ?? "/assets/product-placeholder.png",
+          images: p.images ?? (p.image ? [p.image] : []),
+          description: p.description ?? "",
+          stock: p.stock ?? 0,
+          rating: p.rating ?? 0,
+          vendorId: p.shopId ?? "",
+          shopId: p.shopId ?? "",
+          shopName: p.shopName,
+          trending: p.trending ?? false,
+          colors: p.colors,
+          sizes: p.sizes,
+          colorImages: p.colorImages,
+        });
+      })
+      .catch(() => setDirectFailed(true))
+      .finally(() => setDirectLoading(false));
+  }, [id, cached, globalLoading]);
+
+  const product = cached ?? directProduct;
 
   const allImages = product?.images?.filter(Boolean) ?? (product?.image ? [product.image] : []);
   const hasColors = (product?.colors?.length ?? 0) > 0;
@@ -38,7 +83,16 @@ export default function Product() {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [showVariantError, setShowVariantError] = useState(false);
 
-  if (!product) return <div className="p-8 text-center">Product not found</div>;
+  // Show spinner while the global list or direct fetch is still in-flight
+  if (globalLoading || directLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!product || directFailed) return <div className="p-8 text-center text-muted-foreground">Product not found</div>;
 
   const productSeo = {
     title: product.name,
