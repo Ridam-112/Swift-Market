@@ -142,7 +142,7 @@ export default function Checkout() {
     }).finally(() => setChargesLoading(false));
   }, [address?.pincode, shopPincode]);
 
-  const slotFee = deliverySlot === 'instant' ? 25 : deliverySlot === 'standard' ? 25 : 15;
+  const slotFee = deliverySlot === 'instant' ? 25 : deliverySlot === 'standard' ? 20 : 15;
   const totalDeliveryFee = slotFee + crossAreaCharge + rainSurcharge;
   const orderTotalForCoupon = subtotal + totalDeliveryFee;
   const couponDiscount = couponApplied?.discount ?? 0;
@@ -519,7 +519,7 @@ export default function Checkout() {
               )}>🕐</div>
               <div className="font-bold text-xs leading-tight">Standard</div>
               <div className="text-[10px] text-muted-foreground leading-tight">2–4 hours</div>
-              <div className={cn("font-extrabold text-sm", deliverySlot === 'standard' ? "text-blue-500" : "text-foreground")}>₹25</div>
+              <div className={cn("font-extrabold text-sm", deliverySlot === 'standard' ? "text-blue-500" : "text-foreground")}>₹20</div>
             </div>
 
             {/* Saver */}
