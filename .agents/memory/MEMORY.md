@@ -11,3 +11,4 @@
 - [Resend email integration](resend-email.md) — Password reset emails via Resend; sender domain swiftmart.space verified; RESEND_FROM_EMAIL env var set
 - [Delivery Map & OTP](delivery-map-otp.md) — In-app OSRM routing (blue line, no API key), Carto Voyager tiles, 4-digit delivery OTP verified by rider, customer sees OTP only when out_for_delivery
 - [Rider Live Tracking](rider-tracking.md) — currentLat/currentLon/locationUpdatedAt on deliveryPartners; rider pushes GPS every 10s when out_for_delivery; customer sees live map via GET /orders/:id/rider-location; pulsing 🛵 DivIcon
+- [API server build - @workspace/db linking](api-server-build.md) — esbuild can't find @workspace/db unless symlinked; start.sh must run ln -sf before build; pnpm install restores missing packages (helmet, razorpay, web-push, google-auth-library)

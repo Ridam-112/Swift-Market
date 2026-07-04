@@ -83,8 +83,10 @@ export default function Product() {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [showVariantError, setShowVariantError] = useState(false);
 
-  // Show spinner while the global list or direct fetch is still in-flight
-  if (globalLoading || directLoading) {
+  // Show spinner until we either have the product OR have definitively confirmed it doesn't exist.
+  // directFailed=true only when the /products/:id API returns an error (e.g. 404).
+  // This prevents the one-frame gap between globalLoading→false and directLoading→true.
+  if (!product && !directFailed) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -92,7 +94,7 @@ export default function Product() {
     );
   }
 
-  if (!product || directFailed) return <div className="p-8 text-center text-muted-foreground">Product not found</div>;
+  if (!product) return <div className="p-8 text-center text-muted-foreground">Product not found</div>;
 
   const productSeo = {
     title: product.name,
