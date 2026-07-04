@@ -1,27 +1,23 @@
-import { CloudRain } from "lucide-react";
 import { formatINR } from "@/lib/currency";
 
 export function CartSummary({
   subtotal,
   deliveryFee = 0,
   deliveryType = 'instant',
-  crossAreaCharge = 0,
-  rainSurcharge = 0,
-  rainModeActive = false,
   couponDiscount = 0,
   couponCode,
 }: {
   subtotal: number;
   deliveryFee?: number;
-  deliveryType?: 'instant' | 'scheduled';
-  crossAreaCharge?: number;
-  rainSurcharge?: number;
-  rainModeActive?: boolean;
+  deliveryType?: 'instant' | 'standard' | 'saver';
   couponDiscount?: number;
   couponCode?: string;
 }) {
-  const total = subtotal + deliveryFee + crossAreaCharge + rainSurcharge - couponDiscount;
-  const deliveryLabel = deliveryType === 'scheduled' ? 'Scheduled Delivery (2–4 hrs)' : 'Instant Delivery (10–30 min)';
+  const total = subtotal + deliveryFee - couponDiscount;
+  const deliveryLabel =
+    deliveryType === 'standard' ? 'Standard Delivery (2–4 hrs)'
+    : deliveryType === 'saver'  ? 'Saver Delivery (Same day)'
+    :                             'Instant Delivery (10–30 min)';
 
   return (
     <div className="bg-card p-4 rounded-2xl neu-card space-y-3 text-sm">
@@ -36,22 +32,6 @@ export function CartSummary({
         <div className="flex justify-between text-muted-foreground">
           <span>{deliveryLabel}</span>
           <span className="font-medium text-foreground">{formatINR(deliveryFee)}</span>
-        </div>
-      )}
-
-      {crossAreaCharge > 0 && (
-        <div className="flex justify-between text-muted-foreground">
-          <span>Cross-area Delivery</span>
-          <span className="font-medium text-foreground">{formatINR(crossAreaCharge)}</span>
-        </div>
-      )}
-
-      {rainModeActive && rainSurcharge > 0 && (
-        <div className="flex justify-between text-blue-600 dark:text-blue-400">
-          <span className="flex items-center gap-1">
-            <CloudRain className="w-3.5 h-3.5" /> Rain Surcharge
-          </span>
-          <span className="font-medium">{formatINR(rainSurcharge)}</span>
         </div>
       )}
 

@@ -9,7 +9,7 @@ import { CartSummary } from "@/components/CartSummary";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Wallet, Banknote, Loader2, AlertCircle, Tag, X, CloudRain, Zap, Clock, Store, MapPin, Bike, Package } from "lucide-react";
+import { Plus, Wallet, Banknote, Loader2, AlertCircle, Tag, X, Zap, Clock, Store, MapPin, Bike, Package } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -33,13 +33,6 @@ interface CouponValidateResponse {
   message?: string;
 }
 
-interface DeliveryChargeResponse {
-  success: boolean;
-  crossAreaCharge: number;
-  rainSurcharge: number;
-  rainModeActive: boolean;
-  total: number;
-}
 
 import { SEO } from "@/components/SEO";
 
@@ -62,10 +55,6 @@ export default function Checkout() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState("");
 
-  const [crossAreaCharge, setCrossAreaCharge] = useState(0);
-  const [rainSurcharge, setRainSurcharge] = useState(0);
-  const [rainModeActive, setRainModeActive] = useState(false);
-  const [chargesLoading, setChargesLoading] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
 
   // Delivery ETA
@@ -121,29 +110,8 @@ export default function Checkout() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMultiShop, shopId, items.length, shops.length]);
 
-  // Fetch cross-area charge whenever address or shop changes
-  useEffect(() => {
-    if (!address?.pincode || !shopPincode) return;
-    if (address.pincode === shopPincode) {
-      setCrossAreaCharge(0);
-      setRainSurcharge(0);
-      setRainModeActive(false);
-      return;
-    }
-    setChargesLoading(true);
-    api.get<DeliveryChargeResponse>(
-      `/delivery/charges/calculate?shopPincode=${shopPincode}&userPincode=${address.pincode}`
-    ).then(data => {
-      setCrossAreaCharge(data.crossAreaCharge);
-      setRainSurcharge(data.rainSurcharge);
-      setRainModeActive(data.rainModeActive);
-    }).catch(() => {
-      // silently fall back to 0
-    }).finally(() => setChargesLoading(false));
-  }, [address?.pincode, shopPincode]);
-
   const slotFee = deliverySlot === 'instant' ? 25 : deliverySlot === 'standard' ? 20 : 15;
-  const totalDeliveryFee = slotFee + crossAreaCharge + rainSurcharge;
+  const totalDeliveryFee = slotFee;
   const orderTotalForCoupon = subtotal + totalDeliveryFee;
   const couponDiscount = couponApplied?.discount ?? 0;
   const totalAmount = subtotal + totalDeliveryFee - couponDiscount;
@@ -177,14 +145,22 @@ export default function Checkout() {
     setCouponInput("");
   };
 
-  const createOrderRecord = async (shopName: string, razorpayOrderId?: string) => {
-    const paymentMethodApi = paymentMethod;
+  // Creates one order for a single shop's subset of items
+  const createOrderForShop = async (
+    sid: string,
+    shopItems: typeof items,
+    shopSubtotal: number,
+    shopDeliveryCharge: number,
+    shopCouponDiscount: number,
+    shopCouponCode?: string,
+  ) => {
+    const shopObj = shops.find(s => s.id === sid);
     return api.post<ApiOrderResponse>("/orders", {
-      shopId,
-      shopName,
+      shopId: sid,
+      shopName: shopObj?.storeName ?? "Unknown Shop",
       customerName: user!.name,
       customerPhone: user!.phone,
-      items: items.map(item => ({
+      items: shopItems.map(item => ({
         productId: item.product.id,
         productName: item.product.name,
         qty: item.qty,
@@ -193,13 +169,12 @@ export default function Checkout() {
         ...(item.selectedColor ? { selectedColor: item.selectedColor } : {}),
         ...(item.selectedSize ? { selectedSize: item.selectedSize } : {}),
       })),
-      subtotal,
-      deliveryCharge: totalDeliveryFee,
+      subtotal: shopSubtotal,
+      deliveryCharge: shopDeliveryCharge,
       deliveryType: deliverySlot === 'instant' ? 'instant' : 'scheduled',
-      couponDiscount,
-      ...(couponApplied ? { couponCode: couponApplied.code } : {}),
-      ...(razorpayOrderId ? { razorpayOrderId } : {}),
-      paymentMethod: paymentMethodApi,
+      couponDiscount: shopCouponDiscount,
+      ...(shopCouponCode ? { couponCode: shopCouponCode } : {}),
+      paymentMethod,
       address: {
         label: address!.label,
         line1: address!.line1,
@@ -242,28 +217,67 @@ export default function Checkout() {
       return;
     }
 
-    if (!shopId) {
-      toast.error("Could not determine shop for this order");
+    if (items.length === 0) {
+      toast.error("Your cart is empty");
       return;
     }
 
-    const shopName = shop?.storeName ?? "Unknown Shop";
-
-    if (shop && !shop.isOpen) {
-      toast.error(`${shopName} is currently closed.`, {
-        description: "This shop has paused orders. Please try again later or choose another shop.",
-        duration: 5000,
-      });
-      return;
+    // Check every shop in the cart is open
+    for (const sid of uniqueShopIds) {
+      const shopObj = shops.find(s => s.id === sid);
+      if (shopObj && !shopObj.isOpen) {
+        toast.error(`${shopObj.storeName} is currently closed.`, {
+          description: "This shop has paused orders. Please remove their items or try again later.",
+          duration: 5000,
+        });
+        return;
+      }
     }
 
     setPlacing(true);
 
     try {
-      const data = await createOrderRecord(shopName);
+      // Group cart items by shop
+      const shopGroups = new Map<string, typeof items>();
+      for (const item of items) {
+        const sid = item.product.vendorId;
+        if (!shopGroups.has(sid)) shopGroups.set(sid, []);
+        shopGroups.get(sid)!.push(item);
+      }
+
+      const shopCount = shopGroups.size;
+      // Split delivery charge equally across shops; remainder goes to first shop
+      const baseCharge = Math.floor(slotFee / shopCount);
+      const remainder  = slotFee - baseCharge * shopCount;
+
+      // Coupon applied only to the first (largest) shop to avoid double usage-count
+      let couponAppliedToFirst = false;
+      const createdOrderIds: string[] = [];
+
+      let shopIndex = 0;
+      for (const [sid, shopItems] of shopGroups) {
+        const shopSub = +shopItems
+          .reduce((s, i) => s + (i.product.discountedPrice ?? i.product.price) * i.qty, 0)
+          .toFixed(2);
+        const shopCharge = baseCharge + (shopIndex === 0 ? remainder : 0);
+        const shopCouponDiscount = !couponAppliedToFirst ? (couponApplied?.discount ?? 0) : 0;
+        const shopCouponCode     = !couponAppliedToFirst ? couponApplied?.code : undefined;
+        couponAppliedToFirst = true;
+
+        const data = await createOrderForShop(sid, shopItems, shopSub, shopCharge, shopCouponDiscount, shopCouponCode);
+        createdOrderIds.push(data.order._id);
+        shopIndex++;
+      }
+
       setOrderPlaced(true);
       clearCart();
-      setLocation(`/order/success/${data.order._id}`);
+
+      if (createdOrderIds.length === 1) {
+        setLocation(`/order/success/${createdOrderIds[0]}`);
+      } else {
+        toast.success(`${createdOrderIds.length} orders placed — one per shop!`);
+        setLocation('/orders');
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to place order";
       toast.error(msg.includes("buffering") ? "Database connecting — please retry" : msg);
@@ -335,29 +349,6 @@ export default function Checkout() {
             </div>
           )}
 
-          {/* Cross-area delivery info banner */}
-          {address && shopPincode && !isSamePincode && !addressPincodeInvalid && (
-            <div className="mt-3 rounded-xl p-3 text-sm space-y-1 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300">
-              <div className="flex items-center gap-2 font-semibold">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                Cross-area delivery applies
-              </div>
-              <p className="text-xs text-amber-700 dark:text-amber-400">
-                This shop is in pincode <strong>{shopPincode}</strong> but your address is in <strong>{address.pincode}</strong>.
-                {chargesLoading
-                  ? " Calculating delivery charge…"
-                  : crossAreaCharge > 0
-                    ? ` A cross-area charge of ₹${crossAreaCharge}${rainModeActive && rainSurcharge > 0 ? ` + ₹${rainSurcharge} rain surcharge` : ""} has been added.`
-                    : " No extra charge configured for this route yet."}
-              </p>
-              {rainModeActive && rainSurcharge > 0 && (
-                <div className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 mt-1">
-                  <CloudRain className="w-3.5 h-3.5" /> Rain mode active — surcharge included
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Same pincode — quick delivery badge */}
           {address && shopPincode && isSamePincode && (
             <div className="mt-3 flex items-center gap-2 bg-primary/10 text-primary rounded-xl p-3 text-sm font-semibold">
@@ -383,32 +374,28 @@ export default function Checkout() {
             )}
 
             {!etaLoading && deliveryEta?.kind === "multi-shop" && (
-              <div className="rounded-2xl p-4 space-y-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+              <div className="rounded-2xl p-4 space-y-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                 <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
                     <Store className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <p className="font-bold text-amber-800 dark:text-amber-300 text-sm">
-                      Multiple shops in your cart
+                    <p className="font-bold text-blue-800 dark:text-blue-300 text-sm">
+                      Items from {deliveryEta.shopCount} shops — {deliveryEta.shopCount} separate orders will be placed
                     </p>
-                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
-                      Your items are from <strong>{deliveryEta.shopCount} different shops</strong>. Our rider will pick up from each location before delivering to you — so it takes a little longer than usual.
+                    <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5 leading-relaxed">
+                      Each shop will receive its own order and handle it independently. Your delivery fee is split equally across shops.
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between bg-amber-100 dark:bg-amber-900/40 rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+                <div className="flex items-center justify-between bg-blue-100 dark:bg-blue-900/40 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
                     <Bike className="w-4 h-4" />
                     <span className="text-sm font-semibold">Estimated delivery time</span>
                   </div>
-                  <span className="font-extrabold text-amber-700 dark:text-amber-300 text-base">
+                  <span className="font-extrabold text-blue-700 dark:text-blue-300 text-base">
                     {deliveryEta.minMin}–{deliveryEta.maxMin} min
                   </span>
-                </div>
-                <div className="flex gap-2 text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                  <span>We recommend ordering from one shop at a time for faster 10-minute delivery.</span>
                 </div>
               </div>
             )}
@@ -620,10 +607,7 @@ export default function Checkout() {
           <CartSummary
             subtotal={subtotal}
             deliveryFee={slotFee}
-            deliveryType={deliverySlot === 'instant' ? 'instant' : 'scheduled'}
-            crossAreaCharge={crossAreaCharge}
-            rainSurcharge={rainSurcharge}
-            rainModeActive={rainModeActive}
+            deliveryType={deliverySlot}
             couponDiscount={couponApplied?.discount ?? 0}
             couponCode={couponApplied?.code}
           />
@@ -631,20 +615,17 @@ export default function Checkout() {
           <Button
             className="w-full mt-6 rounded-full h-14 text-lg font-bold shadow-none neu-card"
             onClick={handlePlaceOrder}
-            disabled={placing || !!addressPincodeInvalid || chargesLoading}
+            disabled={placing || !!addressPincodeInvalid}
           >
             {placing ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 Placing Order…
               </>
-            ) : chargesLoading ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Calculating charges…
-              </>
             ) : (
-              'Place Order'
+              isMultiShop
+                ? `Place ${uniqueShopIds.length} Orders`
+                : 'Place Order'
             )}
           </Button>
         </section>
