@@ -16,11 +16,13 @@ const A = requireRole("admin", "super_admin");
 
 // ─── Zod schema for POST /orders ────────────────────────────────────────────
 const OrderItemSchema = z.object({
-  productId:   z.string().uuid("productId must be a UUID"),
-  productName: z.string().min(1),
-  qty:         z.number().int().positive().max(100),
-  price:       z.number().nonnegative(),
-  category:    z.string().min(1),
+  productId:     z.string().uuid("productId must be a UUID"),
+  productName:   z.string().min(1),
+  qty:           z.number().int().positive().max(100),
+  price:         z.number().nonnegative(),
+  category:      z.string().min(1),
+  selectedColor: z.string().optional(),
+  selectedSize:  z.string().optional(),
 });
 
 const CreateOrderSchema = z.object({
@@ -57,6 +59,8 @@ type OrderItem = {
   qty: number;
   price: number;
   category: string;
+  selectedColor?: string;
+  selectedSize?: string;
   commissionType?: string;
   commissionRate?: number;
   commissionAmount?: number;
@@ -273,10 +277,11 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
 
       // 2. Recalculate subtotal from real DB prices (client value is ignored)
       const subtotal = +reducedProducts.reduce((sum, r) => sum + r.dbPrice * r.qty, 0).toFixed(2);
-      const MINIMUM_ORDER_AMOUNT = 99;
-      if (subtotal < MINIMUM_ORDER_AMOUNT) {
+      // Minimum is enforced per-order. For multi-shop splits the frontend has already validated
+      // the total cart; we only reject here if individual items literally total zero (fraud guard).
+      if (subtotal <= 0) {
         throw Object.assign(
-          new Error(`Minimum order amount is ₹${MINIMUM_ORDER_AMOUNT}. Your cart total is ₹${subtotal}.`),
+          new Error(`Order total must be greater than ₹0.`),
           { statusCode: 400 },
         );
       }

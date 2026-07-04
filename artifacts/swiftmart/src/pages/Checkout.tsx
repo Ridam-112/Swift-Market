@@ -239,6 +239,7 @@ export default function Checkout() {
     try {
       // Group cart items by shop
       const shopGroups = new Map<string, typeof items>();
+
       for (const item of items) {
         const sid = item.product.vendorId;
         if (!shopGroups.has(sid)) shopGroups.set(sid, []);
