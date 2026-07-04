@@ -1393,6 +1393,9 @@ function OrdersTab() {
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
   const [assigningOrder, setAssigningOrder] = useState<string | null>(null);
   const [pendingAssign, setPendingAssign] = useState<Record<string, string>>({});
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const toggleItems = (id: string) =>
+    setExpandedItems(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
   const loadOrders = useCallback(async () => {
     setLoadingOrders(true);
@@ -1615,10 +1618,42 @@ function OrdersTab() {
                   </div>
                 </div>
 
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Items: {o.items[0]?.name} {o.items.length > 1 ? `& ${o.items.length - 1} more` : ''}
-                  </p>
+                {/* ── Order items collapsible ── */}
+                <div className="bg-background rounded-2xl neu-inset overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggleItems(o.id)}
+                    className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Package className="w-3.5 h-3.5 text-muted-foreground" />
+                      {o.items.length} item{o.items.length !== 1 ? 's' : ''}
+                      <span className="text-xs text-muted-foreground font-normal">
+                        — {o.items[0]?.name}{o.items.length > 1 ? ` & ${o.items.length - 1} more` : ''}
+                      </span>
+                    </span>
+                    {expandedItems.has(o.id)
+                      ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
+                      : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                    }
+                  </button>
+                  {expandedItems.has(o.id) && (
+                    <div className="border-t border-border/50 divide-y divide-border/30">
+                      {o.items.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between px-3 py-2 text-sm">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-5 h-5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold flex items-center justify-center shrink-0">
+                              {item.qty}
+                            </span>
+                            <span className="text-foreground truncate">{item.name}</span>
+                          </div>
+                          <span className="text-muted-foreground shrink-0 ml-3 font-medium">
+                            {formatINR(item.price * item.qty)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Delivery Partner Assignment */}

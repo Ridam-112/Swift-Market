@@ -88,8 +88,22 @@ export default function Product() {
   // This prevents the one-frame gap between globalLoading→false and directLoading→true.
   if (!product && !directFailed) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 animate-pulse">
+        <div className="aspect-square w-full rounded-2xl bg-muted" />
+        <div className="h-3 w-1/3 rounded-full bg-muted" />
+        <div className="h-5 w-3/4 rounded-full bg-muted" />
+        <div className="h-5 w-1/2 rounded-full bg-muted" />
+        <div className="h-8 w-1/4 rounded-full bg-muted" />
+        <div className="flex gap-2">
+          <div className="h-4 w-20 rounded-full bg-muted" />
+          <div className="h-4 w-16 rounded-full bg-muted" />
+        </div>
+        <div className="space-y-2 pt-2">
+          <div className="h-3 w-full rounded-full bg-muted" />
+          <div className="h-3 w-5/6 rounded-full bg-muted" />
+          <div className="h-3 w-4/6 rounded-full bg-muted" />
+        </div>
+        <div className="h-12 w-full rounded-2xl bg-muted" />
       </div>
     );
   }
