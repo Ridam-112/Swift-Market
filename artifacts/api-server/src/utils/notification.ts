@@ -49,6 +49,22 @@ async function sendFcm(userId: string, payload: NotificationPayload): Promise<vo
         title:    payload.title,
         body:     payload.message,
       },
+      android: {
+        priority: "high",
+        notification: {
+          color: "#6366f1",
+          sound: "default",
+          tag: payload.type,
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+            badge: 1,
+          },
+        },
+      },
       webpush: {
         notification: {
           icon:  iconUrl,
@@ -56,7 +72,7 @@ async function sendFcm(userId: string, payload: NotificationPayload): Promise<vo
           requireInteraction: false,
           tag: payload.type,
         },
-        fcmOptions: { link: targetUrl },
+        ...(targetUrl.startsWith("http") ? { fcmOptions: { link: targetUrl } } : {}),
       },
     });
 

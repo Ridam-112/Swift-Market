@@ -4,7 +4,7 @@
  * Razorpay webhook payment.failed handler (M6).
  */
 import { db, orders, products, coupons, payouts } from "@workspace/db";
-import { eq, and, lt, ne, sql } from "drizzle-orm";
+import { eq, and, lt, ne, isNull, sql } from "drizzle-orm";
 import { createNotificationLimited } from "./notification.js";
 
 type OrderItem = { productId: string; qty: number };
@@ -66,13 +66,21 @@ export async function cancelOrderAndRestoreStock(orderId: string, reason: string
  * and cancel + restore stock for each. Returns the number of orders cleaned up.
  */
 export async function cleanupAbandonedOrders(): Promise<number> {
-  const cutoff = new Date(Date.now() - 15 * 60 * 1000);
+  // Only cancel non-COD/non-cash orders where:
+  //   1. Payment is still pending
+  //   2. No Razorpay order was ever created (razorpayOrderId IS NULL — user never opened payment)
+  //   3. Order is older than 30 minutes
+  // Orders where Razorpay was opened (razorpayOrderId is set) are left alone — the
+  // payment.failed webhook will handle those when Razorpay fires it.
+  const cutoff = new Date(Date.now() - 30 * 60 * 1000);
 
   const stale = await db.select({ id: orders.id })
     .from(orders)
     .where(and(
       eq(orders.paymentStatus, "pending"),
       ne(orders.paymentMethod, "COD"),
+      ne(orders.paymentMethod, "cash"),
+      isNull(orders.razorpayOrderId),
       ne(orders.status, "cancelled"),
       ne(orders.status, "refunded"),
       ne(orders.status, "delivered"),
@@ -82,7 +90,7 @@ export async function cleanupAbandonedOrders(): Promise<number> {
   for (const { id } of stale) {
     await cancelOrderAndRestoreStock(
       id,
-      "Payment not completed within 15 minutes. Order cancelled automatically."
+      "Payment not completed within 30 minutes. Order cancelled automatically."
     ).catch(() => {});
   }
 

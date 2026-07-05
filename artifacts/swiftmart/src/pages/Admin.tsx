@@ -84,6 +84,7 @@ interface ApiOrder {
   deliveryPartnerId?: string;
   createdAt: string;
   updatedAt?: string;
+  address?: { label?: string; line1?: string; city?: string; pincode?: string };
 }
 
 interface ActivePartner {
@@ -1415,11 +1416,12 @@ function OrdersTab() {
         items: o.items.map(i => ({ name: i.name, qty: i.qty, price: i.price, category: "" })),
         total: o.netAmount ?? o.subtotal ?? o.items.reduce((s, i) => s + i.price * i.qty, 0),
         status: o.status as PlatformOrder['status'],
-        paymentMethod: (o.paymentMethod ?? "cash") as PlatformOrder['paymentMethod'],
+        paymentMethod: (o.paymentMethod ?? "COD") as PlatformOrder['paymentMethod'],
         paymentStatus: (o.paymentStatus ?? "pending") as PlatformOrder['paymentStatus'],
         deliveryType: (o.deliveryType === 'scheduled' ? 'scheduled' : 'instant') as 'instant' | 'scheduled',
         placedAt: o.createdAt,
         updatedAt: o.updatedAt ?? o.createdAt,
+        address: o.address,
       })));
       // Build orderId → deliveryPartnerId map
       const map: Record<string, string | null> = {};
@@ -1575,7 +1577,7 @@ function OrdersTab() {
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {filtered.length === 0 ? (
           <div className="text-center p-12 bg-card rounded-3xl neu-inset text-muted-foreground">
             <ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-20" />
@@ -1586,163 +1588,122 @@ function OrdersTab() {
             const assignedPartner = getAssignedPartnerName(o.id);
             const currentPendingAssign = pendingAssign[o.id] ?? (partnerMap[o.id] ?? "__unassigned__");
             const isTerminal = ["delivered", "cancelled", "refunded"].includes(o.status);
+            const shortId = `#${o.id.slice(-8).toUpperCase()}`;
+            const addrParts = [o.address?.line1, o.address?.city, o.address?.pincode].filter(Boolean);
+            const addrLabel = o.address?.label ? `${o.address.label} — ` : "";
             return (
-            <div key={o.id} className="bg-card p-4 md:p-6 rounded-3xl neu-card flex flex-col md:flex-row gap-6">
-              <div className="flex-1 space-y-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="font-mono font-bold text-lg text-foreground">{o.id}</span>
-                  <Badge className={`${getStatusColor(o.status)} border-none neu-inset px-2.5 py-0.5 capitalize`}>
-                    {o.status.replace(/_/g, ' ')}
-                  </Badge>
-                  {o.deliveryType === 'scheduled' ? (
-                    <Badge className="bg-violet-100 text-violet-700 border-none neu-inset px-2.5 py-0.5 dark:bg-violet-900/30 dark:text-violet-300">
-                      🕐 Scheduled
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-amber-100 text-amber-700 border-none neu-inset px-2.5 py-0.5 dark:bg-amber-900/30 dark:text-amber-300">
-                      ⚡ Instant
-                    </Badge>
-                  )}
-                  <span className="text-xs text-muted-foreground">{new Date(o.placedAt).toLocaleString()}</span>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-background p-3 rounded-2xl neu-inset">
-                    <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Customer</p>
-                    <p className="font-medium text-foreground">{o.customerName}</p>
-                    <p className="text-sm text-muted-foreground">{o.customerPhone}</p>
-                  </div>
-                  <div className="bg-background p-3 rounded-2xl neu-inset">
-                    <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Shop</p>
-                    <p className="font-medium text-foreground">{o.vendorName}</p>
-                  </div>
-                </div>
-
-                {/* ── Order items collapsible ── */}
-                <div className="bg-background rounded-2xl neu-inset overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => toggleItems(o.id)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Package className="w-3.5 h-3.5 text-muted-foreground" />
-                      {o.items.length} item{o.items.length !== 1 ? 's' : ''}
-                      <span className="text-xs text-muted-foreground font-normal">
-                        — {o.items[0]?.name}{o.items.length > 1 ? ` & ${o.items.length - 1} more` : ''}
-                      </span>
-                    </span>
-                    {expandedItems.has(o.id)
-                      ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
-                      : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-                    }
-                  </button>
-                  {expandedItems.has(o.id) && (
-                    <div className="border-t border-border/50 divide-y divide-border/30">
-                      {o.items.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between px-3 py-2 text-sm">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="w-5 h-5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold flex items-center justify-center shrink-0">
-                              {item.qty}
-                            </span>
-                            <span className="text-foreground truncate">{item.name}</span>
-                          </div>
-                          <span className="text-muted-foreground shrink-0 ml-3 font-medium">
-                            {formatINR(item.price * item.qty)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Delivery Partner Assignment */}
-                {!isTerminal && (
-                  <div className="bg-background p-3 rounded-2xl neu-inset space-y-2">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-1.5">
-                      <Bike className="w-3.5 h-3.5" /> Delivery Partner
-                    </p>
-                    {assignedPartner ? (
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-sm text-foreground">{assignedPartner.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            +91 {assignedPartner.phone} · {assignedPartner.vehicle ?? ""}
-                            <span className={`ml-1.5 inline-block w-1.5 h-1.5 rounded-full align-middle ${assignedPartner.isAvailable ? "bg-green-500" : "bg-muted-foreground"}`} />
-                            {assignedPartner.isAvailable ? " Online" : " Offline"}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm" variant="ghost"
-                          className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
-                          disabled={assigningOrder === o.id}
-                          onClick={async () => {
-                            setAssigningOrder(o.id);
-                            try {
-                              await api.patch(`/orders/${o.id}/assign-partner`, { deliveryPartnerId: null });
-                              setPartnerMap(prev => ({ ...prev, [o.id]: null }));
-                              toast.success("Partner unassigned");
-                            } catch { toast.error("Failed to unassign partner"); }
-                            finally { setAssigningOrder(null); }
-                          }}
-                        >
-                          <X className="w-3 h-3 mr-1" />Remove
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <select
-                          className="flex-1 h-8 rounded-lg border border-input bg-background px-2 text-sm text-foreground"
-                          value={currentPendingAssign}
-                          onChange={e => setPendingAssign(prev => ({ ...prev, [o.id]: e.target.value }))}
-                        >
-                          <option value="__unassigned__">— Select partner —</option>
-                          {activePartners.map(p => (
-                            <option key={p._id} value={p._id}>
-                              {p.name} ({p.vehicle ?? "—"}) {p.isAvailable ? "🟢" : "🔴"}
-                            </option>
-                          ))}
-                        </select>
-                        <Button
-                          size="sm"
-                          disabled={!currentPendingAssign || currentPendingAssign === "__unassigned__" || assigningOrder === o.id}
-                          onClick={() => handleAssignPartner(o.id)}
-                          className="h-8 px-3 text-xs shrink-0"
-                        >
-                          {assigningOrder === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Assign"}
-                        </Button>
-                      </div>
-                    )}
-                    {activePartners.length === 0 && (
-                      <p className="text-xs text-muted-foreground">No active delivery partners. Add partners in the Delivery Partners section.</p>
-                    )}
-                  </div>
-                )}
+            <div key={o.id} className="bg-card rounded-2xl neu-card overflow-hidden">
+              {/* ── Top bar ── */}
+              <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-border/40">
+                <span className="font-mono text-sm font-bold text-foreground tracking-wide">{shortId}</span>
+                <Badge className={`${getStatusColor(o.status)} border-none px-2 py-0.5 text-xs capitalize`}>
+                  {o.status.replace(/_/g, ' ')}
+                </Badge>
+                <Badge className={`${getPaymentColor(o.paymentStatus)} border-none px-2 py-0.5 text-xs`}>
+                  {o.paymentMethod} · {o.paymentStatus}
+                </Badge>
+                {o.deliveryType === 'scheduled'
+                  ? <span className="text-xs text-violet-600 dark:text-violet-400 font-medium">🕐 Scheduled</span>
+                  : <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">⚡ Instant</span>
+                }
+                <span className="ml-auto text-xs text-muted-foreground">{new Date(o.placedAt).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}</span>
               </div>
 
-              <div className="w-full md:w-64 flex flex-col gap-3 shrink-0">
-                <div className="bg-background p-4 rounded-2xl neu-inset text-center">
-                  <p className="text-sm text-muted-foreground mb-1">Order Total</p>
-                  <p className="text-2xl font-bold text-foreground">{formatINR(o.total)}</p>
-                  <div className="mt-2 flex items-center justify-center gap-2">
-                    <span className="text-xs font-medium text-muted-foreground">{o.paymentMethod}</span>
-                    <Badge className={`${getPaymentColor(o.paymentStatus)} border-none text-[10px] px-1.5 py-0`}>
-                      {o.paymentStatus}
-                    </Badge>
+              <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/40">
+                {/* ── Customer + Address ── */}
+                <div className="px-4 py-3 space-y-1">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Customer</p>
+                  <p className="font-semibold text-sm text-foreground">{o.customerName}</p>
+                  {o.customerPhone && <p className="text-xs text-muted-foreground">{o.customerPhone}</p>}
+                  {addrParts.length > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      📍 {addrLabel}{addrParts.join(', ')}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground/60 pt-0.5">🏪 {o.vendorName}</p>
+                </div>
+
+                {/* ── Products ── */}
+                <div className="px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">
+                    Products · {o.items.length} item{o.items.length !== 1 ? 's' : ''}
+                  </p>
+                  <div className="space-y-1">
+                    {o.items.map((item, idx) => (
+                      <div key={`${item.name}-${idx}`} className="flex items-baseline justify-between gap-2 text-sm">
+                        <span className="text-foreground min-w-0 truncate">
+                          <span className="text-muted-foreground mr-1">{item.qty}×</span>{item.name}
+                        </span>
+                        <span className="text-muted-foreground shrink-0 font-medium text-xs">{formatINR(item.price * item.qty)}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2">
+                {/* ── Total + Actions ── */}
+                <div className="px-4 py-3 flex flex-col gap-2">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-0.5">Total</p>
+                    <p className="text-xl font-bold text-foreground">{formatINR(o.total)}</p>
+                  </div>
+
+                  {/* Delivery Partner */}
+                  {!isTerminal && (
+                    <div className="space-y-1.5">
+                      {assignedPartner ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-foreground font-medium truncate">
+                            <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle ${assignedPartner.isAvailable ? "bg-green-500" : "bg-muted-foreground"}`}/>
+                            🛵 {assignedPartner.name}
+                          </span>
+                          <button
+                            className="ml-auto text-[10px] text-muted-foreground hover:text-destructive shrink-0"
+                            disabled={assigningOrder === o.id}
+                            onClick={async () => {
+                              setAssigningOrder(o.id);
+                              try {
+                                await api.patch(`/orders/${o.id}/assign-partner`, { deliveryPartnerId: null });
+                                setPartnerMap(prev => ({ ...prev, [o.id]: null }));
+                                toast.success("Partner unassigned");
+                              } catch { toast.error("Failed"); }
+                              finally { setAssigningOrder(null); }
+                            }}
+                          >✕ Remove</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <select
+                            className="flex-1 h-7 rounded-lg border border-input bg-background px-2 text-xs text-foreground"
+                            value={currentPendingAssign}
+                            onChange={e => setPendingAssign(prev => ({ ...prev, [o.id]: e.target.value }))}
+                          >
+                            <option value="__unassigned__">Assign rider…</option>
+                            {activePartners.map(p => (
+                              <option key={p._id} value={p._id}>
+                                {p.name} {p.isAvailable ? "🟢" : "🔴"}
+                              </option>
+                            ))}
+                          </select>
+                          <Button
+                            size="sm"
+                            disabled={!currentPendingAssign || currentPendingAssign === "__unassigned__" || assigningOrder === o.id}
+                            onClick={() => handleAssignPartner(o.id)}
+                            className="h-7 px-2 text-xs shrink-0"
+                          >
+                            {assigningOrder === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Go"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Status update */}
                   {updatingOrder === o.id ? (
-                    <div className="bg-background p-2 rounded-xl neu-inset flex gap-2">
-                      <select 
-                        className="flex-1 bg-transparent text-sm font-medium outline-none text-foreground"
+                    <div className="flex items-center gap-1">
+                      <select
+                        className="flex-1 h-7 rounded-lg border border-input bg-background px-2 text-xs text-foreground"
                         defaultValue={o.status}
-                        onChange={(e) => {
-                          updateOrderStatus(o.id, e.target.value as any);
-                          setUpdatingOrder(null);
-                          toast.success("Order status updated");
-                        }}
+                        onChange={(e) => { updateOrderStatus(o.id, e.target.value as any); setUpdatingOrder(null); }}
                       >
                         <option value="placed">Placed</option>
                         <option value="accepted">Accepted</option>
@@ -1752,25 +1713,27 @@ function OrdersTab() {
                         <option value="delivered">Delivered</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
-                      <Button size="sm" variant="ghost" onClick={() => setUpdatingOrder(null)} className="h-8 px-2 rounded-lg"><X className="w-4 h-4"/></Button>
+                      <button onClick={() => setUpdatingOrder(null)} className="text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
                     </div>
                   ) : (
-                    <Button onClick={() => setUpdatingOrder(o.id)} variant="outline" className="w-full rounded-xl bg-card neu-inset border-none shadow-none text-primary hover:text-primary">
-                      Update Status
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setUpdatingOrder(o.id)}
+                      className="h-7 w-full text-xs rounded-lg bg-background neu-inset border-none"
+                    >
+                      Change Status
                     </Button>
                   )}
 
                   {o.paymentStatus === 'success' && o.status !== 'cancelled' && (
-                    <Button 
-                      onClick={() => {
-                        if(confirm(`Refund ${formatINR(o.total)} to customer?`)) {
-                          refundOrder(o.id);
-                          toast.success(`Refund initiated for ${formatINR(o.total)}`);
-                        }
-                      }}
-                      className="w-full bg-slate-800 hover:bg-slate-900 text-white rounded-xl shadow-none neu-card"
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { if(confirm(`Refund ${formatINR(o.total)}?`)) refundOrder(o.id); }}
+                      className="h-7 w-full text-xs rounded-lg border-none bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                     >
-                      <RefreshCw className="w-4 h-4 mr-2" /> Refund
+                      <RefreshCw className="w-3 h-3 mr-1" /> Refund
                     </Button>
                   )}
                 </div>

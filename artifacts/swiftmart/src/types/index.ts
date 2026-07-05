@@ -173,12 +173,13 @@ export interface PlatformOrder {
   items: { name: string; qty: number; price: number; category: string }[];
   total: number;
   status: 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled';
-  paymentMethod: 'UPI' | 'Card' | 'COD';
+  paymentMethod: 'UPI' | 'Card' | 'COD' | string;
   paymentStatus: 'success' | 'failed' | 'pending' | 'refunded';
   deliveryType: 'instant' | 'scheduled';
   placedAt: string;
   updatedAt: string;
   refundedAt?: string;
+  address?: { label?: string; line1?: string; city?: string; pincode?: string };
 }
 
 export interface Report {
