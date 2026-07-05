@@ -62,37 +62,10 @@ export async function cancelOrderAndRestoreStock(orderId: string, reason: string
 }
 
 /**
- * Find online-payment orders stuck in "pending" state for longer than 15 minutes
- * and cancel + restore stock for each. Returns the number of orders cleaned up.
+ * Auto-cancel is disabled — the platform uses Cash on Delivery only.
+ * Orders must only ever be cancelled by the customer or an admin.
+ * Returns 0 (nothing cancelled).
  */
 export async function cleanupAbandonedOrders(): Promise<number> {
-  // Only cancel non-COD/non-cash orders where:
-  //   1. Payment is still pending
-  //   2. No Razorpay order was ever created (razorpayOrderId IS NULL — user never opened payment)
-  //   3. Order is older than 30 minutes
-  // Orders where Razorpay was opened (razorpayOrderId is set) are left alone — the
-  // payment.failed webhook will handle those when Razorpay fires it.
-  const cutoff = new Date(Date.now() - 30 * 60 * 1000);
-
-  const stale = await db.select({ id: orders.id })
-    .from(orders)
-    .where(and(
-      eq(orders.paymentStatus, "pending"),
-      ne(orders.paymentMethod, "COD"),
-      ne(orders.paymentMethod, "cash"),
-      isNull(orders.razorpayOrderId),
-      ne(orders.status, "cancelled"),
-      ne(orders.status, "refunded"),
-      ne(orders.status, "delivered"),
-      lt(orders.createdAt, cutoff),
-    ));
-
-  for (const { id } of stale) {
-    await cancelOrderAndRestoreStock(
-      id,
-      "Payment not completed within 30 minutes. Order cancelled automatically."
-    ).catch(() => {});
-  }
-
-  return stale.length;
+  return 0;
 }

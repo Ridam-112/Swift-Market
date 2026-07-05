@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { formatINR } from "@/lib/currency";
@@ -8,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { LiveOrderTracker } from "@/components/LiveOrderTracker";
 import {
   PackageX, Package, Truck, CheckCircle2, Clock, Loader2,
-  AlertCircle, RefreshCw, XCircle, Ban, Radio, KeyRound, MapPin,
+  AlertCircle, RefreshCw, XCircle, Ban, Radio, KeyRound, MapPin, Bike,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -59,6 +60,14 @@ import { SEO } from "@/components/SEO";
 
 export default function Orders() {
   const { user } = useAuth();
+  const search = useSearch();
+  const multiShopCount = (() => {
+    try {
+      const v = new URLSearchParams(search).get("multiShop");
+      return v ? parseInt(v, 10) : 0;
+    } catch { return 0; }
+  })();
+
   const [orders, setOrders]             = useState<ApiOrder[]>([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
@@ -157,6 +166,37 @@ export default function Orders() {
           <RefreshCw className="w-4 h-4 mr-1" /> Refresh
         </Button>
       </div>
+
+      {/* Multi-shop delivery notice — shown right after placing orders from different shops */}
+      {multiShopCount >= 2 && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl overflow-hidden border-2 border-orange-400 dark:border-orange-500 shadow-md"
+        >
+          <div className="bg-orange-500 px-4 py-2.5 flex items-center gap-2">
+            <Bike className="w-4 h-4 text-white shrink-0" />
+            <p className="font-bold text-white text-sm">
+              {multiShopCount} orders placed — items from different shops
+            </p>
+          </div>
+          <div className="bg-orange-50 dark:bg-orange-950/30 px-4 py-3 space-y-2">
+            <p className="text-sm text-orange-900 dark:text-orange-200 leading-relaxed">
+              Since your items came from <span className="font-bold">{multiShopCount} different shops</span>, each shop will prepare and dispatch independently.
+            </p>
+            <div className="flex items-center gap-3 bg-orange-100 dark:bg-orange-900/40 border border-orange-300 dark:border-orange-700 rounded-xl px-4 py-3">
+              <Bike className="w-5 h-5 text-orange-600 dark:text-orange-400 shrink-0" />
+              <div>
+                <p className="text-[10px] font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wide">Estimated Delivery Time</p>
+                <p className="text-xl font-extrabold text-orange-700 dark:text-orange-300 leading-tight">1 hour 30 minutes</p>
+              </div>
+            </div>
+            <p className="text-xs text-orange-700 dark:text-orange-400">
+              ⚡ Next time, order from a single shop for delivery in ~30 minutes.
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       <div className="space-y-4">
         {sorted.map((order, i) => {

@@ -277,7 +277,7 @@ export default function Checkout() {
         setLocation(`/order/success/${createdOrderIds[0]}`);
       } else {
         toast.success(`${createdOrderIds.length} orders placed — one per shop!`);
-        setLocation('/orders');
+        setLocation(`/orders?multiShop=${createdOrderIds.length}`);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to place order";
@@ -375,28 +375,30 @@ export default function Checkout() {
             )}
 
             {!etaLoading && deliveryEta?.kind === "multi-shop" && (
-              <div className="rounded-2xl p-4 space-y-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
-                    <Store className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-blue-800 dark:text-blue-300 text-sm">
-                      Items from {deliveryEta.shopCount} shops — {deliveryEta.shopCount} separate orders will be placed
-                    </p>
-                    <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5 leading-relaxed">
-                      Each shop will receive its own order and handle it independently. Your delivery fee is split equally across shops.
-                    </p>
-                  </div>
+              <div className="rounded-2xl overflow-hidden border-2 border-orange-400 dark:border-orange-500 shadow-md">
+                {/* Header strip */}
+                <div className="bg-orange-500 px-4 py-2.5 flex items-center gap-2">
+                  <Store className="w-4 h-4 text-white shrink-0" />
+                  <p className="font-bold text-white text-sm">
+                    Items from {deliveryEta.shopCount} different shops
+                  </p>
                 </div>
-                <div className="flex items-center justify-between bg-blue-100 dark:bg-blue-900/40 rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
-                    <Bike className="w-4 h-4" />
-                    <span className="text-sm font-semibold">Estimated delivery time</span>
+                {/* Body */}
+                <div className="bg-orange-50 dark:bg-orange-950/30 px-4 py-3 space-y-3">
+                  <p className="text-sm text-orange-900 dark:text-orange-200 leading-relaxed">
+                    Since your cart has items from <span className="font-bold">{deliveryEta.shopCount} shops</span>, we will place {deliveryEta.shopCount} separate orders and coordinate delivery from each shop.
+                  </p>
+                  {/* Delivery time highlight */}
+                  <div className="flex items-center gap-3 bg-orange-100 dark:bg-orange-900/40 border border-orange-300 dark:border-orange-700 rounded-xl px-4 py-3">
+                    <Bike className="w-5 h-5 text-orange-600 dark:text-orange-400 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-orange-800 dark:text-orange-300 uppercase tracking-wide">Estimated Delivery Time</p>
+                      <p className="text-xl font-extrabold text-orange-700 dark:text-orange-300 leading-tight">1 hour 30 minutes</p>
+                    </div>
                   </div>
-                  <span className="font-extrabold text-blue-700 dark:text-blue-300 text-base">
-                    {deliveryEta.minMin}–{deliveryEta.maxMin} min
-                  </span>
+                  <p className="text-xs text-orange-700 dark:text-orange-400 leading-relaxed">
+                    ⚡ Want faster? You can get items from a single shop delivered in ~30 minutes.
+                  </p>
                 </div>
               </div>
             )}
