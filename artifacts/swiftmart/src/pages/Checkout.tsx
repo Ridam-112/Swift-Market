@@ -111,7 +111,8 @@ export default function Checkout() {
   }, [isMultiShop, shopId, items.length, shops.length]);
 
   const slotFee = deliverySlot === 'instant' ? 25 : deliverySlot === 'standard' ? 20 : 15;
-  const totalDeliveryFee = slotFee;
+  // Each shop's order carries the full delivery fee — not split
+  const totalDeliveryFee = slotFee * uniqueShopIds.length;
   const orderTotalForCoupon = subtotal + totalDeliveryFee;
   const couponDiscount = couponApplied?.discount ?? 0;
   const totalAmount = subtotal + totalDeliveryFee - couponDiscount;
@@ -246,28 +247,21 @@ export default function Checkout() {
         shopGroups.get(sid)!.push(item);
       }
 
-      const shopCount = shopGroups.size;
-      // Split delivery charge equally across shops; remainder goes to first shop
-      const baseCharge = Math.floor(slotFee / shopCount);
-      const remainder  = slotFee - baseCharge * shopCount;
-
-      // Coupon applied only to the first (largest) shop to avoid double usage-count
+      // Coupon applied only to the first shop to avoid double usage-count
       let couponAppliedToFirst = false;
       const createdOrderIds: string[] = [];
 
-      let shopIndex = 0;
       for (const [sid, shopItems] of shopGroups) {
         const shopSub = +shopItems
           .reduce((s, i) => s + (i.product.discountedPrice ?? i.product.price) * i.qty, 0)
           .toFixed(2);
-        const shopCharge = baseCharge + (shopIndex === 0 ? remainder : 0);
+        // Every shop's order gets the full delivery fee — never split
         const shopCouponDiscount = !couponAppliedToFirst ? (couponApplied?.discount ?? 0) : 0;
         const shopCouponCode     = !couponAppliedToFirst ? couponApplied?.code : undefined;
         couponAppliedToFirst = true;
 
-        const data = await createOrderForShop(sid, shopItems, shopSub, shopCharge, shopCouponDiscount, shopCouponCode);
+        const data = await createOrderForShop(sid, shopItems, shopSub, slotFee, shopCouponDiscount, shopCouponCode);
         createdOrderIds.push(data.order._id);
-        shopIndex++;
       }
 
       setOrderPlaced(true);
@@ -609,8 +603,9 @@ export default function Checkout() {
         <section className="pt-4 border-t border-border">
           <CartSummary
             subtotal={subtotal}
-            deliveryFee={slotFee}
+            deliveryFee={totalDeliveryFee}
             deliveryType={deliverySlot}
+            shopCount={uniqueShopIds.length}
             couponDiscount={couponApplied?.discount ?? 0}
             couponCode={couponApplied?.code}
           />

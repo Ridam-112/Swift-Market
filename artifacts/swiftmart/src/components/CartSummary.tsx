@@ -4,16 +4,19 @@ export function CartSummary({
   subtotal,
   deliveryFee = 0,
   deliveryType = 'instant',
+  shopCount = 1,
   couponDiscount = 0,
   couponCode,
 }: {
   subtotal: number;
   deliveryFee?: number;
   deliveryType?: 'instant' | 'standard' | 'saver';
+  shopCount?: number;
   couponDiscount?: number;
   couponCode?: string;
 }) {
   const total = subtotal + deliveryFee - couponDiscount;
+  const perShopFee = shopCount > 1 ? deliveryFee / shopCount : deliveryFee;
   const deliveryLabel =
     deliveryType === 'standard' ? 'Standard Delivery (2–4 hrs)'
     : deliveryType === 'saver'  ? 'Saver Delivery (Same day)'
@@ -30,7 +33,14 @@ export function CartSummary({
 
       {deliveryFee > 0 && (
         <div className="flex justify-between text-muted-foreground">
-          <span>{deliveryLabel}</span>
+          <div>
+            <span>{deliveryLabel}</span>
+            {shopCount > 1 && (
+              <p className="text-[10px] mt-0.5 text-muted-foreground">
+                ₹{perShopFee} × {shopCount} shops
+              </p>
+            )}
+          </div>
           <span className="font-medium text-foreground">{formatINR(deliveryFee)}</span>
         </div>
       )}
