@@ -24,7 +24,7 @@ interface FleetRider {
     id: string;
     status: string;
     totalAmount: number | null;
-    deliveryAddress: Record<string, string> | null;
+    address: Record<string, string> | null;
   } | null;
 }
 
@@ -318,13 +318,13 @@ export default function FleetMapTab() {
                             <Navigation className="w-3 h-3" />
                             Active delivery
                           </div>
-                          {rider.activeOrder.deliveryAddress && (
+                          {rider.activeOrder.address && (
                             <div className="flex items-start gap-1.5 text-muted-foreground mt-1">
                               <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
                               <span>{
                                 [
-                                  (rider.activeOrder.deliveryAddress as Record<string,string>)["line1"],
-                                  (rider.activeOrder.deliveryAddress as Record<string,string>)["city"],
+                                  (rider.activeOrder.address as Record<string,string>)["line1"],
+                                  (rider.activeOrder.address as Record<string,string>)["city"],
                                 ].filter(Boolean).join(", ")
                               }</span>
                             </div>

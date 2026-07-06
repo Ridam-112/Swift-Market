@@ -209,14 +209,10 @@ router.get("/fleet", authenticate, A, async (_req, res: Response): Promise<void>
       deliveryPartnerId: orders.deliveryPartnerId,
       status: orders.status,
       totalAmount: orders.totalAmount,
-      deliveryAddress: orders.deliveryAddress,
+      address: orders.address,
     })
     .from(orders)
-    .where(
-      and(
-        eq(orders.status, "out_for_delivery"),
-      )
-    );
+    .where(eq(orders.status, "out_for_delivery"));
 
   const orderByPartner = new Map<string, typeof activeOrders[number]>();
   for (const o of activeOrders) {
