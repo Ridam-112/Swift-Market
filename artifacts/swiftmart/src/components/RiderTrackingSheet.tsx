@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Phone, MapPin, Loader2, AlertCircle, RefreshCw, Bike, Clock } from "lucide-react";
+import { X, Phone, MapPin, Loader2, AlertCircle, RefreshCw, Bike, Clock, Navigation } from "lucide-react";
 import { api } from "@/lib/api";
 
 // ─── Icons ─────────────────────────────────────────────────────────────────
@@ -20,7 +20,20 @@ const RIDER_ICON = new L.DivIcon({
   popupAnchor: [0, -32],
 });
 
-const CUSTOMER_ICON = new L.DivIcon({
+const CUSTOMER_GPS_ICON = new L.DivIcon({
+  html: `
+    <div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;">
+      <div style="position:absolute;inset:0;border-radius:50%;background:rgba(22,163,74,0.2);animation:gpsPing 2.5s ease-out infinite;"></div>
+      <div style="width:36px;height:36px;border-radius:50%;background:#16a34a;border:3px solid white;box-shadow:0 4px 12px rgba(22,163,74,.5);display:flex;align-items:center;justify-content:center;font-size:17px;position:relative;z-index:1;">📍</div>
+    </div>
+    <style>@keyframes gpsPing{0%{transform:scale(1);opacity:.6}70%{transform:scale(2);opacity:0}100%{transform:scale(2);opacity:0}}</style>`,
+  className: "",
+  iconSize: [44, 44],
+  iconAnchor: [22, 22],
+  popupAnchor: [0, -28],
+});
+
+const CUSTOMER_ADDR_ICON = new L.DivIcon({
   html: `<div style="width:38px;height:38px;background:#16a34a;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.3);border:3px solid white"><span style="transform:rotate(45deg);font-size:17px">🏠</span></div>`,
   className: "",
   iconSize: [38, 38],
@@ -48,7 +61,6 @@ async function geocodeAddress(addr: DeliveryAddress): Promise<LatLon | null> {
       geoCache.set(key, c);
       return c;
     }
-    // pincode fallback
     if (addr.pincode && addr.city) {
       const fb = `${addr.pincode}, ${addr.city}, India`;
       if (geoCache.has(fb)) return geoCache.get(fb)!;
@@ -84,7 +96,6 @@ async function fetchRoute(from: LatLon, to: LatLon): Promise<{ path: LatLon[]; d
 }
 
 function etaLabel(distanceM: number): string {
-  // Assume 30 km/h average city speed → 500 m/min
   const mins = Math.max(1, Math.ceil(distanceM / 500));
   return mins <= 1 ? "Arriving now" : `~${mins} min away`;
 }
@@ -111,6 +122,7 @@ function FitBounds({ positions }: { positions: LatLon[] }) {
 interface RiderLocation { lat: number; lon: number; updatedAt: string | null }
 interface RiderInfo     { name: string; phone: string; vehicle: string | null }
 export interface DeliveryAddress { line1?: string; city?: string; pincode?: string }
+type GeoPermission = "prompt" | "granted" | "denied" | "unsupported";
 
 interface Props {
   isOpen: boolean;
@@ -122,24 +134,102 @@ interface Props {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function RiderTrackingSheet({ isOpen, onClose, orderId, shopName, deliveryAddress }: Props) {
-  const [riderPos, setRiderPos]       = useState<RiderLocation | null>(null);
-  const [riderInfo, setRiderInfo]     = useState<RiderInfo | null>(null);
-  const [loading, setLoading]         = useState(true);
-  const [noRider, setNoRider]         = useState(false);
-  const [lastSeen, setLastSeen]       = useState("");
-  const [customerPos, setCustomerPos] = useState<LatLon | null>(null);
-  const [routePath, setRoutePath]     = useState<LatLon[] | null>(null);
-  const [distanceM, setDistanceM]     = useState<number | null>(null);
+  const [riderPos, setRiderPos]         = useState<RiderLocation | null>(null);
+  const [riderInfo, setRiderInfo]       = useState<RiderInfo | null>(null);
+  const [loading, setLoading]           = useState(true);
+  const [noRider, setNoRider]           = useState(false);
+  const [lastSeen, setLastSeen]         = useState("");
+  const [customerPos, setCustomerPos]   = useState<LatLon | null>(null);
+  const [routePath, setRoutePath]       = useState<LatLon[] | null>(null);
+  const [distanceM, setDistanceM]       = useState<number | null>(null);
+  const [geoPermission, setGeoPermission] = useState<GeoPermission>("prompt");
+  const [isLiveGps, setIsLiveGps]       = useState(false);
+  const gpsWatchRef = useRef<number | null>(null);
   const geocodedRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Geocode customer address once when sheet opens
+  // ── Request customer GPS when sheet opens ──────────────────────────────
+  const startGpsWatch = useCallback(() => {
+    if (!navigator.geolocation) {
+      setGeoPermission("unsupported");
+      return;
+    }
+    if (gpsWatchRef.current !== null) return;
+
+    gpsWatchRef.current = navigator.geolocation.watchPosition(
+      pos => {
+        setGeoPermission("granted");
+        setIsLiveGps(true);
+        setCustomerPos([pos.coords.latitude, pos.coords.longitude]);
+      },
+      err => {
+        if (err.code === GeolocationPositionError.PERMISSION_DENIED) {
+          setGeoPermission("denied");
+        }
+        setIsLiveGps(false);
+        // Fallback to geocoding if GPS fails
+        if (!geocodedRef.current && deliveryAddress) {
+          geocodeAddress(deliveryAddress).then(pos => {
+            if (pos) { setCustomerPos(pos); geocodedRef.current = true; }
+          });
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
+    );
+  }, [deliveryAddress]);
+
+  const stopGpsWatch = useCallback(() => {
+    if (gpsWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(gpsWatchRef.current);
+      gpsWatchRef.current = null;
+    }
+  }, []);
+
+  const requestGps = useCallback(() => {
+    stopGpsWatch();
+    startGpsWatch();
+  }, [startGpsWatch, stopGpsWatch]);
+
+  // Check permission state on mount
   useEffect(() => {
-    if (!isOpen || geocodedRef.current || !deliveryAddress) return;
-    geocodeAddress(deliveryAddress).then(pos => {
-      if (pos) { setCustomerPos(pos); geocodedRef.current = true; }
+    if (!navigator.geolocation) { setGeoPermission("unsupported"); return; }
+    if (!navigator.permissions) return;
+    navigator.permissions.query({ name: "geolocation" }).then(result => {
+      setGeoPermission(result.state as GeoPermission);
+      result.addEventListener("change", () => setGeoPermission(result.state as GeoPermission));
     });
-  }, [isOpen, deliveryAddress]);
+  }, []);
+
+  // Start GPS when sheet opens
+  useEffect(() => {
+    if (!isOpen) {
+      stopGpsWatch();
+      setIsLiveGps(false);
+      return;
+    }
+    // Reset state
+    setRiderPos(null);
+    setNoRider(false);
+    setRoutePath(null);
+    setDistanceM(null);
+    geocodedRef.current = false;
+    setCustomerPos(null);
+
+    // Try GPS first
+    startGpsWatch();
+  }, [isOpen]);
+
+  // Fallback: geocode if permission is denied and no address-based pos yet
+  useEffect(() => {
+    if (geoPermission === "denied" && !geocodedRef.current && deliveryAddress && isOpen) {
+      geocodeAddress(deliveryAddress).then(pos => {
+        if (pos) { setCustomerPos(pos); geocodedRef.current = true; }
+      });
+    }
+  }, [geoPermission, deliveryAddress, isOpen]);
+
+  // Cleanup on unmount
+  useEffect(() => () => stopGpsWatch(), [stopGpsWatch]);
 
   // Re-fetch OSRM route whenever rider or customer position changes
   useEffect(() => {
@@ -180,11 +270,6 @@ export default function RiderTrackingSheet({ isOpen, onClose, orderId, shopName,
   useEffect(() => {
     if (!isOpen) { if (intervalRef.current) clearInterval(intervalRef.current); return; }
     setLoading(true);
-    setRiderPos(null);
-    setNoRider(false);
-    setRoutePath(null);
-    setDistanceM(null);
-    geocodedRef.current = false;
     fetchLocation();
     intervalRef.current = setInterval(fetchLocation, 5000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
@@ -226,6 +311,57 @@ export default function RiderTrackingSheet({ isOpen, onClose, orderId, shopName,
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {/* ─── Location permission prompt ───────────────────────── */}
+            <AnimatePresence>
+              {geoPermission === "prompt" && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                  className="flex-shrink-0 overflow-hidden"
+                >
+                  <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-950/50 border-b border-amber-200 dark:border-amber-800">
+                    <MapPin className="w-4 h-4 text-amber-600 shrink-0" />
+                    <p className="text-xs text-amber-800 dark:text-amber-200 flex-1">
+                      Share your location for accurate delivery tracking
+                    </p>
+                    <button
+                      onClick={requestGps}
+                      className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700 active:scale-95 transition-all"
+                    >
+                      Allow
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+              {geoPermission === "denied" && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                  className="flex-shrink-0 overflow-hidden"
+                >
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/60 border-b border-border">
+                    <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <p className="text-xs text-muted-foreground">
+                      Using saved address · Enable location in browser settings for live position
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+              {isLiveGps && geoPermission === "granted" && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                  className="flex-shrink-0 overflow-hidden"
+                >
+                  <div className="flex items-center gap-2 px-4 py-2 bg-green-50 dark:bg-green-950/40 border-b border-green-200 dark:border-green-800">
+                    <span className="relative flex h-1.5 w-1.5 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+                    </span>
+                    <Navigation className="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0" />
+                    <p className="text-xs font-medium text-green-800 dark:text-green-200">Using your live GPS location</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* ─── ETA banner ──────────────────────────────────────── */}
             <AnimatePresence>
@@ -325,10 +461,12 @@ export default function RiderTrackingSheet({ isOpen, onClose, orderId, shopName,
                     </Marker>
                   )}
 
-                  {/* Customer / drop-off pin */}
+                  {/* Customer pin — pulsing GPS dot if live, house if address-based */}
                   {customerPos && (
-                    <Marker position={customerPos} icon={CUSTOMER_ICON}>
-                      <Popup className="text-xs font-semibold">Your location</Popup>
+                    <Marker position={customerPos} icon={isLiveGps ? CUSTOMER_GPS_ICON : CUSTOMER_ADDR_ICON}>
+                      <Popup className="text-xs font-semibold">
+                        {isLiveGps ? "Your live location" : "Your delivery address"}
+                      </Popup>
                     </Marker>
                   )}
 
@@ -336,7 +474,7 @@ export default function RiderTrackingSheet({ isOpen, onClose, orderId, shopName,
                 </MapContainer>
               )}
 
-              {/* Live pill overlay (only when no ETA banner — i.e. no route yet) */}
+              {/* Live pill overlay */}
               {riderLatLng && !eta && (
                 <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[400] pointer-events-none">
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-600/90 text-white text-xs font-bold shadow-lg backdrop-blur-sm">

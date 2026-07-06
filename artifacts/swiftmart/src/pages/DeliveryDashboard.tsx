@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { api } from "@/lib/api";
@@ -12,7 +12,7 @@ import {
   LogOut, Menu, X, LayoutDashboard, ClipboardList, IndianRupee,
   ToggleLeft, ToggleRight, Truck, ChevronRight,
   RefreshCw, AlertCircle, Banknote, CreditCard, ShieldCheck,
-  TrendingUp, Map, KeyRound, Loader2,
+  TrendingUp, Map, KeyRound, Loader2, Navigation, WifiOff,
 } from "lucide-react";
 import DeliveryMapSheet from "@/components/DeliveryMapSheet";
 
@@ -516,6 +516,68 @@ export default function DeliveryDashboard() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [mapOrderId, setMapOrderId] = useState<string | null>(null);
 
+  // ── Location permission + live GPS tracking ──────────────────────────────
+  type GeoPermission = "prompt" | "granted" | "denied" | "unsupported";
+  const [locPermission, setLocPermission] = useState<GeoPermission>("prompt");
+  const [locSharing, setLocSharing] = useState(false);
+  const watchIdRef = useRef<number | null>(null);
+
+  // Check initial permission state (non-blocking)
+  useEffect(() => {
+    if (!navigator.geolocation) { setLocPermission("unsupported"); return; }
+    if (!navigator.permissions) return;
+    navigator.permissions.query({ name: "geolocation" }).then(result => {
+      setLocPermission(result.state as GeoPermission);
+      result.addEventListener("change", () => setLocPermission(result.state as GeoPermission));
+    });
+  }, []);
+
+  const requestLocationPermission = useCallback(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      () => setLocPermission("granted"),
+      () => setLocPermission("denied"),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }, []);
+
+  // Push GPS to backend — watchPosition for accurate continuous tracking
+  useEffect(() => {
+    const hasActiveDelivery = orders.some(o => o.status === "out_for_delivery");
+
+    if (!hasActiveDelivery || locPermission !== "granted") {
+      // Stop watching if no active delivery
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+        setLocSharing(false);
+      }
+      return;
+    }
+
+    if (watchIdRef.current !== null) return; // Already watching
+
+    setLocSharing(true);
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      pos => {
+        api.patch("/delivery/me/location", {
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+        }).catch(() => {});
+      },
+      () => { setLocSharing(false); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 },
+    );
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+        setLocSharing(false);
+      }
+    };
+  }, [orders, locPermission]);
+
   const fetchData = useCallback(async () => {
     try {
       const data = await api.get<{ success: boolean; orders: DeliveryOrder[]; partner: DeliveryPartner }>("/delivery/me/orders");
@@ -536,29 +598,6 @@ export default function DeliveryDashboard() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  // Push GPS location to backend every 10s when there is an active out_for_delivery order
-  useEffect(() => {
-    const hasActiveDelivery = orders.some(o => o.status === "out_for_delivery");
-    if (!hasActiveDelivery) return;
-
-    const pushLocation = () => {
-      if (!navigator.geolocation) return;
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          api.patch("/delivery/me/location", {
-            lat: pos.coords.latitude,
-            lon: pos.coords.longitude,
-          }).catch(() => { /* silent */ });
-        },
-        () => { /* permission denied or error — silent */ },
-        { timeout: 6000, maximumAge: 15000 },
-      );
-    };
-
-    pushLocation();
-    const loc = setInterval(pushLocation, 5000);
-    return () => clearInterval(loc);
-  }, [orders]);
 
   const handleToggleAvailability = async () => {
     if (!partner) return;
@@ -731,6 +770,57 @@ export default function DeliveryDashboard() {
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
+
+          {/* ── Location permission banner ─────────────────────────────── */}
+          <AnimatePresence>
+            {locPermission === "prompt" && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800"
+              >
+                <MapPin className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Location access needed</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                    Your exact location is shared with customers during delivery so they can track you live.
+                  </p>
+                </div>
+                <button
+                  onClick={requestLocationPermission}
+                  className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-600 text-white hover:bg-amber-700 active:scale-95 transition-all"
+                >
+                  Allow
+                </button>
+              </motion.div>
+            )}
+            {locPermission === "denied" && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800"
+              >
+                <WifiOff className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-red-900 dark:text-red-100">Location access blocked</p>
+                  <p className="text-xs text-red-700 dark:text-red-300 mt-0.5">
+                    Go to your browser settings → Site settings → Location → Allow for this site.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+            {locSharing && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800"
+              >
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                </span>
+                <Navigation className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <p className="text-sm font-semibold text-green-800 dark:text-green-200">Sharing live location with customer</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <AnimatePresence mode="wait">
             <motion.div
