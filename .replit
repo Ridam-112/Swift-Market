@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "bash"]
+modules = ["nodejs-20", "web", "bash", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -81,8 +81,8 @@ VAPID_PUBLIC_KEY = "BEZjdv1oiRmhOwJB_gwkTHAhE8Qlm4TuSdT0UwTj_zqH0B4BvfCtIJTEOTMG
 VAPID_SUBJECT = "mailto:admin@swiftmart.com"
 OTP_MODE = "demo"
 AUTH_MODE = "both"
-ALLOWED_ORIGINS = "https://swiftmart.space,https://www.swiftmart.space,https://aff31149-6eaa-4243-818d-e4de43f136fb-00-299lgh0i679s3.pike.replit.dev"
-VITE_API_URL = "https://aff31149-6eaa-4243-818d-e4de43f136fb-00-299lgh0i679s3.pike.replit.dev"
+ALLOWED_ORIGINS = "https://swiftmart.space,https://www.swiftmart.space,https://541dd074-c584-4813-b732-5f48cdcc744c-00-1jgx7yrjnpari.pike.replit.dev"
+VITE_API_URL = "https://541dd074-c584-4813-b732-5f48cdcc744c-00-1jgx7yrjnpari.pike.replit.dev"
 RESEND_FROM_EMAIL = "SwiftMart <noreply@swiftmart.space>"
 FIREBASE_MESSAGING_SENDER_ID = "556854517102"
 SUPER_ADMIN_EMAILS = ""
