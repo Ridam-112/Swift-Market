@@ -183,6 +183,54 @@ router.post("/rain-mode", authenticate, A, async (req: AuthRequest, res: Respons
   res.json({ success: true, rainModeActive: active });
 });
 
+// ─── Fleet Map (admin only) ───────────────────────────────────────────────────
+
+// GET /delivery/fleet — all partners + current lat/lon + active order info
+router.get("/fleet", authenticate, A, async (_req, res: Response): Promise<void> => {
+  const partners = await db
+    .select({
+      id: deliveryPartners.id,
+      name: deliveryPartners.name,
+      phone: deliveryPartners.phone,
+      vehicle: deliveryPartners.vehicle,
+      status: deliveryPartners.status,
+      isAvailable: deliveryPartners.isAvailable,
+      currentLat: deliveryPartners.currentLat,
+      currentLon: deliveryPartners.currentLon,
+      locationUpdatedAt: deliveryPartners.locationUpdatedAt,
+    })
+    .from(deliveryPartners)
+    .orderBy(desc(deliveryPartners.locationUpdatedAt));
+
+  // Fetch active orders per partner (status not delivered/cancelled)
+  const activeOrders = await db
+    .select({
+      id: orders.id,
+      deliveryPartnerId: orders.deliveryPartnerId,
+      status: orders.status,
+      totalAmount: orders.totalAmount,
+      deliveryAddress: orders.deliveryAddress,
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.status, "out_for_delivery"),
+      )
+    );
+
+  const orderByPartner = new Map<string, typeof activeOrders[number]>();
+  for (const o of activeOrders) {
+    if (o.deliveryPartnerId) orderByPartner.set(o.deliveryPartnerId, o);
+  }
+
+  const fleet = partners.map(p => ({
+    ...mi(p),
+    activeOrder: p.id ? (orderByPartner.get(p.id) ?? null) : null,
+  }));
+
+  res.json({ success: true, fleet });
+});
+
 // ─── Delivery Partner Self-Service ───────────────────────────────────────────
 
 // GET /delivery/me — get own partner profile

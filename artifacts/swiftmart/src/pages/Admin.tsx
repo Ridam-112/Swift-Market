@@ -122,9 +122,10 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'service-areas' | 'delivery-partners';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'service-areas' | 'delivery-partners' | 'fleet-map';
 
 import { SEO } from "@/components/SEO";
+import FleetMapTab from "@/components/FleetMapTab";
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -213,6 +214,7 @@ export default function Admin() {
               {activeSection === 'home-sections' && <HomepageSectionsTab />}
               {activeSection === 'service-areas' && <ServiceAreasTab />}
               {activeSection === 'delivery-partners' && <DeliveryPartnersTab />}
+              {activeSection === 'fleet-map' && <FleetMapTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -260,6 +262,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
   { id: 'home-sections', label: 'Home Sections', icon: Layers },
   { id: 'service-areas', label: 'Service Areas', icon: MapPin },
   { id: 'delivery-partners', label: 'Delivery Partners', icon: Truck },
+  { id: 'fleet-map', label: 'Fleet Map', icon: MapPin },
   ];
 
   return (
