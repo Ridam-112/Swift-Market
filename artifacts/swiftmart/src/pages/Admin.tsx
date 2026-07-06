@@ -74,7 +74,7 @@ interface ApiOrder {
   customerPhone?: string;
   shopId?: string;
   shopName?: string;
-  items: { name: string; qty: number; price: number }[];
+  items: { productName: string; name?: string; qty: number; price: number }[];
   netAmount?: number;
   subtotal?: number;
   status: string;
@@ -938,7 +938,7 @@ function CustomersList() {
               placedAt: o.createdAt,
               vendorId: o.shopId ?? '',
               vendorName: o.shopName ?? 'Shop',
-              items: o.items.map(i => ({ name: i.name, qty: i.qty, price: i.price, category: '' })),
+              items: o.items.map(i => ({ name: i.productName ?? i.name ?? "", qty: i.qty, price: i.price, category: '' })),
               total: o.netAmount ?? o.subtotal ?? o.items.reduce((s, i) => s + i.price * i.qty, 0),
               status: (o.status ?? 'placed') as 'placed' | 'packed' | 'out_for_delivery' | 'delivered',
               paymentMethod: (o.paymentMethod ?? 'COD') as 'UPI' | 'Card' | 'COD',
@@ -1413,7 +1413,7 @@ function OrdersTab() {
         customerPhone: o.customerPhone ?? "",
         vendorId: o.shopId ?? "",
         vendorName: o.shopName ?? "Shop",
-        items: o.items.map(i => ({ name: i.name, qty: i.qty, price: i.price, category: "" })),
+        items: o.items.map(i => ({ name: i.productName ?? i.name ?? "", qty: i.qty, price: i.price, category: "" })),
         total: o.netAmount ?? o.subtotal ?? o.items.reduce((s, i) => s + i.price * i.qty, 0),
         status: o.status as PlatformOrder['status'],
         paymentMethod: (o.paymentMethod ?? "COD") as PlatformOrder['paymentMethod'],

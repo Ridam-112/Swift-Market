@@ -1,0 +1,179 @@
+Let me read all the key source files in parallel before building.
+
+
+5 actions
+Let me read the actual source files before building.
+
+
+8 actions
+Now I have everything I need. Let me check the workspace setup and a few more files before building.
+
+
+8 actions
+Good, no Expo project yet. Let me quickly check the web app's package.json structure, then build everything in one batch.
+
+
+3 actions
+Now I have everything I need. Let me build the entire Expo app in one parallel batch — all 30+ files at once.
+
+
+31 actions
+Now let me add the workflow, install packages, and set the env var — all in parallel.
+
+
+17 actions
+Metro is up. Let me take a screenshot and fix the version warnings in parallel.
+
+
+8 actions
+Metro is running — let me screenshot and check for bundle errors in parallel.
+
+
+3 actions
+The error is a @types/react version conflict — the root workspace has @types/react@19 which bleeds into the mobile app's type resolution, causing all JSX components to fail. I need to pin @types/react@18 locally in the mobile package and fix the tsconfig.
+
+
+7 actions
+The local @types/react is correctly 18.3.31, but TypeScript is still resolving @types/react@19 from the pnpm store for packages like expo-router. Adding typeRoots to the tsconfig will force TypeScript to only use the local types.
+
+
+5 actions
+The typeRoots fix didn't work — the issue runs deeper. The pnpm store resolved expo-router's deps against @types/react@19. The real fix is a root-level pnpm.overrides to pin @types/react@18 across the entire monorepo.
+
+
+13 actions
+The @types/react override worked — JSX errors are gone. One TS error left and the Metro 500 still needs diagnosing.
+
+
+3 actions
+Two clear fixes: missing expo-linking package and a missing statusText style. Both in parallel.
+
+
+14 actions
+@babel/runtime is missing — it's needed by Babel transforms but wasn't explicitly installed. Let me add it along with a quick check for any other missing peer deps.
+
+
+10 actions
+Cannot read properties of undefined (reading 'ReactCurrentDispatcher') is the React dual-instance error — two separate React copies are loading. This is the core pnpm monorepo problem with Metro. I need to configure Metro to force a single React instance.
+
+
+3 actions
+I need to configure Metro's resolver to force all packages to use the same React instance from the mobile app's own node_modules.
+
+
+10 actions
+The extraNodeModules fallback approach isn't enough — Metro still finds the pnpm store's React first. I need to use resolveRequest to intercept React resolutions directly.
+
+
+16 actions
+Now I can see the full picture. There are two real issues:
+
+react-dom is missing (peer dep of react-native-web)
+pnpm's virtual store links packages against react@19 from the root workspace — Metro's SSR renderer picks up that wrong instance
+The definitive fix: add node-linker=node-modules to the mobile app's .npmrc so pnpm gives it a traditional flat node_modules instead of symlinks into the virtual store. This is the Expo-recommended approach for pnpm monorepos.
+
+
+12 actions
+node-linker=node-modules in the package .npmrc isn't respected at workspace level — pnpm only honors it at the root. The cleanest fix is to remove the mobile app from the pnpm workspace so it gets its own self-contained npm install instead of pnpm's virtual store.
+
+
+3 actions
+The pnpm workspace is the root cause — artifacts/* pulls the mobile app in, so pnpm links it against the root's React 19 virtual store. The fix is to exclude it from the workspace and use npm install for a self-contained node_modules.
+
+
+10 actions
+Metro is running clean — the timeout just means it's still doing the first bundle. Let me wait and retry.
+
+
+2 actions
+The app is serving HTML. Let me screenshot it now.
+
+
+2 actions
+The app is rendering beautifully — dark theme, hero banner, tab bar all showing. The CORS errors are only because the web preview at 127.0.0.1:8081 needs to be added to ALLOWED_ORIGINS. Let me fix that and run the code review.
+
+
+4 actions
+Three critical fixes from the review. Let me read the affected files in parallel.
+
+
+3 actions
+You've reached your daily free quota limit. It will reset at 12:00 AM UTC.
+
+
+Worked for 36 minutes
+continue the changes.......
+
+18 minutes ago
+Parallel issue resolution
+
+Parallel issue resolution
+Applying all three code review fixes plus the CORS fix in parallel.
+
+
+4 actions
+Now wrap the root layout with the ErrorBoundary, fix CORS, and restart the mobile workflow — all in parallel.
+
+
+3 actions
+Now fix the CORS issue (update .replit) and also correct the cart screen's item count display, then restart the mobile workflow.
+
+
+6 actions
+Now update CORS origins and EXPO_PUBLIC_API_URL in .replit, then restart the mobile workflow.
+
+
+9 actions
+Port 8081 is now taken by the mockup-sandbox. I need to move the mobile app to port 8082, skip the slow npm install on restart (since packages are already installed), and then start it.
+
+
+13 actions
+The app renders perfectly — just need to restart the API server to pick up the new ALLOWED_ORIGINS (it was started before I updated .replit), then update memory and finish.
+
+
+5 actions
+The CORS is still failing — need to check if Vite's proxy is stripping the headers or if the API server isn't seeing the updated env. Let me diagnose directly.
+
+
+3 actions
+The Express CORS IS working correctly (Access-Control-Allow-Origin: http://127.0.0.1:8082 is in the response). The issue is Vite is acting as a proxy between the browser and Express, which may not forward the Origin header cleanly. Let me check the Vite config and switch the API URL to go direct to Express.
+
+
+6 actions
+The Vite proxy has changeOrigin: true which means it changes the Host header. However, the real issue is Replit's reverse proxy likely doesn't forward OPTIONS preflight requests. The fix: point EXPO_PUBLIC_API_URL directly at Express on port 8080 (bypassing Vite proxy entirely), and clear Metro cache so the new value is picked up.
+
+
+10 actions
+The app is fully working — categories loading from the live API with emoji icons, hero banner, tab bar, no CORS errors. Now let me save the critical lessons to memory and mark complete.
+
+
+3 actions
+Now running the code review on the changes made.
+
+
+3 actions
+Two issues from the review to fix: shell pipefail masking and the API URL env not being committed. Fixing both in parallel.
+
+
+3 actions
+Both fixes applied. Let me mark the task complete.
+
+Summarizing changes
+
+Summarizing changes
+All five code review fixes are done and the app is live on port 8082. Here's what changed:
+
+Bugs fixed:
+
+HeroBanner paging — switched from pagingEnabled to snapToInterval={CARD_W + 8} so auto-scroll, dot-press, and swipe index math all use the same card width
+Cart badge count — totalItems now sums item.qty across lines (was counting lines, not quantities)
+Error boundary — new ErrorBoundary class component wraps the entire provider tree in _layout.tsx, so a crash in any screen shows a "Try again" fallback instead of a blank white screen
+CORS for Replit web preview:
+
+EXPO_PUBLIC_API_URL → http://127.0.0.1:8080 (direct to Express, bypassing Replit's reverse proxy which strips OPTIONS preflight requests)
+http://127.0.0.1:8082 added to ALLOWED_ORIGINS on the API server
+.env.local committed in the mobile directory so the URL is reproducible from source
+Startup reliability:
+
+start-mobile.sh now uses set -euo pipefail and no longer pipes npm install through tail (which was silently masking install failures)
+npm install is skipped when node_modules/ already exists — restarts go from ~2 min → ~5 sec
