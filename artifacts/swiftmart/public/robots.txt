@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /
+
+# Private / account-only routes — no indexing needed
+Disallow: /auth
+Disallow: /google-callback
+Disallow: /complete-profile
+Disallow: /cart
+Disallow: /checkout
+Disallow: /order/
+Disallow: /orders
+Disallow: /profile
+Disallow: /notifications
+Disallow: /vendor-register
+Disallow: /vendor-status
+Disallow: /vendor/
+Disallow: /admin
+Disallow: /delivery-dashboard
+Disallow: /delivery/
+Disallow: /delete-account
+
+Sitemap: https://swiftmart.space/sitemap.xml
