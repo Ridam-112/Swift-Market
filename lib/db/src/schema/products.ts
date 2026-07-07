@@ -1,4 +1,5 @@
 import { pgTable, text, timestamp, boolean, doublePrecision, integer, jsonb, index } from "drizzle-orm/pg-core";
+import { shops } from "./shops";
 
 export const products = pgTable("products", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -8,7 +9,7 @@ export const products = pgTable("products", {
   discountedPrice: doublePrecision("discounted_price"),
   category: text("category"),
   subcategory: text("subcategory"),
-  shopId: text("shop_id").notNull(),
+  shopId: text("shop_id").notNull().references(() => shops.id, { onDelete: "cascade" }),
   images: jsonb("images").notNull().default([]),
   stock: integer("stock").notNull().default(0),
   sku: text("sku"),

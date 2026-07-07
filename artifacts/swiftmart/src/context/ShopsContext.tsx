@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback, useContext } from "react";
+import React, { createContext, useState, useEffect, useCallback, useContext, useRef } from "react";
 import { api } from "@/lib/api";
 import { AuthContext } from "@/context/AuthContext";
 
@@ -68,6 +68,9 @@ interface ShopsContextType {
 
 export const ShopsContext = createContext<ShopsContextType | null>(null);
 
+// Refresh at most every 60 s in the background when the tab is visible.
+const BG_INTERVAL_MS = 60_000;
+
 export function ShopsProvider({ children }: { children: React.ReactNode }) {
   const auth = useContext(AuthContext);
   const authLoading = auth?.isLoading ?? true;
@@ -77,36 +80,64 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Track whether a request is already in-flight to avoid concurrent fetches.
+  const inFlight = useRef(false);
+  const lastFetchedAt = useRef(0);
+
   const fetchShops = useCallback((showLoading = false) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     if (showLoading) setIsLoading(true);
     setError(null);
     api.get<{ success: boolean; shops: ApiShopItem[] }>("/shops?status=approved&limit=100")
       .then(d => {
         setAllShops(d.shops.map(mapApiShop));
+        lastFetchedAt.current = Date.now();
       })
       .catch(err => {
         const msg = err instanceof Error ? err.message : "Failed to load shops";
         setError(msg.includes("buffering") ? "Database connecting…" : msg);
       })
-      .finally(() => { if (showLoading) setIsLoading(false); });
+      .finally(() => {
+        inFlight.current = false;
+        if (showLoading) setIsLoading(false);
+      });
   }, []);
 
-  // Shops are public — fetch immediately on mount without waiting for auth.
-  // This prevents a blank page while auth resolves on fresh PWA installs.
+  // Fetch on mount immediately.
   useEffect(() => {
     fetchShops(true);
-    const interval = setInterval(() => fetchShops(false), 5000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchShops]);
 
-  // Silently refetch when the logged-in user changes (login / logout)
-  // so personalised fields stay fresh without re-showing the skeleton.
+  // Refetch when the logged-in user changes (login / logout).
   useEffect(() => {
     if (authLoading) return;
     fetchShops(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, authLoading, fetchShops]);
+
+  // Background safety interval — only fires when the tab is visible.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchShops(false);
+      }
+    }, BG_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [fetchShops]);
+
+  // Refetch when the user switches back to this tab after being away.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        // Only refetch if data is stale (older than 30 s).
+        if (Date.now() - lastFetchedAt.current > 30_000) {
+          fetchShops(false);
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [fetchShops]);
 
   const getShopById = (id: string) => allShops.find(s => s.id === id);
 

@@ -1,8 +1,9 @@
 import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { users } from "./users";
 
 export const fcmTokens = pgTable("fcm_tokens", {
   id:          text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId:      text("user_id").notNull(),
+  userId:      text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   token:       text("token").notNull().unique(),
   platform:    text("platform").notNull().default("web"),
   role:        text("role").notNull().default("customer"),

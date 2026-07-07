@@ -1,11 +1,12 @@
 import { pgTable, text, timestamp, boolean, doublePrecision, integer, jsonb, index } from "drizzle-orm/pg-core";
+import { users } from "./users";
 
 export const shops = pgTable("shops", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   shopName: text("shop_name").notNull(),
   ownerName: text("owner_name").notNull().default(""),
   phone: text("phone").notNull(),
-  ownerId: text("owner_id").notNull(),
+  ownerId: text("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   address: jsonb("address").notNull().default({}),
   shopType: text("shop_type"),
   category: text("category"),

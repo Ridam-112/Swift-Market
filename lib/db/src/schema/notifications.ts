@@ -1,8 +1,9 @@
 import { pgTable, text, timestamp, boolean, jsonb, index } from "drizzle-orm/pg-core";
+import { users } from "./users";
 
 export const notifications = pgTable("notifications", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text("user_id").notNull(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   type: text("type").notNull().default("system"),
   title: text("title").notNull(),
   message: text("message").notNull(),

@@ -23,14 +23,31 @@ export function Header() {
 
   useEffect(() => {
     if (!user) return;
+    let lastFetchedAt = 0;
     const fetchUnread = () => {
       api.get<{ success: boolean; unreadCount: number }>("/notifications")
-        .then(d => setUnreadCount(d.unreadCount ?? 0))
+        .then(d => {
+          setUnreadCount(d.unreadCount ?? 0);
+          lastFetchedAt = Date.now();
+        })
         .catch(() => {});
     };
     fetchUnread();
-    const interval = setInterval(fetchUnread, 5000);
-    return () => clearInterval(interval);
+    // Poll every 30 s (only when tab is visible) instead of every 5 s.
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") fetchUnread();
+    }, 30_000);
+    // Also refresh immediately when the user switches back to this tab.
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && Date.now() - lastFetchedAt > 15_000) {
+        fetchUnread();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [user]);
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {

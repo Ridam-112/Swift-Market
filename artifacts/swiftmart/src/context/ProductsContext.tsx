@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, { createContext, useState, useEffect, useCallback, useContext, useRef } from "react";
 import { Product } from "@/types";
 import { api } from "@/lib/api";
 import { AuthContext } from "@/context/AuthContext";
@@ -59,6 +59,10 @@ function mapApiProduct(p: ApiProduct): Product {
 
 export const ProductsContext = createContext<ProductsContextType | null>(null);
 
+// Refresh at most every 60 s in the background when the tab is visible.
+// A forced refetch (e.g. after adding a product) bypasses this gate.
+const BG_INTERVAL_MS = 60_000;
+
 export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const auth = useContext(AuthContext);
   const [products, setProducts] = useState<Product[]>([]);
@@ -68,35 +72,64 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const authLoading = auth?.isLoading ?? true;
   const userId = auth?.user?.id ?? null;
 
-  const fetchProducts = (showLoading = false) => {
+  // Track whether a request is already in-flight to avoid concurrent fetches.
+  const inFlight = useRef(false);
+  const lastFetchedAt = useRef(0);
+
+  const fetchProducts = useCallback((showLoading = false) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     if (showLoading) setIsLoading(true);
     setError(null);
     api.get<{ success: boolean; products: ApiProduct[] }>(`/products?limit=200`)
       .then(d => {
         setProducts(d.products.map(mapApiProduct));
+        lastFetchedAt.current = Date.now();
       })
       .catch(err => {
         const msg = err instanceof Error ? err.message : "Failed to load products";
         setError(msg.includes("buffering") ? "Database connecting…" : msg);
       })
-      .finally(() => { if (showLoading) setIsLoading(false); });
-  };
-
-  // Products are public — fetch immediately on mount without waiting for auth.
-  // This prevents a blank page while auth resolves on fresh PWA installs.
-  useEffect(() => {
-    fetchProducts(true);
-    const interval = setInterval(() => fetchProducts(false), 5000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      .finally(() => {
+        inFlight.current = false;
+        if (showLoading) setIsLoading(false);
+      });
   }, []);
 
-  // Silently refetch when the logged-in user changes (login / logout).
+  // Fetch on mount immediately.
+  useEffect(() => {
+    fetchProducts(true);
+  }, [fetchProducts]);
+
+  // Refetch when the logged-in user changes (login / logout).
   useEffect(() => {
     if (authLoading) return;
     fetchProducts(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, authLoading, fetchProducts]);
+
+  // Background safety interval — only fires when the tab is visible.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchProducts(false);
+      }
+    }, BG_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [fetchProducts]);
+
+  // Refetch when the user switches back to this tab after being away.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        // Only refetch if data is stale (older than 30 s).
+        if (Date.now() - lastFetchedAt.current > 30_000) {
+          fetchProducts(false);
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [fetchProducts]);
 
   const addProduct = (product: Product) => {
     setProducts(prev => [product, ...prev]);
