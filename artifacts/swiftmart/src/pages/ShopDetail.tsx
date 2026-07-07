@@ -113,6 +113,39 @@ export default function ShopDetail() {
         description={`Order from ${shop.storeName} in Balurghat on SwiftMart. ${shop.category ? `${shop.category} — ` : ""}Fast local delivery in 10 minutes. ${vendorProducts.length > 0 ? `${vendorProducts.length} products available.` : ""}`}
         canonical={`/shop/${vendorId}`}
         ogImage={shop.image && shop.image !== "/assets/shop-placeholder.png" ? shop.image : undefined}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "LocalBusiness",
+          "name": shop.storeName,
+          "description": `${shop.storeName} — ${shop.category || "local shop"} in Balurghat. Order on SwiftMart for fast delivery.`,
+          "image": shop.image && shop.image !== "/assets/shop-placeholder.png" ? shop.image : undefined,
+          "url": `https://swiftmart.space/shop/${vendorId}`,
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": shop.city || "Balurghat",
+            "postalCode": shop.pincode || undefined,
+            "addressRegion": "West Bengal",
+            "addressCountry": "IN"
+          },
+          "areaServed": {
+            "@type": "City",
+            "name": shop.city || "Balurghat"
+          },
+          ...(shop.rating > 0 && {
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": shop.rating.toFixed(1),
+              "bestRating": "5",
+              "worstRating": "1",
+              "ratingCount": 1
+            }
+          }),
+          "hasOfferCatalog": vendorProducts.length > 0 ? {
+            "@type": "OfferCatalog",
+            "name": `${shop.storeName} Products`,
+            "numberOfItems": vendorProducts.length
+          } : undefined
+        }}
       />
       <div className="relative h-48 md:h-64 w-full bg-muted">
         <img

@@ -121,13 +121,70 @@ export default function Product() {
       "@type": "Product",
       "name": product.name,
       "description": product.description || `${product.name} available on SwiftMart Balurghat`,
-      "image": product.image,
+      "image": allImages.length > 0 ? (allImages.length === 1 ? allImages[0] : allImages) : product.image,
+      "sku": product.id,
+      "brand": {
+        "@type": "Brand",
+        "name": product.shopName || "SwiftMart"
+      },
+      ...(product.rating > 0 && {
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": product.rating.toFixed(1),
+          "bestRating": "5",
+          "worstRating": "1",
+          "ratingCount": 1
+        }
+      }),
       "offers": {
         "@type": "Offer",
-        "price": product.discountedPrice ?? product.price,
+        "url": `https://swiftmart.space/product/${product.id}`,
+        "price": (product.discountedPrice ?? product.price).toFixed(2),
         "priceCurrency": "INR",
+        "priceValidUntil": new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
         "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-        "seller": { "@type": "Organization", "name": "SwiftMart" }
+        "itemCondition": "https://schema.org/NewCondition",
+        "seller": {
+          "@type": "Organization",
+          "name": product.shopName || "SwiftMart",
+          "url": "https://swiftmart.space"
+        },
+        "hasMerchantReturnPolicy": {
+          "@type": "MerchantReturnPolicy",
+          "applicableCountry": "IN",
+          "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+          "merchantReturnDays": 7,
+          "returnMethod": "https://schema.org/ReturnByMail",
+          "returnFees": "https://schema.org/FreeReturn"
+        },
+        "shippingDetails": {
+          "@type": "OfferShippingDetails",
+          "shippingRate": {
+            "@type": "MonetaryAmount",
+            "value": "0",
+            "currency": "INR"
+          },
+          "shippingDestination": {
+            "@type": "DefinedRegion",
+            "addressCountry": "IN",
+            "addressRegion": "WB"
+          },
+          "deliveryTime": {
+            "@type": "ShippingDeliveryTime",
+            "handlingTime": {
+              "@type": "QuantitativeValue",
+              "minValue": 0,
+              "maxValue": 0,
+              "unitCode": "DAY"
+            },
+            "transitTime": {
+              "@type": "QuantitativeValue",
+              "minValue": 0,
+              "maxValue": 1,
+              "unitCode": "DAY"
+            }
+          }
+        }
       }
     }
   };
