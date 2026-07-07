@@ -233,7 +233,7 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
 
   // Pre-transaction read: fetch shop (needed for commission resolution + payout)
   const [shop] = await db
-    .select({ id: shops.id, ownerId: shops.ownerId, shopType: shops.shopType, ownerName: shops.ownerName })
+    .select({ id: shops.id, ownerId: shops.ownerId, shopType: shops.shopType, ownerName: shops.ownerName, shopName: shops.shopName })
     .from(shops).where(eq(shops.id, shopId)).limit(1);
   const vendorId = shop ? shop.ownerId : shopId;
 
@@ -453,7 +453,7 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
       .where(or(eq(users.role, "admin"), eq(users.role, "super_admin")));
 
     const shortId = createdOrder.id.slice(-6).toUpperCase();
-    const shopName = shop?.name ?? "a shop";
+    const shopName = shop?.shopName ?? "a shop";
 
     await Promise.all(
       adminUsers.map(admin =>

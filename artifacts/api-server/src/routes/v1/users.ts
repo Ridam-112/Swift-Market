@@ -114,14 +114,42 @@ router.get("/me/profile", authenticate, async (req: AuthRequest, res: Response):
 
 // PATCH /api/users/me/profile
 router.patch("/me/profile", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const body = req.body as Record<string, unknown>;
-  const update: Record<string, unknown> = {};
-  for (const key of ["name", "email", "addresses", "pincode"] as const) {
-    if (body[key] !== undefined) update[key] = body[key];
+  const { z } = await import("zod");
+  const schema = z.object({
+    name:      z.string().trim().min(2, "Name must be at least 2 characters").max(80).optional(),
+    email:     z.string().trim().email("Invalid email address").max(200).optional(),
+    pincode:   z.string().regex(/^\d{6}$/, "Pincode must be 6 digits").optional(),
+    addresses: z.array(z.object({
+      id:      z.string().optional(),
+      label:   z.enum(["Home", "Work", "Other"]),
+      line1:   z.string().min(1).max(200),
+      line2:   z.string().max(200).optional(),
+      city:    z.string().min(1).max(100),
+      pincode: z.string().regex(/^\d{6}$/),
+    })).max(10, "Maximum 10 addresses").optional(),
+  }).strict();
+
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    const message = parsed.error.errors[0]?.message ?? "Invalid input";
+    res.status(400).json({ success: false, message });
+    return;
   }
-  const [user] = await db.update(users).set(update).where(eq(users.id, req.user!.userId)).returning();
-  if (!user) { res.status(404).json({ success: false, message: "Not found" }); return; }
-  res.json({ success: true, user: mi(user) });
+
+  const update: Record<string, unknown> = { ...parsed.data, updatedAt: new Date() };
+  if (Object.keys(parsed.data).length === 0) {
+    res.status(400).json({ success: false, message: "No fields to update" });
+    return;
+  }
+
+  try {
+    const [user] = await db.update(users).set(update).where(eq(users.id, req.user!.userId)).returning();
+    if (!user) { res.status(404).json({ success: false, message: "User not found" }); return; }
+    res.json({ success: true, user: mi(user) });
+  } catch (err) {
+    logger.error({ err }, "Failed to update user profile");
+    res.status(500).json({ success: false, message: "Failed to update profile. Please try again." });
+  }
 });
 
 export default router;

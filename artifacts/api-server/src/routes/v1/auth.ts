@@ -234,20 +234,17 @@ router.post("/set-password", loginLimiter, async (req: Request, res: Response): 
 
 // ─── POST /api/auth/signup ────────────────────────────────────────────────────
 router.post("/signup", signupLimiter, async (req: Request, res: Response): Promise<void> => {
-  const { name, phone, password } = req.body as { name?: string; phone?: string; password?: string };
-
-  if (!name || name.trim().length < 2) {
-    res.status(400).json({ success: false, message: "Full name must be at least 2 characters" });
+  const { z } = await import("zod");
+  const parsed = z.object({
+    name:     z.string().trim().min(2, "Full name must be at least 2 characters").max(80),
+    phone:    z.string().trim().regex(/^[6-9]\d{9}$/, "Valid 10-digit mobile number required"),
+    password: z.string().min(8, "Password must be at least 8 characters").max(128),
+  }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, message: parsed.error.errors[0]?.message ?? "Invalid input" });
     return;
   }
-  if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
-    res.status(400).json({ success: false, message: "Valid 10-digit mobile number required" });
-    return;
-  }
-  if (!password || password.length < 8) {
-    res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
-    return;
-  }
+  const { name, phone, password } = parsed.data;
 
   try {
     const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.phone, phone)).limit(1);
@@ -754,22 +751,18 @@ router.post("/logout", authenticate, async (req: AuthRequest, res: Response): Pr
 // ─── POST /api/auth/email-signup ─────────────────────────────────────────────
 // Sign up with email + password. Returns JWT tokens on success.
 router.post("/email-signup", signupLimiter, async (req: Request, res: Response): Promise<void> => {
-  const { name, email, password } = req.body as { name?: string; email?: string; password?: string };
-
-  if (!name || name.trim().length < 2) {
-    res.status(400).json({ success: false, message: "Full name must be at least 2 characters" });
+  const { z } = await import("zod");
+  const parsed = z.object({
+    name:     z.string().trim().min(2, "Full name must be at least 2 characters").max(80),
+    email:    z.string().trim().email("Valid email address required").max(200),
+    password: z.string().min(8, "Password must be at least 8 characters").max(128),
+  }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, message: parsed.error.errors[0]?.message ?? "Invalid input" });
     return;
   }
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    res.status(400).json({ success: false, message: "Valid email address required" });
-    return;
-  }
-  if (!password || password.length < 8) {
-    res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
-    return;
-  }
-
-  const normalizedEmail = email.toLowerCase().trim();
+  const { name, password } = parsed.data;
+  const normalizedEmail = parsed.data.email.toLowerCase().trim();
 
   try {
     const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, normalizedEmail)).limit(1);

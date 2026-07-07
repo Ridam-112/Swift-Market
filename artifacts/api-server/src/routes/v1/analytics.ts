@@ -28,7 +28,13 @@ router.get("/", authenticate, A, async (req: AuthRequest, res: Response): Promis
   const now = new Date();
   const since = new Date(now.getTime() - (period === "monthly" ? 183 * 86400000 : cfg.intervals * cfg.intervalMs));
 
-  const [orderRows, userRows, topProductRows, topShopRows] = await Promise.all([
+  let orderRows: Awaited<ReturnType<typeof db.execute>>;
+  let userRows: Awaited<ReturnType<typeof db.execute>>;
+  let topProductRows: Awaited<ReturnType<typeof db.execute>>;
+  let topShopRows: Awaited<ReturnType<typeof db.execute>>;
+
+  try {
+    [orderRows, userRows, topProductRows, topShopRows] = await Promise.all([
     // Revenue + orders grouped by truncated period
     db.execute(sql`
       SELECT
@@ -128,6 +134,10 @@ router.get("/", authenticate, A, async (req: AuthRequest, res: Response): Promis
     .map(r => ({ shopId: r.shop_id, shopName: r.shop_name, totalRevenue: Number(r.total_revenue), totalOrders: Number(r.total_orders) }));
 
   res.json({ success: true, series, topProducts, topShops });
+  } catch (err) {
+    req.log.error({ err }, "Analytics query failed");
+    res.status(500).json({ success: false, message: "Failed to load analytics data. Please try again." });
+  }
 });
 
 export default router;

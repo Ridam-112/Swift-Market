@@ -1,6 +1,6 @@
 import { Router, type Response } from "express";
 import { db, notifications, adminBroadcasts, users } from "@workspace/db";
-import { eq, and, desc, count } from "drizzle-orm";
+import { eq, and, desc, count, sql } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { createNotificationLimited, sendPushToUsers, trimNotificationsForUser } from "../../utils/notification.js";
 import { miArr } from "../../utils/mapId.js";
@@ -131,7 +131,7 @@ router.post("/admin/cleanup", authenticate, A, async (_req: AuthRequest, res: Re
       .select({ userId: notifications.userId, cnt: count() })
       .from(notifications)
       .groupBy(notifications.userId)
-      .having(({ cnt }) => cnt > 10);
+      .having(({ cnt }) => sql`${cnt} > 10`);
 
     if (allUsers.length === 0) {
       res.json({ success: true, message: "All users already within the 10-notification limit.", trimmed: 0 });

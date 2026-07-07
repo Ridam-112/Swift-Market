@@ -159,42 +159,82 @@ router.post("/admin-create", authenticate, A, async (req: AuthRequest, res: Resp
 
 // POST /api/shops — vendor applies
 router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const body = req.body as Record<string, unknown>;
+  const { z } = await import("zod");
+  const schema = z.object({
+    shopName:             z.string().trim().min(2, "Shop name must be at least 2 characters").max(100),
+    ownerName:            z.string().trim().min(2, "Owner name required").max(100),
+    phone:                z.string().regex(/^[6-9]\d{9}$/, "Valid 10-digit mobile number required"),
+    address:              z.object({
+      line1:   z.string().min(1).max(200).optional(),
+      city:    z.string().min(1).max(100).optional(),
+      pincode: z.string().regex(/^\d{6}$/).optional(),
+    }).optional(),
+    shopType:             z.string().max(50).optional(),
+    category:             z.string().max(50).optional(),
+    subcategory:          z.string().max(50).optional(),
+    description:          z.string().max(1000).optional(),
+    image:                z.string().url().optional(),
+    banner:               z.string().url().optional(),
+    panNumber:            z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]$/, "Invalid PAN number format"),
+    gstNumber:            z.string().max(20).optional(),
+    bankAccountHolderName:z.string().max(100).optional(),
+    bankAccountNumber:    z.string().min(9, "Bank account number required").max(20),
+    bankIfscCode:         z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code format"),
+    upiId:                z.string().max(100).optional(),
+    certificateType:      z.string().max(50).optional(),
+    certificateNumber:    z.string().max(100).optional(),
+    certificateExpiryDate:z.string().optional(),
+    certificateFile:      z.string().url().optional(),
+  });
+
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    const message = parsed.error.errors[0]?.message ?? "Invalid input";
+    res.status(400).json({ success: false, message });
+    return;
+  }
+
+  const d = parsed.data;
 
   // Shop insert + user status update must be atomic — a partial write
   // would leave the user's role and the shop record out of sync.
-  const shop = await db.transaction(async (tx) => {
-    const [shop] = await tx.insert(shops).values({
-      shopName: String(body["shopName"] ?? ""),
-      ownerName: String(body["ownerName"] ?? ""),
-      phone: String(body["phone"] ?? ""),
-      ownerId: req.user!.userId,
-      address: (body["address"] ?? {}) as Record<string, string>,
-      shopType: body["shopType"] ? String(body["shopType"]) : undefined,
-      category: body["category"] ? String(body["category"]) : undefined,
-      subcategory: body["subcategory"] ? String(body["subcategory"]) : undefined,
-      description: body["description"] ? String(body["description"]) : undefined,
-      image: body["image"] ? String(body["image"]) : undefined,
-      banner: body["banner"] ? String(body["banner"]) : undefined,
-      panNumber: String(body["panNumber"] ?? ""),
-      gstNumber: body["gstNumber"] ? String(body["gstNumber"]) : undefined,
-      bankAccountHolderName: body["bankAccountHolderName"] ? String(body["bankAccountHolderName"]) : undefined,
-      bankAccountNumber: String(body["bankAccountNumber"] ?? ""),
-      bankIfscCode: String(body["bankIfscCode"] ?? ""),
-      upiId: body["upiId"] ? String(body["upiId"]) : undefined,
-      certificateType: body["certificateType"] ? String(body["certificateType"]) : undefined,
-      certificateNumber: body["certificateNumber"] ? String(body["certificateNumber"]) : undefined,
-      certificateExpiryDate: body["certificateExpiryDate"] ? String(body["certificateExpiryDate"]) : undefined,
-      certificateFile: body["certificateFile"] ? String(body["certificateFile"]) : undefined,
-      certificateStatus: body["certificateFile"] ? "pending" : undefined,
-      verificationStatus: "pending",
-      status: "pending",
-    }).returning();
-    await tx.update(users).set({ vendorStatus: "pending" }).where(eq(users.id, req.user!.userId));
-    return shop!;
-  });
+  try {
+    const shop = await db.transaction(async (tx) => {
+      const [shop] = await tx.insert(shops).values({
+        shopName: d.shopName,
+        ownerName: d.ownerName,
+        phone: d.phone,
+        ownerId: req.user!.userId,
+        address: (d.address ?? {}) as Record<string, string>,
+        shopType: d.shopType,
+        category: d.category,
+        subcategory: d.subcategory,
+        description: d.description,
+        image: d.image,
+        banner: d.banner,
+        panNumber: d.panNumber,
+        gstNumber: d.gstNumber,
+        bankAccountHolderName: d.bankAccountHolderName,
+        bankAccountNumber: d.bankAccountNumber,
+        bankIfscCode: d.bankIfscCode,
+        upiId: d.upiId,
+        certificateType: d.certificateType,
+        certificateNumber: d.certificateNumber,
+        certificateExpiryDate: d.certificateExpiryDate,
+        certificateFile: d.certificateFile,
+        certificateStatus: d.certificateFile ? "pending" : undefined,
+        verificationStatus: "pending",
+        status: "pending",
+      }).returning();
+      await tx.update(users).set({ vendorStatus: "pending" }).where(eq(users.id, req.user!.userId));
+      return shop!;
+    });
 
-  res.status(201).json({ success: true, shop: mi(shop) });
+    res.status(201).json({ success: true, shop: mi(shop) });
+  } catch (err) {
+    req.log?.error?.({ err }, "Shop registration failed");
+    res.status(500).json({ success: false, message: "Shop registration failed. Please try again." });
+  }
 });
 
 // PATCH /api/shops/my/certificate — vendor re-uploads rejected certificate

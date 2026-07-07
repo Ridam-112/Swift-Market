@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
 export const fcmTokens = pgTable("fcm_tokens", {
@@ -12,7 +12,10 @@ export const fcmTokens = pgTable("fcm_tokens", {
   lastSeenAt:  timestamp("last_seen_at").notNull().defaultNow(),
   createdAt:   timestamp("created_at").notNull().defaultNow(),
   updatedAt:   timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => [
+  index("fcm_tokens_user_id_idx").on(t.userId),
+  index("fcm_tokens_user_id_role_active_idx").on(t.userId, t.role, t.isActive),
+]);
 
 export type FcmToken = typeof fcmTokens.$inferSelect;
 export type InsertFcmToken = typeof fcmTokens.$inferInsert;

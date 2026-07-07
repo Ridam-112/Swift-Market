@@ -208,7 +208,7 @@ router.get("/fleet", authenticate, A, async (_req, res: Response): Promise<void>
       id: orders.id,
       deliveryPartnerId: orders.deliveryPartnerId,
       status: orders.status,
-      totalAmount: orders.totalAmount,
+      netAmount: orders.netAmount,
       address: orders.address,
     })
     .from(orders)
