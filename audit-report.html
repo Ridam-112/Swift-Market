@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SwiftMart Full App Audit — July 2026</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; padding: 32px 24px; }
+  h1 { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 14px; margin-bottom: 32px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 36px; }
+  .stat-card { background: #1e2130; border-radius: 14px; padding: 20px; border: 1px solid #2d3347; text-align: center; }
+  .stat-num { font-size: 36px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+  .stat-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+  .red { color: #f87171; }
+  .orange { color: #fb923c; }
+  .yellow { color: #fbbf24; }
+  .green { color: #34d399; }
+  .blue { color: #60a5fa; }
+
+  .section { margin-bottom: 32px; }
+  .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 14px; padding-left: 4px; }
+
+  table { width: 100%; border-collapse: collapse; background: #1e2130; border-radius: 14px; overflow: hidden; border: 1px solid #2d3347; }
+  thead th { background: #252a3a; color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; padding: 12px 16px; text-align: left; font-weight: 600; }
+  tbody tr { border-top: 1px solid #2d3347; }
+  tbody tr:hover { background: #252a3a; }
+  td { padding: 13px 16px; font-size: 13.5px; vertical-align: top; line-height: 1.5; }
+  td.sev { width: 90px; }
+  td.area { width: 110px; }
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; }
+  .tag-critical { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+  .tag-high     { background: rgba(251,146,60,0.15);  color: #fb923c; border: 1px solid rgba(251,146,60,0.3); }
+  .tag-medium   { background: rgba(251,191,36,0.15);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+  .tag-low      { background: rgba(96,165,250,0.15);  color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
+  .tag-pass     { background: rgba(52,211,153,0.15);  color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+
+  .area-tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+  .area-backend  { background: rgba(168,85,247,0.15);  color: #c084fc; }
+  .area-frontend { background: rgba(96,165,250,0.15);  color: #60a5fa; }
+  .area-database { background: rgba(251,146,60,0.15);  color: #fb923c; }
+  .area-security { background: rgba(248,113,113,0.15); color: #f87171; }
+  .area-perf     { background: rgba(251,191,36,0.15);  color: #fbbf24; }
+  .area-seo      { background: rgba(52,211,153,0.15);  color: #34d399; }
+
+  .file { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11.5px; color: #94a3b8; background: #0f1117; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+
+  .pass-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pass-item { background: #1e2130; border: 1px solid #2d3347; border-radius: 10px; padding: 14px 16px; display: flex; align-items: flex-start; gap: 10px; }
+  .pass-icon { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+  .pass-text { font-size: 13px; line-height: 1.5; }
+  .pass-text strong { color: #e2e8f0; display: block; margin-bottom: 2px; }
+  .pass-text span { color: #64748b; font-size: 12px; }
+
+  .footer { margin-top: 36px; padding-top: 20px; border-top: 1px solid #2d3347; color: #475569; font-size: 12px; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+
+<h1>🔍 SwiftMart — Full App Audit</h1>
+<p class="subtitle">Audited: July 7, 2026 &nbsp;·&nbsp; Stack: React 19 + Express 5 + PostgreSQL + Drizzle ORM</p>
+
+<!-- Summary cards -->
+<div class="summary-grid">
+  <div class="stat-card">
+    <div class="stat-num red">2</div>
+    <div class="stat-label">Critical</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num orange">5</div>
+    <div class="stat-label">High</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num yellow">8</div>
+    <div class="stat-label">Medium</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num blue">5</div>
+    <div class="stat-label">Low / Info</div>
+  </div>
+</div>
+
+<!-- Issues table -->
+<div class="section">
+  <div class="section-title">All Issues Found</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Severity</th>
+        <th>Area</th>
+        <th>Issue</th>
+        <th>Location</th>
+        <th>Impact</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- CRITICAL -->
+      <tr>
+        <td class="sev"><span class="tag tag-critical">Critical</span></td>
+        <td class="area"><span class="area-tag area-perf">Performance</span></td>
+        <td><strong>Global polling every 5 s — always on</strong><br>
+          ProductsContext and ShopsContext fire GET /api/products and GET /api/shops every 5 seconds unconditionally, even when the user is idle or on an unrelated page. Browser console confirmed 2 API calls every 5 s non-stop.</td>
+        <td><span class="file">ProductsContext.tsx:89</span><br><span class="file">ShopsContext.tsx:98</span></td>
+        <td>Wastes ~24 API calls/min per user. Hammers the DB. Kills battery on mobile. Inflates server costs.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-critical">Critical</span></td>
+        <td class="area"><span class="area-tag area-database">Database</span></td>
+        <td><strong>No DB-level referential integrity</strong><br>
+          Foreign keys (shopId in products, customerId in orders, userId in deliveryPartners) are plain text columns with no Drizzle <code>references()</code>. Deleting a shop leaves orphaned products, orders, and notifications with no cascade.</td>
+        <td><span class="file">lib/db/src/schema.ts</span></td>
+        <td>Silent data corruption. Orphaned rows accumulate indefinitely. Joins return stale/ghost data.</td>
+      </tr>
+
+      <!-- HIGH -->
+      <tr>
+        <td class="sev"><span class="tag tag-high">High</span></td>
+        <td class="area"><span class="area-tag area-database">Database</span></td>
+        <td><strong>N+1 query patterns in 3 routes</strong><br>
+          homepage-sections fetches products then queries shops per shopId in a loop. products.ts enriches shopName by fetching all shops for each product list. delivery.ts maps over orders to fetch shop addresses individually.</td>
+        <td><span class="file">homepage-sections.ts:120</span><br><span class="file">products.ts:65,95</span><br><span class="file">delivery.ts</span></td>
+        <td>Each request multiplies into N DB queries. Slows home page, product list, and delivery dashboard under load.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-high">High</span></td>
+        <td class="area"><span class="area-tag area-database">Database</span></td>
+        <td><strong>Missing indexes on high-traffic columns</strong><br>
+          No indexes on: products(shopId, category, status), shops(ownerId, status, category), notifications(userId, isRead), fcm_tokens(userId, role, isActive), delivery_partners(userId, status).</td>
+        <td><span class="file">lib/db/src/schema.ts</span></td>
+        <td>Full table scans on every filtered query. Compounds the N+1 problem. Degrades fast as data grows.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-high">High</span></td>
+        <td class="area"><span class="area-tag area-backend">Backend</span></td>
+        <td><strong>Unhandled promise rejections in auth routes</strong><br>
+          <code>/google/exchange</code> and <code>/complete-profile</code> are async handlers without try/catch. analytics.ts DB executions also unguarded. An unexpected DB or network error crashes the request silently.</td>
+        <td><span class="file">auth.ts:578, 1095</span><br><span class="file">analytics.ts:33,45</span></td>
+        <td>Unhandled rejections in Node.js can terminate the process or return no response to the client.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-high">High</span></td>
+        <td class="area"><span class="area-tag area-backend">Backend</span></td>
+        <td><strong>No schema validation on API inputs</strong><br>
+          Auth routes (/signup, /login, /reset-password), shops PATCH/:id, users PATCH /me/profile use manual <code>if (!field)</code> checks instead of Zod/Joi. Unexpected field types or shapes pass through unvalidated.</td>
+        <td><span class="file">auth.ts (signup/login)</span><br><span class="file">shops.ts:107,306</span><br><span class="file">users.ts:116</span></td>
+        <td>Malformed requests can trigger runtime crashes or store invalid data.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-high">High</span></td>
+        <td class="area"><span class="area-tag area-database">Database</span></td>
+        <td><strong>Missing unique constraint on fcm_tokens.token</strong><br>
+          No unique constraint prevents the same device token from being inserted multiple times, causing duplicate push notifications sent to the same device.</td>
+        <td><span class="file">lib/db/src/schema.ts</span><br><span class="file">fcm_tokens table</span></td>
+        <td>Users receive duplicate push notifications. Token table bloat over time.</td>
+      </tr>
+
+      <!-- MEDIUM -->
+      <tr>
+        <td class="sev"><span class="tag tag-medium">Medium</span></td>
+        <td class="area"><span class="area-tag area-frontend">Frontend</span></td>
+        <td><strong>Race condition — Product.tsx async fetch</strong><br>
+          Product detail fetches product by ID without a cleanup/abort flag. If the route changes while a request is in flight, a stale response can overwrite the new product state.</td>
+        <td><span class="file">Product.tsx:40</span></td>
+        <td>Wrong product shown briefly. Could confuse add-to-cart with the wrong item.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-medium">Medium</span></td>
+        <td class="area"><span class="area-tag area-frontend">Frontend</span></td>
+        <td><strong>Race condition — VendorOrders polling</strong><br>
+          The vendor orders page polls every interval without checking if the previous request is still pending. Concurrent requests can resolve out of order.</td>
+        <td><span class="file">vendor/Orders.tsx:149</span></td>
+        <td>Order list flickers or shows stale status intermittently.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-medium">Medium</span></td>
+        <td class="area"><span class="area-tag area-frontend">Frontend</span></td>
+        <td><strong>Silent error suppression in Category.tsx</strong><br>
+          Category data fetch uses <code>.catch(() => {})</code> — errors are swallowed completely with no user feedback and no logging.</td>
+        <td><span class="file">Category.tsx:49</span></td>
+        <td>Category page silently shows nothing if fetch fails. User has no idea why content is missing.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-medium">Medium</span></td>
+        <td class="area"><span class="area-tag area-frontend">Frontend</span></td>
+        <td><strong>console.log statements in production paths</strong><br>
+          GoogleCallback.tsx (5 logs), Auth.tsx (7 logs), api.ts (logs every request), fcm.ts (token/SW logs) all fire in production. Only App.tsx logs are DEV-gated.</td>
+        <td><span class="file">GoogleCallback.tsx:54,99…</span><br><span class="file">Auth.tsx:137,150…</span><br><span class="file">lib/api.ts</span></td>
+        <td>Leaks auth flow internals to anyone with DevTools open. Noise in production monitoring.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-medium">Medium</span></td>
+        <td class="area"><span class="area-tag area-database">Database</span></td>
+        <td><strong>Notification trim not wrapped in a transaction</strong><br>
+          <code>trimNotificationsForUser</code> runs multiple queries (count → delete oldest) without a transaction. A failure between steps leaves the table in an inconsistent state.</td>
+        <td><span class="file">notifications.ts</span></td>
+        <td>Notification count cap can be violated, or more records deleted than intended.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-medium">Medium</span></td>
+        <td class="area"><span class="area-tag area-security">Security</span></td>
+        <td><strong>JWT stored in localStorage (inferred)</strong><br>
+          Auth context uses Bearer token pattern without httpOnly cookies. LocalStorage is accessible to any JavaScript on the page (XSS risk).</td>
+        <td><span class="file">lib/api.ts (auth headers)</span><br><span class="file">context/AuthContext.tsx</span></td>
+        <td>XSS on any page = full token theft. Short access token expiry (15 m) partially mitigates.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-medium">Medium</span></td>
+        <td class="area"><span class="area-tag area-database">Database</span></td>
+        <td><strong>users.phone is nullable but used as login identifier</strong><br>
+          Schema defines phone as nullable, but auth logic uses it as a primary credential. Legacy OTP users with null phone could cause silent auth edge cases.</td>
+        <td><span class="file">lib/db/src/schema.ts</span><br><span class="file">auth.ts (login handler)</span></td>
+        <td>Potential null-pointer in login path for edge-case legacy accounts.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-medium">Medium</span></td>
+        <td class="area"><span class="area-tag area-backend">Backend</span></td>
+        <td><strong>Header poll every 5 s for unread notification count</strong><br>
+          Header.tsx polls <code>/api/notifications/unread-count</code> every 5 s independently of the global context polling, adding a 3rd concurrent polling stream.</td>
+        <td><span class="file">components/Header.tsx:32</span></td>
+        <td>3 simultaneous 5-second polling loops = ~36 requests/min per logged-in user. Server and DB overloaded.</td>
+      </tr>
+
+      <!-- LOW -->
+      <tr>
+        <td class="sev"><span class="tag tag-low">Low</span></td>
+        <td class="area"><span class="area-tag area-security">Security</span></td>
+        <td><strong>No CSRF protection middleware</strong><br>
+          App relies on JWT Bearer tokens in headers (not cookies) to avoid CSRF. Acceptable for current architecture, but worth noting if auth storage ever moves to cookies.</td>
+        <td><span class="file">app.ts (middleware stack)</span></td>
+        <td>Low risk now. Becomes critical if switched to cookie-based auth.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-low">Low</span></td>
+        <td class="area"><span class="area-tag area-frontend">Frontend</span></td>
+        <td><strong>ServiceUnavailable component defined but never rendered</strong><br>
+          <code>MapPinOff</code> and <code>Button</code> are imported in App.tsx for a ServiceUnavailable component that is never mounted in the router.</td>
+        <td><span class="file">App.tsx:29,30</span></td>
+        <td>Dead code. Slightly increases bundle size.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-low">Low</span></td>
+        <td class="area"><span class="area-tag area-frontend">Frontend</span></td>
+        <td><strong>Hardcoded domain in 5+ files</strong><br>
+          <code>https://swiftmart.space</code> is hardcoded in SEO.tsx, Product.tsx, ShopDetail.tsx, Home.tsx instead of a single <code>VITE_BASE_URL</code> env variable.</td>
+        <td><span class="file">SEO.tsx, Product.tsx…</span></td>
+        <td>Breaks if domain changes. Must edit 5+ files manually.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-low">Low</span></td>
+        <td class="area"><span class="area-tag area-backend">Backend</span></td>
+        <td><strong>API bundle is 4 MB (unoptimised esbuild output)</strong><br>
+          Build log shows <code>dist/index.mjs 4.0mb</code>. All dependencies are bundled together with no tree-shaking or code splitting.</td>
+        <td><span class="file">dist/index.mjs</span></td>
+        <td>Slower cold starts. Large memory footprint. Source map is 7.1 MB.</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="tag tag-low">Low</span></td>
+        <td class="area"><span class="area-tag area-frontend">Frontend</span></td>
+        <td><strong>Missing AbortController in Category.tsx fetch</strong><br>
+          Category page fetch has no cleanup/abort on unmount, similar to the Product.tsx race condition but lower traffic.</td>
+        <td><span class="file">Category.tsx:42</span></td>
+        <td>Memory leak and stale state update warning in React strict mode.</td>
+      </tr>
+
+    </tbody>
+  </table>
+</div>
+
+<!-- What's working well -->
+<div class="section">
+  <div class="section-title">✅ What's Working Well (Passing)</div>
+  <div class="pass-grid">
+    <div class="pass-item">
+      <div class="pass-icon">🔐</div>
+      <div class="pass-text">
+        <strong>bcrypt 12 rounds</strong>
+        <span>Passwords hashed with bcryptjs at 12 rounds — strong and properly salted.</span>
+      </div>
+    </div>
+    <div class="pass-item">
+      <div class="pass-icon">💳</div>
+      <div class="pass-text">
+        <strong>Razorpay webhook verified</strong>
+        <span>HMAC-SHA256 signature check on rawBody before processing any payment event.</span>
+      </div>
+    </div>
+    <div class="pass-item">
+      <div class="pass-icon">🚦</div>
+      <div class="pass-text">
+        <strong>Comprehensive rate limiting</strong>
+        <span>Login (10/15m), OTP (5/15m), reset (3/15m), orders (5/min), uploads (20/hr) all capped.</span>
+      </div>
+    </div>
+    <div class="pass-item">
+      <div class="pass-icon">🔒</div>
+      <div class="pass-text">
+        <strong>Sensitive fields stripped from API responses</strong>
+        <span>formatUser() excludes passwordHash, passwordResetTokenHash, otpHash before sending.</span>
+      </div>
+    </div>
+    <div class="pass-item">
+      <div class="pass-icon">📂</div>
+      <div class="pass-text">
+        <strong>File upload validation</strong>
+        <span>Multer enforces 5MB (products) / 10MB (certs), only JPG/PNG/WEBP/PDF accepted.</span>
+      </div>
+    </div>
+    <div class="pass-item">
+      <div class="pass-icon">🛡️</div>
+      <div class="pass-text">
+        <strong>Role guards on all admin/vendor routes</strong>
+        <span>authenticate + requireRole middleware on admin.ts; AdminGuard + RoleGuard on frontend.</span>
+      </div>
+    </div>
+    <div class="pass-item">
+      <div class="pass-icon">⚠️</div>
+      <div class="pass-text">
+        <strong>Global Error Boundary</strong>
+        <span>App.tsx wraps everything in ErrorBoundary — runtime crashes are caught, not blank screens.</span>
+      </div>
+    </div>
+    <div class="pass-item">
+      <div class="pass-icon">🛒</div>
+      <div class="pass-text">
+        <strong>Order creation wrapped in a transaction</strong>
+        <span>orders.ts uses a DB transaction for multi-step order + stock deduction. No partial orders.</span>
+      </div>
+    </div>
+    <div class="pass-item">
+      <div class="pass-icon">🔑</div>
+      <div class="pass-text">
+        <strong>JWT token version for revocation</strong>
+        <span>tokenVersion field on users allows instant invalidation of all refresh tokens on logout.</span>
+      </div>
+    </div>
+    <div class="pass-item">
+      <div class="pass-icon">🚫</div>
+      <div class="pass-text">
+        <strong>No eval() or dangerous JS patterns</strong>
+        <span>Full codebase scan found zero eval(), new Function(), or code-injection patterns.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <span>SwiftMart Audit · July 7, 2026</span>
+  <span>20 total findings &nbsp;·&nbsp; 2 critical &nbsp;·&nbsp; 5 high &nbsp;·&nbsp; 8 medium &nbsp;·&nbsp; 5 low</span>
+</div>
+
+</body>
+</html>

@@ -119,3 +119,9 @@ id = "3an0p5HRP49d4s6C66FZQ"
 uri = "file://PLAYSTORE_LISTING.md"
 type = "text"
 title = "Play Store Listing Text"
+
+[[outputs]]
+id = "nSaTsOOz0SO6xHZ8n_utg"
+uri = "file://audit-report.html"
+type = "unspecified"
+title = "SwiftMart Full App Audit — July 2026"
