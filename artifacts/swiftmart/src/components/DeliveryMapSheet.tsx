@@ -149,45 +149,92 @@ export default function DeliveryMapSheet({ isOpen, onClose, order, onPickedUp, o
   const isCod      = (order.paymentMethod ?? "COD").toUpperCase() === "COD";
   const isUpdating = updating === order._id;
 
+  const watchRef = useRef<number | null>(null);
+  const destPosRef = useRef<[number, number] | null>(null);
+  const lastRouteRiderRef = useRef<[number, number] | null>(null);
+
+  // Refresh route when rider moves >30m from last *successful* route calculation
+  const maybeRefreshRoute = useCallback(async (rider: [number, number], dest: [number, number]) => {
+    const last = lastRouteRiderRef.current;
+    if (last) {
+      const dLat = (rider[0] - last[0]) * 111000;
+      const dLon = (rider[1] - last[1]) * 111000 * Math.cos(rider[0] * Math.PI / 180);
+      const moved = Math.sqrt(dLat * dLat + dLon * dLon);
+      if (moved < 30) return; // less than 30m moved — skip
+    }
+    // Only advance the ref AFTER a successful fetch so transient failures
+    // don't suppress the next attempt
+    const route = await fetchRoute(rider, dest);
+    if (route) {
+      lastRouteRiderRef.current = rider;
+      setRoutePath(route.path);
+      setDistanceKm(route.distanceKm);
+    }
+  }, []);
+
   const loadMap = useCallback(async () => {
     setGeoError(false);
     setDestPos(null);
     setRoutePath(null);
     setDistanceKm(null);
     setGeocoding(true);
+    lastRouteRiderRef.current = null;
 
-    const [gpsResult, destResult] = await Promise.allSettled([
-      new Promise<GeolocationPosition>((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 6000, maximumAge: 30000 })
-      ),
-      geocodeAddress(targetAddress),
-    ]);
-
-    const rider: [number, number] | null =
-      gpsResult.status === "fulfilled"
-        ? [gpsResult.value.coords.latitude, gpsResult.value.coords.longitude]
-        : null;
-    const dest: [number, number] | null =
-      destResult.status === "fulfilled" ? destResult.value : null;
-
-    setRiderPos(rider);
+    const dest = await geocodeAddress(targetAddress);
     setGeocoding(false);
-
     if (!dest) { setGeoError(true); return; }
     setDestPos(dest);
+    destPosRef.current = dest;
 
-    if (rider) {
-      const route = await fetchRoute(rider, dest);
-      if (route) {
-        setRoutePath(route.path);
-        setDistanceKm(route.distanceKm);
-      }
+    if (!navigator.geolocation) return;
+
+    // Stop any existing watch
+    if (watchRef.current !== null) {
+      navigator.geolocation.clearWatch(watchRef.current);
+      watchRef.current = null;
     }
-  }, [order.status, JSON.stringify(targetAddress)]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Continuous GPS watch — updates rider marker in real time
+    watchRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const rider: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+        setRiderPos(rider);
+        if (destPosRef.current) maybeRefreshRoute(rider, destPosRef.current);
+      },
+      () => {
+        // On error, fall back to one-shot
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const rider: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+            setRiderPos(rider);
+            if (destPosRef.current) maybeRefreshRoute(rider, destPosRef.current);
+          },
+          () => { /* no GPS available */ },
+          { timeout: 8000, maximumAge: 30000 },
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
+    );
+  }, [order.status, JSON.stringify(targetAddress), maybeRefreshRoute]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!isOpen) { setShowOtp(false); setOtpDigits(["", "", "", ""]); return; }
+    if (!isOpen) {
+      setShowOtp(false);
+      setOtpDigits(["", "", "", ""]);
+      // Stop GPS watch when sheet closes
+      if (watchRef.current !== null) {
+        navigator.geolocation.clearWatch(watchRef.current);
+        watchRef.current = null;
+      }
+      return;
+    }
     loadMap();
+    return () => {
+      if (watchRef.current !== null) {
+        navigator.geolocation.clearWatch(watchRef.current);
+        watchRef.current = null;
+      }
+    };
   }, [isOpen, loadMap]);
 
   const handleOtpChange = (idx: number, val: string) => {
@@ -301,9 +348,10 @@ export default function DeliveryMapSheet({ isOpen, onClose, order, onPickedUp, o
                   attributionControl={false}
                 >
                   <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                    subdomains="abcd"
-                    attribution='© <a href="https://openstreetmap.org">OSM</a> © <a href="https://carto.com">CARTO</a>'
+                    url={`https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
+                    tileSize={512}
+                    zoomOffset={-1}
+                    attribution='<a href="https://www.maptiler.com/copyright/" target="_blank">© MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap</a>'
                   />
 
                   {riderPos && (

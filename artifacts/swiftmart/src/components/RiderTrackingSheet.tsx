@@ -439,9 +439,10 @@ export default function RiderTrackingSheet({ isOpen, onClose, orderId, shopName,
                   attributionControl={false}
                 >
                   <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                    subdomains="abcd"
-                    attribution='© OpenStreetMap © CARTO'
+                    url={`https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
+                    tileSize={512}
+                    zoomOffset={-1}
+                    attribution='<a href="https://www.maptiler.com/copyright/" target="_blank">© MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap</a>'
                   />
 
                   {/* Route polyline */}
