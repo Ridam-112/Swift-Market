@@ -81,7 +81,7 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
     inFlight.current = true;
     if (showLoading) setIsLoading(true);
     setError(null);
-    api.get<{ success: boolean; products: ApiProduct[] }>(`/products?limit=200`)
+    api.get<{ success: boolean; products: ApiProduct[] }>(`/products?limit=1000`)
       .then(d => {
         setProducts(d.products.map(mapApiProduct));
         lastFetchedAt.current = Date.now();
