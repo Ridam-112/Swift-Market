@@ -22,6 +22,9 @@ description: All secrets and env vars needed to run SwiftMart on Replit; port co
 - Razorpay: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET
 - VAPID: VAPID_PRIVATE_KEY (public key set as env var VAPID_PUBLIC_KEY)
 
+## After an environment reset (re-import, fresh clone, pnpm store wiped)
+Full recovery sequence: `pnpm install` (root) → ensure JWT_SECRET/JWT_REFRESH_SECRET secrets exist (requestSecrets if missing) → `pnpm run push` in `lib/db/` (drizzle-kit push against DATABASE_URL) to (re)create tables, since a fresh Postgres has no schema and the server 500s with "relation does not exist" until pushed.
+
 ## Port conflict behavior (expected, not a bug)
 The "Start application" workflow runs both API server (8080) and frontend (5000).
 The artifact-specific workflows (`artifacts/api-server: API Server`, `artifacts/swiftmart: web`) will always fail with EADDRINUSE — they try to start on the same ports. This is normal.
