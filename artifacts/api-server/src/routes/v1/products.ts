@@ -146,7 +146,7 @@ router.get("/trending-manager", authenticate, A, async (req: AuthRequest, res: R
   const { status } = req.query as Record<string, string>;
 
   const where = status && status !== "all" ? eq(products.status, status) : undefined;
-  const allProducts = await db.select().from(products).where(where).orderBy(desc(products.createdAt)).limit(500);
+  const allProducts = await db.select().from(products).where(where).orderBy(desc(products.createdAt)).limit(2000);
 
   // Sales stats by productId from orders JSONB
   const salesRows = await db.execute(sql`
