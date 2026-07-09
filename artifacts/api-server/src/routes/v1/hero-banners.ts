@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { db, heroBanners } from "@workspace/db";
 import { eq, inArray, asc, sql } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
-import { deleteFromCloudinary } from "../../lib/cloudinary.js";
+import { deleteFromSupabase } from "../../lib/supabase-storage.js";
 import { mi, miArr } from "../../utils/mapId.js";
 
 // Bug #12 fix: simple in-memory rate limiter — 1 view/click per IP per banner per hour
@@ -96,7 +96,7 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
 
   // Delete old Cloudinary image if imageUrl was replaced
   if (oldBanner?.imageUrl && "imageUrl" in body && body["imageUrl"] !== oldBanner.imageUrl) {
-    void deleteFromCloudinary(oldBanner.imageUrl);
+    void deleteFromSupabase(oldBanner.imageUrl);
   }
 
   res.json({ success: true, banner: mi(banner) });
@@ -111,7 +111,7 @@ router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): 
   // Delete from DB first — Cloudinary cleanup is non-blocking so a CDN failure never orphans the DB record
   await db.delete(heroBanners).where(eq(heroBanners.id, req.params["id"] as string));
   if (banner?.imageUrl) {
-    deleteFromCloudinary(banner.imageUrl).catch(() => {});
+    deleteFromSupabase(banner.imageUrl).catch(() => {});
   }
   res.json({ success: true, message: "Banner deleted" });
 });
