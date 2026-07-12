@@ -2,7 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import multer from "multer";
 import path from "path";
 import { authenticate } from "../../middlewares/auth.js";
-import { uploadToCloudinary } from "../../lib/cloudinary.js";
+import { uploadToSupabase } from "../../lib/supabase.js";
 
 
 const router = Router();
@@ -67,7 +67,7 @@ router.post(
     }
 
     try {
-      const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/products");
+      const { url } = await uploadToSupabase(req.file.buffer, "swiftmart/products", req.file.mimetype);
       res.json({ success: true, imageUrl: url });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
@@ -97,7 +97,7 @@ router.post(
     }
 
     try {
-      const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/banners");
+      const { url } = await uploadToSupabase(req.file.buffer, "swiftmart/banners", req.file.mimetype);
       res.json({ success: true, imageUrl: url });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
@@ -127,7 +127,7 @@ router.post(
     }
 
     try {
-      const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/shops");
+      const { url } = await uploadToSupabase(req.file.buffer, "swiftmart/shops", req.file.mimetype);
       res.json({ success: true, imageUrl: url });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
@@ -157,7 +157,7 @@ router.post(
     }
 
     try {
-      const { url } = await uploadToCloudinary(req.file.buffer, "swiftmart/certificates", "auto");
+      const { url } = await uploadToSupabase(req.file.buffer, "swiftmart/certificates", req.file.mimetype);
       res.json({ success: true, fileUrl: url });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";

@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.2",
     "@types/multer": "^2.1.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
@@ -29,6 +30,7 @@
     "razorpay": "^2.9.6",
     "resend": "^6.16.0",
     "web-push": "^3.6.7",
+    "ws": "^8.21.0",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -39,6 +41,7 @@
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "catalog:",
     "@types/web-push": "^3.6.4",
+    "@types/ws": "^8.18.1",
     "esbuild": "0.28.1",
     "esbuild-plugin-pino": "^2.3.3",
     "pino-pretty": "^13",
