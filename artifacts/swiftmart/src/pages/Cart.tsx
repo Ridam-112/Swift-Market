@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 import { SectionHeader } from "@/components/SectionHeader";
+import { AddonSuggestions } from "@/components/AddonSuggestions";
 import { cartKey } from "@/context/CartContext";
 
 const MINIMUM_ORDER_AMOUNT = 99;
@@ -72,6 +73,7 @@ export default function Cart() {
           {items.map(item => (
             <CartItemRow key={cartKey(item.product.id, item.selectedColor, item.selectedSize)} item={item} />
           ))}
+          <AddonSuggestions />
         </div>
         
         <div className="w-full md:w-80 flex-shrink-0 space-y-6">

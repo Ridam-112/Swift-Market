@@ -13,3 +13,4 @@
 - [Rider Live Tracking](rider-tracking.md) — currentLat/currentLon/locationUpdatedAt on deliveryPartners; rider pushes GPS every 10s when out_for_delivery; customer sees live map via GET /orders/:id/rider-location; pulsing 🛵 DivIcon
 - [API server build - @workspace/db linking](api-server-build.md) — esbuild can't find @workspace/db unless symlinked; start.sh must run ln -sf before build; pnpm install restores missing packages (helmet, razorpay, web-push, google-auth-library)
 - [Supabase Storage migration](supabase-storage.md) — use @supabase/storage-js not @supabase/supabase-js (Node 20 compat); migration script at artifacts/api-server/scripts/migrate-cloudinary-to-supabase.mjs
+- [Packaging fee & bucket packages](packaging-fee-buckets.md) — flat packaging fee is platform revenue not vendor income; buckets table serves both homepage highlight + cart addon via flags

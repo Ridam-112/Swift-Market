@@ -20,3 +20,4 @@ export * from "./supportTickets";
 export * from "./fcmTokens";
 export * from "./homepageSections";
 export * from "./servicePincodes";
+export * from "./buckets";

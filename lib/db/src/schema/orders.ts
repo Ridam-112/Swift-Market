@@ -10,6 +10,7 @@ export const orders = pgTable("orders", {
   items: jsonb("items").notNull().default([]),
   subtotal: doublePrecision("subtotal").notNull().default(0),
   deliveryCharge: doublePrecision("delivery_charge").notNull().default(0),
+  packagingFee: doublePrecision("packaging_fee").notNull().default(0),
   couponDiscount: doublePrecision("coupon_discount").notNull().default(0),
   netAmount: doublePrecision("net_amount").notNull().default(0),
   commissionRate: doublePrecision("commission_rate").notNull().default(0),

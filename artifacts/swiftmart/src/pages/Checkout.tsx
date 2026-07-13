@@ -113,9 +113,12 @@ export default function Checkout() {
   const slotFee = deliverySlot === 'instant' ? 25 : deliverySlot === 'standard' ? 20 : 15;
   // Each shop's order carries the full delivery fee — not split
   const totalDeliveryFee = slotFee * uniqueShopIds.length;
+  // Flat ₹6 packaging fee, charged per shop order (mirrors delivery fee behavior)
+  const PACKAGING_FEE_PER_SHOP = 6;
+  const totalPackagingFee = PACKAGING_FEE_PER_SHOP * uniqueShopIds.length;
   const orderTotalForCoupon = subtotal + totalDeliveryFee;
   const couponDiscount = couponApplied?.discount ?? 0;
-  const totalAmount = subtotal + totalDeliveryFee - couponDiscount;
+  const totalAmount = subtotal + totalDeliveryFee + totalPackagingFee - couponDiscount;
 
   const handleApplyCoupon = async () => {
     const code = couponInput.trim().toUpperCase();
@@ -606,6 +609,7 @@ export default function Checkout() {
             deliveryFee={totalDeliveryFee}
             deliveryType={deliverySlot}
             shopCount={uniqueShopIds.length}
+            packagingFee={totalPackagingFee}
             couponDiscount={couponApplied?.discount ?? 0}
             couponCode={couponApplied?.code}
           />

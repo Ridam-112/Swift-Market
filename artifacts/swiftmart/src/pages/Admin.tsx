@@ -14,7 +14,7 @@ import {
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
   ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown, Home, Mail,
   Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin, Truck, Bike,
-  UserCheck,
+  UserCheck, Gift,
   type LucideIcon,
 } from "lucide-react";
 import { categories } from "@/data/categories";
@@ -122,7 +122,7 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'service-areas' | 'delivery-partners' | 'fleet-map';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map';
 
 import { SEO } from "@/components/SEO";
 import FleetMapTab from "@/components/FleetMapTab";
@@ -212,6 +212,7 @@ export default function Admin() {
               {activeSection === 'support' && <SupportTicketsTab />}
               {activeSection === 'delivery-charges' && <DeliveryChargesTab />}
               {activeSection === 'home-sections' && <HomepageSectionsTab />}
+              {activeSection === 'buckets' && <BucketsTab />}
               {activeSection === 'service-areas' && <ServiceAreasTab />}
               {activeSection === 'delivery-partners' && <DeliveryPartnersTab />}
               {activeSection === 'fleet-map' && <FleetMapTab />}
@@ -260,6 +261,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'support', label: 'Support Tickets', icon: HelpCircle },
   { id: 'delivery-charges', label: 'Delivery Charges', icon: Package },
   { id: 'home-sections', label: 'Home Sections', icon: Layers },
+  { id: 'buckets', label: 'Bucket Packages', icon: Gift },
   { id: 'service-areas', label: 'Service Areas', icon: MapPin },
   { id: 'delivery-partners', label: 'Delivery Partners', icon: Truck },
   { id: 'fleet-map', label: 'Fleet Map', icon: MapPin },
@@ -7016,6 +7018,455 @@ function HomepageSectionsTab() {
             <div className="flex gap-3 pt-1">
               <Button onClick={handleSave} disabled={saving === "form"} className="flex-1 rounded-xl">
                 {saving === "form" ? <Loader2 className="w-4 h-4 animate-spin" /> : editingSection ? "Save Changes" : "Create Section"}
+              </Button>
+              <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-xl">Cancel</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// BUCKETS TAB — Admin-curated highlighted bundles (home page + addon upsell)
+// ============================================================================
+
+interface BucketRow {
+  _id: string;
+  id: string;
+  title: string;
+  subtitle: string;
+  badgeText: string;
+  accentColor: string;
+  productIds: string[];
+  showOnHomepage: boolean;
+  showAsAddon: boolean;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+const ACCENT_PRESETS = ["#FF6B35", "#E11D48", "#7C3AED", "#0EA5E9", "#16A34A", "#F59E0B"];
+
+function BucketsTab() {
+  const [rows, setRows] = useState<BucketRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<BucketRow | null>(null);
+
+  const [formTitle, setFormTitle] = useState("");
+  const [formSubtitle, setFormSubtitle] = useState("");
+  const [formBadgeText, setFormBadgeText] = useState("🔥 Hot Pick");
+  const [formAccentColor, setFormAccentColor] = useState(ACCENT_PRESETS[0]!);
+  const [formShowOnHomepage, setFormShowOnHomepage] = useState(true);
+  const [formShowAsAddon, setFormShowAsAddon] = useState(true);
+  const [formProductIds, setFormProductIds] = useState<string[]>([]);
+  const [formProductNames, setFormProductNames] = useState<Record<string, string>>({});
+  const [formProductSearch, setFormProductSearch] = useState("");
+  const [productSearchResults, setProductSearchResults] = useState<ProductSearchResult[]>([]);
+  const [productSearchLoading, setProductSearchLoading] = useState(false);
+  const [pickerShops, setPickerShops] = useState<{ _id: string; shopName: string }[]>([]);
+  const [pickerSelectedShopId, setPickerSelectedShopId] = useState<string>("");
+  const [pickerShopProducts, setPickerShopProducts] = useState<ProductSearchResult[]>([]);
+  const [pickerShopLoading, setPickerShopLoading] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    api.get<{ success: boolean; buckets: BucketRow[] }>('/buckets/admin')
+      .then(d => setRows(d.buckets ?? []))
+      .catch(() => toast.error("Failed to load buckets"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    api.get<{ success: boolean; shops: { _id: string; shopName: string }[] }>('/shops?status=approved&limit=200')
+      .then(d => setPickerShops(d.shops ?? []))
+      .catch(() => {});
+  }, []);
+
+  function resetPickerState() {
+    setPickerSelectedShopId("");
+    setPickerShopProducts([]);
+    setFormProductSearch("");
+    setProductSearchResults([]);
+  }
+
+  function openCreate() {
+    setEditing(null);
+    setFormTitle(""); setFormSubtitle(""); setFormBadgeText("🔥 Hot Pick");
+    setFormAccentColor(ACCENT_PRESETS[0]!);
+    setFormShowOnHomepage(true); setFormShowAsAddon(true);
+    setFormProductIds([]); setFormProductNames({});
+    resetPickerState();
+    setShowForm(true);
+  }
+
+  function openEdit(b: BucketRow) {
+    setEditing(b);
+    setFormTitle(b.title); setFormSubtitle(b.subtitle ?? "");
+    setFormBadgeText(b.badgeText); setFormAccentColor(b.accentColor);
+    setFormShowOnHomepage(b.showOnHomepage); setFormShowAsAddon(b.showAsAddon);
+    const ids = b.productIds ?? [];
+    setFormProductIds(ids);
+    if (ids.length > 0) {
+      api.get<{ success: boolean; products: ProductSearchResult[] }>(`/products?ids=${ids.join(',')}&limit=40`)
+        .then(d => {
+          const names: Record<string, string> = {};
+          for (const p of d.products ?? []) names[p._id] = p.name;
+          setFormProductNames(names);
+        })
+        .catch(() => {});
+    } else {
+      setFormProductNames({});
+    }
+    resetPickerState();
+    setShowForm(true);
+  }
+
+  async function handleSave() {
+    if (!formTitle.trim()) { toast.error("Title is required"); return; }
+    if (formProductIds.length === 0) { toast.error("Select at least one product"); return; }
+    setSaving("form");
+    const payload = {
+      title: formTitle,
+      subtitle: formSubtitle,
+      badgeText: formBadgeText,
+      accentColor: formAccentColor,
+      showOnHomepage: formShowOnHomepage,
+      showAsAddon: formShowAsAddon,
+      productIds: formProductIds,
+    };
+    try {
+      if (editing) {
+        await api.patch(`/buckets/${editing._id}`, payload);
+        toast.success("Bucket updated");
+      } else {
+        const maxOrder = rows.length > 0 ? Math.max(...rows.map(r => r.sortOrder)) + 1 : 0;
+        await api.post('/buckets', { ...payload, sortOrder: maxOrder });
+        toast.success("Bucket created");
+      }
+      setShowForm(false);
+      load();
+    } catch {
+      toast.error("Failed to save bucket");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function handleToggleActive(b: BucketRow) {
+    setSaving(b._id);
+    try {
+      await api.patch(`/buckets/${b._id}`, { isActive: !b.isActive });
+      setRows(prev => prev.map(x => x._id === b._id ? { ...x, isActive: !x.isActive } : x));
+    } catch {
+      toast.error("Failed to toggle bucket");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function handleDelete(b: BucketRow) {
+    if (!confirm(`Delete "${b.title}"? This cannot be undone.`)) return;
+    setSaving(b._id + "-del");
+    try {
+      await api.delete(`/buckets/${b._id}`);
+      toast.success("Bucket deleted");
+      setRows(prev => prev.filter(x => x._id !== b._id));
+    } catch {
+      toast.error("Failed to delete bucket");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function handleMove(b: BucketRow, dir: -1 | 1) {
+    const sorted = [...rows].sort((a, b2) => a.sortOrder - b2.sortOrder);
+    const idx = sorted.findIndex(x => x._id === b._id);
+    const swapIdx = idx + dir;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    const swap = sorted[swapIdx]!;
+    const newOrder = [
+      { id: b.id, sortOrder: swap.sortOrder },
+      { id: swap.id, sortOrder: b.sortOrder },
+    ];
+    try {
+      await api.patch('/buckets/reorder', { order: newOrder });
+      setRows(prev => prev.map(x => {
+        if (x._id === b._id) return { ...x, sortOrder: swap.sortOrder };
+        if (x._id === swap._id) return { ...x, sortOrder: b.sortOrder };
+        return x;
+      }));
+    } catch {
+      toast.error("Failed to reorder");
+    }
+  }
+
+  useEffect(() => {
+    if (!formProductSearch.trim()) { setProductSearchResults([]); return; }
+    const t = setTimeout(() => {
+      setProductSearchLoading(true);
+      api.get<{ success: boolean; products: ProductSearchResult[] }>(`/products?search=${encodeURIComponent(formProductSearch)}&limit=20`)
+        .then(d => setProductSearchResults(d.products ?? []))
+        .catch(() => {})
+        .finally(() => setProductSearchLoading(false));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [formProductSearch]);
+
+  useEffect(() => {
+    if (!pickerSelectedShopId) { setPickerShopProducts([]); return; }
+    setPickerShopLoading(true);
+    api.get<{ success: boolean; products: ProductSearchResult[] }>(`/products?shopId=${pickerSelectedShopId}&status=all&limit=100`)
+      .then(d => setPickerShopProducts(d.products ?? []))
+      .catch(() => {})
+      .finally(() => setPickerShopLoading(false));
+  }, [pickerSelectedShopId]);
+
+  function toggleProduct(p: ProductSearchResult) {
+    if (formProductIds.includes(p._id)) {
+      setFormProductIds(prev => prev.filter(x => x !== p._id));
+    } else {
+      setFormProductIds(prev => [...prev, p._id]);
+      setFormProductNames(prev => ({ ...prev, [p._id]: p.name }));
+    }
+  }
+
+  const sorted = [...rows].sort((a, b) => a.sortOrder - b.sortOrder);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">Bucket Packages</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Highlighted product bundles — shown at the top of the home page and suggested as add-ons in the cart
+          </p>
+        </div>
+        <Button onClick={openCreate} className="rounded-xl gap-2">
+          <Plus className="w-4 h-4" /> Add Bucket
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2].map(i => <div key={i} className="h-20 rounded-2xl bg-muted animate-pulse" />)}
+        </div>
+      ) : sorted.length === 0 ? (
+        <div className="neu-card rounded-2xl p-12 text-center">
+          <Gift className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+          <p className="font-semibold text-muted-foreground">No bucket packages yet</p>
+          <p className="text-xs text-muted-foreground mt-1">Click "Add Bucket" to create your first highlighted bundle</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {sorted.map((b, idx) => (
+            <div key={b._id} className={`neu-card rounded-2xl px-5 py-4 flex items-center gap-4 transition-opacity ${!b.isActive ? "opacity-50" : ""}`}>
+              <div className="flex flex-col gap-0.5 shrink-0">
+                <button onClick={() => handleMove(b, -1)} disabled={idx === 0} className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => handleMove(b, 1)} disabled={idx === sorted.length - 1} className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: `${b.accentColor}22` }}>
+                <Gift className="w-5 h-5" style={{ color: b.accentColor }} />
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-sm truncate">{b.title}</div>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium text-white" style={{ background: b.accentColor }}>{b.badgeText}</span>
+                  <span className="text-xs text-primary font-medium">{(b.productIds ?? []).length} products</span>
+                  {b.showOnHomepage && <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-medium">Home Page</span>}
+                  {b.showAsAddon && <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-medium">Cart Add-on</span>}
+                </div>
+              </div>
+
+              <button
+                onClick={() => handleToggleActive(b)}
+                disabled={saving === b._id}
+                className="shrink-0 transition-colors"
+                title={b.isActive ? "Active" : "Inactive"}
+              >
+                {saving === b._id ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                ) : b.isActive ? (
+                  <ToggleRight className="w-8 h-8 text-primary" />
+                ) : (
+                  <ToggleLeft className="w-8 h-8 text-muted-foreground" />
+                )}
+              </button>
+
+              <div className="flex gap-1 shrink-0">
+                <button onClick={() => openEdit(b)} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button onClick={() => handleDelete(b)} disabled={saving === b._id + "-del"} className="p-2 rounded-lg hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive">
+                  {saving === b._id + "-del" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showForm && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={() => setShowForm(false)}>
+          <div className="bg-card rounded-3xl p-6 w-full max-w-lg space-y-5 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-lg">{editing ? "Edit Bucket" : "New Bucket"}</h3>
+              <button onClick={() => setShowForm(false)} className="p-2 rounded-lg hover:bg-muted text-muted-foreground"><X className="w-4 h-4" /></button>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Bucket Title</label>
+              <Input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="e.g. Late Night Snack Combo" className="rounded-xl" />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Subtitle (optional)</label>
+              <Input value={formSubtitle} onChange={e => setFormSubtitle(e.target.value)} placeholder="e.g. Fresh picks from Sandy's Fast Food" className="rounded-xl" />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Attention Badge</label>
+              <Input value={formBadgeText} onChange={e => setFormBadgeText(e.target.value)} placeholder="🔥 Hot Pick" className="rounded-xl" />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Accent Color</label>
+              <div className="flex gap-2">
+                {ACCENT_PRESETS.map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setFormAccentColor(c)}
+                    className={`w-8 h-8 rounded-full border-2 transition-transform ${formAccentColor === c ? "border-foreground scale-110" : "border-transparent"}`}
+                    style={{ background: c }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                <input type="checkbox" checked={formShowOnHomepage} onChange={e => setFormShowOnHomepage(e.target.checked)} className="w-4 h-4 accent-primary" />
+                Show on Home Page
+              </label>
+              <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                <input type="checkbox" checked={formShowAsAddon} onChange={e => setFormShowAsAddon(e.target.checked)} className="w-4 h-4 accent-primary" />
+                Suggest as Cart Add-on
+              </label>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block">
+                Select Products <span className="text-primary font-bold">({formProductIds.length} selected)</span>
+              </label>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Browse by shop — pick one to see its products:</p>
+                <div className="flex flex-wrap gap-2">
+                  {pickerShops.map(sh => (
+                    <button
+                      key={sh._id}
+                      onClick={() => setPickerSelectedShopId(prev => prev === sh._id ? "" : sh._id)}
+                      className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${
+                        pickerSelectedShopId === sh._id
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-muted text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      {sh.shopName}
+                    </button>
+                  ))}
+                  {pickerShops.length === 0 && <p className="text-xs text-muted-foreground">Loading shops…</p>}
+                </div>
+              </div>
+
+              {pickerSelectedShopId && (
+                <div className="neu-inset rounded-xl overflow-hidden">
+                  {pickerShopLoading ? (
+                    <div className="p-4 text-center text-xs text-muted-foreground">Loading products…</div>
+                  ) : pickerShopProducts.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-muted-foreground">No active products in this shop</div>
+                  ) : (
+                    <div className="max-h-52 overflow-y-auto divide-y divide-border">
+                      {pickerShopProducts.map(p => {
+                        const selected = formProductIds.includes(p._id);
+                        return (
+                          <button
+                            key={p._id}
+                            onClick={() => toggleProduct(p)}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${selected ? "bg-primary/5" : "hover:bg-muted/50"}`}
+                          >
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${selected ? "border-primary bg-primary" : "border-muted-foreground/40"}`}>
+                              {selected && <span className="text-[10px] text-primary-foreground font-bold">✓</span>}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{p.name}</p>
+                              {p.category && <p className="text-[11px] text-muted-foreground capitalize">{p.category}</p>}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5">Or search across all shops:</p>
+                <Input
+                  value={formProductSearch}
+                  onChange={e => setFormProductSearch(e.target.value)}
+                  placeholder="Type product name…"
+                  className="rounded-xl"
+                />
+                {productSearchLoading && <p className="text-xs text-muted-foreground mt-1">Searching…</p>}
+                {productSearchResults.length > 0 && (
+                  <div className="neu-inset rounded-xl divide-y divide-border max-h-40 overflow-y-auto mt-1">
+                    {productSearchResults.map(p => (
+                      <button
+                        key={p._id}
+                        onClick={() => { toggleProduct(p); setFormProductSearch(""); setProductSearchResults([]); }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 transition-colors text-left ${formProductIds.includes(p._id) ? "bg-primary/5" : "hover:bg-muted/50"}`}
+                      >
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${formProductIds.includes(p._id) ? "border-primary bg-primary" : "border-muted-foreground/40"}`}>
+                          {formProductIds.includes(p._id) && <span className="text-[10px] text-primary-foreground font-bold">✓</span>}
+                        </div>
+                        <span className="text-sm font-medium truncate">{p.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {formProductIds.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-1.5">Selected ({formProductIds.length}):</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {formProductIds.map(pid => (
+                      <span key={pid} className="flex items-center gap-1 text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium max-w-[180px]">
+                        <span className="truncate">{formProductNames[pid] ?? pid.slice(0, 8) + "…"}</span>
+                        <button onClick={() => setFormProductIds(prev => prev.filter(x => x !== pid))} className="shrink-0">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <Button onClick={handleSave} disabled={saving === "form"} className="flex-1 rounded-xl">
+                {saving === "form" ? <Loader2 className="w-4 h-4 animate-spin" /> : editing ? "Save Changes" : "Create Bucket"}
               </Button>
               <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-xl">Cancel</Button>
             </div>

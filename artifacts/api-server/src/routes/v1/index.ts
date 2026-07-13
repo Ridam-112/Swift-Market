@@ -22,6 +22,7 @@ import supportRouter from "./support.js";
 import analyticsRouter from "./analytics.js";
 import homepageSectionsRouter from "./homepage-sections.js";
 import servicePincodesRouter from "./servicePincodes.js";
+import bucketsRouter from "./buckets.js";
 
 const router = Router();
 
@@ -48,5 +49,6 @@ router.use("/support", supportRouter);
 router.use("/admin/analytics", analyticsRouter);
 router.use("/homepage-sections", homepageSectionsRouter);
 router.use("/service-pincodes", servicePincodesRouter);
+router.use("/buckets", bucketsRouter);
 
 export default router;

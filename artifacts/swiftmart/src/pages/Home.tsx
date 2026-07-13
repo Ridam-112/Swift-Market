@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { useProducts } from "@/hooks/useProducts";
 import { useShops } from "@/hooks/useShops";
 import { HeroBannerSlider } from "@/components/HeroBannerSlider";
+import { BucketBanner } from "@/components/BucketBanner";
 import { CategoryBubble, type DisplayCategory } from "@/components/CategoryBubble";
 import { ProductCard } from "@/components/ProductCard";
 import { SkeletonGrid } from "@/components/SkeletonGrid";
@@ -227,6 +228,9 @@ export default function Home() {
         jsonLd={HOME_JSON_LD}
       />
       <HeroBannerSlider />
+
+      {/* Admin-curated highlighted bucket bundles */}
+      <BucketBanner />
 
       {/* Shop by Category */}
       <section>

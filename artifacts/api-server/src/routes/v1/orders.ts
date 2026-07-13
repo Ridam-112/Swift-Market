@@ -14,6 +14,9 @@ import { mi, miArr } from "../../utils/mapId.js";
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
+// Flat packaging fee (₹) charged per shop order — server-enforced, never trusted from client.
+const PACKAGING_FEE = 6;
+
 // ─── Zod schema for POST /orders ────────────────────────────────────────────
 const OrderItemSchema = z.object({
   productId:     z.string().uuid("productId must be a UUID"),
@@ -319,9 +322,11 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
 
       const commissionAmount = +totalCommissionAmount.toFixed(2);
       const deliveryCharge = Number(body["deliveryCharge"] ?? 0);
+      const packagingFee = PACKAGING_FEE;
       const couponDiscount = Number(body["couponDiscount"] ?? 0);
-      const netAmount = subtotal + deliveryCharge - couponDiscount;
-      const vendorPayable = +(netAmount - commissionAmount).toFixed(2);
+      const netAmount = subtotal + deliveryCharge + packagingFee - couponDiscount;
+      // Packaging fee is platform revenue, not vendor income — excluded from vendor payable.
+      const vendorPayable = +(netAmount - commissionAmount - packagingFee).toFixed(2);
       const avgRate = enrichedItems.length > 0
         ? +(enrichedItems.reduce((s, it) => s + it.commissionRate, 0) / enrichedItems.length).toFixed(2)
         : 0;
@@ -372,12 +377,13 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
         items: enrichedItems,
         subtotal,
         deliveryCharge,
+        packagingFee,
         couponDiscount,
         netAmount,
         commissionRate: avgRate,
         commissionAmount,
         vendorPayable,
-        platformRevenue: commissionAmount,
+        platformRevenue: +(commissionAmount + packagingFee).toFixed(2),
         deliveryType: (body["deliveryType"] === "scheduled" ? "scheduled" : "instant") as "instant" | "scheduled",
         paymentMethod,
         paymentStatus: "pending",
