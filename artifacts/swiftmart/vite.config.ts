@@ -33,11 +33,6 @@ export default defineConfig({
     "import.meta.env.VITE_NEON_AUTH_URL": JSON.stringify(
       process.env.VITE_NEON_AUTH_URL ?? process.env.NEON_AUTH_BASE_URL ?? "",
     ),
-    // Mappls API key is stored as a plain (non-VITE_-prefixed) secret; bridge it
-    // to the client bundle since the delivery-boy map tile requests need it in-browser.
-    "import.meta.env.VITE_MAPPLS_API_KEY": JSON.stringify(
-      process.env.MAPPLS_API_KEY ?? "",
-    ),
   },
   resolve: {
     alias: {
