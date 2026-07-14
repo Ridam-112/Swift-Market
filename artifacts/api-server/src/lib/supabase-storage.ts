@@ -3,21 +3,36 @@ import path from "path";
 import crypto from "crypto";
 import mime from "mime-types";
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const bucket      = process.env.SUPABASE_STORAGE_BUCKET ?? "swiftmart";
 
-// Storage-only client — no Realtime/WebSocket; works on Node.js 18+
-const storageUrl = `${supabaseUrl}/storage/v1`;
-export const storage = new StorageClient(storageUrl, {
-  apikey:        supabaseKey,
-  Authorization: `Bearer ${supabaseKey}`,
+// Storage-only client — lazily created only when secrets are present
+let _storage: StorageClient | null = null;
+function getStorage(): StorageClient {
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set to use storage");
+  }
+  if (!_storage) {
+    _storage = new StorageClient(`${supabaseUrl}/storage/v1`, {
+      apikey:        supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
+    });
+  }
+  return _storage;
+}
+
+// Keep export for backwards compat — accessing it will throw if unconfigured
+export const storage = new Proxy({} as StorageClient, {
+  get(_target, prop) {
+    return (getStorage() as unknown as Record<string | symbol, unknown>)[prop];
+  },
 });
 
 // Derive the trusted hostname from the configured Supabase project URL.
 // Only URLs originating from THIS project's storage endpoint will be deleted.
 const _trustedHost = (() => {
-  try { return new URL(supabaseUrl).hostname; } catch { return null; }
+  try { return supabaseUrl ? new URL(supabaseUrl).hostname : null; } catch { return null; }
 })();
 
 /**
