@@ -69,6 +69,7 @@ const Admin            = lazy(() => import("@/pages/Admin"));
 const DeliveryDashboard = lazy(() => import("@/pages/DeliveryDashboard"));
 const AllProducts     = lazy(() => import("@/pages/AllProducts"));
 const SectionProducts = lazy(() => import("@/pages/SectionProducts"));
+const GroceryStore    = lazy(() => import("@/pages/GroceryStore"));
 
 const queryClient = new QueryClient();
 
@@ -333,6 +334,9 @@ function Router() {
         </Route>
         <Route path="/category/:slug">
           <PublicLayout><Category /></PublicLayout>
+        </Route>
+        <Route path="/grocery">
+          <PublicLayout><GroceryStore /></PublicLayout>
         </Route>
         <Route path="/product/:id">
           <PublicLayout><Product /></PublicLayout>

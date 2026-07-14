@@ -232,6 +232,46 @@ export default function Home() {
       {/* Admin-curated highlighted bucket bundles */}
       <BucketBanner />
 
+      {/* ── Grocery mini-banner ─────────────────────────────────── */}
+      <Link href="/grocery">
+        <div className="relative rounded-2xl overflow-hidden cursor-pointer group">
+          {/* gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-green-500 to-teal-400" />
+          {/* subtle pattern overlay */}
+          <div
+            className="absolute inset-0 opacity-10"
+            style={{
+              backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px), radial-gradient(circle at 60% 80%, white 1px, transparent 1px)",
+              backgroundSize: "30px 30px",
+            }}
+          />
+          {/* decorative blob */}
+          <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full" />
+          <div className="absolute right-16 -bottom-4 w-20 h-20 bg-white/10 rounded-full" />
+
+          <div className="relative flex items-center justify-between px-4 py-3.5">
+            <div className="flex items-center gap-3">
+              {/* icon cluster */}
+              <div className="flex -space-x-2">
+                {["🥛", "🥦", "🍎", "🛒"].map((em, i) => (
+                  <div key={i} className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-base shadow-sm" style={{ zIndex: 4 - i }}>
+                    {em}
+                  </div>
+                ))}
+              </div>
+              <div>
+                <p className="text-white font-extrabold text-sm leading-tight">Fresh Grocery Store</p>
+                <p className="text-white/80 text-xs mt-0.5">Dairy · Veggies · Snacks · Daily needs</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 bg-white text-emerald-700 font-bold text-xs px-3 py-1.5 rounded-full shadow-md group-hover:scale-105 transition-transform shrink-0">
+              Shop Now
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+            </div>
+          </div>
+        </div>
+      </Link>
+
       {/* Shop by Category */}
       <section>
         <SectionHeader
