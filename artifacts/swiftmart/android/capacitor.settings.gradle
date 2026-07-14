@@ -2,6 +2,5 @@
 include ':capacitor-android'
 project(':capacitor-android').projectDir = new File('../../../node_modules/.pnpm/@capacitor+android@8.4.0_@capacitor+core@8.4.0/node_modules/@capacitor/android/capacitor')
 
-// Native Google Sign-In plugin
-include ':capacitor-google-auth'
-project(':capacitor-google-auth').projectDir = new File('../../../node_modules/.pnpm/@codetrix-studio+capacitor-google-auth@3.4.0-rc.4_@capacitor+core@8.4.0/node_modules/@codetrix-studio/capacitor-google-auth/android')
+include ':codetrix-studio-capacitor-google-auth'
+project(':codetrix-studio-capacitor-google-auth').projectDir = new File('../../../node_modules/.pnpm/@codetrix-studio+capacitor-google-auth@3.4.0-rc.4/node_modules/@codetrix-studio/capacitor-google-auth/android')
