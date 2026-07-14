@@ -10,6 +10,7 @@ export const buckets = pgTable("buckets", {
   badgeText: text("badge_text").notNull().default("🔥 Hot Pick"),
   accentColor: text("accent_color").notNull().default("#FF6B35"),
   productIds: jsonb("product_ids").notNull().default([]),
+  comboPrice: integer("combo_price"),
   showOnHomepage: boolean("show_on_homepage").notNull().default(true),
   showAsAddon: boolean("show_as_addon").notNull().default(true),
   isActive: boolean("is_active").notNull().default(true),

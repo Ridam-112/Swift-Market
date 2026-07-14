@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { ProductCard } from "./ProductCard";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Tag } from "lucide-react";
+import { formatINR } from "@/lib/currency";
 import type { Product } from "@/types";
 
 interface RawBucketProduct {
@@ -37,6 +38,7 @@ interface BucketRow {
   subtitle: string;
   badgeText: string;
   accentColor: string;
+  comboPrice?: number | null;
   products: Product[];
 }
 
@@ -78,8 +80,8 @@ export function BucketBanner() {
             style={{ background: bucket.accentColor, filter: "blur(30px)" }}
           />
 
-          <div className="flex items-center justify-between mb-3 relative z-10">
-            <div>
+          <div className="flex items-start justify-between mb-3 relative z-10 gap-2">
+            <div className="min-w-0">
               <div
                 className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full mb-1.5 animate-pulse"
                 style={{ background: bucket.accentColor, color: "#fff" }}
@@ -92,6 +94,15 @@ export function BucketBanner() {
                 <p className="text-xs text-muted-foreground mt-0.5">{bucket.subtitle}</p>
               )}
             </div>
+            {bucket.comboPrice != null && bucket.comboPrice > 0 && (
+              <div
+                className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full font-extrabold text-sm text-white shadow"
+                style={{ background: bucket.accentColor }}
+              >
+                <Tag className="w-3 h-3" />
+                {formatINR(bucket.comboPrice)}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide snap-x -mx-1 px-1 relative z-10">

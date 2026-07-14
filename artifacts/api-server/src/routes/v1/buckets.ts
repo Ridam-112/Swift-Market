@@ -73,6 +73,7 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
     badgeText: String(body["badgeText"] ?? "🔥 Hot Pick"),
     accentColor: String(body["accentColor"] ?? "#FF6B35"),
     productIds: Array.isArray(body["productIds"]) ? body["productIds"] as string[] : [],
+    comboPrice: body["comboPrice"] != null ? Number(body["comboPrice"]) : null,
     showOnHomepage: body["showOnHomepage"] != null ? Boolean(body["showOnHomepage"]) : true,
     showAsAddon: body["showAsAddon"] != null ? Boolean(body["showAsAddon"]) : true,
     isActive: body["isActive"] != null ? Boolean(body["isActive"]) : true,
@@ -100,6 +101,7 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
   if ("badgeText" in body) updates["badgeText"] = String(body["badgeText"]);
   if ("accentColor" in body) updates["accentColor"] = String(body["accentColor"]);
   if ("productIds" in body) updates["productIds"] = Array.isArray(body["productIds"]) ? body["productIds"] : [];
+  if ("comboPrice" in body) updates["comboPrice"] = body["comboPrice"] != null ? Number(body["comboPrice"]) : null;
   if ("showOnHomepage" in body) updates["showOnHomepage"] = Boolean(body["showOnHomepage"]);
   if ("showAsAddon" in body) updates["showAsAddon"] = Boolean(body["showAsAddon"]);
   if ("isActive" in body) updates["isActive"] = Boolean(body["isActive"]);

@@ -7039,6 +7039,7 @@ interface BucketRow {
   subtitle: string;
   badgeText: string;
   accentColor: string;
+  comboPrice?: number | null;
   productIds: string[];
   showOnHomepage: boolean;
   showAsAddon: boolean;
@@ -7061,6 +7062,7 @@ function BucketsTab() {
   const [formAccentColor, setFormAccentColor] = useState(ACCENT_PRESETS[0]!);
   const [formShowOnHomepage, setFormShowOnHomepage] = useState(true);
   const [formShowAsAddon, setFormShowAsAddon] = useState(true);
+  const [formComboPrice, setFormComboPrice] = useState<string>("");
   const [formProductIds, setFormProductIds] = useState<string[]>([]);
   const [formProductNames, setFormProductNames] = useState<Record<string, string>>({});
   const [formProductSearch, setFormProductSearch] = useState("");
@@ -7099,6 +7101,7 @@ function BucketsTab() {
     setFormTitle(""); setFormSubtitle(""); setFormBadgeText("🔥 Hot Pick");
     setFormAccentColor(ACCENT_PRESETS[0]!);
     setFormShowOnHomepage(true); setFormShowAsAddon(true);
+    setFormComboPrice("");
     setFormProductIds([]); setFormProductNames({});
     resetPickerState();
     setShowForm(true);
@@ -7109,6 +7112,7 @@ function BucketsTab() {
     setFormTitle(b.title); setFormSubtitle(b.subtitle ?? "");
     setFormBadgeText(b.badgeText); setFormAccentColor(b.accentColor);
     setFormShowOnHomepage(b.showOnHomepage); setFormShowAsAddon(b.showAsAddon);
+    setFormComboPrice(b.comboPrice != null ? String(b.comboPrice) : "");
     const ids = b.productIds ?? [];
     setFormProductIds(ids);
     if (ids.length > 0) {
@@ -7130,6 +7134,7 @@ function BucketsTab() {
     if (!formTitle.trim()) { toast.error("Title is required"); return; }
     if (formProductIds.length === 0) { toast.error("Select at least one product"); return; }
     setSaving("form");
+    const comboPriceNum = formComboPrice.trim() !== "" ? parseInt(formComboPrice, 10) : null;
     const payload = {
       title: formTitle,
       subtitle: formSubtitle,
@@ -7137,6 +7142,7 @@ function BucketsTab() {
       accentColor: formAccentColor,
       showOnHomepage: formShowOnHomepage,
       showAsAddon: formShowAsAddon,
+      comboPrice: !isNaN(comboPriceNum as number) ? comboPriceNum : null,
       productIds: formProductIds,
     };
     try {
@@ -7283,6 +7289,7 @@ function BucketsTab() {
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                   <span className="text-xs px-2 py-0.5 rounded-full font-medium text-white" style={{ background: b.accentColor }}>{b.badgeText}</span>
                   <span className="text-xs text-primary font-medium">{(b.productIds ?? []).length} products</span>
+                  {b.comboPrice != null && b.comboPrice > 0 && <span className="text-xs font-bold text-primary">₹{b.comboPrice} combo</span>}
                   {b.showOnHomepage && <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-medium">Home Page</span>}
                   {b.showAsAddon && <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-medium">Cart Add-on</span>}
                 </div>
@@ -7332,6 +7339,23 @@ function BucketsTab() {
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Subtitle (optional)</label>
               <Input value={formSubtitle} onChange={e => setFormSubtitle(e.target.value)} placeholder="e.g. Fresh picks from Sandy's Fast Food" className="rounded-xl" />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                Combo Price <span className="normal-case font-normal text-muted-foreground/70">(optional — e.g. 399 for a ₹399 bundle deal)</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold text-sm">₹</span>
+                <Input
+                  type="number"
+                  min="0"
+                  value={formComboPrice}
+                  onChange={e => setFormComboPrice(e.target.value)}
+                  placeholder="Leave blank to hide price badge"
+                  className="rounded-xl pl-7"
+                />
+              </div>
             </div>
 
             <div>
