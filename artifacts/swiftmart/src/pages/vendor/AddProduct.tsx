@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Upload, X, Loader2, ChevronDown, Plus, Palette, Ruler } from "lucide-react";
 import { api } from "@/lib/api";
 import { compressIfNeeded } from "@/lib/imageCompression";
+import { GROCERY_SUBCAT_OPTIONS } from "@/data/grocerySubcats";
 
 interface ApiCategory {
   _id: string;
@@ -361,15 +362,24 @@ export default function AddProduct() {
             )}
           </div>
 
-          {selectedCat && (selectedCat.subcategories?.length ?? 0) > 0 && (
+          {/* Subcategory — always shown for grocery, shown for others if API provides options */}
+          {(category === "grocery" || category === "groceries" || (selectedCat && (selectedCat.subcategories?.length ?? 0) > 0)) && (
             <div className="space-y-2">
-              <Label htmlFor="subcategory">Subcategory <span className="text-xs text-muted-foreground font-normal">(optional)</span></Label>
+              <Label htmlFor="subcategory">
+                Grocery Subcategory
+                {category !== "grocery" && category !== "groceries" && (
+                  <span className="text-xs text-muted-foreground font-normal ml-1">(optional)</span>
+                )}
+              </Label>
               <div className="relative">
                 <select id="subcategory" value={subcategory} onChange={e => setSubcategory(e.target.value)}
                   className="w-full h-10 px-3 py-2 pr-9 rounded-md bg-background neu-inset border-none text-sm focus:outline-none appearance-none text-foreground">
-                  <option value="">None / General</option>
-                  {selectedCat.subcategories!.map(sub => (
-                    <option key={sub} value={sub}>{sub}</option>
+                  <option value="">Select subcategory…</option>
+                  {(category === "grocery" || category === "groceries"
+                    ? GROCERY_SUBCAT_OPTIONS
+                    : (selectedCat?.subcategories ?? []).map(s => ({ value: s, label: s }))
+                  ).map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />

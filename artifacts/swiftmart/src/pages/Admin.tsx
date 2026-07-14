@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { categories } from "@/data/categories";
+import { GROCERY_SUBCAT_OPTIONS as GROCERY_SUBCAT_OPTIONS_ADMIN } from "@/data/grocerySubcats";
 import { VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog, Vendor } from "@/types";
 import { useShops } from "@/hooks/useShops";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -3604,6 +3605,7 @@ type ProductForm = {
   price: string;
   discountedPrice: string;
   category: string;
+  subcategory: string;
   stock: string;
   unit: string;
   status: 'active' | 'inactive';
@@ -3612,7 +3614,7 @@ type ProductForm = {
 
 const emptyProductForm = (): ProductForm => ({
   name: '', description: '', price: '', discountedPrice: '',
-  category: 'groceries', stock: '0', unit: 'piece', status: 'active', images: [],
+  category: 'groceries', subcategory: '', stock: '0', unit: 'piece', status: 'active', images: [],
 });
 
 function ShopsManagementTab() {
@@ -4270,6 +4272,7 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
       price: String(p.price),
       discountedPrice: p.discountedPrice != null ? String(p.discountedPrice) : '',
       category: p.category,
+      subcategory: (p as ApiProductFull & { subcategory?: string }).subcategory ?? '',
       stock: String(p.stock),
       unit: p.unit ?? 'piece',
       status: p.status === 'inactive' ? 'inactive' : 'active',
@@ -4316,6 +4319,7 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
       price: Number(form.price),
       discountedPrice: form.discountedPrice ? Number(form.discountedPrice) : undefined,
       category: form.category,
+      subcategory: form.subcategory || undefined,
       stock: Number(form.stock) || 0,
       unit: form.unit.trim() || 'piece',
       status: form.status,
@@ -4446,10 +4450,19 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
               </div>
               <div>
                 <label className="text-sm font-medium block mb-1">Category <span className="text-destructive">*</span></label>
-                <select value={form.category} onChange={e => setF('category', e.target.value)} className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer">
+                <select value={form.category} onChange={e => { setF('category', e.target.value); setF('subcategory', ''); }} className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer">
                   {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
                 </select>
               </div>
+              {(form.category === 'grocery' || form.category === 'groceries') && (
+                <div>
+                  <label className="text-sm font-medium block mb-1">Grocery Subcategory</label>
+                  <select value={form.subcategory} onChange={e => setF('subcategory', e.target.value)} className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer">
+                    <option value="">Select subcategory…</option>
+                    {GROCERY_SUBCAT_OPTIONS_ADMIN.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium block mb-1">Price (₹) <span className="text-destructive">*</span></label>
                 <Input type="number" min={0} value={form.price} onChange={e => setF('price', e.target.value)} placeholder="0" className="bg-background neu-inset border-none" />
