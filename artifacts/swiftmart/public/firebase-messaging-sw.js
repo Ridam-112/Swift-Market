@@ -50,10 +50,11 @@ function initFirebase(config) {
       self.registration.showNotification(title, {
         body,
         icon:               "/icon-192.png",
-        badge:              "/logo.png",
+        badge:              "/icon-192.png",
         tag:                payload.data?.type ?? "swiftmart",
         requireInteraction: false,
         data:               { ...(payload.data ?? {}), url: fullUrl },
+        vibrate:            [200, 100, 200],
       });
 
       // Also post PUSH_RECEIVED to any open app windows so foreground toast fires
