@@ -144,7 +144,9 @@ const GROCERY_SUBCATS: GrocerySubcat[] = [
     name: "Snacks & Namkeen",
     emoji: "🍿",
     color: "hsl(45,90%,48%)",
-    keywords: ["chips", "kurkure", "namkeen", "bhujia", "mixture", "popcorn", "wafer", "lays", "pringles", "doritos", "chanachur", "puffed rice", "muri ", "chivda", "murukku", "chakli", "mathri", "khakhra"],
+    // "kurkure" removed — Kurkure is also a food brand used in restaurant dishes (e.g. Kurkure Momo)
+    // "chips" scoped to specific brand keywords to avoid restaurant chip sides
+    keywords: ["namkeen", "bhujia", "mixture", "popcorn", "lays chips", "pringles", "doritos", "chanachur", "puffed rice", "muri", "chivda", "murukku", "chakli", "mathri", "khakhra", "fryums", "ratlami", "haldiram", "bikaji"],
   },
   {
     id: "dairy",
@@ -179,18 +181,32 @@ const GROCERY_SUBCATS: GrocerySubcat[] = [
     name: "Frozen & Packaged",
     emoji: "🧊",
     color: "hsl(195,70%,50%)",
-    keywords: ["frozen", "packaged", "ready to cook", "ready to eat", "instant", "can", "tinned", "canned", "pickle", "achar", "jam", "jelly", "sauce", "ketchup", "mayonnaise", "vinegar"],
+    // "packaged" removed — too generic, matched packaged biscuits/chips
+    // "instant" removed — overlaps with instant noodles (handled by noodles subcat)
+    keywords: ["frozen", "ready to cook", "tinned", "canned", "pickle", "achar", "jam", "jelly", "sauce", "ketchup", "mayonnaise", "vinegar", "peanut butter", "cheese spread", "condensed milk"],
   },
 ];
 
+// ─── Non-grocery product categories — exclude these from the grocery store ───
+// Prevents restaurant dishes, clothing, electronics etc. leaking in
+const NON_GROCERY_CATS = new Set([
+  "restaurant", "fast-food", "cloud-kitchen",
+  "meat-fish", "meat-shop", "fish-shop",
+  "clothing", "fashion", "electronics", "mobile-phone",
+  "toys", "gaming", "hardware", "handmade", "gifts",
+]);
+
 // ─── Keyword matcher ─────────────────────────────────────────────────────────
-function matchSubcat(product: { name: string; subcategory?: string }, subcat: GrocerySubcat): boolean {
-  const haystack = `${product.name} ${product.subcategory ?? ""}`.toLowerCase();
+// Match ONLY against product name — not subcategory — to avoid false positives
+// from vendor-set subcategory strings.
+function matchSubcat(product: { name: string; category?: string }, subcat: GrocerySubcat): boolean {
+  const haystack = product.name.toLowerCase();
   return subcat.keywords.some(kw => haystack.includes(kw.toLowerCase()));
 }
 
 // Assign a product to the first matching subcategory
-function getProductSubcatId(product: { name: string; subcategory?: string }): string | null {
+function getProductSubcatId(product: { name: string; category?: string }): string | null {
+  if (NON_GROCERY_CATS.has(product.category ?? "")) return null;
   const match = GROCERY_SUBCATS.find(sc => matchSubcat(product, sc));
   return match?.id ?? null;
 }
@@ -216,7 +232,8 @@ export default function GroceryStore() {
 
   // Filtered products for the right panel
   const filteredProducts = useMemo(() => {
-    let list = products;
+    // Always strip non-grocery categories (restaurants, clothing, electronics, etc.)
+    let list = products.filter(p => !NON_GROCERY_CATS.has(p.category ?? ""));
     if (selectedId !== "all") {
       const subcat = GROCERY_SUBCATS.find(sc => sc.id === selectedId);
       list = subcat ? list.filter(p => matchSubcat(p, subcat)) : [];
