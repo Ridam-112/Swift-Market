@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { mappls } from "mappls-web-maps";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,24 +15,49 @@ type AddressObj = { line1?: string; line2?: string; city?: string; pincode?: str
 
 const geoCache = new Map<string, [number, number]>();
 
-const makePinIcon = (color: string, emoji: string) =>
-  new L.DivIcon({
-    html: `<div style="width:42px;height:42px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.3);border:3px solid white"><span style="transform:rotate(45deg);font-size:17px;line-height:1">${emoji}</span></div>`,
-    className: "",
-    iconSize: [42, 42],
-    iconAnchor: [21, 42],
-    popupAnchor: [0, -48],
+const MAPPLS_KEY = import.meta.env.VITE_MAPPLS_API_KEY as string | undefined;
+const mapplsObj = new mappls();
+let mapplsSdkLoaded = false;
+let mapplsSdkLoading: Promise<void> | null = null;
+
+function loadMapplsSdk(): Promise<void> {
+  if (mapplsSdkLoaded) return Promise.resolve();
+  if (mapplsSdkLoading) return mapplsSdkLoading;
+  mapplsSdkLoading = new Promise((resolve, reject) => {
+    if (!MAPPLS_KEY) { reject(new Error("Mappls API key missing")); return; }
+    const timeout = setTimeout(() => {
+      console.warn("[Mappls] map SDK failed to initialize (check API key / domain whitelisting)");
+      reject(new Error("Mappls SDK init timeout"));
+    }, 10000);
+    mapplsObj.initialize(MAPPLS_KEY, { map: true, layer: "raster", version: "3.0" }, () => {
+      clearTimeout(timeout);
+      mapplsSdkLoaded = true;
+      resolve();
+    });
   });
+  return mapplsSdkLoading;
+}
 
-const RIDER_ICON = new L.DivIcon({
-  html: `<div style="width:36px;height:36px;background:#7c3aed;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px rgba(124,58,237,.25);border:3px solid white"><span style="font-size:16px">🛵</span></div>`,
-  className: "",
-  iconSize: [36, 36],
-  iconAnchor: [18, 18],
-});
+// Pin/circle marker icons rendered as inline SVG data URIs (Mappls markers take an icon URL, not raw HTML)
+const makePinIconUrl = (color: string, emoji: string) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="42" height="48" viewBox="0 0 42 48">
+    <path d="M21 47C21 47 40 29.6 40 20A19 19 0 1 0 2 20C2 29.6 21 47 21 47Z" fill="${color}" stroke="white" stroke-width="3"/>
+    <text x="21" y="24" font-size="17" text-anchor="middle" dominant-baseline="middle">${emoji}</text>
+  </svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
 
-const SHOP_ICON    = makePinIcon("#2563eb", "🏪");
-const CUSTOMER_ICON = makePinIcon("#16a34a", "🏠");
+const makeCircleIconUrl = (color: string, emoji: string) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+    <circle cx="18" cy="18" r="15" fill="${color}" stroke="white" stroke-width="3"/>
+    <text x="18" y="19" font-size="15" text-anchor="middle" dominant-baseline="middle">${emoji}</text>
+  </svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
+
+const RIDER_ICON_URL    = makeCircleIconUrl("#7c3aed", "\u{1F6F5}");
+const SHOP_ICON_URL     = makePinIconUrl("#2563eb", "\u{1F3EA}");
+const CUSTOMER_ICON_URL = makePinIconUrl("#16a34a", "\u{1F3E0}");
 
 async function geocodeAddress(addr: AddressObj): Promise<[number, number] | null> {
   const parts = [addr.line1, addr.city, addr.pincode].filter(Boolean);
@@ -83,21 +106,6 @@ async function fetchRoute(from: [number, number], to: [number, number]): Promise
       return { path: coords, distanceKm };
     }
   } catch { /* ignore */ }
-  return null;
-}
-
-function FitBounds({ positions }: { positions: [number, number][] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (positions.length === 0) return;
-    if (positions.length === 1) {
-      map.flyTo(positions[0], 15, { animate: true, duration: 0.9 });
-    } else {
-      const bounds = L.latLngBounds(positions);
-      map.flyToBounds(bounds, { padding: [48, 48], animate: true, duration: 0.9 });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positions.map(p => p.join(",")).join("|")]);
   return null;
 }
 
@@ -153,6 +161,100 @@ export default function DeliveryMapSheet({ isOpen, onClose, order, onPickedUp, o
   const destPosRef = useRef<[number, number] | null>(null);
   const lastRouteRiderRef = useRef<[number, number] | null>(null);
 
+  // ── Mappls map instance (only for this delivery-boy map) ──────────────
+  const [mapDivId] = useState(() => `delivery-map-${Math.random().toString(36).slice(2)}`);
+  const [mapLoadError, setMapLoadError] = useState(false);
+  const mapObjRef        = useRef<any>(null);
+  const destMarkerRef    = useRef<any>(null);
+  const riderMarkerRef   = useRef<any>(null);
+  const polylineRef      = useRef<any>(null);
+
+  // Create the map once we have a destination to center on
+  useEffect(() => {
+    if (!destPos || geocoding || geoError) return;
+    let cancelled = false;
+
+    loadMapplsSdk()
+      .then(() => {
+        if (cancelled) return;
+        const map = mapplsObj.Map({
+          id: mapDivId,
+          properties: {
+            center: destPos,
+            zoom: 14,
+            zoomControl: false,
+            geolocation: false,
+          },
+        });
+        map.on("load", () => {
+          if (cancelled) return;
+          mapObjRef.current = map;
+          destMarkerRef.current = mapplsObj.Marker({
+            map,
+            position: { lat: destPos[0], lng: destPos[1] },
+            icon: isPickup ? SHOP_ICON_URL : CUSTOMER_ICON_URL,
+            width: 42,
+            height: 48,
+            popupHtml: isPickup ? order.shopName : order.customerName,
+          });
+        });
+      })
+      .catch(() => { if (!cancelled) setMapLoadError(true); });
+
+    return () => {
+      cancelled = true;
+      if (mapObjRef.current) {
+        try { mapObjRef.current.remove(); } catch { /* noop */ }
+      }
+      mapObjRef.current = null;
+      destMarkerRef.current = null;
+      riderMarkerRef.current = null;
+      polylineRef.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [destPos?.join(","), geocoding, geoError, mapDivId]);
+
+  // Add/update the rider marker as GPS position changes
+  useEffect(() => {
+    const map = mapObjRef.current;
+    if (!map || !riderPos) return;
+    if (riderMarkerRef.current) {
+      riderMarkerRef.current.setPosition({ lat: riderPos[0], lng: riderPos[1] });
+    } else {
+      riderMarkerRef.current = mapplsObj.Marker({
+        map,
+        position: { lat: riderPos[0], lng: riderPos[1] },
+        icon: RIDER_ICON_URL,
+        width: 36,
+        height: 36,
+        popupHtml: "You are here",
+      });
+    }
+    if (destPos) {
+      try {
+        map.fitBounds([[riderPos[0], riderPos[1]], [destPos[0], destPos[1]]], { padding: 60 });
+      } catch { /* fitBounds signature may vary by SDK version — non-fatal */ }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [riderPos?.join(",")]);
+
+  // Draw/update the route polyline
+  useEffect(() => {
+    const map = mapObjRef.current;
+    if (!map || !routePath || routePath.length === 0) return;
+    if (polylineRef.current) {
+      try { polylineRef.current.remove(); } catch { /* noop */ }
+    }
+    polylineRef.current = mapplsObj.Polyline({
+      map,
+      paths: routePath.map(([lat, lng]) => ({ lat, lng })),
+      strokeColor: "#2563eb",
+      strokeOpacity: 0.85,
+      strokeWeight: 5,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routePath?.map(p => p.join(",")).join("|")]);
+
   // Refresh route when rider moves >30m from last *successful* route calculation
   const maybeRefreshRoute = useCallback(async (rider: [number, number], dest: [number, number]) => {
     const last = lastRouteRiderRef.current;
@@ -174,6 +276,7 @@ export default function DeliveryMapSheet({ isOpen, onClose, order, onPickedUp, o
 
   const loadMap = useCallback(async () => {
     setGeoError(false);
+    setMapLoadError(false);
     setDestPos(null);
     setRoutePath(null);
     setDistanceKm(null);
@@ -272,10 +375,6 @@ export default function DeliveryMapSheet({ isOpen, onClose, order, onPickedUp, o
     }
   };
 
-  const fitPositions: [number, number][] = [];
-  if (riderPos) fitPositions.push(riderPos);
-  if (destPos)  fitPositions.push(destPos);
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -339,42 +438,22 @@ export default function DeliveryMapSheet({ isOpen, onClose, order, onPickedUp, o
                 </div>
               )}
 
+              {mapLoadError && !geocoding && !geoError && (
+                <div className="absolute inset-0 bg-muted/90 flex flex-col items-center justify-center gap-3 z-10 px-8">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                    <AlertCircle className="w-7 h-7 text-amber-500" />
+                  </div>
+                  <p className="text-sm text-center text-muted-foreground">
+                    Map failed to load.
+                  </p>
+                  <button onClick={loadMap} className="text-xs text-primary font-semibold flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Try again
+                  </button>
+                </div>
+              )}
+
               {!geocoding && !geoError && destPos && (
-                <MapContainer
-                  center={destPos}
-                  zoom={14}
-                  style={{ width: "100%", height: "100%" }}
-                  zoomControl={false}
-                  attributionControl={false}
-                >
-                  <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                    subdomains="abcd"
-                    maxZoom={20}
-                    attribution='© <a href="https://openstreetmap.org">OpenStreetMap</a> © <a href="https://carto.com">CARTO</a>'
-                  />
-
-                  {riderPos && (
-                    <Marker position={riderPos} icon={RIDER_ICON}>
-                      <Popup className="text-xs font-semibold">You are here</Popup>
-                    </Marker>
-                  )}
-
-                  <Marker position={destPos} icon={isPickup ? SHOP_ICON : CUSTOMER_ICON}>
-                    <Popup className="text-xs font-semibold">
-                      {isPickup ? order.shopName : order.customerName}
-                    </Popup>
-                  </Marker>
-
-                  {routePath && routePath.length > 0 && (
-                    <Polyline
-                      positions={routePath}
-                      pathOptions={{ color: "#2563eb", weight: 5, opacity: 0.85, dashArray: undefined }}
-                    />
-                  )}
-
-                  <FitBounds positions={fitPositions} />
-                </MapContainer>
+                <div id={mapDivId} style={{ width: "100%", height: "100%" }} />
               )}
 
               {/* Phase pill */}
