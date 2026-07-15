@@ -14,3 +14,4 @@
 - [API server build - @workspace/db linking](api-server-build.md) — esbuild can't find @workspace/db unless symlinked; start.sh must run ln -sf before build; pnpm install restores missing packages (helmet, razorpay, web-push, google-auth-library)
 - [Supabase Storage migration](supabase-storage.md) — use @supabase/storage-js not @supabase/supabase-js (Node 20 compat); migration script at artifacts/api-server/scripts/migrate-cloudinary-to-supabase.mjs
 - [Packaging fee & bucket packages](packaging-fee-buckets.md) — flat packaging fee is platform revenue not vendor income; buckets table serves both homepage highlight + cart addon via flags
+- [Mappls allocation required](mappls-allocation-required.md) — 401 "Client Credentials Expired" means no plan allocated to the key in console, not a bad key; abandoned Mappls, kept Leaflet+Carto/OSRM
