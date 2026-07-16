@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useProducts } from "@/hooks/useProducts";
 import { useShops } from "@/hooks/useShops";
 import { HeroBannerSlider } from "@/components/HeroBannerSlider";
@@ -10,7 +10,7 @@ import { SkeletonGrid } from "@/components/SkeletonGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SEO } from "@/components/SEO";
 import { api } from "@/lib/api";
-import { Star, ChevronRight, Zap, MapPin } from "lucide-react";
+import { Star, ChevronRight, Zap, MapPin, Search } from "lucide-react";
 import type { Product } from "@/types";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -183,6 +183,8 @@ export default function Home() {
   const { user } = useAuth();
   const { shops, isLoading: shopsLoading } = useShops();
   const loading = shopsLoading;
+  const [, setLocation] = useLocation();
+  const [searchQuery, setSearchQuery] = useState("");
   const [apiCategories, setApiCategories] = useState<DisplayCategory[]>([]);
   const [dynamicSections, setDynamicSections] = useState<HomepageSection[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(true);
@@ -227,6 +229,33 @@ export default function Home() {
         keywords="SwiftMart, SwiftMart Balurghat, Balurghat Grocery, Balurghat Online Shopping, Quick Commerce Balurghat, Food Delivery Balurghat, Medicine Delivery Balurghat, Vegetable Delivery Balurghat, Local Marketplace Balurghat"
         jsonLd={HOME_JSON_LD}
       />
+      {/* ── Mobile Search Bar (hidden on md+, desktop uses header search) ── */}
+      <div className="md:hidden">
+        <div className="relative flex items-center">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter" && searchQuery.trim()) {
+                setLocation(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+              }
+            }}
+            placeholder="Search groceries, vegetables, medicine…"
+            className="w-full pl-11 pr-4 h-12 rounded-2xl bg-card border border-border/50 shadow-sm text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all"
+          />
+          {searchQuery.trim() && (
+            <button
+              onClick={() => setLocation(`/search?q=${encodeURIComponent(searchQuery.trim())}`)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary text-primary-foreground text-xs font-bold px-3 py-1.5 rounded-xl"
+            >
+              Go
+            </button>
+          )}
+        </div>
+      </div>
+
       <HeroBannerSlider />
 
       {/* Admin-curated highlighted bucket bundles */}
