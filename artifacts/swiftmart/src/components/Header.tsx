@@ -224,9 +224,6 @@ export function Header() {
             {/* Mobile search + cart icons */}
             {role === 'customer' && (
               <>
-                <Link href="/search" className="md:hidden p-2 rounded-full neu-card">
-                  <Search className="w-4 h-4 text-foreground" />
-                </Link>
                 <Link href="/cart" className="relative p-2 rounded-full neu-card">
                   <ShoppingBag className="w-4 h-4 text-foreground" />
                   {totalItems > 0 && (
