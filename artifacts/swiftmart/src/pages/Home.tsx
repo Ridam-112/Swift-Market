@@ -7,6 +7,8 @@ import { BucketBanner } from "@/components/BucketBanner";
 import { CategoryBubble, type DisplayCategory } from "@/components/CategoryBubble";
 import { ProductCard } from "@/components/ProductCard";
 import { SkeletonGrid } from "@/components/SkeletonGrid";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonShopCardHorizontal } from "@/components/SkeletonShopCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SEO } from "@/components/SEO";
 import { SearchOverlay } from "@/components/SearchOverlay";
@@ -302,7 +304,10 @@ export default function Home() {
           <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8">
             {[1,2,3,4,5,6,7,8].map(i => (
               <div key={i} className="flex justify-center">
-                <div className="w-16 h-16 rounded-2xl bg-muted animate-pulse" />
+                <div className="flex flex-col items-center gap-1.5">
+                  <Skeleton className="w-14 h-14 rounded-2xl" />
+                  <Skeleton className="h-2.5 w-10 rounded" />
+                </div>
               </div>
             ))}
           </div>
@@ -332,15 +337,7 @@ export default function Home() {
         {shopsLoading ? (
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="snap-start shrink-0 w-[calc(75vw)] max-w-[260px] min-w-[200px]">
-                <div className="bg-card rounded-2xl p-3 neu-card flex gap-3 items-center h-full animate-pulse">
-                  <div className="w-14 h-14 rounded-xl bg-muted flex-shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3 bg-muted rounded w-3/4" />
-                    <div className="h-2 bg-muted rounded w-1/2" />
-                  </div>
-                </div>
-              </div>
+              <SkeletonShopCardHorizontal key={i} />
             ))}
           </div>
         ) : popularShops.length === 0 ? (
@@ -379,15 +376,17 @@ export default function Home() {
       {/* Dynamic Admin-Configured Sections */}
       {sectionsLoading ? (
         <section>
-          <div className="h-5 w-48 bg-muted rounded animate-pulse mb-4" />
-          <div className="flex gap-3 -mx-3 px-3">
-            {[1,2,3,4].map(i => (
-              <div key={i} className="shrink-0 w-44">
-                <div className="bg-card rounded-2xl p-2.5 animate-pulse">
-                  <div className="aspect-square rounded-xl bg-muted mb-2" />
-                  <div className="h-2 bg-muted rounded w-3/4 mb-1.5" />
-                  <div className="h-2 bg-muted rounded w-1/2 mb-3" />
-                  <div className="h-7 bg-muted rounded-full w-full" />
+          <Skeleton className="h-5 w-48 mb-4" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
+            {[1,2,3,4,5,6,7,8].map(i => (
+              <div key={i} className="bg-card rounded-2xl p-2.5 flex flex-col gap-2 neu-card">
+                <Skeleton className="aspect-square w-full rounded-xl" />
+                <Skeleton className="h-3.5 w-12 rounded" />
+                <Skeleton className="h-4 w-full rounded" />
+                <Skeleton className="h-4 w-3/4 rounded" />
+                <div className="flex items-center justify-between mt-auto pt-1">
+                  <Skeleton className="h-5 w-14 rounded" />
+                  <Skeleton className="h-8 w-16 rounded-full" />
                 </div>
               </div>
             ))}

@@ -6,6 +6,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useRecentSearches } from "@/hooks/useRecentSearches";
 import { ProductGrid } from "@/components/ProductGrid";
 import { ProductCard } from "@/components/ProductCard";
+import { SkeletonProductGrid } from "@/components/SkeletonProductCard";
 import { Input } from "@/components/ui/input";
 import { categories } from "@/data/categories";
 import { EmptyState } from "@/components/EmptyState";
@@ -19,7 +20,7 @@ export default function SearchPage() {
   const initialQuery = searchParams.get("q") || "";
 
   const { user } = useAuth();
-  const { products } = useProducts();
+  const { products, isLoading } = useProducts();
   const { searches, addSearch, removeSearch, clearAll } = useRecentSearches(user?.id);
 
   const [query, setQuery] = useState(initialQuery);
@@ -220,7 +221,15 @@ export default function SearchPage() {
 
       {/* ── Search Results ── */}
       <div className="max-w-5xl mx-auto">
-        {query && (
+        {/* Loading state */}
+        {isLoading && (
+          <>
+            <div className="h-6 w-40 bg-muted animate-pulse rounded mb-4" />
+            <SkeletonProductGrid count={8} />
+          </>
+        )}
+
+        {!isLoading && query && (
           <h2 className="text-lg font-bold mb-4 text-foreground">
             {filteredProducts.length > 0
               ? `${filteredProducts.length} result${filteredProducts.length === 1 ? "" : "s"} for '${query}'`
@@ -228,11 +237,11 @@ export default function SearchPage() {
           </h2>
         )}
 
-        {!query && !searches.length && !recommendedProducts.length && (
+        {!isLoading && !query && !searches.length && !recommendedProducts.length && (
           <h2 className="text-lg font-bold mb-4 text-foreground">Suggested Products</h2>
         )}
 
-        {query ? (
+        {!isLoading && query ? (
           filteredProducts.length > 0 ? (
             <motion.div
               initial="hidden"
@@ -252,7 +261,7 @@ export default function SearchPage() {
             />
           )
         ) : (
-          !searches.length && !recommendedProducts.length && (
+          !isLoading && !searches.length && !recommendedProducts.length && (
             <motion.div
               initial="hidden"
               animate="show"

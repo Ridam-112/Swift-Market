@@ -1,9 +1,20 @@
 import { Product } from "@/types";
 import { ProductCard } from "./ProductCard";
 import { EmptyState } from "./EmptyState";
+import { SkeletonProductGrid } from "./SkeletonProductCard";
 import { PackageOpen } from "lucide-react";
 
-export function ProductGrid({ products }: { products: Product[] }) {
+interface ProductGridProps {
+  products: Product[];
+  isLoading?: boolean;
+  skeletonCount?: number;
+}
+
+export function ProductGrid({ products, isLoading = false, skeletonCount = 8 }: ProductGridProps) {
+  if (isLoading) {
+    return <SkeletonProductGrid count={skeletonCount} />;
+  }
+
   if (products.length === 0) {
     return (
       <EmptyState 
