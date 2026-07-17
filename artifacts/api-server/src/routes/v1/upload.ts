@@ -7,14 +7,22 @@ import { uploadToSupabase } from "../../lib/supabase-storage.js";
 
 const router = Router();
 
+// Validate both file extension AND MIME type to prevent bypass via renamed files
+const ALLOWED_IMAGE_EXTS  = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+const ALLOWED_IMAGE_MIME  = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_CERT_EXTS   = new Set([".jpg", ".jpeg", ".png", ".webp", ".pdf"]);
+const ALLOWED_CERT_MIME   = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
+
 const imageUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = [".jpg", ".jpeg", ".png", ".webp"];
     const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) cb(null, true);
-    else cb(new Error("Only JPG, PNG, or WEBP images are allowed"));
+    if (ALLOWED_IMAGE_EXTS.has(ext) && ALLOWED_IMAGE_MIME.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPG, PNG, or WEBP images are allowed"));
+    }
   },
 });
 
@@ -22,10 +30,12 @@ const certificateUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
     const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) cb(null, true);
-    else cb(new Error("Only JPG, PNG, WEBP, or PDF files are allowed"));
+    if (ALLOWED_CERT_EXTS.has(ext) && ALLOWED_CERT_MIME.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPG, PNG, WEBP, or PDF files are allowed"));
+    }
   },
 });
 

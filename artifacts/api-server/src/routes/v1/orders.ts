@@ -175,10 +175,33 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<v
 router.get("/:id", authenticate, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
   const [order] = await db.select().from(orders).where(eq(orders.id, req.params["id"] as string)).limit(1);
   if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
-  if (req.user!.role === "customer" && order.customerId !== req.user!.userId) {
-    res.status(403).json({ success: false, message: "Forbidden" });
-    return;
+
+  const role = req.user!.role;
+  const uid  = req.user!.userId;
+
+  // Admins can see everything
+  if (role !== "admin" && role !== "super_admin") {
+    if (role === "customer") {
+      if (order.customerId !== uid) {
+        res.status(403).json({ success: false, message: "Forbidden" }); return;
+      }
+    } else if (role === "vendor") {
+      // Vendor may only view orders that belong to their shop
+      const [shop] = await db.select({ id: shops.id }).from(shops)
+        .where(eq(shops.ownerId, uid)).limit(1);
+      if (!shop || order.shopId !== shop.id) {
+        res.status(403).json({ success: false, message: "Forbidden" }); return;
+      }
+    } else if (role === "delivery_partner") {
+      // Rider may only view their assigned order
+      if (order.deliveryPartnerId !== uid) {
+        res.status(403).json({ success: false, message: "Forbidden" }); return;
+      }
+    } else {
+      res.status(403).json({ success: false, message: "Forbidden" }); return;
+    }
   }
+
   res.json({ success: true, order: mi(order) });
 });
 

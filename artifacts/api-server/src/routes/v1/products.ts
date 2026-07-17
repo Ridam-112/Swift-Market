@@ -371,7 +371,21 @@ router.patch("/:id", authenticate, V, vendorWriteLimiter, async (req: AuthReques
     }
   }
 
-  const updateData: Record<string, unknown> = { ...body };
+  // Allowlist: only permit known product fields to prevent mass-assignment
+  // (e.g. prevents a vendor from overwriting shopId, vendorId, or status directly)
+  const VENDOR_ALLOWED_FIELDS = new Set([
+    "name", "description", "price", "discountedPrice", "unit",
+    "stock", "category", "images", "trending", "colors", "sizes",
+  ]);
+  const ADMIN_EXTRA_FIELDS = new Set(["status", "rejectionReason", "shopId"]);
+
+  const updateData: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(body)) {
+    if (VENDOR_ALLOWED_FIELDS.has(key) || (isAdmin && ADMIN_EXTRA_FIELDS.has(key))) {
+      updateData[key] = val;
+    }
+  }
+
   if (!isAdmin) {
     // Vendor edits must go through re-approval — force status back to pending
     updateData["status"] = "pending";
