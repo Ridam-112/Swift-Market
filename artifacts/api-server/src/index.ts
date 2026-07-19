@@ -1,5 +1,6 @@
 import app from "./app.js";
 import { logger } from "./lib/logger.js";
+import { connectRedis, disconnectRedis } from "./lib/cache.js";
 import { seedSuperAdmins } from "./utils/seedAdmins.js";
 import { seedShopTypes } from "./utils/seedShopTypes.js";
 import { seedCategories } from "./utils/seedCategories.js";
@@ -33,6 +34,7 @@ function validateEnv(): void {
     ["FIREBASE_PROJECT_ID",   "FCM push notifications will not work"],
     ["FIREBASE_CLIENT_EMAIL", "FCM push notifications will not work"],
     ["FIREBASE_PRIVATE_KEY",  "FCM push notifications will not work"],
+    ["REDIS_URL",             "Redis caching disabled — all requests will hit PostgreSQL directly"],
   ];
   if (process.env["GOOGLE_CLIENT_ID"]) {
     logger.info({ googleClientIdLength: process.env["GOOGLE_CLIENT_ID"].length }, "GOOGLE_CLIENT_ID is set — Google Sign-In enabled");
@@ -55,6 +57,7 @@ function validateEnv(): void {
 }
 
 validateEnv();
+connectRedis();
 
 const PORT = Number(process.env["PORT"] ?? 10000);
 
@@ -75,7 +78,8 @@ async function main() {
   // Graceful shutdown — Render sends SIGTERM before replacing the instance
   process.on("SIGTERM", () => {
     logger.info("SIGTERM received — shutting down gracefully");
-    server.close(() => {
+    server.close(async () => {
+      await disconnectRedis();
       logger.info("HTTP server closed");
       process.exit(0);
     });

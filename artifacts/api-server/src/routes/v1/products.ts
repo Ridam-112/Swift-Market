@@ -6,6 +6,7 @@ import { vendorWriteLimiter } from "../../middlewares/rateLimiter.js";
 import { deleteFromImageKit } from "../../lib/imagekit.js";
 import { createNotificationLimited } from "../../utils/notification.js";
 import { mi, miArr } from "../../utils/mapId.js";
+import { cacheGet, cacheSet, invalidateProductCaches, productsCacheKey, TTL } from "../../lib/cache.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -31,6 +32,18 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
   // status=all is restricted to authenticated vendor/admin users — prevent customer bypass of active/stock filters
   const rawStatus = (req.query as Record<string, string>)["status"];
   const status = rawStatus === "all" && !isPrivileged ? "active" : (rawStatus ?? "active");
+
+  // ── Cache check (public queries only — admin/vendor status=all always bypass) ──
+  const query = req.query as Record<string, string>;
+  const useCache = status !== "all";
+  if (useCache) {
+    const cacheKey = productsCacheKey(query);
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+  }
 
   const pg = parseInt(page), lm = parseInt(limit);
   const conditions = [];
@@ -113,7 +126,11 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
   const shopMap = Object.fromEntries(shopRows.map(s => [s.id, s.shopName]));
   const enriched = result.map(p => ({ ...mi(p), shopName: shopMap[p.shopId] ?? "" }));
 
-  res.json({ success: true, products: enriched, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
+  const payload = { success: true, products: enriched, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) };
+  if (useCache) {
+    void cacheSet(productsCacheKey(query), payload, TTL.PRODUCTS);
+  }
+  res.json(payload);
 });
 
 // GET /api/products/admin-review — admin: list products for approval with shop name
@@ -246,6 +263,7 @@ router.post("/", authenticate, vendorWriteLimiter, async (req: AuthRequest, res:
       sizes: Array.isArray(body["sizes"]) ? body["sizes"] : undefined,
       colorImages: (body["colorImages"] && typeof body["colorImages"] === "object" && !Array.isArray(body["colorImages"])) ? body["colorImages"] : undefined,
     }).returning();
+    void invalidateProductCaches();
     res.status(201).json({ success: true, product: mi(product!) });
     return;
   }
@@ -301,6 +319,7 @@ router.post("/", authenticate, vendorWriteLimiter, async (req: AuthRequest, res:
     // Non-fatal — product was created; notification failure should not block response
   }
 
+  void invalidateProductCaches();
   res.status(201).json({ success: true, product: mi(product!) });
 });
 
@@ -323,6 +342,8 @@ router.patch("/:id/approval", authenticate, A, async (req: AuthRequest, res: Res
 
   const [product] = await db.update(products).set(updatePayload).where(eq(products.id, req.params["id"] as string)).returning();
   if (!product) { res.status(404).json({ success: false, message: "Product not found" }); return; }
+
+  void invalidateProductCaches();
 
   // Notify the vendor who owns this product
   try {
@@ -413,6 +434,8 @@ router.patch("/:id", authenticate, V, vendorWriteLimiter, async (req: AuthReques
     .returning();
   if (!product) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
+  void invalidateProductCaches();
+
   // M2: delete Cloudinary images that were removed from the images array
   if ("images" in updateData) {
     const oldImages = (existing.images as string[]) ?? [];
@@ -433,6 +456,7 @@ router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): 
     await Promise.all((product.images as string[]).map(url => deleteFromImageKit(url)));
   }
   await db.delete(products).where(eq(products.id, req.params["id"] as string));
+  void invalidateProductCaches();
   res.json({ success: true, message: "Deleted" });
 });
 

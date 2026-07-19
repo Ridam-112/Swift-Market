@@ -3,6 +3,7 @@ import { db, homepageSections, products, shops } from "@workspace/db";
 import { eq, inArray, asc, and, gt, desc, sql } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { mi, miArr } from "../../utils/mapId.js";
+import { cacheGet, cacheSet, cacheDel, KEYS, TTL } from "../../lib/cache.js";
 
 async function enrichWithShopNames(rows: Record<string, unknown>[]) {
   const shopIds = [...new Set(rows.map(p => p["shopId"] as string).filter(Boolean))];
@@ -82,6 +83,13 @@ async function resolveProducts(
 
 // GET /api/homepage-sections — public, enabled sections with first 8 products each
 router.get("/", async (_req: Request, res: Response): Promise<void> => {
+  // ── Cache check ──────────────────────────────────────────────────────────
+  const cached = await cacheGet(KEYS.HOMEPAGE);
+  if (cached) {
+    res.json(cached);
+    return;
+  }
+
   const sections = await db.select().from(homepageSections)
     .where(eq(homepageSections.enabled, true))
     .orderBy(asc(homepageSections.sortOrder));
@@ -92,7 +100,9 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
     return { ...mi(s), products: rows, total, hasMore: total > 8 };
   }));
 
-  res.json({ success: true, sections: resolved });
+  const payload = { success: true, sections: resolved };
+  void cacheSet(KEYS.HOMEPAGE, payload, TTL.HOMEPAGE);
+  res.json(payload);
 });
 
 // GET /api/homepage-sections/:id/products — public, paginated products for one section
@@ -129,6 +139,7 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
     sortOrder: body["sortOrder"] != null ? Number(body["sortOrder"]) : 0,
     config: (body["config"] as object) ?? {},
   }).returning();
+  void cacheDel(KEYS.HOMEPAGE);
   res.status(201).json({ success: true, section: mi(section!) });
 });
 
@@ -139,6 +150,7 @@ router.patch("/reorder", authenticate, A, async (req: AuthRequest, res: Response
   await Promise.all(order.map(({ id, sortOrder }) =>
     db.update(homepageSections).set({ sortOrder }).where(eq(homepageSections.id, id))
   ));
+  void cacheDel(KEYS.HOMEPAGE);
   res.json({ success: true });
 });
 
@@ -158,12 +170,14 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
     .where(eq(homepageSections.id, req.params["id"] as string))
     .returning();
   if (!section) { res.status(404).json({ success: false, message: "Section not found" }); return; }
+  void cacheDel(KEYS.HOMEPAGE);
   res.json({ success: true, section: mi(section) });
 });
 
 // DELETE /api/homepage-sections/:id — admin, delete section
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   await db.delete(homepageSections).where(eq(homepageSections.id, req.params["id"] as string));
+  void cacheDel(KEYS.HOMEPAGE);
   res.json({ success: true, message: "Section deleted" });
 });
 

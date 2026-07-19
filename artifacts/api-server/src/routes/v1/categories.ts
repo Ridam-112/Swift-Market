@@ -3,13 +3,24 @@ import { db, categories } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { mi, miArr } from "../../utils/mapId.js";
+import { cacheGet, cacheSet, invalidateCategoryCache, KEYS, TTL } from "../../lib/cache.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
 router.get("/", async (_req: Request, res: Response): Promise<void> => {
+  // ── Cache check ──────────────────────────────────────────────────────────
+  const cached = await cacheGet(KEYS.CATEGORIES);
+  if (cached) {
+    res.json(cached);
+    return;
+  }
+
   const cats = await db.select().from(categories).where(eq(categories.isActive, true)).orderBy(asc(categories.name));
-  res.json({ success: true, categories: miArr(cats) });
+  const payload = { success: true, categories: miArr(cats) };
+
+  void cacheSet(KEYS.CATEGORIES, payload, TTL.CATEGORIES);
+  res.json(payload);
 });
 
 router.get("/all", authenticate, A, async (_req: Request, res: Response): Promise<void> => {
@@ -23,6 +34,7 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
   };
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   const [cat] = await db.insert(categories).values({ name, slug, shopTypes: shopTypesList ?? [], commissionRate, emoji, color, subcategories: subcategories ?? [] }).returning();
+  void invalidateCategoryCache();
   res.status(201).json({ success: true, category: mi(cat) });
 });
 
@@ -38,11 +50,13 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
   if (body["isActive"] !== undefined) update["isActive"] = Boolean(body["isActive"]);
   const [cat] = await db.update(categories).set(update).where(eq(categories.id, req.params["id"] as string)).returning();
   if (!cat) { res.status(404).json({ success: false, message: "Not found" }); return; }
+  void invalidateCategoryCache();
   res.json({ success: true, category: mi(cat) });
 });
 
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   await db.delete(categories).where(eq(categories.id, req.params["id"] as string));
+  void invalidateCategoryCache();
   res.json({ success: true, message: "Deleted" });
 });
 
