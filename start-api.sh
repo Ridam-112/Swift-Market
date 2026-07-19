@@ -1,9 +1,9 @@
 #!/bin/bash
-
-# Kill any stale processes holding our ports
+# Kill anything already holding port 8080
 fuser -k 8080/tcp 2>/dev/null || true
-fuser -k 5000/tcp 2>/dev/null || true
 sleep 1
+
+cd /home/runner/workspace
 
 # Ensure esbuild is linked for the api-server (pnpm may not link devDeps in the workspace)
 ESBUILD_STORE=$(ls -d /home/runner/workspace/node_modules/.pnpm/esbuild@*/node_modules/esbuild 2>/dev/null | head -1)
@@ -28,15 +28,4 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Starting API server on port 8080..."
-PORT=8080 node --enable-source-maps artifacts/api-server/dist/index.mjs &
-API_PID=$!
-
-# Give API server a moment to bind
-sleep 2
-
-echo "Starting frontend on port 5000..."
-cd artifacts/swiftmart
-PORT=5000 node_modules/.bin/vite --config vite.config.ts --host 0.0.0.0 &
-FRONTEND_PID=$!
-
-wait $API_PID $FRONTEND_PID
+exec PORT=8080 node --enable-source-maps artifacts/api-server/dist/index.mjs
