@@ -60,14 +60,7 @@ const ik = new ImageKit({ publicKey: IK_PUBLIC, privateKey: IK_PRIVATE, urlEndpo
 const pgClient = new PgClient({ connectionString: DATABASE_URL });
 await pgClient.connect();
 
-// Simple sql tag helper that wraps pg query
-async function sql(strings, ...values) {
-  // Reconstruct query with $1, $2, ... placeholders
-  let query = "";
-  strings.forEach((s, i) => { query += s; if (i < values.length) query += `${i + 1}`; });
-  const result = await pgClient.query(query, values);
-  return result.rows;
-}
+const q = (text, vals) => pgClient.query(text, vals).then(r => r.rows);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function isSupabaseUrl(url) {
@@ -136,14 +129,14 @@ async function safe(label, fn) {
 // ── 1. products.images ────────────────────────────────────────────────────────
 async function migrateProductImages() {
   console.log("\n📦  products.images …");
-  const rows = await sql`SELECT id, images FROM products WHERE images::text LIKE '%supabase%'`;
+  const rows = await q("SELECT id, images FROM products WHERE images::text LIKE '%supabase%'");
   console.log(`   Found ${rows.length} row(s)`);
   for (const row of rows) {
     const imgs = Array.isArray(row.images) ? row.images : [];
     await safe(`product ${row.id}`, async () => {
       const newImgs = await Promise.all(imgs.map(migrateOne));
       if (!DRY_RUN) {
-        await sql`UPDATE products SET images = ${JSON.stringify(newImgs)}::jsonb WHERE id = ${row.id}`;
+        await q("UPDATE products SET images = $1::jsonb WHERE id = $2", [JSON.stringify(newImgs), row.id]);
       }
       const changed = imgs.filter(isSupabaseUrl).length;
       console.log(`  ✅  product ${row.id} — ${changed} image(s) migrated`);
@@ -155,14 +148,12 @@ async function migrateProductImages() {
 // ── 2. shops.image (logo) ─────────────────────────────────────────────────────
 async function migrateShopLogos() {
   console.log("\n🏪  shops.image (logo) …");
-  const rows = await sql`SELECT id, image FROM shops WHERE image LIKE '%supabase%'`;
+  const rows = await q("SELECT id, image FROM shops WHERE image LIKE '%supabase%'");
   console.log(`   Found ${rows.length} row(s)`);
   for (const row of rows) {
     await safe(`shop logo ${row.id}`, async () => {
       const newUrl = await migrateOne(row.image);
-      if (!DRY_RUN) {
-        await sql`UPDATE shops SET image = ${newUrl} WHERE id = ${row.id}`;
-      }
+      if (!DRY_RUN) await q("UPDATE shops SET image = $1 WHERE id = $2", [newUrl, row.id]);
       console.log(`  ✅  shop ${row.id} logo migrated`);
       totalMigrated++;
     });
@@ -172,14 +163,12 @@ async function migrateShopLogos() {
 // ── 3. shops.banner ───────────────────────────────────────────────────────────
 async function migrateShopBanners() {
   console.log("\n🏪  shops.banner …");
-  const rows = await sql`SELECT id, banner FROM shops WHERE banner LIKE '%supabase%'`;
+  const rows = await q("SELECT id, banner FROM shops WHERE banner LIKE '%supabase%'");
   console.log(`   Found ${rows.length} row(s)`);
   for (const row of rows) {
     await safe(`shop banner ${row.id}`, async () => {
       const newUrl = await migrateOne(row.banner);
-      if (!DRY_RUN) {
-        await sql`UPDATE shops SET banner = ${newUrl} WHERE id = ${row.id}`;
-      }
+      if (!DRY_RUN) await q("UPDATE shops SET banner = $1 WHERE id = $2", [newUrl, row.id]);
       console.log(`  ✅  shop ${row.id} banner migrated`);
       totalMigrated++;
     });
@@ -189,14 +178,12 @@ async function migrateShopBanners() {
 // ── 4. hero_banners.image_url ─────────────────────────────────────────────────
 async function migrateHeroBanners() {
   console.log("\n🖼️   hero_banners.image_url …");
-  const rows = await sql`SELECT id, image_url FROM hero_banners WHERE image_url LIKE '%supabase%'`;
+  const rows = await q("SELECT id, image_url FROM hero_banners WHERE image_url LIKE '%supabase%'");
   console.log(`   Found ${rows.length} row(s)`);
   for (const row of rows) {
     await safe(`hero_banner ${row.id}`, async () => {
       const newUrl = await migrateOne(row.image_url);
-      if (!DRY_RUN) {
-        await sql`UPDATE hero_banners SET image_url = ${newUrl} WHERE id = ${row.id}`;
-      }
+      if (!DRY_RUN) await q("UPDATE hero_banners SET image_url = $1 WHERE id = $2", [newUrl, row.id]);
       console.log(`  ✅  hero_banner ${row.id} migrated`);
       totalMigrated++;
     });
@@ -206,18 +193,12 @@ async function migrateHeroBanners() {
 // ── 5. shops.certificate_file ─────────────────────────────────────────────────
 async function migrateCertificates() {
   console.log("\n📄  shops.certificate_file …");
-  const rows = await sql`
-    SELECT id, certificate_file
-    FROM shops
-    WHERE certificate_file LIKE '%supabase%'
-  `;
+  const rows = await q("SELECT id, certificate_file FROM shops WHERE certificate_file LIKE '%supabase%'");
   console.log(`   Found ${rows.length} row(s)`);
   for (const row of rows) {
     await safe(`shop cert ${row.id}`, async () => {
       const newUrl = await migrateOne(row.certificate_file);
-      if (!DRY_RUN) {
-        await sql`UPDATE shops SET certificate_file = ${newUrl} WHERE id = ${row.id}`;
-      }
+      if (!DRY_RUN) await q("UPDATE shops SET certificate_file = $1 WHERE id = $2", [newUrl, row.id]);
       console.log(`  ✅  shop ${row.id} certificate migrated`);
       totalMigrated++;
     });

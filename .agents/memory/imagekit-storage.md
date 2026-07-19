@@ -20,6 +20,9 @@ description: Supabase image upload replaced with ImageKit for all product/vendor
 ## Folders used
 - `swiftmart/products`, `swiftmart/shops`, `swiftmart/banners`, `swiftmart/certificates`
 
+## Migration script
+`artifacts/api-server/scripts/migrate-supabase-to-imagekit.mjs` — migrated 15 product images from Supabase → ImageKit. Safe to re-run (skips non-Supabase URLs). Uses `pg` (CJS via `createRequire`) + `imagekit` (CJS). Products `id` column is type `text` — do NOT cast to `::uuid` in queries.
+
 ## Delete behaviour
 ImageKit delete requires a fileId, not a URL. `deleteFromImageKit` calls `listFiles` with a URL search query to find the fileId first, then deletes. Non-fatal on failure.
 
