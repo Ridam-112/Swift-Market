@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { db, shops, shopTypes, users, products, orders } from "@workspace/db";
 import { eq, and, ilike, or, inArray, desc, count, sql } from "drizzle-orm";
-import { deleteFromSupabase } from "../../lib/supabase-storage.js";
+import { deleteFromImageKit } from "../../lib/imagekit.js";
 import { authenticate, requireRole, optionalAuth, type AuthRequest } from "../../middlewares/auth.js";
 import { createNotificationLimited } from "../../utils/notification.js";
 import { mi, miArr } from "../../utils/mapId.js";
@@ -313,7 +313,7 @@ router.patch("/my/profile", authenticate, async (req: AuthRequest, res: Response
     const toDelete: string[] = [];
     if ("image" in update && update["image"] !== oldShop.image && oldShop.image) toDelete.push(oldShop.image);
     if ("banner" in update && update["banner"] !== oldShop.banner && oldShop.banner) toDelete.push(oldShop.banner);
-    if (toDelete.length > 0) void Promise.all(toDelete.map(url => deleteFromSupabase(url)));
+    if (toDelete.length > 0) void Promise.all(toDelete.map(url => deleteFromImageKit(url)));
   }
 
   res.json({ success: true, shop: mi(updated) });
@@ -358,7 +358,7 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
     const toDelete: string[] = [];
     if ("image" in update && update["image"] !== oldShop.image && oldShop.image) toDelete.push(oldShop.image);
     if ("banner" in update && update["banner"] !== oldShop.banner && oldShop.banner) toDelete.push(oldShop.banner);
-    if (toDelete.length > 0) void Promise.all(toDelete.map(url => deleteFromSupabase(url)));
+    if (toDelete.length > 0) void Promise.all(toDelete.map(url => deleteFromImageKit(url)));
   }
 
   res.json({ success: true, shop: mi(shop) });
@@ -577,7 +577,7 @@ router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): 
   });
 
   // Side effects outside the transaction — best-effort, non-blocking
-  void Promise.all(allImages.map(url => deleteFromSupabase(url)));
+  void Promise.all(allImages.map(url => deleteFromImageKit(url)));
   void createNotificationLimited(shop.ownerId, {
     type: "system",
     title: "Shop Removed",

@@ -3,7 +3,7 @@ import { db, products, shops, categories, users } from "@workspace/db";
 import { eq, and, ilike, inArray, desc, count, gt, sql, or } from "drizzle-orm";
 import { authenticate, requireRole, optionalAuth, type AuthRequest } from "../../middlewares/auth.js";
 import { vendorWriteLimiter } from "../../middlewares/rateLimiter.js";
-import { deleteFromSupabase } from "../../lib/supabase-storage.js";
+import { deleteFromImageKit } from "../../lib/imagekit.js";
 import { createNotificationLimited } from "../../utils/notification.js";
 import { mi, miArr } from "../../utils/mapId.js";
 
@@ -419,7 +419,7 @@ router.patch("/:id", authenticate, V, vendorWriteLimiter, async (req: AuthReques
     const newImages = (updateData["images"] as string[]) ?? [];
     const removed = oldImages.filter(url => !newImages.includes(url));
     if (removed.length > 0) {
-      void Promise.all(removed.map(url => deleteFromSupabase(url)));
+      void Promise.all(removed.map(url => deleteFromImageKit(url)));
     }
   }
 
@@ -430,7 +430,7 @@ router.patch("/:id", authenticate, V, vendorWriteLimiter, async (req: AuthReques
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const [product] = await db.select({ images: products.images }).from(products).where(eq(products.id, req.params["id"] as string)).limit(1);
   if (product?.images && (product.images as string[]).length > 0) {
-    await Promise.all((product.images as string[]).map(url => deleteFromSupabase(url)));
+    await Promise.all((product.images as string[]).map(url => deleteFromImageKit(url)));
   }
   await db.delete(products).where(eq(products.id, req.params["id"] as string));
   res.json({ success: true, message: "Deleted" });
