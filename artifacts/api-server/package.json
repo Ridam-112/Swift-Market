@@ -28,6 +28,7 @@
     "jsonwebtoken": "^9.0.2",
     "mime-types": "^3.0.2",
     "multer": "^2.2.0",
+    "pg": "^8.20.0",
     "pino": "^9",
     "pino-http": "^10",
     "razorpay": "^2.9.6",
