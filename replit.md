@@ -1,116 +1,50 @@
 # SwiftMart
 
-## Overview
-
-Hyper-local e-commerce platform. Customers browse shops and order for 10-minute delivery. Vendors manage products and orders. Admins oversee the full platform.
-
-pnpm workspace monorepo · TypeScript · Express 5 · PostgreSQL + Drizzle ORM · React 19 + Vite · Tailwind CSS 4
-
----
-
-## Running on Replit
-
-- **API server**: port 8080 (`artifacts/api-server`)
-- **Frontend (Vite dev)**: port 5000 (`artifacts/swiftmart`)
-- **Start command**: `bash start.sh` (builds API with esbuild, then starts both servers)
-- **Database**: Replit-managed PostgreSQL (`DATABASE_URL` auto-set by Replit). Run `pnpm --filter @workspace/db run push` after schema changes.
-- **Replit domain**: update `VITE_API_URL` and `ALLOWED_ORIGINS` env vars if the Replit dev domain changes.
-
-> Note: `DATABASE_URL` is managed by Replit (local PostgreSQL). `NEON_DATABASE_URL` is available as a fallback secret but the server always prefers `DATABASE_URL`.
-
----
-
-## Fresh Setup Checklist
-
-When you fork or move this project to a new Replit account, set these in **Tools → Secrets**:
-
-### Required — app will not start without these
-
-| Secret key | Where to get it |
-|---|---|
-| `DATABASE_URL` | Replit auto-provisions when you add a PostgreSQL database (Tools → Database) |
-| `JWT_SECRET` | Generate: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
-| `JWT_REFRESH_SECRET` | Same as above, different value |
-
-### Required for Google login (`AUTH_MODE=both`)
-
-| Secret key | Where to get it |
-|---|---|
-| `GOOGLE_CLIENT_ID` | Firebase Console → Project Settings → General → Web app → SDK config |
-| `GOOGLE_CLIENT_SECRET` | Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client → Client Secret |
-| `VITE_FIREBASE_API_KEY` | Firebase Console → Project Settings → General → Web app → SDK config |
-| `VITE_FIREBASE_AUTH_DOMAIN` | e.g. `your-project.firebaseapp.com` |
-| `VITE_FIREBASE_PROJECT_ID` | e.g. `your-project-id` |
-| `VITE_FIREBASE_APP_ID` | e.g. `1:123456:web:abc123` |
-
-> After getting your Replit preview URL, add it to **Firebase Console → Authentication → Settings → Authorized domains**
-
-### Required for OTP SMS login (`OTP_MODE=real`)
-
-| Secret key | Where to get it |
-|---|---|
-| `TWO_FACTOR_API_KEY` | https://2factor.in → Dashboard → API Key |
-
-> Set `OTP_MODE=demo` in env vars to skip SMS during testing (uses code `123456`)
-
-### Required for image uploads (Cloudinary)
-
-| Secret key | Where to get it |
-|---|---|
-| `CLOUDINARY_CLOUD_NAME` | https://cloudinary.com → Dashboard |
-| `CLOUDINARY_API_KEY` | Cloudinary → Settings → API Keys |
-| `CLOUDINARY_API_SECRET` | Cloudinary → Settings → API Keys |
-
-### Required for payments (Razorpay)
-
-| Secret key | Where to get it |
-|---|---|
-| `RAZORPAY_KEY_ID` | https://razorpay.com → Settings → API Keys |
-| `RAZORPAY_KEY_SECRET` | Same page |
-| `RAZORPAY_WEBHOOK_SECRET` | Razorpay → Webhooks → your webhook → Secret |
-
-### After setting secrets
-
-```bash
-pnpm --filter @workspace/db run push   # create all DB tables
-```
-
----
-
-## Environment Variables (non-secret, already in .replit)
-
-| Variable | Value | Notes |
-|---|---|---|
-| `AUTH_MODE` | `both` | `otp` \| `google` \| `both` |
-| `OTP_MODE` | `real` | `real` \| `demo` |
-| `NODE_ENV` | `development` | |
-| `PORT` | `8080` | API server port |
-| `VITE_RAZORPAY_KEY_ID` | `rzp_test_...` | Public key, safe as env var |
-| `VAPID_PUBLIC_KEY` | `BEb0x...` | Web push public key |
-| `VAPID_SUBJECT` | `mailto:admin@...` | Web push contact |
-| `SUPER_ADMIN_PHONES` | `6296118949,...` | Comma-separated |
-| `OTP_DEMO_CODE` | `123456` | Used when `OTP_MODE=demo` |
-
----
-
-## Key Commands
-
-- `pnpm run typecheck` — typecheck all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+A full-stack grocery delivery platform with vendor management, order tracking, live rider GPS, and an Android app (Capacitor).
 
 ## Stack
 
-- **Monorepo**: pnpm workspaces
-- **Node.js**: 24, **TypeScript**: 5.9, **Package manager**: pnpm
-- **API**: Express 5, **DB**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (v4), drizzle-zod
-- **Frontend**: React 19, Vite, Tailwind CSS 4, Shadcn UI
-- **Auth**: OTP via 2Factor.in + Firebase Google Auth
-- **Payments**: Razorpay, **Uploads**: Cloudinary, **Push**: web-push (VAPID)
-- **Build**: esbuild (CJS bundle)
+- **Frontend:** React + Vite (port 5000) — `artifacts/swiftmart/`
+- **API server:** Express + TypeScript, built with esbuild (port 8080) — `artifacts/api-server/`
+- **Database:** PostgreSQL via Drizzle ORM — `lib/db/`
+- **Shared libs:** `lib/api-zod/`, `lib/api-client-react/`, `lib/api-spec/`
 
-## User Preferences
+## How to run
 
-- Keep OTP login always working as fallback alongside Google Auth
+The **"Start application"** workflow handles everything:
+1. Builds the API server via esbuild
+2. Starts API on port 8080
+3. Starts the Vite dev server on port 5000
+
+After a fresh clone or environment reset, run this recovery sequence once:
+```bash
+pnpm install                    # install all dependencies
+cd lib/db && pnpm drizzle-kit push   # push schema to the database
+```
+Then restart the "Start application" workflow.
+
+> **Note:** The artifact-specific workflows (`artifacts/api-server: API Server`, `artifacts/swiftmart: web`) will always fail with EADDRINUSE — they share ports with the main workflow. This is expected; use "Start application" only.
+
+## Required secrets
+
+| Secret | Purpose |
+|--------|---------|
+| `DATABASE_URL` | Auto-provisioned by Replit PostgreSQL |
+| `JWT_SECRET` | Access token signing (64-byte hex) |
+| `JWT_REFRESH_SECRET` | Refresh token signing (64-byte hex) |
+
+Run `node scripts/check-secrets.mjs` to see full secret status.
+
+## Optional secrets (features degrade gracefully)
+
+- **Google OAuth:** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_APP_ID`
+- **FCM push notifications:** `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`
+- **Payments (Razorpay):** `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`
+- **Image uploads (Cloudinary):** `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+- **OTP SMS (2factor.in):** `TWO_FACTOR_API_KEY`
+- **Supabase Storage:** configured via `@supabase/storage-js`
+
+## User preferences
+
+- Maintain existing project structure — do not restructure or migrate
+- Keep OTP_MODE=demo in development (set TWO_FACTOR_API_KEY for real OTP)
