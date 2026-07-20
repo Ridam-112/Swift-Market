@@ -116,9 +116,17 @@ export default function Product() {
       ? `${product.description.substring(0, 140)}… Buy ${product.name} from local shops in Balurghat on SwiftMart.`
       : `Buy ${product.name} from local shops in Balurghat on SwiftMart. Fast 10-minute delivery.`,
     image: product.image && !product.image.includes("placeholder") ? product.image : undefined,
-    jsonLd: {
-      "@context": "https://schema.org",
-      "@type": "Product",
+    jsonLd: [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://swiftmart.space/" },
+          ...(category ? [{ "@type": "ListItem", "position": 2, "name": category.name, "item": `https://swiftmart.space/category/${product.category}` }] : []),
+          { "@type": "ListItem", "position": category ? 3 : 2, "name": product.name, "item": `https://swiftmart.space/product/${product.id}` },
+        ],
+      },
+      {
+        "@type": "Product",
       "name": product.name,
       "description": product.description || `${product.name} available on SwiftMart Balurghat`,
       "image": allImages.length > 0 ? (allImages.length === 1 ? allImages[0] : allImages) : product.image,
@@ -186,7 +194,8 @@ export default function Product() {
           }
         }
       }
-    }
+      },
+    ]
   };
 
   const isOutOfStock = product.stock === 0;

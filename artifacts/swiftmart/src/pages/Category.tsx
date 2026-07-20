@@ -90,6 +90,13 @@ export default function Category() {
         description={`Order ${category.name.toLowerCase()} from local shops in Balurghat on SwiftMart. ${filteredProducts.length > 0 ? `${filteredProducts.length} products available` : "Fresh stock, fast delivery"}. Order now for 10-minute delivery.`}
         canonical={`/category/${slug}`}
         keywords={`${category.name} Balurghat, buy ${category.name.toLowerCase()} online Balurghat, ${category.name} delivery Balurghat`}
+        jsonLd={{
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://swiftmart.space/" },
+            { "@type": "ListItem", "position": 2, "name": category.name, "item": `https://swiftmart.space/category/${slug}` },
+          ],
+        }}
       />
       <div
         className="h-32 rounded-3xl neu-card flex items-center justify-between px-8 relative overflow-hidden"

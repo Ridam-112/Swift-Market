@@ -1,0 +1,183 @@
+Searched for "ld+json"
+Searched for "schema"
+
+# Structured Data (Schema) Audit
+
+We inspected the HTML template (`index.html`) and analyzed the React source code. While the comments in `index.html` claim that structured data is dynamically managed via `react-helmet-async`, **there is currently zero JSON-LD or Microdata schema implemented in the actual codebase.**
+
+**Overall Schema Score: 0/100**
+*(A score of zero represents a massive, untapped opportunity to gain rich snippet features in Google Search results).*
+
+---
+
+### Schema Checklist & Recommendations
+
+| Schema Type | Present | Valid | Missing / Required Fields | Recommendation |
+| :--- | :---: | :---: | :--- | :--- |
+| **Organization** | ❌ | — | `name`, `url`, `logo`, `contactPoint`, `sameAs` (socials). | **Implement on Home page.** Establishes brand signals and enables the Brand Knowledge Panel. |
+| **Website** | ❌ | — | `url`, `name`, `potentialAction` (`SearchAction`). | **Implement on Home page.** Enables the Google Sitelinks Searchbox directly in SERPs. |
+| **WebPage** | ❌ | — | `name`, `description`, `url`. | **Implement across all pages** to structure basic indexation metadata. |
+| **LocalBusiness** | ❌ | — | `name`, `image`, `address`, `geo` (coordinates), `telephone`, `openingHours`, `priceRange`. | **Implement on Home page.** Essential for local SEO rankings in Balurghat map results. |
+| **Breadcrumb** | ❌ | — | `itemListElement`, `position`, `name`, `item` (URLs). | **Implement on Product / Category pages** to show hierarchy in search results. |
+| **FAQ** | ❌ | — | `mainEntity` (`Question` and `Answer` structures). | **Implement on Home page** once FAQ text is written, generating rich FAQ dropdown snippets. |
+| **Product** | ❌ | — | `name`, `image`, `description`, `sku`, `offers` (`PriceSpecification`, `availability`), `aggregateRating`. | **Implement on Product pages.** Displays product pricing, in-stock badges, and star ratings on Google. |
+| **Review** | ❌ | — | `reviewRating`, `author`, `itemReviewed`. | **Implement on Product & ShopDetail pages** to display user star ratings in search snippets. |
+| **Course / Article / BlogPosting / Event / Video / HowTo** | ❌ | — | — | *Not applicable* to current core quick-commerce features. |
+| **Service** | ❌ | — | `serviceType`, `provider`, `areaServed`. | **Implement on Home page** to define the Balurghat quick-delivery service. |
+
+---
+
+### JSON-LD Implementations
+
+Below are the recommended, fully compliant JSON-LD schemas. These should be injected dynamically into the document `<head>` on their respective pages (e.g., using `react-helmet-async` in React).
+
+#### 1. WebSite & Sitelinks Searchbox Schema (Homepage)
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "SwiftMart",
+  "url": "https://swiftmart.space/",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://swiftmart.space/search?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+```
+
+#### 2. LocalBusiness Schema (Homepage)
+Optimizes SwiftMart for local queries like *"grocery delivery near me"* in Balurghat.
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "@id": "https://swiftmart.space/#localbusiness",
+  "name": "SwiftMart Balurghat",
+  "image": "https://swiftmart.space/logo.png",
+  "url": "https://swiftmart.space/",
+  "telephone": "+91-XXXXXXXXXX",
+  "priceRange": "$$",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Balurghat Main Road",
+    "addressLocality": "Balurghat",
+    "addressRegion": "West Bengal",
+    "postalCode": "733101",
+    "addressCountry": "IN"
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": 25.22,
+    "longitude": 88.76
+  },
+  "openingHoursSpecification": {
+    "@type": "OpeningHoursSpecification",
+    "dayOfWeek": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday"
+    ],
+    "opens": "07:00",
+    "closes": "23:00"
+  },
+  "areaServed": {
+    "@type": "AdministrativeArea",
+    "name": "Balurghat"
+  }
+}
+```
+
+#### 3. Product Schema (Product Detail Pages: `/product/:id`)
+Enables Google to render prices, stock statuses, and reviews directly in search snippets.
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "Aashirvaad Whole Wheat Atta",
+  "image": "https://swiftmart.space/assets/cat-groceries.png",
+  "description": "Premium quality wheat atta for soft and fluffy rotis.",
+  "sku": "g1",
+  "brand": {
+    "@type": "Brand",
+    "name": "Aashirvaad"
+  },
+  "offers": {
+    "@type": "Offer",
+    "url": "https://swiftmart.space/product/g1",
+    "priceCurrency": "INR",
+    "price": "240",
+    "itemCondition": "https://schema.org/NewCondition",
+    "availability": "https://schema.org/InStock",
+    "seller": {
+      "@type": "Organization",
+      "name": "SwiftMart"
+    }
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "reviewCount": "24"
+  }
+}
+```
+
+#### 4. BreadcrumbList Schema (Product & Category Pages)
+Shows a user-friendly hierarchy in SERPs (e.g. `swiftmart.space > Groceries > Wheat Atta`) instead of a raw URL.
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://swiftmart.space/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Groceries",
+      "item": "https://swiftmart.space/category/groceries"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Aashirvaad Whole Wheat Atta",
+      "item": "https://swiftmart.space/product/g1"
+    }
+  ]
+}
+```
+
+#### 5. FAQPage Schema (Homepage)
+Grants dropdown elements directly beneath your search result snippet.
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is the delivery time for SwiftMart in Balurghat?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "SwiftMart delivers groceries, fresh food, and daily essentials within 10 to 20 minutes across Balurghat."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I order medicine on SwiftMart?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, you can order medicines from trusted local pharmacies in Balurghat and have them delivered within minutes."
+      }
+    }
+  ]
+}
+```

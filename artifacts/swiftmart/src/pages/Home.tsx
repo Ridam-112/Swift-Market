@@ -82,20 +82,51 @@ const HOME_JSON_LD = [
   {
     "@type": ["LocalBusiness", "Store"],
     "@id": "https://swiftmart.space/#business",
-    "name": "SwiftMart",
+    "name": "SwiftMart Balurghat",
     "url": "https://swiftmart.space/",
     "logo": { "@type": "ImageObject", "url": "https://swiftmart.space/logo.png" },
     "image": "https://swiftmart.space/opengraph.jpg",
     "description": "Hyper-local online marketplace delivering groceries, food, medicine and daily essentials from local Balurghat shops in 10 minutes.",
     "telephone": "+916296118949",
+    "priceRange": "₹",
     "address": {
       "@type": "PostalAddress",
+      "streetAddress": "Balurghat",
       "addressLocality": "Balurghat",
       "addressRegion": "West Bengal",
+      "postalCode": "733101",
       "addressCountry": "IN"
     },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 25.2167,
+      "longitude": 88.7667
+    },
+    "openingHoursSpecification": {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+      "opens": "07:00",
+      "closes": "23:00"
+    },
+    "areaServed": [
+      { "@type": "City", "name": "Balurghat" },
+      { "@type": "PostalAddress", "postalCode": "733101", "addressCountry": "IN" },
+      { "@type": "PostalAddress", "postalCode": "733103", "addressCountry": "IN" }
+    ]
+  },
+  {
+    "@type": "Service",
+    "@id": "https://swiftmart.space/#service",
+    "name": "SwiftMart Quick Delivery",
+    "serviceType": "Grocery & Daily Essentials Delivery",
+    "description": "10-minute home delivery of groceries, vegetables, fruits, medicines, and daily essentials from local shops in Balurghat.",
+    "provider": { "@id": "https://swiftmart.space/#business" },
     "areaServed": { "@type": "City", "name": "Balurghat" },
-    "priceRange": "₹"
+    "availableChannel": {
+      "@type": "ServiceChannel",
+      "serviceUrl": "https://swiftmart.space/",
+      "servicePhone": "+916296118949"
+    }
   },
   {
     "@type": "WebApplication",
