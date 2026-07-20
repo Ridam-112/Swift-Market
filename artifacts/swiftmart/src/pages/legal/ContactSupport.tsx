@@ -7,7 +7,7 @@ export default function ContactSupport() {
     <>
     <SEO
       title="Contact & Support"
-      description="Contact SwiftMart customer support. Get help with your orders, account, delivery or any issue on our Balurghat hyperlocal delivery platform."
+      description="Need help with your SwiftMart grocery order, payment, or delivery? Contact our Balurghat support team today. We're here to help you 24/7."
       canonical="/contact-support"
     />
     <LegalLayout

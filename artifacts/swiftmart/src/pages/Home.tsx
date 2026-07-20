@@ -245,8 +245,8 @@ export default function Home() {
   return (
     <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto space-y-6 overflow-x-hidden">
       <SEO
-        title="SwiftMart Balurghat | Grocery, Food, Medicine & Quick Commerce Delivery"
-        description="Order groceries, vegetables, fruits, food, medicines, dairy, bakery, sweets and daily essentials from trusted local shops in Balurghat with SwiftMart. Fast local delivery."
+        title="SwiftMart Balurghat | Grocery, Food & Medicine Delivery"
+        description="Order fresh groceries, organic vegetables, food, & medicine online in Balurghat. Fast delivery from your favorite local shops. Shop now on SwiftMart!"
         canonical="/"
         keywords="SwiftMart, SwiftMart Balurghat, Balurghat Grocery, Balurghat Online Shopping, Quick Commerce Balurghat, Food Delivery Balurghat, Medicine Delivery Balurghat, Vegetable Delivery Balurghat, Local Marketplace Balurghat"
         jsonLd={HOME_JSON_LD}

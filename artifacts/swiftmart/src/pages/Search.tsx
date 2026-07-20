@@ -74,10 +74,10 @@ export default function SearchPage() {
   })();
 
   const showEmpty = query.length > 0;
-  const searchTitle = query ? `"${query}" — Search` : "Search Products";
+  const searchTitle = query ? `"${query}" — Search` : "Search Groceries & Food in Balurghat";
   const searchDesc = query
     ? `Search results for "${query}" on SwiftMart — grocery, food, vegetables, fruits, medicines and daily essentials in Balurghat.`
-    : "Search grocery, food, vegetables, fruits, medicines and daily essentials on SwiftMart Balurghat.";
+    : "Search for fresh fruits, vegetables, home essentials, and quick medicine delivery in Balurghat. Find exactly what you need on SwiftMart.";
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-7xl mx-auto space-y-6 min-h-[100dvh]">

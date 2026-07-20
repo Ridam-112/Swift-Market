@@ -1,0 +1,78 @@
+Created meta_audit.js
+Ran command: `node meta_audit.js`
+Ran command: `Remove-Item -Path "meta_audit.js" -Force -ErrorAction SilentlyContinue`
+
+# Title & Meta Tag SEO Audit
+
+Below is a detailed audit of the HTML `<title>`, `<meta name="description">`, `<meta name="robots">`, and Open Graph (OG) tags across the pages of **swiftmart.space**.
+
+**Overall Score: 45/100**
+*(The score is heavily penalized because all pages share identical raw metadata templates, leading to duplicate tag issues, incorrect canonicalization, and diluted keyword relevance).*
+
+---
+
+### Audit Checklist Table
+
+| Audit Area | Check | Status | Current Value (Sitemap Pages) | Recommendation |
+| :--- | :--- | :---: | :--- | :--- |
+| **Title Tag** | Exists | ✅ | `SwiftMart Balurghat \| Grocery, Food, Medicine &amp; Quick Commerce Delivery` | Keep present on all pages. |
+| | Unique | ❌ | Identical on all 8 indexed pages. | Dynamically set unique titles for each page path. |
+| | Length | ⚠️ | 70 characters (Truncates on Google SERP). | Keep titles between 50–60 characters. |
+| | Keyword Placement | ✅ | "SwiftMart Balurghat" (Brand + Location) starts the title. | Good placement; keep brand/location near the start. |
+| | Click-worthy | ✅ | Mentions categories: Grocery, Food, Medicine. | Maintain clear value propositions. |
+| | Branding | ✅ | "SwiftMart" is present. | Keep brand suffix (`\| SwiftMart`) consistent. |
+| | Duplicate Risk | ❌ | 100% duplicate titles across all subpages. | Implement route-based title updates immediately. |
+| **Meta Description** | Exists | ✅ | `Order groceries, vegetables, fruits, food, medicines, dairy, bakery, sweets and daily essentials from trusted local shops in Balurghat with SwiftMart. Fast local delivery.` | Keep present. |
+| | Unique | ❌ | Identical on all 8 pages. | Generate unique page-specific meta descriptions. |
+| | Length | ⚠️ | 172 characters (Truncates on mobile/desktop). | Aim for 140–160 characters. |
+| | Keyword Included | ✅ | Groceries, food, medicines, Balurghat, SwiftMart. | Good keyword usage for the homepage. |
+| | CTA Included | ✅ | "Order..." is a clear call-to-action. | Keep verbs at the beginning (e.g., *Find*, *Shop*, *Read*). |
+| | Search Intent | ⚠️ | Matches homepage, but irrelevant for other pages. | Align intent (e.g., details on privacy policy, search query instructions). |
+| | Duplicate Risk | ❌ | High duplication risk (cross-site). | Dynamically render tags per route. |
+| **Other Tags** | Robots Meta | ✅ | `index,follow` on all paths. | Set `/privacy`, `/terms`, `/refund-cancellation` to `noindex,follow`. |
+| | Canonical Relation | ❌ | Points to `https://swiftmart.space/` on all pages. | Point canonical tags to the specific page URL. |
+| | Open Graph Consistency | ⚠️ | Matches Title & Meta but remains duplicate. | Synchronize custom OG tags with unique page titles. |
+
+---
+
+### Improved SEO Titles & Meta Descriptions (By Key Page)
+
+We have optimized the Title and Meta tags below to be within safe character limits, avoid truncation, include location/keywords, and incorporate clear CTAs.
+
+#### 1. Home Page (`/`)
+*   **Improved SEO Title (56 chars):**
+    `SwiftMart Balurghat \| Grocery, Food & Medicine Delivery`
+*   **Improved Meta Description (148 chars):**
+    `Order fresh groceries, organic vegetables, food, & medicine online in Balurghat. Fast delivery from your favorite local shops. Shop now on SwiftMart!`
+
+#### 2. Shops / Vendors Page (`/shops`)
+*   **Improved SEO Title (52 chars):**
+    `Local Shops & Grocery Stores in Balurghat \| SwiftMart`
+*   **Improved Meta Description (149 chars):**
+    `Browse trusted local supermarkets, pharmacies, and restaurants in Balurghat. Find store opening hours, product lists, and order online for fast delivery.`
+
+#### 3. Products Page (`/products`)
+*   **Improved SEO Title (50 chars):**
+    `Buy Daily Essentials & Groceries Online \| SwiftMart`
+*   **Improved Meta Description (151 chars):**
+    `Shop 1000+ daily essential products, fresh dairy, organic fruits, vegetables, and medicines in Balurghat. Enjoy direct-to-home quick commerce delivery.`
+
+#### 4. Search Page (`/search`)
+*   **Improved SEO Title (47 chars):**
+    `Search Groceries & Food in Balurghat \| SwiftMart`
+*   **Improved Meta Description (143 chars):**
+    `Search for fresh fruits, vegetables, home essentials, and quick medicine delivery services in Balurghat. Find exactly what you need on SwiftMart.`
+
+#### 5. Contact Support (`/contact-support`)
+*   **Improved SEO Title (48 chars):**
+    `Contact SwiftMart Support \| Balurghat Help Desk`
+*   **Improved Meta Description (144 chars):**
+    `Need help with your SwiftMart grocery order, payment, or delivery? Contact our Balurghat support team today. We're here to help you 24/7.`
+
+#### 6. Privacy Policy & Terms (`/privacy`, `/terms`)
+*   **Improved SEO Title (51 chars):**
+    `Privacy Policy \| SwiftMart Quick Commerce Balurghat`
+*   **Improved Meta Description (146 chars):**
+    `Read the SwiftMart Privacy Policy. Learn how we collect, store, and protect your user data while delivering groceries and food in Balurghat.`
+*   **Robots Tag Recommendation:**
+    `noindex, follow` *(prevents search index bloat from legal pages while preserving link authority flows).*

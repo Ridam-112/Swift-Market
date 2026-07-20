@@ -8,6 +8,7 @@ export default function RefundCancellation() {
       title="Refund & Cancellation Policy"
       description="SwiftMart's refund and cancellation policy. Learn how to cancel orders and request refunds for purchases made on our Balurghat delivery platform."
       canonical="/refund-cancellation"
+      noIndex={true}
     />
     <LegalLayout
       title="Refund & Cancellation"

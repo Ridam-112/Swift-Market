@@ -4,9 +4,9 @@ import { Helmet } from "react-helmet-async";
 const SITE_NAME = "SwiftMart";
 const BASE_URL = "https://swiftmart.space";
 const DEFAULT_OG_IMAGE = `${BASE_URL}/opengraph.jpg`;
-const DEFAULT_TITLE = "SwiftMart Balurghat | Grocery, Food, Medicine & Quick Commerce Delivery";
+const DEFAULT_TITLE = "SwiftMart Balurghat | Grocery, Food & Medicine Delivery";
 const DEFAULT_DESCRIPTION =
-  "Order groceries, vegetables, fruits, food, medicines, dairy, bakery, sweets and daily essentials from trusted local shops in Balurghat with SwiftMart. Fast local delivery.";
+  "Order fresh groceries, organic vegetables, food & medicine online in Balurghat. Fast delivery from trusted local shops. Shop now on SwiftMart!";
 
 interface SEOProps {
   title?: string;

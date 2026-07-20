@@ -59,8 +59,8 @@ export default function Shops() {
   return (
     <div className="pb-24 pt-4 px-4 max-w-7xl mx-auto space-y-4">
       <SEO
-        title="Local Shops in Balurghat"
-        description="Browse grocery, food, medicine, dairy, bakery and daily essentials shops in Balurghat on SwiftMart. Find open shops near you for fast local delivery."
+        title="Local Shops & Grocery Stores in Balurghat"
+        description="Browse trusted local supermarkets, pharmacies, and restaurants in Balurghat. Find store hours, product lists, and order online for fast delivery."
         canonical="/shops"
         keywords="shops in Balurghat, grocery shops Balurghat, medicine shops Balurghat, local stores Balurghat"
       />

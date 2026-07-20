@@ -8,6 +8,7 @@ export default function Terms() {
       title="Terms of Service"
       description="Read SwiftMart's terms of service. Understand the rules and conditions for using our hyperlocal delivery platform in Balurghat, West Bengal."
       canonical="/terms"
+      noIndex={true}
     />
     <LegalLayout
       title="Terms of Service"
