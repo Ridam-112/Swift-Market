@@ -594,7 +594,8 @@ export default function DeliveryDashboard() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 5000);
+    // 15 s is responsive enough for riders while cutting calls to 1/3 of the old 5 s rate.
+    const interval = setInterval(fetchData, 15_000);
     return () => clearInterval(interval);
   }, [fetchData]);
 

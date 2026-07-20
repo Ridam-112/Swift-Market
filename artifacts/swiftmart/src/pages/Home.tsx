@@ -74,6 +74,12 @@ const HOME_JSON_LD = [
   }
 ];
 
+// Module-level in-memory cache — survives re-mounts within a session so
+// navigating back to Home doesn't re-fetch static-ish data every time.
+const CACHE_TTL = 5 * 60_000; // 5 min
+let _categoriesCache: { data: DisplayCategory[]; at: number } | null = null;
+let _sectionsCache: { data: HomepageSection[]; at: number } | null = null;
+
 const VISIBLE_CATEGORIES = 8;
 
 const CATEGORY_PRIORITY: Record<string, number> = {
@@ -192,21 +198,32 @@ export default function Home() {
   const [dynamicSections, setDynamicSections] = useState<HomepageSection[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(true);
 
-  // Load admin-configured homepage sections
+  // Load admin-configured homepage sections (cached in memory for 5 min)
   useEffect(() => {
+    if (_sectionsCache && Date.now() - _sectionsCache.at < CACHE_TTL) {
+      setDynamicSections(_sectionsCache.data);
+      setSectionsLoading(false);
+      return;
+    }
     api.get<{ success: boolean; sections: Array<HomepageSection & { products: RawProduct[] }> }>('/homepage-sections')
       .then(d => {
         const mapped = (d.sections ?? []).map(s => ({
           ...s,
           products: (s.products ?? []).map(mapProduct),
         }));
+        _sectionsCache = { data: mapped, at: Date.now() };
         setDynamicSections(mapped);
       })
       .catch(() => {})
       .finally(() => setSectionsLoading(false));
   }, []);
 
+  // Load categories (cached in memory for 5 min)
   useEffect(() => {
+    if (_categoriesCache && Date.now() - _categoriesCache.at < CACHE_TTL) {
+      setApiCategories(_categoriesCache.data);
+      return;
+    }
     api.get<{ success: boolean; categories: Array<{ _id: string; name: string; slug: string; emoji?: string; color?: string }> }>('/categories')
       .then(d => {
         const mapped = (d.categories ?? []).map((c, i) => ({
@@ -215,7 +232,9 @@ export default function Home() {
           emoji: c.emoji ?? "🛍️",
           color: c.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length],
         }));
-        setApiCategories(sortCategories(mapped));
+        const sorted = sortCategories(mapped);
+        _categoriesCache = { data: sorted, at: Date.now() };
+        setApiCategories(sorted);
       })
       .catch(() => {});
   }, []);

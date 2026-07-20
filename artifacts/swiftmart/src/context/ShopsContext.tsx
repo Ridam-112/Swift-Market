@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback, useContext, useRef } from "react";
+import React, { createContext, useState, useEffect, useCallback, useContext, useRef, useMemo } from "react";
 import { api } from "@/lib/api";
 import { AuthContext } from "@/context/AuthContext";
 
@@ -83,6 +83,8 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
   // Track whether a request is already in-flight to avoid concurrent fetches.
   const inFlight = useRef(false);
   const lastFetchedAt = useRef(0);
+  // undefined = auth hasn't resolved yet (first resolution), string|null = known userId
+  const prevUserIdRef = useRef<string | null | undefined>(undefined);
 
   const fetchShops = useCallback((showLoading = false) => {
     if (inFlight.current) return;
@@ -110,8 +112,18 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
   }, [fetchShops]);
 
   // Refetch when the logged-in user changes (login / logout).
+  // On first auth resolution, skip if the mount fetch already ran within 10 s
+  // (prevents the double-fetch: mount fires immediately, then auth resolves ~200 ms later).
   useEffect(() => {
     if (authLoading) return;
+    const isFirstResolution = prevUserIdRef.current === undefined;
+    const userChanged = prevUserIdRef.current !== userId;
+    prevUserIdRef.current = userId;
+    if (isFirstResolution) {
+      if (Date.now() - lastFetchedAt.current < 10_000) return; // mount already fetched
+    } else if (!userChanged) {
+      return; // spurious re-render — userId unchanged
+    }
     fetchShops(false);
   }, [userId, authLoading, fetchShops]);
 

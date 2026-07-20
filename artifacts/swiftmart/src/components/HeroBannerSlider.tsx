@@ -60,6 +60,10 @@ const staticSlides = [
   },
 ];
 
+// Module-level cache — avoids re-fetching banners on every Home re-mount.
+const BANNER_TTL = 5 * 60_000; // 5 min
+let _bannersCache: { data: ApiBanner[]; at: number } | null = null;
+
 export function HeroBannerSlider() {
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -70,16 +74,22 @@ export function HeroBannerSlider() {
   const touchStartY = useRef<number | null>(null);
 
   useEffect(() => {
+    // Serve from cache if fresh — avoids re-fetching on every Home re-mount.
+    if (_bannersCache && Date.now() - _bannersCache.at < BANNER_TTL) {
+      setBanners(_bannersCache.data);
+      return;
+    }
     fetch("/api/hero-banners")
       .then(r => r.json())
       .then((data: { success: boolean; banners: ApiBanner[] }) => {
-        if (data.success && data.banners.length > 0) {
-          setBanners(data.banners);
-        } else {
-          setBanners([]);
-        }
+        const result = data.success && data.banners.length > 0 ? data.banners : [];
+        _bannersCache = { data: result, at: Date.now() };
+        setBanners(result);
       })
-      .catch(() => setBanners([]));
+      .catch(() => {
+        _bannersCache = { data: [], at: Date.now() };
+        setBanners([]);
+      });
   }, []);
 
   useEffect(() => {

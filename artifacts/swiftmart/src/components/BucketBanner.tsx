@@ -42,6 +42,10 @@ interface BucketRow {
   products: Product[];
 }
 
+// Module-level cache — avoids re-fetching buckets on every Home re-mount.
+const BUCKET_TTL = 5 * 60_000; // 5 min
+let _bucketsCache: { data: BucketRow[]; at: number } | null = null;
+
 /**
  * Admin-curated "bucket" bundles, highlighted at the very top of the home
  * page — deliberately louder/brighter than regular sections so they act as
@@ -52,9 +56,16 @@ export function BucketBanner() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Serve from cache if fresh — avoids re-fetching on every Home re-mount.
+    if (_bucketsCache && Date.now() - _bucketsCache.at < BUCKET_TTL) {
+      setBuckets(_bucketsCache.data);
+      setLoading(false);
+      return;
+    }
     api.get<{ success: boolean; buckets: Array<BucketRow & { products: RawBucketProduct[] }> }>('/buckets')
       .then(d => {
         const mapped = (d.buckets ?? []).map(b => ({ ...b, products: (b.products ?? []).map(mapProduct) }));
+        _bucketsCache = { data: mapped, at: Date.now() };
         setBuckets(mapped);
       })
       .catch(() => {})
