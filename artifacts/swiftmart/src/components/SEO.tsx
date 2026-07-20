@@ -29,8 +29,12 @@ export function SEO({
   keywords,
   jsonLd,
 }: SEOProps) {
+  const [location] = useLocation();
   const fullTitle = title === DEFAULT_TITLE ? title : `${title} | ${SITE_NAME}`;
-  const canonicalUrl = canonical ? `${BASE_URL}${canonical}` : undefined;
+  // Always produce a canonical: use the explicit prop if given, otherwise derive
+  // from the current route so every page self-references correctly.
+  const canonicalPath = canonical ?? (location.split("?")[0].replace(/\/$/, "") || "/");
+  const canonicalUrl = `${BASE_URL}${canonicalPath}`;
 
   return (
     <Helmet>
@@ -42,7 +46,7 @@ export function SEO({
       ) : (
         <meta name="robots" content="index,follow" />
       )}
-      {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+      <link rel="canonical" href={canonicalUrl} />
 
       {/* Open Graph */}
       <meta property="og:title" content={fullTitle} />
@@ -50,7 +54,7 @@ export function SEO({
       <meta property="og:image" content={ogImage} />
       <meta property="og:type" content={ogType} />
       <meta property="og:site_name" content={SITE_NAME} />
-      {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
+      <meta property="og:url" content={canonicalUrl} />
 
       {/* Twitter Card */}
       <meta name="twitter:card" content="summary_large_image" />

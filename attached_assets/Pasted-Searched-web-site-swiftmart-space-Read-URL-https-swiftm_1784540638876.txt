@@ -1,0 +1,62 @@
+Searched web: "site:swiftmart.space"
+Read URL: https://swiftmart.space/robots.txt
+Viewed content.md:1-21
+Read URL: https://swiftmart.space/sitemap.xml
+Viewed content.md:1-54
+Created audit.py
+Ran command: `python audit.py`
+Ran command: `node -v`
+Created audit.js
+Ran command: `node audit.js`
+Used tool: manage_task
+Viewed audit_report.json:1-136
+Ran command: `Remove-Item -Path "audit.py", "audit.js", "audit_report.json" -Force -ErrorAction SilentlyContinue`
+
+# Technical SEO URL Audit Report
+
+We conducted a complete crawl and HTTP/header audit of the pages listed in your website's sitemap. Here are the findings and actionable recommendations to optimize your site's URL structure for search engine visibility.
+
+**Overall Score: 70/100**
+
+| Check | Status (✅ ⚠️ ❌) | Issue | Recommendation |
+| :--- | :---: | :--- | :--- |
+| **Is the URL SEO friendly?** | ✅ | None. | Keep using the current clean path structures. |
+| **Is it short and descriptive?** | ✅ | None. Paths are short and meaningful. | No changes needed. |
+| **Does it contain the primary keyword?** | ✅ | None. Main service pages contain keywords like `shops` and `products`. | No changes needed. |
+| **Are lowercase letters used?** | ✅ | None. All audited paths are strictly lowercase. | Keep enforcing lowercase URLs. |
+| **Are hyphens used instead of underscores?** | ✅ | None. Hyphens are correctly used (e.g., `/contact-support`). | Continue using hyphens (`-`) to separate words. |
+| **Does it avoid unnecessary numbers and parameters?** | ✅ | None. URLs are clean and do not append unnecessary IDs or query parameters. | Maintain parameter-free URLs in the sitemap. |
+| **Is HTTPS enabled?** | ✅ | None. HTTPS is active across all endpoints. | Keep auto-renewing SSL certificates. |
+| **Is the canonical URL present?** | ✅ | None. Canonical tags are present on all pages. | Maintain canonical tag presence on every page. |
+| **Does the canonical point correctly?** | ❌ | **Critical Issue:** Every subpage (`/shops`, `/products`, `/search`, `/contact-support`, `/privacy`, etc.) has its canonical tag pointing to the homepage (`https://swiftmart.space/`). | Fix dynamic rendering so each page's canonical tag points to its own URL (e.g., `/shops` should point to `https://swiftmart.space/shops`). |
+| **Is the trailing slash consistent?** | ⚠️ | Both `/shops` and `/shops/` serve status `200 OK` directly without redirection. | Implement a server-side redirect (e.g., in Vercel/Netlify config or server router) to force a consistent trailing slash behavior. |
+| **Is the URL indexable?** | ⚠️ | The pages are allowed in `robots.txt`, but because canonicals point to the homepage, search engines will treat subpages as duplicate versions and index only the homepage. | Fix the incorrect canonical tags to make sure all subpages are crawled and indexed. |
+| **Is there any redirect chain?** | ✅ | None. `http://` and `www.` redirect directly to `https://` with a single 301 redirect. | No changes needed. |
+| **Any duplicate URL issue?** | ⚠️ | Same page content is accessible at both trailing slash and non-trailing slash URLs. | Fix consistent trailing slash redirects to resolve this duplicate URL issue. |
+
+---
+
+### Top 5 Improvements
+
+1. **Fix Page-Specific Canonical Tags (High Priority)**
+   * **Issue:** All pages dynamically output the home page canonical (`https://swiftmart.space/`). Google will ignore your subpages and only index the homepage.
+   * **Action:** Ensure your header-management library (like `react-helmet-async`) dynamically updates the canonical URL to match the current path on hydration and pre-rendering.
+2. **Implement Enforced Trailing Slash Redirects (Medium Priority)**
+   * **Issue:** Pages like `/shops` and `/shops/` are both accessible directly with `200 OK` status codes.
+   * **Action:** Configure a global redirection rule (e.g., in a `vercel.json` or server middleware) to redirect trailing slash versions to non-trailing slash URLs (301 Permanent Redirect).
+3. **Include Local Keywords in Key URLs (Medium Priority)**
+   * **Issue:** Your homepage metadata targets "Balurghat," but none of the URL paths capture the location.
+   * **Action:** Consider adding targeted landing pages if expanding (e.g., `/shops-in-balurghat` or sub-routing) to rank higher for local search intents.
+4. **Synchronize Robots.txt and Sitemap.xml (Low Priority)**
+   * **Action:** Check if there are any orphaned or private URLs listed in the sitemap that are excluded in `robots.txt` (currently they look consistent, but monitor as new routes are added).
+5. **Set up regular XML Sitemap Auto-updates (Low Priority)**
+   * **Action:** Keep the XML sitemap updated automatically whenever a new shop or product category is added, ensuring new URLs get crawled instantly.
+
+---
+
+### Expected SEO Impact
+* **Indexation Rate:** Fixing the canonical issue will resolve duplicate content penalties, allowing pages like `/shops` and `/products` to be indexed and ranked individually on Google.
+* **Link Equity & PageRank Consolidation:** Resolving trailing slash issues prevents ranking signals from being split between two identical URL paths.
+* **Overall Rating:** Correcting these items will increase the site’s Technical SEO URL health score to **100/100**.
+
+### Priority: High (Due to the canonical tag bug blocking indexation of all subpages).
