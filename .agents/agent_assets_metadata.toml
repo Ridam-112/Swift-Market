@@ -131,3 +131,21 @@ id = "m-gVP7AxjkXWl9I3qfVfF"
 uri = "file://SwiftMart_PRD.md"
 type = "text"
 title = "SwiftMart PRD"
+
+[[outputs]]
+id = "VuXddUsJ07TqQ0OyRL88d"
+uri = "file://SwiftMart_TRD.md"
+type = "text"
+title = "SwiftMart TRD"
+
+[[outputs]]
+id = "yQnOgv6PFqZIDc39wWIfZ"
+uri = "file://SwiftMart_AppFlow.md"
+type = "text"
+title = "SwiftMart App Flow"
+
+[[outputs]]
+id = "jPMjJQ6COx9NexwrkHwA5"
+uri = "file://SwiftMart_UIUX_Design.md"
+type = "text"
+title = "SwiftMart UI/UX Design"
