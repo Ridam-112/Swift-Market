@@ -486,9 +486,55 @@ export default function Home() {
       {/* FAQ Section */}
       <FaqSection />
 
+      {/* Service Coverage + Map */}
+      <CoverageSection />
+
       {/* About + Footer */}
       <SiteFooter />
     </div>
+  );
+}
+
+const COVERAGE_AREAS = [
+  "Khadimpur", "Power House More", "Raghunathpur", "Beltala",
+  "Court More", "Station More", "Deshbandhu Para", "Parbatipur",
+  "Nayananagar", "Senpara", "Madhyampara", "Netaji Colony",
+];
+
+function CoverageSection() {
+  return (
+    <section>
+      <SectionHeader title="Delivery Coverage in Balurghat" />
+      {/* OpenStreetMap embed — no API key, shows Balurghat delivery zone */}
+      <div className="rounded-2xl overflow-hidden neu-card mb-4 h-40">
+        <iframe
+          src="https://www.openstreetmap.org/export/embed.html?bbox=88.73%2C25.19%2C88.80%2C25.25&amp;layer=mapnik&amp;marker=25.2167%2C88.7667"
+          width="100%"
+          height="100%"
+          title="SwiftMart delivery zone — Balurghat, West Bengal"
+          loading="lazy"
+          className="border-0 w-full h-full"
+        />
+      </div>
+      <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+        We currently deliver across <span className="font-semibold text-foreground">Balurghat</span> (pincodes{" "}
+        <span className="font-semibold text-foreground">733101</span> &amp;{" "}
+        <span className="font-semibold text-foreground">733103</span>), covering the following areas:
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {COVERAGE_AREAS.map(area => (
+          <span
+            key={area}
+            className="text-[11px] font-medium bg-card neu-card px-3 py-1 rounded-full text-muted-foreground"
+          >
+            📍 {area}
+          </span>
+        ))}
+        <span className="text-[11px] font-medium bg-primary/10 text-primary px-3 py-1 rounded-full">
+          + more expanding soon
+        </span>
+      </div>
+    </section>
   );
 }
 

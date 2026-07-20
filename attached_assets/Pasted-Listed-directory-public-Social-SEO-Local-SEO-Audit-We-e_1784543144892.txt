@@ -1,0 +1,67 @@
+Listed directory public
+
+# Social SEO & Local SEO Audit
+
+We evaluated the social metadata tags, preview configurations, and local search signals (NAP consistency, service area definition, geo-targeting) for **swiftmart.space**.
+
+**Overall Social SEO Score: 65/100**  
+**Overall Local SEO Score: 30/100**
+
+---
+
+### 1. Social SEO Audit
+
+| Check | Status | Current Value | Recommendation / Action |
+| :--- | :---: | :--- | :--- |
+| **Open Graph tags** | ⚠️ | Fallbacks are defined in `index.html`. | Keep them, but ensure page-specific route hydration applies to OG tags. |
+| **Twitter Cards** | ✅ | `twitter:card` set to `summary_large_image`. | Good. Matches modern card rendering standards. |
+| **Facebook Preview** | ⚠️ | Uses default home page description. | Subpages (like shops) should preview card details with shop names. |
+| **LinkedIn Readiness** | ⚠️ | Core OG tags exist but are duplicated. | Implement unique `og:title` and `og:description` per route. |
+| **Featured Image** | ✅ | `https://swiftmart.space/opengraph.jpg` | Verified. `opengraph.jpg` is present in `/public` directory. |
+| **Social Title** | ⚠️ | `SwiftMart Balurghat \| Grocery, Food...` | Limit to 50–60 characters to avoid snippet truncation. |
+| **Social Description**| ⚠️ | Home page description is reused globally. | Customize descriptions to reflect specific pages. |
+
+---
+
+### 2. Local SEO Audit
+
+| Check | Status | Current Value | Recommendation / Action |
+| :--- | :---: | :--- | :--- |
+| **Business Name** | ✅ | "SwiftMart Balurghat" in metadata. | Keep targeting the "Balurghat" keyword. |
+| **Address** | ❌ | **Missing.** No corporate/office address is listed. | Add the physical office address in a global footer. |
+| **Phone Number** | ❌ | **Missing.** No contact number is listed. | List a customer helpline number in the header/footer. |
+| **NAP Consistency** | ❌ | **Non-existent.** NAP data is not present. | Display unified Name, Address, and Phone details consistently. |
+| **Google Maps Embed** | ❌ | **Missing.** | Embed a Google Map pointing to your central hub or service zone. |
+| **Business Hours** | ❌ | **Missing** for the SwiftMart platform. | Specify delivery operational hours (e.g. 7 AM - 11 PM). |
+| **LocalBusiness Schema**| ❌ | **Missing.** | Add the recommended JSON-LD LocalBusiness schema on the Home page. |
+| **Service Areas** | ⚠️ | Balurghat is mentioned broadly. | Create a coverage section listing supported neighborhoods. |
+| **City Keywords** | ✅ | "Balurghat" is well integrated. | Maintain usage in metadata and main landing copy. |
+| **Contact Page** | ❌ | Route `/contact-support` returns a 404. | Create a functional contact form page. |
+| **Location Page** | ❌ | No localized landing content. | Create neighborhood/ward subpages if relevant. |
+
+---
+
+### Issues & Recommendations
+
+#### Social SEO Issues:
+*   **Duplicate Social Previews:** Because OG tags are hardcoded in the static HTML shell, sharing a link to `swiftmart.space/shops` or `swiftmart.space/products` on WhatsApp, Slack, Facebook, or Twitter will display the homepage logo and description instead of shop/product details.
+*   *Recommendation:* Implement dynamic SSR (Server-Side Rendering) or use pre-rendering tools (like Vite SSG or Prerender.io) so that crawlers scrape distinct OG tags for each route.
+
+#### Local SEO Issues:
+*   **Lack of Local Citations:** The complete absence of physical office addresses and business contact numbers prevents Google from connecting your website to Google Maps and Google Business Profile (GBP) listings.
+*   *Recommendation:* Add a global page footer that clearly states the physical headquarters address, support email, phone number, and operating hours.
+
+---
+
+### Priority Improvements (Ranked by SEO Impact)
+
+1.  **Add a Local Business Footer with NAP Data (High Impact)**  
+    *Action:* Create a global layout footer containing the corporate details: "SwiftMart, Main Road, Balurghat, West Bengal 733101 | Support: +91-XXXX-XXXXXX".
+2.  **Generate Dynamic Open Graph Tags per Page (High Impact)**  
+    *Action:* Bind dynamic page titles and product image URLs to `og:title` and `og:image` tags. For example, sharing a product page should render the product image instead of the generic homepage banner.
+3.  **Embed Google Maps in the App (Medium Impact)**  
+    *Action:* Embed a Google Maps iframe or styled map overlay showing the delivery range coverage within Balurghat on the homepage/about page.
+4.  **Create a Dedicated "Service Coverage" Section (Medium Impact)**  
+    *Action:* Add a section to the homepage listing Balurghat delivery wards/areas to capture local neighborhood search volume (e.g. "Now delivering to Khadimpur, Power House, Raghunathpur...").
+5.  **Claim and Link your Google Business Profile (Medium Impact)**  
+    *Action:* Ensure you have a claimed Google Business Profile for "SwiftMart Balurghat" and link the website URL directly to it.
