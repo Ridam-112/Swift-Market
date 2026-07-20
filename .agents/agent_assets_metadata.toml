@@ -125,3 +125,9 @@ id = "nSaTsOOz0SO6xHZ8n_utg"
 uri = "file://audit-report.html"
 type = "unspecified"
 title = "SwiftMart Full App Audit — July 2026"
+
+[[outputs]]
+id = "m-gVP7AxjkXWl9I3qfVfF"
+uri = "file://SwiftMart_PRD.md"
+type = "text"
+title = "SwiftMart PRD"
