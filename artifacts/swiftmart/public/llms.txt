@@ -1,0 +1,114 @@
+# SwiftMart — Quick Commerce & Grocery Delivery, Balurghat
+
+## About
+
+SwiftMart is a hyper-local online marketplace and quick-delivery app serving Balurghat, West Bengal, India.
+We connect customers with trusted local shops for 10-minute home delivery of groceries, vegetables, fruits,
+dairy, bakery items, medicines, snacks, beverages, and daily household essentials.
+
+**Website:** https://swiftmart.space/
+**Support:** swiftmart144@gmail.com | +91 62961 18949
+**Operating Hours:** 7:00 AM – 11:00 PM, 7 days a week
+
+---
+
+## Service Area
+
+- **City:** Balurghat, Dakshin Dinajpur District, West Bengal, India
+- **Pincodes served:** 733101, 733103
+- **Neighborhoods:** Khadimpur, Power House More, Raghunathpur, Beltala, Court More, Station More,
+  Deshbandhu Para, Parbatipur, Nayananagar, Senpara, Madhyampara, Netaji Colony
+
+---
+
+## What We Deliver
+
+| Category | Examples |
+|----------|----------|
+| Grocery & Kirana | Rice, Dal, Atta, Oil, Pulses, Spices |
+| Vegetables & Fruits | Potatoes, Onions, Tomatoes, Seasonal Fruits |
+| Dairy & Eggs | Milk, Curd, Paneer, Butter, Eggs |
+| Bakery & Sweets | Bread, Biscuits, Rasgulla, Sandesh |
+| Snacks & Beverages | Chips, Namkeen, Cold Drinks, Juice |
+| Medicines & Pharmacy | OTC medicines, First-aid, Vitamins |
+| Household Essentials | Detergent, Cleaning supplies, Personal care |
+
+---
+
+## Key Pages
+
+- **Homepage:** https://swiftmart.space/
+- **Browse Shops:** https://swiftmart.space/shops
+- **All Products:** https://swiftmart.space/products
+- **Grocery Store:** https://swiftmart.space/grocery
+- **Search:** https://swiftmart.space/search
+- **HTML Sitemap:** https://swiftmart.space/sitemap
+- **XML Sitemap:** https://swiftmart.space/sitemap.xml
+- **Privacy Policy:** https://swiftmart.space/privacy
+- **Terms & Conditions:** https://swiftmart.space/terms
+- **Refund Policy:** https://swiftmart.space/refund-cancellation
+- **Contact & Support:** https://swiftmart.space/contact-support
+
+---
+
+## Frequently Asked Questions
+
+**Q: How fast does SwiftMart deliver in Balurghat?**
+A: SwiftMart delivers in as fast as 10 minutes across Balurghat (pincodes 733101 and 733103).
+Delivery time may vary based on shop distance and order volume.
+
+**Q: What can I order on SwiftMart?**
+A: You can order fresh groceries, vegetables, fruits, dairy, bakery items, snacks, beverages,
+medicines, household essentials, and more from trusted local shops in Balurghat.
+
+**Q: Which areas does SwiftMart currently serve?**
+A: SwiftMart currently serves Balurghat, West Bengal — pincodes 733101 and 733103.
+
+**Q: Does SwiftMart deliver medicines at night in Balurghat?**
+A: Yes. SwiftMart delivers medicines and pharmacy items in Balurghat until 11:00 PM daily,
+subject to partner pharmacy availability.
+
+**Q: How much does delivery cost on SwiftMart?**
+A: Delivery fees vary by order size and distance. Express delivery (under 2 km) starts at ₹10.
+A small packaging fee applies per order. Exact fees are shown at checkout before you confirm.
+
+**Q: What payment methods does SwiftMart accept?**
+A: SwiftMart accepts UPI (Google Pay, PhonePe, Paytm), Cash on Delivery (COD), and online payments
+via Razorpay. All transactions are secured with SSL encryption.
+
+**Q: How do I track my SwiftMart order?**
+A: Once your order is placed, open the Orders page in the app. You will see live rider GPS tracking
+on a map when your order is out for delivery.
+
+**Q: Can local shops in Balurghat sell on SwiftMart?**
+A: Yes. Local shop owners in Balurghat can register as vendors on SwiftMart to reach more customers.
+Tap "Become a Vendor" in the Profile section to get started.
+
+**Q: Is SwiftMart available 24 hours?**
+A: SwiftMart operates from 7:00 AM to 11:00 PM daily. Orders placed outside these hours will be
+queued for the next operating window.
+
+**Q: How do I contact SwiftMart support?**
+A: You can reach us at swiftmart144@gmail.com or call +91 62961 18949. WhatsApp support is also
+available. Support hours: Monday to Saturday, 9:00 AM – 7:00 PM IST.
+
+---
+
+## Business Entity
+
+- **Name:** SwiftMart
+- **Type:** E-commerce / Quick Commerce Platform
+- **Founded:** 2024
+- **Location:** Balurghat, Dakshin Dinajpur, West Bengal – 733101, India
+- **Contact:** swiftmart144@gmail.com
+- **Phone:** +91 62961 18949
+- **Languages:** English, Bengali
+
+---
+
+## Technical Notes for LLM Crawlers
+
+This site is a React Single Page Application (SPA). Static assets are at `/assets/*`.
+The XML sitemap is at https://swiftmart.space/sitemap.xml and lists all indexable routes.
+Product and shop data is served via a REST API at https://swiftmart.space/api/.
+All public pages are accessible without authentication.

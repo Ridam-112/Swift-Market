@@ -30,7 +30,19 @@ const FAQ_ITEMS = [
   },
   {
     q: "Which areas does SwiftMart currently serve?",
-    a: "SwiftMart currently serves Balurghat, West Bengal — pincodes 733101 and 733103. We are expanding to more areas soon.",
+    a: "SwiftMart currently serves Balurghat, West Bengal — pincodes 733101 and 733103, including Khadimpur, Raghunathpur, Beltala, Court More, Station More, and surrounding neighbourhoods. We are expanding to more areas soon.",
+  },
+  {
+    q: "Does SwiftMart deliver medicines at night in Balurghat?",
+    a: "Yes. SwiftMart delivers medicines and pharmacy items in Balurghat until 11:00 PM daily, subject to partner pharmacy availability. Simply search for 'medicine' or browse the Pharmacy category.",
+  },
+  {
+    q: "How much does delivery cost on SwiftMart?",
+    a: "Delivery fees vary by distance and order size. Express delivery under 2 km starts at ₹10, with a small packaging fee per order. The exact fee is shown at checkout before you confirm — no hidden charges.",
+  },
+  {
+    q: "What payment methods does SwiftMart accept?",
+    a: "SwiftMart accepts UPI (Google Pay, PhonePe, Paytm), Cash on Delivery (COD), and online payments via Razorpay. All transactions are secured with SSL encryption.",
   },
   {
     q: "How do I track my order?",
@@ -56,15 +68,45 @@ const HOME_JSON_LD = [
     "@type": "Organization",
     "@id": "https://swiftmart.space/#organization",
     "name": "SwiftMart",
+    "alternateName": "SwiftMart Balurghat",
     "url": "https://swiftmart.space/",
     "logo": { "@type": "ImageObject", "url": "https://swiftmart.space/logo.png" },
+    "email": "swiftmart144@gmail.com",
+    "foundingDate": "2024",
+    "foundingLocation": {
+      "@type": "Place",
+      "name": "Balurghat, West Bengal, India"
+    },
+    "knowsAbout": [
+      "Grocery Delivery", "Quick Commerce", "Local Marketplace",
+      "Food Delivery", "Medicine Delivery", "Balurghat",
+      "Dakshin Dinajpur", "West Bengal"
+    ],
+    "areaServed": {
+      "@type": "City",
+      "name": "Balurghat",
+      "containedInPlace": {
+        "@type": "State",
+        "name": "West Bengal",
+        "containedInPlace": { "@type": "Country", "name": "India" }
+      }
+    },
     "contactPoint": {
       "@type": "ContactPoint",
       "telephone": "+916296118949",
+      "email": "swiftmart144@gmail.com",
       "contactType": "customer support",
+      "hoursAvailable": {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+        "opens": "09:00",
+        "closes": "19:00"
+      },
       "availableLanguage": ["English", "Bengali"]
     },
-    "sameAs": []
+    "sameAs": [
+      "https://swiftmart.space/"
+    ]
   },
   {
     "@type": "WebSite",

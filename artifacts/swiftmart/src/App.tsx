@@ -56,6 +56,7 @@ const Terms              = lazy(() => import("@/pages/legal/Terms"));
 const RefundCancellation = lazy(() => import("@/pages/legal/RefundCancellation"));
 const ContactSupport     = lazy(() => import("@/pages/legal/ContactSupport"));
 const DeleteAccount      = lazy(() => import("@/pages/legal/DeleteAccount"));
+const SitemapPage        = lazy(() => import("@/pages/SitemapPage"));
 
 const VendorDashboard    = lazy(() => import("@/pages/vendor/Dashboard"));
 const VendorProducts     = lazy(() => import("@/pages/vendor/Products"));
@@ -312,6 +313,9 @@ function Router() {
         <Route path="/refund-cancellation" component={RefundCancellation} />
         <Route path="/contact-support"     component={ContactSupport} />
         <Route path="/delete-account"      component={DeleteAccount} />
+        <Route path="/sitemap">
+          <PublicLayout><SitemapPage /></PublicLayout>
+        </Route>
 
         {/* ── Public browsable pages — no auth gate, Google can index these ── */}
         <Route path="/">

@@ -1,0 +1,80 @@
+# AI SEO (GEO / LLM Optimization) Audit
+
+This audit evaluates **swiftmart.space** for discoverability, indexability, and answerability by generative search systems (Google AI Overviews, Perplexity) and Large Language Models (ChatGPT, Gemini, Claude).
+
+**Overall AI SEO Score: 15/100**  
+*(The score is extremely low because the site is a client-side rendered Single Page Application (SPA). Crawlers that do not execute heavy client-side JavaScript will only scrape a blank `<div id="root"></div>` and a splash screen, rendering the entire product catalog, shop lists, and internal pages invisible to AI engines).*
+
+---
+
+### Category-Wise AI SEO Scores
+
+| Category | Score | Status | Recommendation |
+| :--- | :---: | :---: | :--- |
+| **Content & Answerability** | 20/100 | ❌ | AI crawlers find zero body text or structured Q&A formats on raw page fetches. | Implement Server-Side Rendering (SSR) or Static Site Generation (SSG) to output static text. |
+| **Entity SEO** | 15/100 | ❌ | Search engines cannot link entities (SwiftMart -> Balurghat -> Local Shops -> Products) without schema or textual relationships. | Deploy JSON-LD entity nodes (`LocalBusiness` and `Product` schemas). |
+| **Structure & Scannability** | 30/100 | ⚠️ | HTML shell is light and scannable, but the lack of semantic headings (`H1`) breaks reading outlines. | Inject structured headers (`H1`, `H2`) directly into the HTML shell. |
+| **AI Files** | 20/100 | ⚠️ | `robots.txt` does not block AI agents, but the site lacks an `llms.txt` file and HTML sitemap. | Create an `llms.txt` file in the root directory. |
+| **Schema Integration** | 0/100 | ❌ | No structured JSON-LD data exists in the code to feed AI Knowledge Graphs. | Add comprehensive `Product`, `LocalBusiness`, and `FAQ` schemas. |
+| **AI Overview Readiness** | 10/100 | ❌ | The lack of static content means LLM scrapers cannot quote or summarize this site. | Serve pre-rendered HTML content to search bots. |
+
+---
+
+### Top 20 AI SEO Improvements
+
+1.  **Implement Static Rendering (SSR/SSG):** Pre-render the React application so crawlers scrape fully formed HTML instead of a blank container.
+2.  **Create an `llms.txt` File:** Place a markdown-formatted file in the root directory summarizing your service, locations, and catalog structure specifically for LLM parsers.
+3.  **Add a LocalBusiness JSON-LD Schema:** Explicitly link the entity "SwiftMart" to the region "Balurghat" for local AI searches.
+4.  **Inject Structured Product Schemas:** Include prices, ratings, and availability in schema format on all product pages.
+5.  **Build a FAQ Section with FAQPage Schema:** Provide answer-first Q&As about delivery zones and times to feed Google AI Overview callouts.
+6.  **Create an HTML Sitemap:** Host a scannable index page of all shops and categories to help LLM crawlers map the database.
+7.  **Optimize the `robots.txt` for AI Agents:** Add explicit rules allowing user-agents like `GPTBot`, `ClaudeBot`, and `PerplexityBot`.
+8.  **Structure Content with "Answer-First" Formatting:** Write short, direct answers to common queries (e.g. *"We deliver groceries in Balurghat in 10 minutes"*).
+9.  **Implement Breadcrumb Schema:** Let AI crawlers understand category relationships (e.g. `Home > Products > Groceries`).
+10. **Include Freshness Indicators:** Add publication and updates dates in schema/metadata to signal the catalog is active.
+11. **Include Citations and Sources:** Reference local partners or licensing authorities (like FSSAI) to establish authority.
+12. **Optimize Heading Outlines (H1/H2):** Create a clear, nested heading outline so AI engines can parse document outlines easily.
+13. **Add Entity-Rich Product Descriptions:** Expand descriptions to mention raw ingredients, packaging, and specific brands.
+14. **Avoid Non-Standard Jargon:** Use standard terms (e.g., "delivery fee", "operating hours") so AI models can correctly map properties.
+15. **Use Descriptive Alt Text on Images:** Help multimodal models (like GPT-4o or Gemini 1.5 Pro) read and contextualize product images.
+16. **Publish localized "Guides" (Content Clusters):** Add a blog section about local food, shopping guides, and merchant highlights in Balurghat.
+17. **Minimize Render-Blocking Third-Party JS:** Ensure the page loads fast enough for crawler timeout limits (under 3 seconds).
+18. **Add Social Profile Mentions (SameAs Schema):** Link your business profiles (Facebook, Instagram, LinkedIn) inside the Organization schema.
+19. **Deploy Table-Formatted Data:** Format product specifications (nutrition, weight, brand details) using semantic HTML `<table>` tags.
+20. **Enable XML Sitemap Discovery:** Place the sitemap path directly in `robots.txt` so AI indexers find all pages instantly.
+
+---
+
+### Missing GEO (Generative Engine Optimization) Opportunities
+
+*   **Location-Specific Conversational Q&A:** AI searchers query engines conversationally: *"Who delivers medicine in Balurghat after 9 PM?"* If the page text does not contain these exact Q&A patterns, SwiftMart won't rank in conversational results.
+*   **Knowledge Graph Associations:** Lacking an Organization schema means Google's Knowledge Graph cannot verify that "SwiftMart" is a legitimate delivery service in Balurghat.
+
+---
+
+### Probability of Appearing in AI Search Results
+
+*   **Google AI Overviews:** **< 10%** (Due to the canonical issues and lack of pre-rendered text content).
+*   **ChatGPT (SearchGPT/Web Browse):** **< 10%** (Fails to scrape Javascript content reliably).
+*   **Gemini Live Search:** **< 10%** (Relies on Google's primary index; blocked by lack of indexable text).
+*   **Claude (Link Scrapers):** **< 5%** (Claude cannot execute JS; sees only a blank page wrapper).
+*   **Perplexity:** **< 10%** (Cannot crawl standard routes due to lack of server-rendered paths).
+
+---
+
+### Prioritized Action Plan
+
+#### Immediate (Next 48 Hours)
+1.  **Fix the Canonical Tag:** Change the hardcoded canonical in `index.html` to point dynamically to the crawled page.
+2.  **Add a Root H1:** Inject a styled, descriptive H1 tag on the Home and Category templates.
+3.  **Submit Sitemap to Google Search Console:** Ensure Google begins indexing all sitemap URLs.
+
+#### Short-Term (1–2 Weeks)
+1.  **Implement Prerendering / SSG:** Ensure pages like `/shops` and `/products` serve pre-rendered HTML text to crawlers.
+2.  **Deploy `llms.txt`:** Upload the markdown file to `swiftmart.space/llms.txt`.
+3.  **Inject Organization & LocalBusiness Schemas:** Deploy the JSON-LD schemas onto the homepage.
+
+#### Long-Term (1 Month)
+1.  **Add FAQ & Product Schemas:** Dynamically map database records to output product and FAQ schemas.
+2.  **Implement a Site Footer:** Establish clear internal paths to legal pages and build out support sections.
+3.  **Build a Blog/Guides Section:** Create localized, conversational content to satisfy informational search intents.
