@@ -630,6 +630,30 @@ export default function Checkout() {
                 : 'Place Order'
             )}
           </Button>
+
+          {/* Payment trust row */}
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+              <span>🔒</span> Secure payments via
+            </p>
+            <div className="flex items-center gap-3 flex-wrap justify-center">
+              {[
+                { label: "Razorpay", bg: "#072654", color: "#fff" },
+                { label: "UPI", bg: "#5f259f", color: "#fff" },
+                { label: "GPay", bg: "#1a73e8", color: "#fff" },
+                { label: "PhonePe", bg: "#5f259f", color: "#fff" },
+                { label: "COD", bg: "#166534", color: "#fff" },
+              ].map(({ label, bg, color }) => (
+                <span
+                  key={label}
+                  className="text-[10px] font-bold px-2.5 py-1 rounded-md"
+                  style={{ background: bg, color }}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
         </section>
       </div>
     </div>

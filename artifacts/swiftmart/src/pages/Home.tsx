@@ -261,6 +261,9 @@ export default function Home() {
   const [apiCategories, setApiCategories] = useState<DisplayCategory[]>([]);
   const [dynamicSections, setDynamicSections] = useState<HomepageSection[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(true);
+  const [bannerDismissed, setBannerDismissed] = useState(() =>
+    typeof localStorage !== "undefined" && localStorage.getItem("sm_promo_banner_v1") === "1"
+  );
 
   // Load admin-configured homepage sections (cached in memory for 5 min)
   useEffect(() => {
@@ -329,6 +332,30 @@ export default function Home() {
       </div>
 
       <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+
+      {/* First-order promo banner — dismissable */}
+      {!bannerDismissed && (
+        <div className="flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-2xl px-4 py-2.5">
+          <span className="text-xl shrink-0" aria-hidden="true">🎉</span>
+          <p className="flex-1 text-sm font-semibold text-foreground leading-snug">
+            New here? Use code{" "}
+            <span className="text-primary font-extrabold tracking-wide">FIRST50</span>{" "}
+            for ₹50 off your first order!
+          </p>
+          <button
+            onClick={() => {
+              setBannerDismissed(true);
+              localStorage.setItem("sm_promo_banner_v1", "1");
+            }}
+            aria-label="Dismiss offer banner"
+            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-muted/50"
+          >
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       <HeroBannerSlider />
 

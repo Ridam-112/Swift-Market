@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRoute } from "wouter";
 import { SEO } from "@/components/SEO";
 import { useProducts } from "@/hooks/useProducts";
@@ -36,6 +36,8 @@ export default function Product() {
   const [directProduct, setDirectProduct] = useState<ProductType | null>(null);
   const [directLoading, setDirectLoading] = useState(false);
   const [directFailed, setDirectFailed] = useState(false);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  const ctaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -270,6 +272,18 @@ export default function Product() {
     }
   };
 
+  // Show sticky Add-to-Cart bar when the main CTA button scrolls out of view on mobile
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setShowStickyBar(!entry.isIntersecting),
+      { threshold: 0, rootMargin: "0px 0px -10px 0px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [product]);
+
   return (
     <div className="pb-24 pt-4 px-4 max-w-4xl mx-auto space-y-8">
       <SEO
@@ -441,7 +455,7 @@ export default function Product() {
             </div>
           )}
 
-          <div className="mt-auto">
+          <div ref={ctaRef} className="mt-auto">
             {isOutOfStock ? (
               <Button size="lg" disabled
                 className="w-full md:w-auto rounded-full text-lg font-bold shadow-none h-14 px-12 opacity-50 cursor-not-allowed">
@@ -503,6 +517,36 @@ export default function Product() {
           <SectionHeader title="Similar Products" />
           <ProductGrid products={relatedProducts} />
         </section>
+      )}
+
+      {/* Sticky Add-to-Cart bar — mobile only, appears when main CTA scrolls off screen */}
+      {showStickyBar && !isOutOfStock && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur border-t border-border/50 px-4 py-3 flex items-center gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.10)]">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-foreground truncate">{product.name}</p>
+            <p className="text-primary font-bold text-sm">{formatINR(product.discountedPrice ?? product.price)}</p>
+          </div>
+          {isWeightBased ? (
+            selectedGrams ? (
+              <WeightStepper
+                selectedGrams={selectedGrams}
+                presets={weightPresetList}
+                maxGrams={maxGrams}
+                onChange={(grams) => updateWeight(itemKey, grams)}
+              />
+            ) : (
+              <Button size="sm" className="rounded-full font-bold shadow-none neu-card px-5 shrink-0" onClick={handleAddToCart}>
+                Add
+              </Button>
+            )
+          ) : qty > 0 ? (
+            <QuantityStepper qty={qty} maxQty={product.stock} onChange={(newQty) => updateQty(itemKey, newQty)} />
+          ) : (
+            <Button size="sm" className="rounded-full font-bold shadow-none neu-card px-5 shrink-0" onClick={handleAddToCart}>
+              Add to Cart
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );

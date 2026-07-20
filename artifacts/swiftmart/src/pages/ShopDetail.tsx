@@ -202,6 +202,15 @@ export default function ShopDetail() {
               <span className="text-[10px] text-muted-foreground">Location</span>
             </div>
           </div>
+
+          {/* FSSAI compliance trust badge */}
+          <div className="flex items-center gap-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 px-3 py-2 rounded-xl">
+            <span className="text-green-700 dark:text-green-400 text-base leading-none" aria-hidden="true">✅</span>
+            <div className="flex flex-col">
+              <span className="font-bold text-[11px] leading-none text-green-700 dark:text-green-400">FSSAI Registered</span>
+              <span className="text-[10px] text-muted-foreground">Verified vendor</span>
+            </div>
+          </div>
         </div>
 
         {!shop.isOpen && (

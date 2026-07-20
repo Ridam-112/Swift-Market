@@ -22,6 +22,7 @@ import { PincodeSelector } from "@/components/PincodeSelector";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { RobotsManager } from "@/components/SEO";
+import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { useAuth } from "@/hooks/useAuth";
 import { setupPushMessageListener, playNotificationSound, playAdminOrderAlert } from "@/lib/pushNotifications";
 import { initFcmOnLoad, setupFcmForegroundListener } from "@/lib/fcm";
@@ -241,6 +242,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
         </motion.main>
       </AnimatePresence>
       <BottomNav />
+      <WhatsAppButton />
     </PincodeGuard>
   );
 }
@@ -268,6 +270,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
           </motion.main>
         </AnimatePresence>
         <BottomNav />
+        <WhatsAppButton />
       </PincodeGuard>
     </AuthGuard>
   );
