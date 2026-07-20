@@ -23,6 +23,9 @@ export function CategoryBubble({ category }: { category: DisplayCategory }) {
           <img
             src={category.image}
             alt={category.name}
+            loading="lazy"
+            width={64}
+            height={64}
             className="w-full h-full object-contain relative z-10"
             onError={() => setImgFailed(true)}
           />

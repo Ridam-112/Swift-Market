@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonShopCardHorizontal } from "@/components/SkeletonShopCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SEO } from "@/components/SEO";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { api } from "@/lib/api";
 import { Star, ChevronRight, Zap, MapPin, Search } from "lucide-react";
@@ -18,7 +19,39 @@ import type { Product } from "@/types";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
+const FAQ_ITEMS = [
+  {
+    q: "How fast does SwiftMart deliver in Balurghat?",
+    a: "SwiftMart delivers in as fast as 10 minutes across Balurghat (pincodes 733101 and 733103). Delivery time may vary based on shop distance and order volume.",
+  },
+  {
+    q: "What can I order on SwiftMart?",
+    a: "You can order fresh groceries, vegetables, fruits, dairy, bakery items, snacks, beverages, medicines, household essentials, and more from trusted local shops in Balurghat.",
+  },
+  {
+    q: "Which areas does SwiftMart currently serve?",
+    a: "SwiftMart currently serves Balurghat, West Bengal — pincodes 733101 and 733103. We are expanding to more areas soon.",
+  },
+  {
+    q: "How do I track my order?",
+    a: "Once your order is placed, you can track it live on the Orders page. You'll see the rider's real-time location on the map when your order is out for delivery.",
+  },
+  {
+    q: "Can local shops sell on SwiftMart?",
+    a: "Yes! Local Balurghat shop owners can register as vendors on SwiftMart to reach more customers. Tap 'Become a Vendor' in your profile to get started.",
+  },
+];
+
 const HOME_JSON_LD = [
+  {
+    "@type": "FAQPage",
+    "@id": "https://swiftmart.space/#faq",
+    "mainEntity": FAQ_ITEMS.map(item => ({
+      "@type": "Question",
+      "name": item.q,
+      "acceptedAnswer": { "@type": "Answer", "text": item.a },
+    })),
+  },
   {
     "@type": "Organization",
     "@id": "https://swiftmart.space/#organization",
@@ -244,6 +277,8 @@ export default function Home() {
 
   return (
     <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto space-y-6 overflow-x-hidden">
+      {/* Visually-hidden H1 anchors the page outline for crawlers */}
+      <h1 className="sr-only">SwiftMart Balurghat — Grocery, Food &amp; Medicine Delivery in 10 Minutes</h1>
       <SEO
         title="SwiftMart Balurghat | Grocery, Food & Medicine Delivery"
         description="Order fresh groceries, organic vegetables, food, & medicine online in Balurghat. Fast delivery from your favorite local shops. Shop now on SwiftMart!"
@@ -417,47 +452,41 @@ export default function Home() {
           .map(section => <DynamicSection key={section._id} section={section} />)
       ) : null}
 
+      {/* FAQ Section */}
+      <FaqSection />
+
       {/* About + Footer */}
-      <section aria-label="About SwiftMart" className="border-t border-border/30 pt-6 space-y-3">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          <MapPin className="w-3.5 h-3.5" />
-          About SwiftMart
-        </div>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          SwiftMart is Balurghat's very own quick commerce &amp; e-grocery app — built for the people
-          of Balurghat, by the people of Balurghat. We deliver groceries, daily essentials, snacks,
-          beverages, household items, and much more right to your doorstep in as fast as{" "}
-          <span className="font-semibold text-foreground">10 minutes</span>.
-        </p>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          No more waiting in queues or travelling to the market. Open the app, pick what you need
-          from your favourite local shops, and sit back — SwiftMart handles the rest. Our network of
-          trusted local vendors across Balurghat ensures you always get fresh, quality products at
-          honest prices.
-        </p>
-        <div className="flex flex-wrap gap-2 pt-1">
-          {[
-            "⚡ 10-Min Delivery",
-            "🛒 E-Grocery",
-            "🏪 Local Shops",
-            "📍 Balurghat Only",
-          ].map(tag => (
-            <span key={tag} className="text-[10px] font-semibold bg-primary/10 text-primary px-2.5 py-0.5 rounded-full">
-              {tag}
-            </span>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground font-medium">Proudly serving Balurghat, West Bengal 🇮🇳</p>
-        <div className="flex items-center gap-3 flex-wrap text-xs pt-1">
-          <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy</Link>
-          <span className="text-border">·</span>
-          <Link href="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms</Link>
-          <span className="text-border">·</span>
-          <Link href="/refund-cancellation" className="text-muted-foreground hover:text-foreground transition-colors">Refunds</Link>
-          <span className="text-border">·</span>
-          <Link href="/contact-support" className="text-muted-foreground hover:text-foreground transition-colors">Support</Link>
-        </div>
-      </section>
+      <SiteFooter />
     </div>
+  );
+}
+
+function FaqSection() {
+  const [open, setOpen] = useState<number | null>(null);
+  return (
+    <section>
+      <SectionHeader title="Frequently Asked Questions" />
+      <div className="space-y-2">
+        {FAQ_ITEMS.map((item, i) => (
+          <div key={i} className="bg-card rounded-xl neu-card overflow-hidden">
+            <button
+              onClick={() => setOpen(open === i ? null : i)}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
+              aria-expanded={open === i}
+            >
+              <span className="text-sm font-semibold text-foreground">{item.q}</span>
+              <ChevronRight
+                className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${open === i ? "rotate-90" : ""}`}
+              />
+            </button>
+            {open === i && (
+              <div className="px-4 pb-3 text-sm text-muted-foreground leading-relaxed border-t border-border/30 pt-2">
+                {item.a}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

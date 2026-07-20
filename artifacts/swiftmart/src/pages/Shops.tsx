@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { SEO } from "@/components/SEO";
+import { SiteFooter } from "@/components/SiteFooter";
 import { Star, Clock, SlidersHorizontal, X, Search, Zap } from "lucide-react";
 import { useShops } from "@/hooks/useShops";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,7 +67,7 @@ export default function Shops() {
       />
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-foreground">Shops Near You</h2>
+        <h1 className="text-2xl font-bold text-foreground">Local Shops in Balurghat</h1>
         <div className="flex items-center gap-2">
           {activeFilters > 0 && (
             <button
@@ -264,6 +265,8 @@ export default function Shops() {
         )}
         </>
       )}
+
+      <SiteFooter />
     </div>
   );
 }

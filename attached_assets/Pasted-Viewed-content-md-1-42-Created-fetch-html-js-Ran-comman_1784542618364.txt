@@ -1,0 +1,115 @@
+Viewed content.md:1-42
+Created fetch_html.js
+Ran command: `node fetch_html.js`
+Viewed index.html:1-177
+Listed directory Pictures
+Listed directory Swift-Market
+Viewed pnpm-workspace.yaml:1-160
+Listed directory lib
+Listed directory artifacts
+Listed directory swiftmart
+Listed directory src
+Listed directory pages
+Viewed Home.tsx:1-81
+Listed directory components
+Used tool: ask_permission
+Listed directory components
+Viewed SectionHeader.tsx:1-17
+Viewed Header.tsx:1-161
+Viewed App.tsx:1-186
+Viewed Shops.tsx:1-94
+Viewed Product.tsx:1-109
+Viewed Search.tsx:1-98
+Viewed ShopDetail.tsx:1-120
+Viewed ProductCard.tsx:1-80
+Listed directory data
+Viewed products.ts:1-54
+Viewed CategoryBubble.tsx:1-24
+Viewed BottomNav.tsx:1-71
+
+# Headings, Content, Images & Internal SEO Audit
+
+We analyzed the React source code and directory assets of the SwiftMart workspace. This audit covers on-page content structures, asset optimization, heading hierarchies, and internal linking flows.
+
+**Overall Score: 57/100**
+
+---
+
+### 1. Headings Audit
+
+| Check | Status | Findings | Recommendation |
+| :--- | :---: | :--- | :--- |
+| **One H1 Only** | ❌ | **Critical Issue:** Home, Shops, and Search pages have **no H1 tags** at all. Product and ShopDetail pages have a single H1 (product name/shop name). | Add a hidden or styled H1 tag on the Home page (`<h1>SwiftMart Balurghat</h1>`) and index pages to establish the document root. |
+| **H2 Hierarchy** | ✅ | Good section headers (e.g., "Shop by Category", "Popular Shops"). | Keep using H2 for section headings. |
+| **H3 Hierarchy** | ⚠️ | Used for product names inside `ProductCard` and description headers. Product page uses H3 (`Description`) before H2 (`Similar Products`). | Ensure H3 tags are nested strictly underneath their parent H2s to maintain document outline order. |
+| **Missing Headings** | ❌ | Homepage, Shops list, and Search result templates lack semantic H1 elements. | Inject page-defining H1 tags across all main routes. |
+| **Duplicate Headings** | ✅ | Heading texts are unique. | No changes needed. |
+| **Keyword Placement** | ⚠️ | Headings contain terms like "Shops Near You" or category names, but lack geo-targeted keywords. | Use location keywords in H1/H2 tags (e.g., `<h2>Popular Shops in Balurghat</h2>` instead of `Popular Shops`). |
+
+---
+
+### 2. Content Audit
+
+| Check | Status | Findings | Recommendation |
+| :--- | :---: | :--- | :--- |
+| **Primary Keyword** | ⚠️ | Low search density. "Grocery Delivery Balurghat" is in meta tags but virtually absent in visible page texts. | Add a short descriptive introduction on the homepage explaining what SwiftMart does in Balurghat. |
+| **Secondary Keywords** | ⚠️ | "Online supermarket", "quick commerce", "10-minute delivery" are rarely used in headers/body. | Integrate secondary keywords into headings and intro text block. |
+| **Semantic Keywords** | ✅ | Category pages cover terms like fruits, vegetables, personal care, books, and clothing. | Maintain rich category naming. |
+| **Search Intent** | ✅ | Transactional intent is satisfied via adding products to carts and checking out. | Good. Satisfies transactional intents well. |
+| **Content Uniqueness**| ⚠️ | Mock product descriptions are very short and generic (e.g., "Vacuum evaporated iodised salt"). | Allow vendors to add richer, unique descriptions for products to rank for long-tail queries. |
+| **Thin Content** | ❌ | The website is highly interactive but contains almost zero indexable paragraph text (thin content). | Add descriptive text blocks, shop guides, or localized area coverage descriptions to make pages more substantial for crawlers. |
+| **Readability** | ✅ | Inter font is used; typography scale is clear with high contrast. | Good job. Visual readability is excellent. |
+| **FAQ Section** | ❌ | No FAQs are present on any of the consumer pages. | Add a schema-backed FAQ section on the Home page (e.g., "How does SwiftMart deliver in 10 minutes?"). |
+| **Table of Contents** | ✅ | N/A (Not needed for a standard e-commerce flow, only relevant for long-form blogs). | No changes needed. |
+| **E-E-A-T Signals** | ❌ | Missing "About Us", contact details, service area maps, and refund disclosures in the main layout. | Create and link dedicated Trust pages (About, Contact, Support) with real-world contact info. |
+| **Author Info** | ✅ | N/A for quick-commerce apps. | No changes needed. |
+
+---
+
+### 3. Images Audit
+
+| Check | Status | Findings | Recommendation |
+| :--- | :---: | :--- | :--- |
+| **Alt Text** | ✅ | Alt text exists (e.g., `<img alt={product.name}>` and `<img alt={vendor.storeName}>`). | Good practice. Keep it up. |
+| **File Names** | ❌ | Products reuse generic category images (e.g., `cat-groceries.png` for multiple distinct grocery items). | Save separate, descriptive image files per product (e.g., `aashirvaad-wheat-atta.png` instead of referencing a shared category thumbnail). |
+| **WebP Usage** | ❌ | All image assets listed in the code use the `.png` format. | Convert all static and user-uploaded store/product images to `.webp` or `.avif` formats. |
+| **Lazy Loading** | ❌ | No image elements use the `loading="lazy"` attribute. | Add `loading="lazy"` to product grid images and categories below the fold. |
+| **Width & Height** | ❌ | Images rely entirely on CSS classes (`w-full h-full`) without HTML size tags. | Add explicit `width` and `height` dimensions to prevent Cumulative Layout Shift (CLS) as pages load. |
+| **Large Images** | ⚠️ | Raw png banners are loaded instead of dynamically scaled assets. | Serve responsive images using the `srcset` attribute. |
+
+---
+
+### 4. Internal SEO Audit
+
+| Check | Status | Findings | Recommendation |
+| :--- | :---: | :--- | :--- |
+| **Internal Links** | ✅ | Correctly implemented via `wouter` `<Link>` tags. | Maintain single-page application routing standard. |
+| **Broken Links** | ❌ | **Critical Issue:** Sitemap lists `/contact-support`, `/privacy`, `/terms`, and `/refund-cancellation`, but **none of these routes exist in App.tsx**, resulting in soft 404s. | Implement these pages in `src/pages` and register their routes in `src/App.tsx`. |
+| **Anchor Text** | ✅ | Natural anchor text is used (e.g., product names and store names). | Keep using text-based anchors. |
+| **Breadcrumbs** | ❌ | Product detail and category pages lack breadcrumb navigation. | Implement structured breadcrumbs (e.g., `Home > Category > Product`). |
+| **Orphan Content** | ❌ | Legal pages (Privacy, Terms, Refunds) are listed in sitemap but have no links pointing to them in the app. | Implement a footer component containing links to all legal, support, and about pages. |
+
+---
+
+### Top 10 Fixes (Priority Order)
+
+1.  **Register Missing Routes in `App.tsx` (High)**
+    Add routes and page components for `/privacy`, `/terms`, `/refund-cancellation`, and `/contact-support` to prevent soft 404s for URLs listed in the sitemap.
+2.  **Add a Header (H1) Tag on Key Pages (High)**
+    Insert a single `<h1>` tag on the Home page, Shops list, and Search page to establish the crawl outline.
+3.  **Implement a Site Footer with Internal Links (High)**
+    Build a global `<Footer>` component containing links to all missing routes to eliminate orphan pages.
+4.  **Convert Images to WebP Format (Medium)**
+    Replace all category and product PNG images with WebP to improve page speed and Core Web Vitals.
+5.  **Enable Lazy Loading for Images (Medium)**
+    Add `loading="lazy"` to all image tags inside `ProductCard` and `CategoryBubble` components to optimize rendering.
+6.  **Add Dynamic Canonical URL Logic (Medium)**
+    Fix the hardcoded canonical in `index.html` by making it output the exact path requested by crawlers.
+7.  **Add FAQ Schema to Homepage (Medium)**
+    Implement a collapsable FAQ accordion on the Home page to satisfy search engine query requirements.
+8.  **Define Width and Height on Images (Medium)**
+    Add explicit size attributes on icons and cards to prevent layout shifts.
+9.  **Write Unique Descriptions & Image Names for Products (Low)**
+    Stop sharing category placeholder images; use unique product images named after the product keyword.
+10. **Implement Breadcrumbs (Low)**
+    Add breadcrumbs to category and product pages (e.g., `/category/groceries` -> `/product/g1`) to improve internal linking architecture.

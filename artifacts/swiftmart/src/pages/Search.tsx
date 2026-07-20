@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { SEO } from "@/components/SEO";
+import { SiteFooter } from "@/components/SiteFooter";
 import { Search, PackageSearch, X, Clock, Sparkles } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useRecentSearches } from "@/hooks/useRecentSearches";
@@ -81,6 +82,8 @@ export default function SearchPage() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-7xl mx-auto space-y-6 min-h-[100dvh]">
+      {/* Visually-hidden H1 for crawlers — the search input is the visual focal point */}
+      <h1 className="sr-only">Search Groceries, Vegetables &amp; Daily Essentials in Balurghat</h1>
       <SEO
         title={searchTitle}
         description={searchDesc}
@@ -275,6 +278,8 @@ export default function SearchPage() {
           )
         )}
       </div>
+
+      <SiteFooter />
     </div>
   );
 }

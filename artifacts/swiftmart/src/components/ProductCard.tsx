@@ -90,6 +90,9 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         <img
           src={product.image}
           alt={product.name}
+          loading="lazy"
+          width={200}
+          height={200}
           className={`w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? "opacity-40" : ""}`}
         />
         {product.discountedPrice && product.discountedPrice < product.price && !isOutOfStock && (
