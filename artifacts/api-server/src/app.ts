@@ -149,7 +149,17 @@ app.use("/api", globalApiLimiter, router);
 // Dotfiles and suspicious paths never receive index.html.
 if (process.env.NODE_ENV === "production") {
   const frontendDist = path.join(__dirname, "..", "..", "swiftmart", "dist", "public");
-  app.use(express.static(frontendDist));
+  // Hashed assets (e.g. /assets/index-DP9kdDoW.js) are content-addressed — safe to cache forever.
+  // Everything else (index.html, manifest, robots.txt) must revalidate on every request.
+  app.use(express.static(frontendDist, {
+    setHeaders(res, filePath) {
+      if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      } else {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      }
+    },
+  }));
   app.get("/{*splat}", (req: Request, res: Response) => {
     // Never serve SPA for dotfiles or scanner paths (already blocked above,
     // but guard here too so static middleware bypasses don't sneak through)

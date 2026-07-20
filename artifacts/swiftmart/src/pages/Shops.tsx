@@ -226,7 +226,7 @@ export default function Shops() {
                       </div>
 
                       <div className="flex items-center gap-2 flex-wrap text-xs font-medium">
-                        <div className="flex items-center gap-1 text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 rounded-md">
+                        <div className="flex items-center gap-1 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded-md">
                           <Star className="w-3 h-3 fill-current" />
                           {vendor.rating > 0 ? vendor.rating.toFixed(1) : "New"}
                         </div>

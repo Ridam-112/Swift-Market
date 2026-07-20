@@ -1,0 +1,77 @@
+Created test_compression.js
+Ran command: `node test_compression.js`
+Used tool: manage_task
+Viewed task-123.log:1-80
+Ran command: `Remove-Item -Path "test_compression.js" -Force -ErrorAction SilentlyContinue`
+
+# Technical SEO & Accessibility Audit
+
+We evaluated the server configurations (headers, caching, compression), DOM loading sequence, and accessibility tags (contrast, ARIA, form labels) of **swiftmart.space**.
+
+**Overall Technical Score: 72/100**  
+**Overall Accessibility Score: 60/100**
+
+---
+
+### 1. Technical SEO Audit
+
+| Check | Status | Findings | Recommendation |
+| :--- | :---: | :--- | :--- |
+| **Mobile Friendly** | ✅ | Fully responsive viewport meta defined. CSS handles fluid grid layouts nicely. | Continue using relative sizing (`rem`, `%`) for layouts. |
+| **Core Web Vitals** | ⚠️ | Razorpay script in head blocks rendering. Missing image sizing triggers layout shifts (CLS). | Defer third-party scripts and add explicit sizes to image tags. |
+| **Page Speed & Cache** | ❌ | **Issue:** Hashed static assets (e.g. `/assets/index-DP9kdDoW.css`) serve `cache-control: public, max-age=0`. | Configure the server/CDN to serve immutable cache headers (`public, max-age=31536000, immutable`) for hashed assets. |
+| **GZIP/Brotli** | ✅ | **Brotli (`br`)** compression is active on all raw HTML and CSS assets. | Keep Brotli compression active. |
+| **Render Blocking**| ❌ | Razorpay Checkout SDK (`checkout.js`) is loaded synchronously in the document `<head>`. | Add `defer` or `async` to the Razorpay script tag or load it dynamically on checkout initialization. |
+| **CSS Optimization**| ✅ | Stylesheets are correctly bundled, minified, and scoped. | Maintain current bundler settings. |
+| **JS Optimization** | ✅ | Javascript is bundled as ES modules and correctly minified. | Maintain current bundler settings. |
+| **Lazy Loading** | ❌ | Product and category images are loaded eagerly. | Add `loading="lazy"` to images below the fold. |
+| **Broken Resources**| ✅ | Internal script assets and CSS files resolve correctly (`200 OK`). | No changes needed. |
+| **Broken Links** | ❌ | **Critical Issue:** Sitemap lists `/privacy`, `/terms`, `/refund-cancellation`, and `/contact-support` but they have no routes in `App.tsx`. | Define these routes in React and render placeholder legal templates. |
+| **Indexability** | ⚠️ | Pages are allowed in `robots.txt` but incorrect canonical links prevent indexing of subpages. | Fix canonical tags to allow proper indexation of distinct routes. |
+| **Robots Directives**| ✅ | Metadata robots tags exist on all pages. | No changes needed. |
+| **Canonical** | ❌ | Hardcoded canonical on `index.html` points all subpages to the homepage. | Dynamically generate canonical links per page path. |
+| **XML Sitemap** | ⚠️ | `sitemap.xml` exists but is not declared in `robots.txt`. | Add `Sitemap: https://swiftmart.space/sitemap.xml` to `robots.txt`. |
+| **Robots.txt** | ✅ | `robots.txt` exists and blocks sensitive admin/auth/cart paths correctly. | Add sitemap reference (see above). |
+| **HTTPS** | ✅ | Standard HTTPS redirection is active with HSTS enabled (`max-age=31536000`). | Maintain secure hosting settings. |
+| **Mixed Content** | ✅ | All API calls and asset references are made over secure HTTPS protocols. | Maintain secure routing. |
+| **Crawlability** | ⚠️ | Lack of footer links leaves legal/support pages orphaned. | Implement a global footer to create standard internal link paths. |
+
+---
+
+### 2. Accessibility Audit
+
+| Check | Status | Findings | Recommendation |
+| :--- | :---: | :--- | :--- |
+| **Missing ALT Text** | ✅ | Image components utilize product and store names in `alt` attributes. | Keep enforcing descriptive alternate text. |
+| **Heading Hierarchy** | ❌ | Major outline gaps: Homepage, Shops list, and Search result templates lack `<h1>` tags. | Place a structured `<h1>` on every main index page. |
+| **Color Contrast** | ⚠️ | Yellow text (`text-yellow-600`) is displayed on light card backgrounds, failing WCAG AA (contrast < 4.5:1). | Use darker shades of yellow (e.g. `#b45309`) or add solid backgrounds behind warnings. |
+| **Keyboard Nav** | ⚠️ | Standard elements are focusable but custom modals/slideouts do not trap tab-focus. | Implement focus trapping libraries on dialogs (e.g. Radix UI primitives). |
+| **ARIA Labels** | ❌ | Icon-only buttons (Search, Cart triggers) lack descriptive text or aria-labels. | Add `aria-label="Search"` and `aria-label="View Shopping Cart"` to icon-only links. |
+| **Form Labels** | ❌ | Input tags (search bars, support queries) lack linked `<label>` or `aria-label` elements. | Wrap inputs in `<label>` or add `aria-label="Search items"` directly to inputs. |
+| **Accessible Buttons**| ✅ | Interactive triggers have clear click targets. | Maintain large tap sizes (min 44x44px). |
+| **Accessible Links** | ⚠️ | Image-only links lack descriptive context for screen reader users. | Ensure image `alt` texts inside links define the link's destination. |
+
+---
+
+### Top 10 Technical Fixes (Ranked by SEO & Performance Impact)
+
+1.  **Register Legal Routes in React router (SEO Impact: Critical)**  
+    *Action:* Create pages for `/privacy`, `/terms`, `/refund-cancellation`, and `/contact-support` in the code, ensuring they serve real content instead of soft 404s.
+2.  **Fix Dynamic Canonical Tag Logic (SEO Impact: Critical)**  
+    *Action:* Dynamically render `<link rel="canonical">` to point to the current page path instead of defaulting to the home page URL on all subpages.
+3.  **Optimize Cache-Control Headers on Static Assets (SEO Impact: High)**  
+    *Action:* In Cloudflare/Vercel/Render, apply `Cache-Control: public, max-age=31536000, immutable` for all files in `/assets/*`.
+4.  **Defer Razorpay Script in `<head>` (SEO Impact: High)**  
+    *Action:* Add `defer` or load `checkout.js` asynchronously to prevent blocking the HTML parser during initial page rendering.
+5.  **Declare XML Sitemap in `robots.txt` (SEO Impact: High)**  
+    *Action:* Append `Sitemap: https://swiftmart.space/sitemap.xml` to your `robots.txt` file to accelerate crawler discovery.
+6.  **Create a Global Footer Component (SEO Impact: Medium)**  
+    *Action:* Build a site-wide footer linking to your privacy, terms, shops, and support pages to eliminate orphan content.
+7.  **Add `aria-label` & Labels to Inputs and Buttons (Accessibility Impact: High)**  
+    *Action:* Add screen-reader friendly labels to the search input bar and shopping cart icon link.
+8.  **Inject H1 Headings on Core Pages (SEO Impact: Medium)**  
+    *Action:* Implement hidden or styled `<h1>` elements describing the main topic of the Home, Shops, and Search page views.
+9.  **Enable Lazy Loading on Images (Performance Impact: Medium)**  
+    *Action:* Add `loading="lazy"` to product thumbnail images inside the `ProductCard` component.
+10. **Correct Low-Contrast Yellow Text (Accessibility Impact: Medium)**  
+    *Action:* Change instances of light yellow text on light backgrounds to a darker, WCAG-compliant yellow/amber value.

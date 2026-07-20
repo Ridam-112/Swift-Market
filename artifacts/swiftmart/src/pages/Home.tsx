@@ -439,7 +439,7 @@ export default function Home() {
                     <h3 className="font-bold text-sm truncate text-foreground">{shop.storeName}</h3>
                     <div className="text-[10px] text-muted-foreground mb-1 truncate">{shop.category}</div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <div className="flex items-center gap-1 text-[11px] font-medium text-yellow-600">
+                      <div className="flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
                         <Star className="w-3 h-3 fill-current" />
                         {shop.rating > 0 ? shop.rating.toFixed(1) : "New"}
                       </div>

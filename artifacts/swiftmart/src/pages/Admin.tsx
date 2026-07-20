@@ -6176,7 +6176,7 @@ function TrendingProductsTab() {
                 </div>
 
                 {/* Stock */}
-                <div className={`text-sm font-medium ${product.stock === 0 ? 'text-red-500' : product.stock < 10 ? 'text-yellow-600' : 'text-foreground'}`}>
+                <div className={`text-sm font-medium ${product.stock === 0 ? 'text-red-500' : product.stock < 10 ? 'text-amber-700 dark:text-amber-400' : 'text-foreground'}`}>
                   {product.stock}
                 </div>
 

@@ -96,12 +96,13 @@ export function Header() {
                 <Store className="w-4 h-4" /> Shops
               </Link>
               <div className="relative flex-1">
-                <button onClick={handleSearchClick} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  <Search className="w-4 h-4" />
+                <button onClick={handleSearchClick} aria-label="Search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <Search className="w-4 h-4" aria-hidden="true" />
                 </button>
                 <Input
                   className="w-full pl-9 bg-background/50 neu-inset border-none h-9 rounded-full focus-visible:ring-1 focus-visible:ring-primary/50 text-foreground text-sm"
                   placeholder="Search groceries, vegetables..."
+                  aria-label="Search groceries and products"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleSearch}
@@ -211,8 +212,8 @@ export function Header() {
 
             {/* Notification bell — for customer and vendor */}
             {user && (role === 'customer' || role === 'vendor') && (
-              <Link href="/notifications" className="relative p-2 rounded-full neu-card">
-                <Bell className={cn("w-4 h-4", location.startsWith("/notifications") ? "text-primary" : "text-foreground")} />
+              <Link href="/notifications" aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"} className="relative p-2 rounded-full neu-card">
+                <Bell aria-hidden="true" className={cn("w-4 h-4", location.startsWith("/notifications") ? "text-primary" : "text-foreground")} />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-primary text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                     {unreadCount > 9 ? "9+" : unreadCount}
@@ -224,8 +225,8 @@ export function Header() {
             {/* Mobile search + cart icons */}
             {role === 'customer' && (
               <>
-                <Link href="/cart" className="relative p-2 rounded-full neu-card">
-                  <ShoppingBag className="w-4 h-4 text-foreground" />
+                <Link href="/cart" aria-label={totalItems > 0 ? `Shopping cart (${totalItems} items)` : "Shopping cart"} className="relative p-2 rounded-full neu-card">
+                  <ShoppingBag aria-hidden="true" className="w-4 h-4 text-foreground" />
                   {totalItems > 0 && (
                     <span className="absolute -top-1 -right-1 bg-destructive text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                       {totalItems}
