@@ -85,6 +85,23 @@ export default function Product() {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [showVariantError, setShowVariantError] = useState(false);
 
+  // Show sticky Add-to-Cart bar when the main CTA button scrolls out of view on mobile.
+  // Keep this hook before the loading/not-found returns so the hook order is stable
+  // while the product transitions from loading to loaded.
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el) {
+      setShowStickyBar(false);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      ([entry]) => setShowStickyBar(!entry.isIntersecting),
+      { threshold: 0, rootMargin: "0px 0px -10px 0px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [product]);
+
   // Show spinner until we either have the product OR have definitively confirmed it doesn't exist.
   // directFailed=true only when the /products/:id API returns an error (e.g. 404).
   // This prevents the one-frame gap between globalLoading→false and directLoading→true.
@@ -274,18 +291,6 @@ export default function Product() {
       );
     }
   };
-
-  // Show sticky Add-to-Cart bar when the main CTA button scrolls out of view on mobile
-  useEffect(() => {
-    const el = ctaRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => setShowStickyBar(!entry.isIntersecting),
-      { threshold: 0, rootMargin: "0px 0px -10px 0px" }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [product]);
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-4xl mx-auto space-y-8">
