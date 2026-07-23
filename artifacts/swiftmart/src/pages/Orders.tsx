@@ -24,6 +24,10 @@ interface ApiOrderItem {
   qty: number;
   price: number;
   image?: string;
+  selectedColor?: string;
+  selectedSize?: string;
+  selectedGrams?: number;
+  selectedWeight?: string;
 }
 
 interface ApiOrder {

@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { useShops } from "@/hooks/useShops";
+import { parseUnit, priceForWeight, formatWeight } from "@/lib/weightUtils";
 import { AddressCard } from "@/components/AddressCard";
 import { AddressForm } from "@/components/AddressForm";
 import { CartSummary } from "@/components/CartSummary";
@@ -164,15 +165,32 @@ export default function Checkout() {
       shopName: shopObj?.storeName ?? "Unknown Shop",
       customerName: user!.name,
       customerPhone: user!.phone,
-      items: shopItems.map(item => ({
-        productId: item.product.id,
-        productName: item.product.name,
-        qty: item.qty,
-        price: item.product.discountedPrice ?? item.product.price,
-        category: item.product.category,
-        ...(item.selectedColor ? { selectedColor: item.selectedColor } : {}),
-        ...(item.selectedSize ? { selectedSize: item.selectedSize } : {}),
-      })),
+      items: shopItems.map(item => {
+        // Compute the effective unit price for this variant (weight-adjusted if applicable)
+        const basePrice = item.product.discountedPrice != null && item.product.discountedPrice < item.product.price
+          ? item.product.discountedPrice
+          : item.product.price;
+        let unitPrice = basePrice;
+        if (item.selectedGrams) {
+          const parsed = parseUnit(item.product.unit);
+          if (parsed.type === "weight" && parsed.baseGrams > 0) {
+            unitPrice = +(priceForWeight(basePrice, parsed.baseGrams, item.selectedGrams)).toFixed(2);
+          }
+        }
+        return {
+          productId: item.product.id,
+          productName: item.product.name,
+          qty: item.qty,
+          price: unitPrice,
+          category: item.product.category,
+          ...(item.selectedColor  ? { selectedColor:  item.selectedColor  } : {}),
+          ...(item.selectedSize   ? { selectedSize:   item.selectedSize   } : {}),
+          ...(item.selectedGrams  ? {
+            selectedGrams:  item.selectedGrams,
+            selectedWeight: formatWeight(item.selectedGrams),
+          } : {}),
+        };
+      }),
       subtotal: shopSubtotal,
       deliveryCharge: shopDeliveryCharge,
       deliveryType: deliverySlot === 'instant' ? 'instant' : 'scheduled',
@@ -255,9 +273,19 @@ export default function Checkout() {
       const createdOrderIds: string[] = [];
 
       for (const [sid, shopItems] of shopGroups) {
-        const shopSub = +shopItems
-          .reduce((s, i) => s + (i.product.discountedPrice ?? i.product.price) * i.qty, 0)
-          .toFixed(2);
+        const shopSub = +shopItems.reduce((s, i) => {
+          const base = i.product.discountedPrice != null && i.product.discountedPrice < i.product.price
+            ? i.product.discountedPrice
+            : i.product.price;
+          let unitPrice = base;
+          if (i.selectedGrams) {
+            const parsed = parseUnit(i.product.unit);
+            if (parsed.type === "weight" && parsed.baseGrams > 0) {
+              unitPrice = +(priceForWeight(base, parsed.baseGrams, i.selectedGrams)).toFixed(2);
+            }
+          }
+          return s + unitPrice * i.qty;
+        }, 0).toFixed(2);
         // Every shop's order gets the full delivery fee — never split
         const shopCouponDiscount = !couponAppliedToFirst ? (couponApplied?.discount ?? 0) : 0;
         const shopCouponCode     = !couponAppliedToFirst ? couponApplied?.code : undefined;

@@ -19,6 +19,8 @@ interface ApiOrderItem {
   category: string;
   selectedColor?: string;
   selectedSize?: string;
+  selectedGrams?: number;
+  selectedWeight?: string;
 }
 
 interface ApiOrder {
@@ -390,8 +392,14 @@ function OrderCard({ order, onUpdate, updatingId, isNew }: {
                 <div>
                   <div className="font-medium text-sm line-clamp-1">{item.productName}</div>
                   <div className="text-xs text-muted-foreground">{item.qty} × {formatINR(item.price)}</div>
-                  {(item.selectedColor || item.selectedSize) && (
+                  {(item.selectedColor || item.selectedSize || item.selectedWeight || item.selectedGrams) && (
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {(item.selectedWeight || item.selectedGrams) && (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full">
+                          <Ruler className="w-2.5 h-2.5" />
+                          {item.selectedWeight ?? `${item.selectedGrams}g`}
+                        </span>
+                      )}
                       {item.selectedColor && (
                         <span className="flex items-center gap-1 text-[10px] font-semibold bg-background border border-border px-2 py-0.5 rounded-full">
                           <Palette className="w-2.5 h-2.5 text-muted-foreground" />

@@ -17,15 +17,37 @@ const A = requireRole("admin", "super_admin");
 // Flat packaging fee (₹) charged per shop order — server-enforced, never trusted from client.
 const PACKAGING_FEE = 6;
 
+// ─── Weight variant helpers ───────────────────────────────────────────────────
+/** Parse a product unit string (e.g. "1 kg", "500g") into grams. Returns null if not weight-based. */
+function parseBaseGrams(unit: string | null | undefined): number | null {
+  if (!unit) return null;
+  const kgMatch = /(\d+(?:\.\d+)?)\s*kg\b/i.exec(unit);
+  if (kgMatch) return parseFloat(kgMatch[1]) * 1000;
+  const gMatch  = /(\d+(?:\.\d+)?)\s*g\b/i.exec(unit);
+  if (gMatch)  return parseFloat(gMatch[1]);
+  return null;
+}
+
+/** Format grams to a human-readable label e.g. 250 → "250g", 1000 → "1 kg" */
+function formatGrams(grams: number): string {
+  if (grams >= 1000) {
+    const kg = grams / 1000;
+    return `${Number.isInteger(kg) ? kg : kg} kg`;
+  }
+  return `${grams}g`;
+}
+
 // ─── Zod schema for POST /orders ────────────────────────────────────────────
 const OrderItemSchema = z.object({
-  productId:     z.string().uuid("productId must be a UUID"),
-  productName:   z.string().min(1),
-  qty:           z.number().int().positive().max(100),
-  price:         z.number().nonnegative(),
-  category:      z.string().min(1),
-  selectedColor: z.string().optional(),
-  selectedSize:  z.string().optional(),
+  productId:      z.string().uuid("productId must be a UUID"),
+  productName:    z.string().min(1),
+  qty:            z.number().int().positive().max(100),
+  price:          z.number().nonnegative(),
+  category:       z.string().min(1),
+  selectedColor:  z.string().optional(),
+  selectedSize:   z.string().optional(),
+  selectedGrams:  z.number().positive().optional(),
+  selectedWeight: z.string().optional(),
 });
 
 const CreateOrderSchema = z.object({
@@ -64,6 +86,8 @@ type OrderItem = {
   category: string;
   selectedColor?: string;
   selectedSize?: string;
+  selectedGrams?: number;
+  selectedWeight?: string;
   commissionType?: string;
   commissionRate?: number;
   commissionAmount?: number;
@@ -253,7 +277,11 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
   }
 
   const body = req.body as Record<string, unknown>;
-  type OrderItemInput = { productId: string; productName: string; qty: number; price: number; category: string };
+  type OrderItemInput = {
+    productId: string; productName: string; qty: number; price: number; category: string;
+    selectedColor?: string; selectedSize?: string;
+    selectedGrams?: number; selectedWeight?: string;
+  };
   const items = parsed.data.items as OrderItemInput[];
   const shopId = String(body["shopId"] ?? "");
 
@@ -283,7 +311,7 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
             gte(products.stock, item.qty),
             ne(products.status, "inactive"),
           ))
-          .returning({ id: products.id, price: products.price, discountedPrice: products.discountedPrice, stock: products.stock });
+          .returning({ id: products.id, price: products.price, discountedPrice: products.discountedPrice, stock: products.stock, unit: products.unit });
 
         if (!updated) {
           throw Object.assign(
@@ -293,7 +321,19 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
         }
 
         // Use offer/discounted price when set — this is what the customer was shown
-        const dbPrice = updated.discountedPrice ?? updated.price;
+        const basePrice = updated.discountedPrice ?? updated.price;
+
+        // If a weight variant was selected, scale price proportionally.
+        // e.g. base unit = 1 kg (1000g), selected = 250g → price = basePrice * 0.25
+        let dbPrice = basePrice;
+        const selectedGrams = item.selectedGrams && item.selectedGrams > 0 ? item.selectedGrams : null;
+        if (selectedGrams) {
+          const baseGrams = parseBaseGrams(updated.unit);
+          if (baseGrams && baseGrams > 0) {
+            dbPrice = +(basePrice * (selectedGrams / baseGrams)).toFixed(2);
+          }
+        }
+
         reducedProducts.push({ productId: item.productId, qty: item.qty, dbPrice });
 
         if (updated.stock === 0) {
@@ -316,6 +356,9 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
       const dbPriceMap = new Map(reducedProducts.map(r => [r.productId, r.dbPrice]));
       let totalCommissionAmount = 0;
       const enrichedItems: Array<OrderItemInput & {
+        price: number;
+        selectedGrams?: number;
+        selectedWeight?: string;
         commissionType: string;
         commissionRate: number;
         commissionAmount: number;
@@ -333,9 +376,18 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
         });
         const itemCommission = calculateCommissionAmount(lineTotal, itemResolved);
         totalCommissionAmount += itemCommission;
+
+        const itemGrams = item.selectedGrams && item.selectedGrams > 0 ? item.selectedGrams : undefined;
+        // Preserve or derive the human-readable weight label (e.g. "250g", "1 kg")
+        const itemWeight = itemGrams
+          ? (item.selectedWeight ?? formatGrams(itemGrams))
+          : undefined;
+
         enrichedItems.push({
           ...item,
           price: dbPrice,
+          ...(itemGrams  ? { selectedGrams: itemGrams }   : {}),
+          ...(itemWeight ? { selectedWeight: itemWeight } : {}),
           commissionType: itemResolved.type,
           commissionRate: itemResolved.rate,
           commissionAmount: +itemCommission.toFixed(2),
