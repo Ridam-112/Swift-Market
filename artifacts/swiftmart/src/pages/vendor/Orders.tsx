@@ -21,6 +21,9 @@ interface ApiOrderItem {
   selectedSize?: string;
   selectedGrams?: number;
   selectedWeight?: string;
+  selectedVariantId?: string;
+  variantPrice?: number;
+  totalPrice?: number;
 }
 
 interface ApiOrder {
@@ -416,8 +419,8 @@ function OrderCard({ order, onUpdate, updatingId, isNew }: {
                   )}
                 </div>
               </div>
-              <div className="font-bold text-sm">
-                {formatINR(item.price * item.qty)}
+                  <div className="font-bold text-sm">
+                {formatINR(item.totalPrice ?? item.price * item.qty)}
               </div>
             </div>
           ))}

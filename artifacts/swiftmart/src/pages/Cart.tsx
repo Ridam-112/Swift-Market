@@ -71,7 +71,7 @@ export default function Cart() {
       <div className="flex flex-col md:flex-row gap-6">
         <div className="flex-1 space-y-4">
           {items.map(item => (
-            <CartItemRow key={cartKey(item.product.id, item.selectedColor, item.selectedSize)} item={item} />
+            <CartItemRow key={cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams)} item={item} />
           ))}
           <AddonSuggestions />
         </div>

@@ -75,7 +75,16 @@ interface ApiOrder {
   customerPhone?: string;
   shopId?: string;
   shopName?: string;
-  items: { productName: string; name?: string; qty: number; price: number }[];
+  items: {
+    productName: string;
+    name?: string;
+    qty: number;
+    price: number;
+    selectedGrams?: number;
+    selectedWeight?: string;
+    variantPrice?: number;
+    totalPrice?: number;
+  }[];
   netAmount?: number;
   subtotal?: number;
   status: string;
@@ -944,7 +953,16 @@ function CustomersList() {
               placedAt: o.createdAt,
               vendorId: o.shopId ?? '',
               vendorName: o.shopName ?? 'Shop',
-              items: o.items.map(i => ({ name: i.productName ?? i.name ?? "", qty: i.qty, price: i.price, category: '' })),
+              items: o.items.map(i => ({
+                name: i.productName ?? i.name ?? "",
+                qty: i.qty,
+                price: i.price,
+                selectedGrams: i.selectedGrams,
+                selectedWeight: i.selectedWeight,
+                variantPrice: i.variantPrice,
+                totalPrice: i.totalPrice,
+                category: '',
+              })),
               total: o.netAmount ?? o.subtotal ?? o.items.reduce((s, i) => s + i.price * i.qty, 0),
               status: (o.status ?? 'placed') as 'placed' | 'packed' | 'out_for_delivery' | 'delivered',
               paymentMethod: (o.paymentMethod ?? 'COD') as 'UPI' | 'Card' | 'COD',
@@ -1419,7 +1437,16 @@ function OrdersTab() {
         customerPhone: o.customerPhone ?? "",
         vendorId: o.shopId ?? "",
         vendorName: o.shopName ?? "Shop",
-        items: o.items.map(i => ({ name: i.productName ?? i.name ?? "", qty: i.qty, price: i.price, category: "" })),
+        items: o.items.map(i => ({
+          name: i.productName ?? i.name ?? "",
+          qty: i.qty,
+          price: i.price,
+          selectedGrams: i.selectedGrams,
+          selectedWeight: i.selectedWeight,
+          variantPrice: i.variantPrice,
+          totalPrice: i.totalPrice,
+          category: "",
+        })),
         total: o.netAmount ?? o.subtotal ?? o.items.reduce((s, i) => s + i.price * i.qty, 0),
         status: o.status as PlatformOrder['status'],
         paymentMethod: (o.paymentMethod ?? "COD") as PlatformOrder['paymentMethod'],
@@ -1639,8 +1666,15 @@ function OrdersTab() {
                       <div key={`${item.name}-${idx}`} className="flex items-baseline justify-between gap-2 text-sm">
                         <span className="text-foreground min-w-0 truncate">
                           <span className="text-muted-foreground mr-1">{item.qty}×</span>{item.name}
+                          {(item.selectedWeight || item.selectedGrams) && (
+                            <span className="ml-1 text-primary font-semibold">
+                              ({item.selectedWeight ?? `${item.selectedGrams}g`})
+                            </span>
+                          )}
                         </span>
-                        <span className="text-muted-foreground shrink-0 font-medium text-xs">{formatINR(item.price * item.qty)}</span>
+                        <span className="text-muted-foreground shrink-0 font-medium text-xs">
+                          {formatINR(item.totalPrice ?? item.price * item.qty)}
+                        </span>
                       </div>
                     ))}
                   </div>

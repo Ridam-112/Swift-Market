@@ -60,6 +60,7 @@ export interface CartItem {
   selectedColor?: string;
   selectedSize?: string;
   selectedGrams?: number;
+  selectedVariantId?: string;
 }
 
 export interface Address {
@@ -170,7 +171,16 @@ export interface PlatformOrder {
   customerPhone: string;
   vendorId: string;
   vendorName: string;
-  items: { name: string; qty: number; price: number; category: string }[];
+  items: {
+    name: string;
+    qty: number;
+    price: number;
+    category: string;
+    selectedGrams?: number;
+    selectedWeight?: string;
+    variantPrice?: number;
+    totalPrice?: number;
+  }[];
   total: number;
   status: 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled';
   paymentMethod: 'UPI' | 'Card' | 'COD' | string;

@@ -61,7 +61,7 @@ export default function SearchPage() {
     const keywords = searches.flatMap((s) =>
       s.toLowerCase().split(/\s+/).filter((w) => w.length > 2)
     );
-    const seen = new Set<number>();
+    const seen = new Set<string>();
     const results: typeof products = [];
     for (const p of products) {
       if (seen.has(p.id)) continue;

@@ -24,8 +24,8 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const unitInfo = parseUnit(product.unit);
   const isWeightBased = unitInfo.type === "weight";
 
-  const simpleKey = cartKey(product.id, undefined, undefined);
   const cartItem = items.find(item => item.product.id === product.id && !item.selectedColor && !item.selectedSize);
+  const simpleKey = cartKey(product.id, undefined, undefined, cartItem?.selectedGrams);
 
   // For variant products, sum qty across all variants for display
   const totalQtyInCart = hasVariants

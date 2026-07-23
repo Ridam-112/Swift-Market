@@ -17,7 +17,7 @@ const COLOR_HEX: Record<string, string> = {
 export function CartItemRow({ item }: { item: CartItem }) {
   const { updateQty, updateWeight, removeFromCart } = useCart();
   const { product, qty, selectedColor, selectedSize, selectedGrams } = item;
-  const key = cartKey(product.id, selectedColor, selectedSize);
+  const key = cartKey(product.id, selectedColor, selectedSize, selectedGrams);
 
   const unitInfo = parseUnit(product.unit);
   const isWeightBased = unitInfo.type === "weight";
@@ -32,7 +32,7 @@ export function CartItemRow({ item }: { item: CartItem }) {
     : product.price;
 
   const lineTotal = isWeightBased && selectedGrams
-    ? priceForWeight(unitPrice, baseGrams, selectedGrams)
+    ? priceForWeight(unitPrice, baseGrams, selectedGrams) * qty
     : unitPrice * qty;
 
   return (

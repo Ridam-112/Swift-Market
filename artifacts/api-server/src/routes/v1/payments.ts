@@ -11,6 +11,14 @@ import { logger } from "../../lib/logger.js";
 
 const router = Router();
 
+function parseBaseGrams(unit: string | null | undefined): number | null {
+  if (!unit) return null;
+  const kg = /(\d+(?:\.\d+)?)\s*kg\b/i.exec(unit);
+  if (kg) return parseFloat(kg[1]) * 1000;
+  const grams = /(\d+(?:\.\d+)?)\s*g\b/i.exec(unit);
+  return grams ? parseFloat(grams[1]) : null;
+}
+
 function getRazorpay() {
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
@@ -22,6 +30,8 @@ const createOrderSchema = z.object({
   items: z.array(z.object({
     productId: z.string().uuid("productId must be a valid UUID"),
     qty: z.number().int().positive("qty must be a positive integer"),
+    selectedGrams: z.number().positive().optional(),
+    selectedVariantId: z.string().min(1).optional(),
   })).min(1, "At least one item is required"),
   deliveryCharge: z.number().min(0).optional(),
   couponCode: z.string().max(50).optional(),
@@ -50,22 +60,47 @@ router.post("/create-order", authenticate, async (req: AuthRequest, res: Respons
   try {
     const keyId = process.env.RAZORPAY_KEY_ID!;
 
-    // Fetch DB prices — never trust client-supplied prices
+    // Fetch DB prices — never trust client-supplied prices. Resolve each
+    // selected weight variant independently so payment cannot revert to the
+    // product's base (usually 1 kg) price.
     const productIds = items.map(i => i.productId);
-    const dbProducts = await db.select({ id: products.id, price: products.price })
+    const dbProducts = await db.select({
+      id: products.id,
+      price: products.price,
+      discountedPrice: products.discountedPrice,
+      unit: products.unit,
+    })
       .from(products)
       .where(inArray(products.id, productIds));
 
-    const priceMap = Object.fromEntries(dbProducts.map(p => [p.id, p.price]));
+    const productMap = new Map(dbProducts.map(p => [p.id, p]));
 
     for (const item of items) {
-      if (priceMap[item.productId] == null) {
+      if (!productMap.has(item.productId)) {
         res.status(400).json({ success: false, message: "One or more products are unavailable" });
         return;
       }
     }
 
-    const subtotal = items.reduce((sum, item) => sum + priceMap[item.productId]! * item.qty, 0);
+    const linePrices = items.map(item => {
+      const product = productMap.get(item.productId)!;
+      const basePrice = product.discountedPrice ?? product.price;
+      const baseGrams = parseBaseGrams(product.unit);
+
+      if (baseGrams !== null) {
+        const expectedVariantId = `${item.productId}:weight:${item.selectedGrams ?? ""}`;
+        if (!item.selectedGrams || item.selectedVariantId !== expectedVariantId) {
+          throw new Error(`Selected weight variant is required for product ${item.productId}`);
+        }
+        return +(basePrice * (item.selectedGrams / baseGrams)).toFixed(2);
+      }
+      if (item.selectedGrams || item.selectedVariantId) {
+        throw new Error(`Invalid weight variant for product ${item.productId}`);
+      }
+      return basePrice;
+    });
+
+    const subtotal = items.reduce((sum, item, index) => sum + linePrices[index] * item.qty, 0);
 
     // Validate coupon server-side if provided
     let couponDiscount = 0;

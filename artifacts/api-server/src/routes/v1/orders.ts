@@ -48,6 +48,9 @@ const OrderItemSchema = z.object({
   selectedSize:   z.string().optional(),
   selectedGrams:  z.number().positive().optional(),
   selectedWeight: z.string().optional(),
+  selectedVariantId: z.string().min(1).optional(),
+  variantPrice: z.number().nonnegative().optional(),
+  totalPrice: z.number().nonnegative().optional(),
 });
 
 const CreateOrderSchema = z.object({
@@ -88,6 +91,9 @@ type OrderItem = {
   selectedSize?: string;
   selectedGrams?: number;
   selectedWeight?: string;
+  selectedVariantId?: string;
+  variantPrice?: number;
+  totalPrice?: number;
   commissionType?: string;
   commissionRate?: number;
   commissionAmount?: number;
@@ -280,7 +286,8 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
   type OrderItemInput = {
     productId: string; productName: string; qty: number; price: number; category: string;
     selectedColor?: string; selectedSize?: string;
-    selectedGrams?: number; selectedWeight?: string;
+     selectedGrams?: number; selectedWeight?: string; selectedVariantId?: string;
+     variantPrice?: number; totalPrice?: number;
   };
   const items = parsed.data.items as OrderItemInput[];
   const shopId = String(body["shopId"] ?? "");
@@ -301,7 +308,14 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
   try {
     createdOrder = await db.transaction(async (tx) => {
       // 1. Deduct stock for every item atomically — if any item fails the whole tx rolls back
-      const reducedProducts: Array<{ productId: string; qty: number; dbPrice: number }> = [];
+       const reducedProducts: Array<{
+         productId: string;
+         qty: number;
+         dbPrice: number;
+         totalPrice: number;
+         selectedGrams?: number;
+         selectedVariantId?: string;
+       }> = [];
 
       for (const item of items) {
         const [updated] = await tx.update(products)
@@ -322,19 +336,42 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
 
         // Use offer/discounted price when set — this is what the customer was shown
         const basePrice = updated.discountedPrice ?? updated.price;
+        const baseGrams = parseBaseGrams(updated.unit);
 
-        // If a weight variant was selected, scale price proportionally.
-        // e.g. base unit = 1 kg (1000g), selected = 250g → price = basePrice * 0.25
+        // Weight products must carry their selected variant all the way to the
+        // order. Never fall back to the base (usually 1 kg) product price.
         let dbPrice = basePrice;
         const selectedGrams = item.selectedGrams && item.selectedGrams > 0 ? item.selectedGrams : null;
-        if (selectedGrams) {
-          const baseGrams = parseBaseGrams(updated.unit);
-          if (baseGrams && baseGrams > 0) {
-            dbPrice = +(basePrice * (selectedGrams / baseGrams)).toFixed(2);
+        if (baseGrams !== null) {
+          if (!selectedGrams || !item.selectedVariantId) {
+            throw Object.assign(
+              new Error(`"${item.productName}" is missing its selected weight variant.`),
+              { statusCode: 400 },
+            );
           }
+          const expectedVariantId = `${item.productId}:weight:${selectedGrams}`;
+          if (item.selectedVariantId !== expectedVariantId) {
+            throw Object.assign(
+              new Error(`Invalid selected variant for "${item.productName}".`),
+              { statusCode: 400 },
+            );
+          }
+          dbPrice = +(basePrice * (selectedGrams / baseGrams)).toFixed(2);
+        } else if (selectedGrams || item.selectedVariantId) {
+          throw Object.assign(
+            new Error(`"${item.productName}" has invalid weight variant data.`),
+            { statusCode: 400 },
+          );
         }
 
-        reducedProducts.push({ productId: item.productId, qty: item.qty, dbPrice });
+        reducedProducts.push({
+          productId: item.productId,
+          qty: item.qty,
+          dbPrice,
+          totalPrice: +(dbPrice * item.qty).toFixed(2),
+          ...(selectedGrams ? { selectedGrams } : {}),
+          ...(item.selectedVariantId ? { selectedVariantId: item.selectedVariantId } : {}),
+        });
 
         if (updated.stock === 0) {
           await tx.update(products).set({ status: "out_of_stock" }).where(eq(products.id, item.productId));
@@ -353,21 +390,24 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
       }
 
       // 3. Per-item commission calculation (uses real DB prices, not client-supplied prices)
-      const dbPriceMap = new Map(reducedProducts.map(r => [r.productId, r.dbPrice]));
       let totalCommissionAmount = 0;
       const enrichedItems: Array<OrderItemInput & {
         price: number;
         selectedGrams?: number;
         selectedWeight?: string;
+        selectedVariantId?: string;
+        variantPrice?: number;
+        totalPrice?: number;
         commissionType: string;
         commissionRate: number;
         commissionAmount: number;
         commissionLevel: string;
       }> = [];
 
-      for (const item of items) {
-        const dbPrice = dbPriceMap.get(item.productId) ?? 0;
-        const lineTotal = dbPrice * item.qty;
+      for (const [index, item] of items.entries()) {
+        const resolvedLine = reducedProducts[index];
+        const dbPrice = resolvedLine?.dbPrice ?? 0;
+        const lineTotal = resolvedLine?.totalPrice ?? 0;
         const itemResolved = await resolveCommission({
           productId: item.productId,
           vendorId,
@@ -386,8 +426,13 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
         enrichedItems.push({
           ...item,
           price: dbPrice,
+          variantPrice: dbPrice,
+          totalPrice: lineTotal,
           ...(itemGrams  ? { selectedGrams: itemGrams }   : {}),
           ...(itemWeight ? { selectedWeight: itemWeight } : {}),
+          ...(resolvedLine?.selectedVariantId
+            ? { selectedVariantId: resolvedLine.selectedVariantId }
+            : {}),
           commissionType: itemResolved.type,
           commissionRate: itemResolved.rate,
           commissionAmount: +itemCommission.toFixed(2),

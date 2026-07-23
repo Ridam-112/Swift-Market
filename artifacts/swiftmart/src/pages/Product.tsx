@@ -112,6 +112,7 @@ export default function Product() {
 
   if (!product) return <div className="p-8 text-center text-muted-foreground">Product not found</div>;
 
+  const category = categories.find(c => c.id === product.category);
   const productSeo = {
     title: product.name,
     description: product.description
@@ -203,7 +204,6 @@ export default function Product() {
   const isOutOfStock = product.stock === 0;
   const isLowStock = product.stock > 0 && product.stock <= 5;
 
-  const category = categories.find(c => c.id === product.category);
   const relatedProducts = products.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
 
   const displayImage = selectedColor && product.colorImages?.[selectedColor]
@@ -237,16 +237,19 @@ export default function Product() {
     return true;
   };
 
+  const cartItem = items.find(
+    item => item.product.id === product.id
+      && item.selectedColor === (hasColors ? selectedColor : undefined)
+      && item.selectedSize === (hasSizes ? selectedSize : undefined)
+  );
+  const qty = cartItem?.qty || 0;
+  const selectedGrams = cartItem?.selectedGrams;
   const itemKey = cartKey(
     product.id,
     hasColors ? selectedColor : undefined,
     hasSizes ? selectedSize : undefined,
+    selectedGrams,
   );
-  const cartItem = items.find(
-    item => cartKey(item.product.id, item.selectedColor, item.selectedSize) === itemKey
-  );
-  const qty = cartItem?.qty || 0;
-  const selectedGrams = cartItem?.selectedGrams;
 
   const effectivePrice = product.discountedPrice && product.discountedPrice < product.price
     ? product.discountedPrice : product.price;

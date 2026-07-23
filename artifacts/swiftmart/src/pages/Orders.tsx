@@ -28,6 +28,9 @@ interface ApiOrderItem {
   selectedSize?: string;
   selectedGrams?: number;
   selectedWeight?: string;
+  selectedVariantId?: string;
+  variantPrice?: number;
+  totalPrice?: number;
 }
 
 interface ApiOrder {
@@ -299,10 +302,17 @@ export default function Orders() {
                         </div>
                         <div>
                           <div className="font-medium line-clamp-1">{name}</div>
-                          <div className="text-xs text-muted-foreground">Qty: {item.qty}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Qty: {item.qty}
+                            {(item.selectedWeight || item.selectedGrams) && (
+                              <span className="ml-2 text-primary font-semibold">
+                                · {item.selectedWeight ?? `${item.selectedGrams}g`}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="font-bold">{formatINR(item.price * item.qty)}</div>
+                      <div className="font-bold">{formatINR(item.totalPrice ?? item.price * item.qty)}</div>
                     </div>
                   );
                 })}

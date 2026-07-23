@@ -4,6 +4,7 @@ import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { useShops } from "@/hooks/useShops";
 import { parseUnit, priceForWeight, formatWeight } from "@/lib/weightUtils";
+import { weightVariantId } from "@/context/CartContext";
 import { AddressCard } from "@/components/AddressCard";
 import { AddressForm } from "@/components/AddressForm";
 import { CartSummary } from "@/components/CartSummary";
@@ -182,12 +183,15 @@ export default function Checkout() {
           productName: item.product.name,
           qty: item.qty,
           price: unitPrice,
+          variantPrice: unitPrice,
+          totalPrice: +(unitPrice * item.qty).toFixed(2),
           category: item.product.category,
           ...(item.selectedColor  ? { selectedColor:  item.selectedColor  } : {}),
           ...(item.selectedSize   ? { selectedSize:   item.selectedSize   } : {}),
           ...(item.selectedGrams  ? {
             selectedGrams:  item.selectedGrams,
             selectedWeight: formatWeight(item.selectedGrams),
+            selectedVariantId: weightVariantId(item.product.id, item.selectedGrams),
           } : {}),
         };
       }),

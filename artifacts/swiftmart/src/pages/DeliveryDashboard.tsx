@@ -34,7 +34,16 @@ interface DeliveryOrder {
   customerPhone: string;
   shopName: string;
   shopAddress: { line1?: string; line2?: string; city?: string; pincode?: string };
-  items: { name: string; qty: number; price: number }[];
+  items: {
+    name: string;
+    qty: number;
+    price: number;
+    selectedGrams?: number;
+    selectedWeight?: string;
+    selectedVariantId?: string;
+    variantPrice?: number;
+    totalPrice?: number;
+  }[];
   netAmount: number;
   deliveryCharge: number;
   status: string;
@@ -153,7 +162,10 @@ function OrderCard({
       <div className="text-xs text-muted-foreground space-y-1.5">
         <div className="flex items-start gap-2">
           <Package className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-          <span>{order.items.map(i => `${i.name} ×${i.qty}`).join(", ")}</span>
+          <span>{order.items.map(i => {
+            const variant = i.selectedWeight ?? (i.selectedGrams ? `${i.selectedGrams}g` : "");
+            return `${i.name}${variant ? ` (${variant})` : ""} ×${i.qty}`;
+          }).join(", ")}</span>
         </div>
         <div className="flex items-center gap-2">
           <User className="w-3.5 h-3.5 flex-shrink-0" />

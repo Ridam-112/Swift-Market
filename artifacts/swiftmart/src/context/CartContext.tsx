@@ -2,8 +2,17 @@ import React, { createContext, useState, useEffect } from "react";
 import { CartItem, Product } from "@/types";
 import { parseUnit, priceForWeight } from "@/lib/weightUtils";
 
-export function cartKey(productId: string, color?: string | null, size?: string | null): string {
-  return `${productId}::${color ?? ""}::${size ?? ""}`;
+export function weightVariantId(productId: string, grams: number): string {
+  return `${productId}:weight:${grams}`;
+}
+
+export function cartKey(
+  productId: string,
+  color?: string | null,
+  size?: string | null,
+  grams?: number | null,
+): string {
+  return `${productId}::${color ?? ""}::${size ?? ""}::${grams ?? ""}`;
 }
 
 interface CartContextType {
@@ -27,7 +36,7 @@ function itemPrice(item: CartItem): number {
   if (item.selectedGrams) {
     const parsed = parseUnit(p.unit);
     if (parsed.type === "weight") {
-      return priceForWeight(unitPrice, parsed.baseGrams, item.selectedGrams);
+      return priceForWeight(unitPrice, parsed.baseGrams, item.selectedGrams) * item.qty;
     }
   }
   return unitPrice * item.qty;
@@ -36,7 +45,19 @@ function itemPrice(item: CartItem): number {
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(() => {
     const saved = localStorage.getItem("swiftmart_cart");
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      const parsed = JSON.parse(saved) as CartItem[];
+      // Backfill the stable variant identifier for carts created before
+      // variant IDs were persisted. This keeps old local carts usable.
+      return parsed.map(item => (
+        item.selectedGrams && !item.selectedVariantId
+          ? { ...item, selectedVariantId: weightVariantId(item.product.id, item.selectedGrams) }
+          : item
+      ));
+    } catch {
+      return [];
+    }
   });
 
   useEffect(() => {
@@ -51,22 +72,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     selectedGrams?: number,
   ) => {
     setItems(current => {
-      const key = cartKey(product.id, selectedColor, selectedSize);
+      const key = cartKey(product.id, selectedColor, selectedSize, selectedGrams);
       const existing = current.find(
-        item => cartKey(item.product.id, item.selectedColor, item.selectedSize) === key
+        item => cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams) === key
       );
       if (existing) {
-        if (selectedGrams !== undefined) {
-          return current.map(item =>
-            cartKey(item.product.id, item.selectedColor, item.selectedSize) === key
-              ? { ...item, selectedGrams }
-              : item
-          );
-        }
         const newQty = existing.qty + qty;
         const capped = product.stock > 0 ? Math.min(newQty, product.stock) : newQty;
         return current.map(item =>
-          cartKey(item.product.id, item.selectedColor, item.selectedSize) === key
+          cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams) === key
             ? { ...item, qty: capped }
             : item
         );
@@ -79,6 +93,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           selectedColor,
           selectedSize,
           selectedGrams,
+          selectedVariantId: selectedGrams !== undefined
+            ? weightVariantId(product.id, selectedGrams)
+            : undefined,
         },
       ];
     });
@@ -86,7 +103,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const removeFromCart = (key: string) => {
     setItems(current =>
-      current.filter(item => cartKey(item.product.id, item.selectedColor, item.selectedSize) !== key)
+      current.filter(item => cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams) !== key)
     );
   };
 
@@ -97,7 +114,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
     setItems(current =>
       current.map(item => {
-        if (cartKey(item.product.id, item.selectedColor, item.selectedSize) !== key) return item;
+        if (cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams) !== key) return item;
         const stock = item.product.stock;
         const capped = stock > 0 ? Math.min(qty, stock) : qty;
         return { ...item, qty: capped };
@@ -112,8 +129,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
     setItems(current =>
       current.map(item =>
-        cartKey(item.product.id, item.selectedColor, item.selectedSize) === key
-          ? { ...item, selectedGrams: grams }
+        cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams) === key
+          ? {
+              ...item,
+              selectedGrams: grams,
+              selectedVariantId: weightVariantId(item.product.id, grams),
+            }
           : item
       )
     );
