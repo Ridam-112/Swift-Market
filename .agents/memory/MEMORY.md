@@ -15,3 +15,4 @@
 - [ImageKit storage migration](imagekit-storage.md) — Supabase upload replaced with ImageKit for products/shops/banners/certificates; Supabase kept for other uses; 3 secrets required
 - [Packaging fee & bucket packages](packaging-fee-buckets.md) — flat packaging fee is platform revenue not vendor income; buckets table serves both homepage highlight + cart addon via flags
 - [Mappls allocation required](mappls-allocation-required.md) — 401 "Client Credentials Expired" means no plan allocated to the key in console, not a bad key; abandoned Mappls, kept Leaflet+Carto/OSRM
+- [Order variant pricing](order-variant-pricing.md) — Weight selections must remain explicit line-item variants; never fall back to the product's base price during payment or order creation
