@@ -44,7 +44,7 @@ export default function Cart() {
   }
 
   return (
-    <div className="pb-24 pt-4 px-4 max-w-3xl mx-auto space-y-6">
+    <div className="w-full max-w-5xl mx-auto pb-24 pt-4 px-4 space-y-6">
       <SEO noIndex />
       <SectionHeader title="Your Cart" />
       
@@ -68,15 +68,15 @@ export default function Cart() {
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row gap-6">
-        <div className="flex-1 space-y-4">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_20rem] gap-6 items-start">
+        <div className="min-w-0 space-y-4">
           {items.map(item => (
             <CartItemRow key={cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams)} item={item} />
           ))}
           <AddonSuggestions />
         </div>
         
-        <div className="w-full md:w-80 flex-shrink-0 space-y-6">
+        <div className="w-full min-w-0 space-y-6">
           <CartSummary subtotal={subtotal} />
           
           {shopClosed ? (
