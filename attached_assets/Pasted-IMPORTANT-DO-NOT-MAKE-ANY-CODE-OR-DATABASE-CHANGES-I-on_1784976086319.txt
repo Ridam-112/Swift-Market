@@ -1,0 +1,67 @@
+IMPORTANT: DO NOT MAKE ANY CODE OR DATABASE CHANGES.
+
+I only want you to analyze and confirm my preferred multi-database sharding algorithm.
+
+My preferred architecture is NOT a Main Database architecture.
+
+I want all 5 databases to have the EXACT SAME SCHEMA and TABLES.
+
+Algorithm:
+
+1. When a new user registers:
+   - Generate a unique User ID.
+   - Use the User ID or a Round Robin allocation algorithm to determine which database will store the user's data.
+   - Once assigned, that user must ALWAYS remain in the same database.
+
+2. When a new shop is created:
+   - Generate a unique Shop ID.
+   - Use the Shop ID or a Round Robin allocation algorithm to determine which database will store the shop's data.
+   - Once assigned, that shop and all of its related data must ALWAYS remain in the same database.
+
+3. Every database must contain the same schema, including:
+   - users
+   - shops
+   - products
+   - orders
+   - carts
+   - payments
+   - wishlists
+   - notifications
+   - delivery data
+   - reports
+   - and all other application tables.
+
+4. Example:
+
+User ID -> Database Selection
+100001 -> DB1
+100002 -> DB2
+100003 -> DB3
+100004 -> DB4
+100005 -> DB5
+100006 -> DB1
+
+Shop ID -> Database Selection
+500001 -> DB1
+500002 -> DB2
+500003 -> DB3
+500004 -> DB4
+500005 -> DB5
+
+5. Once a User or Shop is assigned to a database, ALL of their related data must always stay in that same database.
+
+6. Authentication and existing production users must continue working without being logged out.
+
+Your task is ONLY to answer the following questions:
+
+- Is this architecture technically feasible?
+- Is it scalable?
+- What are the advantages and disadvantages of this approach?
+- Can this work efficiently with PostgreSQL and Neon databases?
+- What problems could occur in the future if I continue with this architecture?
+- Would you recommend using User/Shop ID-based allocation or Round Robin allocation for long-term scalability?
+
+DO NOT IMPLEMENT ANYTHING.
+DO NOT MODIFY ANY CODE.
+DO NOT CREATE OR DELETE TABLES.
+ONLY ANALYZE AND CONFIRM THE ARCHITECTURE.
