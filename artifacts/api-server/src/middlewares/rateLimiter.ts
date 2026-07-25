@@ -167,3 +167,13 @@ export const uploadLimiter = makeRateLimiter({
   },
   message: "Upload limit reached. You can upload up to 20 images per hour.",
 });
+
+// ─── Truecaller auth limiter ───────────────────────────────────────────────────
+export const truecallerAuthLimiter = isDev
+  ? makeRateLimiter({ windowMs: 60 * 1000, max: 100, keyFn: (req) => `tc:${req.ip ?? "unknown"}`, message: "Too many requests." })
+  : makeRateLimiter({
+      windowMs: 15 * 60 * 1000,
+      max: 20,
+      keyFn: (req) => `tc:${req.ip ?? "unknown"}`,
+      message: "Too many Truecaller login attempts. Please try again in 15 minutes.",
+    });

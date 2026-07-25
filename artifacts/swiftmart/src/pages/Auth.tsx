@@ -12,6 +12,37 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ArrowLeft, Eye, EyeOff, Mail, Lock, User, CheckCircle2, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Truecaller icon (simplified "T" logo mark)
+function TruecallerLogo() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <circle cx="20" cy="20" r="20" fill="#009BBD"/>
+      <text x="20" y="27" textAnchor="middle" fontSize="22" fontWeight="bold" fill="white" fontFamily="Arial, sans-serif">T</text>
+    </svg>
+  );
+}
+
+function TruecallerButton({ onClick, loading }: { onClick: () => void; loading: boolean }) {
+  if (loading) {
+    return (
+      <div className="w-full h-12 rounded-xl bg-[#009BBD] flex items-center justify-center gap-3 text-white font-medium text-sm">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        Signing in with Truecaller…
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-3 bg-[#009BBD] text-white font-medium text-sm rounded-xl px-4 h-12 hover:bg-[#007fa0] active:bg-[#006a88] transition-colors"
+    >
+      <TruecallerLogo />
+      Continue with Truecaller
+    </button>
+  );
+}
+
 // ─── Step machine ─────────────────────────────────────────────────────────────
 // email          → enter email → check if account exists
 // signin         → existing user: enter password
@@ -105,7 +136,7 @@ function PasswordInput({
 import { SEO } from "@/components/SEO";
 
 export default function Auth() {
-  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, forgotPassword, resetPassword, refreshUser } = useAuth();
+  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, signInWithTruecaller, forgotPassword, resetPassword, refreshUser } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
 
@@ -117,7 +148,11 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [resetToken, setResetToken] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [truecallerLoading, setTruecallerLoading] = useState(false);
   const [configFetching, setConfigFetching] = useState(true);
+
+  // Android-only: whether Truecaller is installed and the SDK is usable.
+  const [tcAvailable, setTcAvailable] = useState(false);
 
   // Android-only: whether the native Google Sign-In plugin is loadable.
   // "web"         → running in a regular browser (not Capacitor) — always usable via OAuth redirect
@@ -168,6 +203,16 @@ export default function Auth() {
     import("@/lib/googleNativeAuth")
       .then(() => setNativeGoogleStatus("available"))
       .catch(() => setNativeGoogleStatus("unavailable"));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Android: probe Truecaller availability ───────────────────────────────
+  useEffect(() => {
+    if (!isCapacitorShell) return;
+    import("@/lib/truecallerNativeAuth")
+      .then(mod => mod.isTruecallerAvailable())
+      .then(available => setTcAvailable(available))
+      .catch(() => setTcAvailable(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -249,6 +294,27 @@ export default function Auth() {
       toast.error(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ─── Truecaller sign-in ───────────────────────────────────────────────────────
+  // Android only. Triggers the Truecaller bottom-sheet consent, then exchanges
+  // the accessToken with POST /api/auth/truecaller for JWT tokens.
+  const handleTruecallerSignIn = async () => {
+    setTruecallerLoading(true);
+    try {
+      const { truecallerLogin } = await import("@/lib/truecallerNativeAuth");
+      const profile = await truecallerLogin();
+      const result = await signInWithTruecaller(profile.accessToken);
+      await refreshUser();
+      setLocation(result.needsProfile ? "/complete-profile" : "/");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Truecaller Sign-In failed";
+      if (!msg.includes("TRUECALLER_NOT_INSTALLED") && !msg.includes("cancelled")) {
+        toast.error(msg);
+      }
+    } finally {
+      setTruecallerLoading(false);
     }
   };
 
@@ -470,6 +536,14 @@ export default function Auth() {
                         onClick={handleGoogleSignIn}
                         loading={googleLoading}
                         configFetching={configFetching}
+                      />
+                    )}
+
+                    {/* ── Truecaller button — only shown on Android when Truecaller is installed ── */}
+                    {tcAvailable && (
+                      <TruecallerButton
+                        onClick={handleTruecallerSignIn}
+                        loading={truecallerLoading}
                       />
                     )}
                   </>

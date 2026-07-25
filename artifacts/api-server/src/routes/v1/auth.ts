@@ -16,6 +16,7 @@ import {
   signupLimiter,
   resetPasswordLimiter,
   googleAuthLimiter,
+  truecallerAuthLimiter,
   tokenRefreshLimiter,
 } from "../../middlewares/rateLimiter.js";
 
@@ -1347,6 +1348,92 @@ router.post("/complete-profile", authenticate, async (req: AuthRequest, res: Res
   } catch (err) {
     req.log.error({ err, userId }, "complete-profile error");
     res.status(500).json({ success: false, message: "Failed to save profile" });
+  }
+});
+
+// ─── POST /api/auth/truecaller ────────────────────────────────────────────────
+// Verifies a Truecaller accessToken (obtained from the Android SDK) against
+// Truecaller's profile API and signs in / creates the user.
+router.post("/truecaller", truecallerAuthLimiter, async (req: Request, res: Response): Promise<void> => {
+  const { accessToken } = req.body as { accessToken?: string };
+
+  if (!accessToken || typeof accessToken !== "string" || accessToken.length < 10) {
+    res.status(400).json({ success: false, message: "Truecaller accessToken is required" });
+    return;
+  }
+
+  // Verify the token with Truecaller's profile API
+  let profileRes: Response;
+  try {
+    profileRes = await fetch("https://api4.truecaller.com/v1/userProfile", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  } catch (err) {
+    req.log.error({ err }, "Truecaller profile API network error");
+    res.status(503).json({ success: false, message: "Could not reach Truecaller verification server. Try again." });
+    return;
+  }
+
+  if (!profileRes.ok) {
+    req.log.warn({ status: profileRes.status }, "Truecaller profile API rejected token");
+    res.status(401).json({ success: false, message: "Invalid or expired Truecaller session. Please try again." });
+    return;
+  }
+
+  type TruecallerProfile = {
+    name?: { first?: string; last?: string };
+    phoneDetails?: { phoneNumber?: string; countryCode?: string; dialingCode?: string };
+    onlineIdentities?: { email?: string };
+  };
+
+  let profile: TruecallerProfile;
+  try {
+    profile = await profileRes.json() as TruecallerProfile;
+  } catch {
+    res.status(502).json({ success: false, message: "Unexpected response from Truecaller. Please try again." });
+    return;
+  }
+
+  const rawPhone = profile.phoneDetails?.phoneNumber?.replace(/\D/g, "") ?? "";
+  if (!rawPhone) {
+    res.status(400).json({ success: false, message: "Could not retrieve phone number from Truecaller profile" });
+    return;
+  }
+
+  // Normalise to last 10 digits (handles India +91 prefix if present)
+  const phone = rawPhone.slice(-10);
+  const firstName = profile.name?.first ?? "";
+  const lastName = profile.name?.last ?? "";
+  const name = [firstName, lastName].filter(Boolean).join(" ").trim() || "User";
+  const email = profile.onlineIdentities?.email;
+
+  try {
+    let [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
+    const isNewUser = !user;
+
+    if (!user) {
+      const insertValues: typeof users.$inferInsert = {
+        name,
+        phone,
+        role: "customer",
+        status: "active",
+        authProvider: "truecaller",
+      };
+      if (email) insertValues.email = email;
+      [user] = await db.insert(users).values(insertValues).returning();
+    } else {
+      // Merge email if missing
+      const updates: Partial<typeof users.$inferInsert> = { lastLoginAt: new Date() };
+      if (email && !user.email) updates.email = email;
+      await db.update(users).set(updates).where(eq(users.id, user.id));
+    }
+
+    const [updated] = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+    req.log.info({ userId: updated.id, isNewUser }, "Truecaller login success");
+    res.json({ success: true, isNewUser, needsProfile: isNewUser, ...issueTokens(updated), user: formatUser(updated) });
+  } catch (err) {
+    req.log.error({ err }, "Truecaller login DB error");
+    res.status(500).json({ success: false, message: "Login failed. Please try again." });
   }
 });
 

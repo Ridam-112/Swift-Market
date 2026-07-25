@@ -38,6 +38,11 @@
     <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Truecaller SDK — required for one-tap phone login on Android -->
+    <queries>
+        <package android:name="com.truecaller" />
+    </queries>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <!-- Push Notifications -->

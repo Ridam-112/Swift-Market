@@ -27,6 +27,7 @@ interface AuthContextType {
   signInWithEmail: (email: string, password: string) => Promise<{ needsProfile: boolean; user?: User }>;
   signUpWithEmail: (name: string, email: string, password: string) => Promise<{ needsProfile: boolean; user?: User }>;
   signInWithGoogle: (sessionToken: string) => Promise<{ needsProfile: boolean; user?: User }>;
+  signInWithTruecaller: (accessToken: string) => Promise<{ needsProfile: boolean; user?: User }>;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (newPassword: string, token: string) => Promise<void>;
 
@@ -404,6 +405,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { needsProfile: data.isNewUser && !data.user.phone, user: u };
   };
 
+  const signInWithTruecaller = async (tcAccessToken: string): Promise<{ needsProfile: boolean; user?: User }> => {
+    const data = await api.post<{ success: boolean; isNewUser: boolean; needsProfile: boolean; accessToken: string; refreshToken: string; user: ApiUser }>(
+      "/auth/truecaller",
+      { accessToken: tcAccessToken }
+    );
+    setTokens(data.accessToken, data.refreshToken);
+    const u = applyAuthResult(data.user);
+    return { needsProfile: data.needsProfile ?? false, user: u };
+  };
+
   const forgotPassword = async (email: string): Promise<void> => {
     await api.post("/auth/email-forgot-password", { email });
   };
@@ -562,7 +573,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       user, userRole, role, isAdmin, isLoading, selectedDeliveryAddress, setSelectedDeliveryAddress,
       login, logout, setRole, updateUser, refreshUser, addAddress, deleteAddress, updateAddress, updatePincode,
-      signInWithEmail, signUpWithEmail, signInWithGoogle, forgotPassword, resetPassword,
+      signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithTruecaller, forgotPassword, resetPassword,
       completeOnboarding,
       checkPhone, loginWithPassword, setPasswordForOtpUser, signup, loginWithGoogle,
       loginWithPhone, verifyOtp,

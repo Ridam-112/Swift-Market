@@ -47,6 +47,12 @@ const config: CapacitorConfig = {
       scopes: ['profile', 'email'],
       grantOfflineAccess: false,
     },
+    Truecaller: {
+      // App key from Truecaller Developer Portal — used to initialise the Android SDK.
+      // The backend verifies the resulting accessToken via Truecaller's profile API
+      // (no server-side key needed there).
+      appKey: process.env.TRUECALLER_APP_KEY ?? '',
+    },
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert'],
     },
