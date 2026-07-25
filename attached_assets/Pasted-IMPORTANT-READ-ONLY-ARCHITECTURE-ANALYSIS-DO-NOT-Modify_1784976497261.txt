@@ -1,0 +1,127 @@
+IMPORTANT: READ-ONLY ARCHITECTURE ANALYSIS.
+
+DO NOT:
+- Modify any code.
+- Modify any database.
+- Modify any routes.
+- Modify authentication.
+- Log out any users.
+- Create or delete any tables.
+- Push schemas.
+- Perform migrations.
+- Rotate or change any secrets.
+
+I want you to review and analyze the following optimization strategy for my multi-database sharding architecture.
+
+Current Architecture:
+- DB1 stores only routing information (users_mapping and shops_mapping).
+- DB2, DB3, DB4 and DB5 store the actual application data.
+- Users and Shops are assigned to databases using Round Robin allocation.
+- Once assigned, they always remain in the same database.
+
+Optimization Strategy:
+
+1. Cache Database Mapping.
+
+When a user logs in:
+
+User ID
+↓
+DB1
+↓
+Get database number
+↓
+Store it in cache
+
+Example:
+user_id -> DB4
+shop_id -> DB3
+
+The cache should significantly reduce the number of DB1 queries.
+
+---------------------------------------------------------
+
+2. JWT Optimization.
+
+Please analyze whether it is a good idea to store the assigned database number inside the JWT token.
+
+Example:
+
+{
+    "user_id": "UUID",
+    "database_no": 4
+}
+
+After login:
+
+JWT Token
+↓
+database_no
+↓
+Connect directly to the assigned shard database.
+
+This should reduce:
+- DB1 queries
+- Network transfer
+- Latency
+
+---------------------------------------------------------
+
+3. Cache Policy.
+
+Analyze which of the following should be cached:
+
+- User -> Database mapping
+- Shop -> Database mapping
+- Categories
+- Hero banners
+- Shop types
+- User profile
+- Products
+- Orders
+- Cart
+- Wishlist
+- Notifications
+
+Recommend:
+- What should be cached.
+- What should NOT be cached.
+- Recommended cache TTL values.
+
+---------------------------------------------------------
+
+4. Network Transfer Optimization.
+
+Please analyze:
+
+- Will caching significantly reduce Neon network transfer usage?
+- Will storing database_no inside JWT reduce routing overhead?
+- Will DB1 become a bottleneck in the future?
+- Is Redis recommended for this architecture?
+- Can an in-memory cache be used initially instead of Redis?
+
+---------------------------------------------------------
+
+5. Scalability Review.
+
+If my application reaches:
+
+- 10,000 users
+- 100,000 users
+- 1,000,000 users
+
+Analyze:
+- DB1 load.
+- Network transfer.
+- Cache performance.
+- Potential bottlenecks.
+
+---------------------------------------------------------
+
+Your task is ONLY to review and recommend the best architecture and optimization strategy.
+
+DO NOT IMPLEMENT ANYTHING.
+DO NOT MAKE ANY CODE CHANGES.
+DO NOT MODIFY THE DATABASES.
+
+ONLY PROVIDE A TECHNICAL REVIEW AND RECOMMENDATIONS.
