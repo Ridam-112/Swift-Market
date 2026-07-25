@@ -21,3 +21,6 @@ export * from "./fcmTokens";
 export * from "./homepageSections";
 export * from "./servicePincodes";
 export * from "./buckets";
+// Routing tables — live in DATABASE1 only, never replicated to shards
+export * from "./usersMapping";
+export * from "./shopsMapping";

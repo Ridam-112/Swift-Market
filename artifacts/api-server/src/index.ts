@@ -7,6 +7,7 @@ import { seedCategories } from "./utils/seedCategories.js";
 import { clearDemoData } from "./utils/seedDemoData.js";
 import { cleanupAbandonedOrders } from "./utils/orderCleanup.js";
 import { OTP_MODE } from "./lib/sms.js";
+import { verifyShardConnections } from "./lib/dbRouter.js";
 
 // AUTH_MODE controls which login methods are enabled (otp | google | both).
 // Default is "otp" — safe to run without a domain or Google OAuth credentials.
@@ -17,11 +18,26 @@ const AUTH_MODE: AuthMode = (process.env["AUTH_MODE"] as AuthMode | undefined) ?
 // so issues surface in logs immediately rather than on first customer request.
 function validateEnv(): void {
   // PORT is injected by Render at runtime — warn only, do not crash
-  const required = ["DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET"];
+  const required = [
+    "DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET",
+    // Multi-database secrets (Phase 1+): all 5 Neon DBs must be configured
+    "DATABASE1_URL", "DATABASE2_URL", "DATABASE3_URL", "DATABASE4_URL", "DATABASE5_URL",
+  ];
   const missing = required.filter(k => !process.env[k]);
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
   }
+  // Log which Neon hosts the DB secrets resolve to (host only — no credentials)
+  const neonHost = (envKey: string) => {
+    try { return new URL(process.env[envKey]!).host; } catch { return "(invalid URL)"; }
+  };
+  logger.info({
+    DB1: neonHost("DATABASE1_URL"),
+    DB2: neonHost("DATABASE2_URL"),
+    DB3: neonHost("DATABASE3_URL"),
+    DB4: neonHost("DATABASE4_URL"),
+    DB5: neonHost("DATABASE5_URL"),
+  }, "[startup] Multi-database hosts configured");
 
   const optionalWarnings: Array<[string, string]> = [
     ["GOOGLE_CLIENT_ID",      "Google Sign-In will not work — /api/auth/config will return empty googleClientId"],
@@ -87,7 +103,7 @@ async function main() {
     setTimeout(() => process.exit(0), 10_000).unref();
   });
 
-  // Seeds run AFTER server is already listening (non-blocking for health check)
+  // Seeds + shard connectivity check run AFTER server is listening (non-blocking)
   setImmediate(async () => {
     try {
       await seedSuperAdmins();
@@ -97,6 +113,12 @@ async function main() {
       logger.info("Seed complete");
     } catch (err) {
       logger.error({ err }, "Seed error (non-fatal)");
+    }
+    // Verify DB2–DB5 connections at startup (non-fatal — logs warn if a shard is unreachable)
+    try {
+      await verifyShardConnections();
+    } catch (err) {
+      logger.error({ err }, "[dbRouter] Shard connectivity check error (non-fatal)");
     }
   });
 
