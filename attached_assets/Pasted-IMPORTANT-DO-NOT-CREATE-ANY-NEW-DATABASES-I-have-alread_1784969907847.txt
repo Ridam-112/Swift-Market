@@ -1,0 +1,215 @@
+IMPORTANT: DO NOT CREATE ANY NEW DATABASES.
+
+I have already created 5 PostgreSQL (Neon) databases.
+
+Current setup:
+
+- Database 1 (EXISTING PRODUCTION DATABASE) --> This must become the MAIN DATABASE.
+- Database 2 --> Empty.
+- Database 3 --> Empty.
+- Database 4 --> Empty.
+- Database 5 --> Empty.
+
+Database 1 already has Neon Auth configured and my website is currently using it for authentication.
+
+=========================================================
+
+ARCHITECTURE REQUIREMENTS
+
+Database 1 MUST be converted into the Main Database.
+
+Database 1 responsibilities:
+
+- Neon Authentication
+- User authentication and sessions
+- users_mapping table
+- shops_mapping table
+- Database routing logic
+- No products
+- No carts
+- No orders
+- No large application data
+
+Database 2-5 responsibilities:
+
+- Store all application data.
+- They will all have exactly the same schema.
+
+=========================================================
+
+DO NOT CHANGE MY AUTHENTICATION SYSTEM.
+
+Keep Neon Auth only in Database 1.
+
+Database 2, 3, 4 and 5 must NOT use Neon Auth.
+
+=========================================================
+
+STEP 1
+
+Create the following tables in Database 1:
+
+users_mapping
+-------------------
+id
+user_id
+database_no
+created_at
+
+shops_mapping
+-------------------
+id
+shop_id
+database_no
+created_at
+
+=========================================================
+
+STEP 2
+
+Create a Database Router Service.
+
+The router must support:
+
+getUserDatabase(userId)
+
+getShopDatabase(shopId)
+
+getDatabaseConnection(databaseNo)
+
+=========================================================
+
+STEP 3
+
+USER REGISTRATION
+
+When a new user signs up:
+
+1. Authenticate using Neon Auth.
+2. Generate or obtain the user ID.
+3. Assign a database automatically.
+4. Save the user's database assignment inside users_mapping.
+5. Create the user's data inside the assigned database.
+
+=========================================================
+
+STEP 4
+
+SHOP REGISTRATION
+
+When a shop is created:
+
+1. Generate a shop ID.
+2. Assign the shop to a database.
+3. Save the mapping inside shops_mapping.
+4. Store all shop information inside that database.
+
+=========================================================
+
+STEP 5
+
+PRODUCT STORAGE
+
+Products must NEVER be stored in Database 1.
+
+A shop's products must always be stored inside the same database as the shop.
+
+Example:
+
+Shop -> DB-3
+
+Products -> DB-3
+
+=========================================================
+
+STEP 6
+
+ORDER STORAGE
+
+Orders must NEVER be stored in Database 1.
+
+Orders must be stored in the Shop's database.
+
+Example:
+
+User -> DB-2
+Shop -> DB-4
+
+Order details -> DB-4
+
+If necessary, save only lightweight order references inside the user's database.
+
+=========================================================
+
+STEP 7
+
+DATABASE DISTRIBUTION ALGORITHM
+
+DO NOT USE:
+
+databaseNo = userId % TOTAL_DATABASES
+
+Instead, implement ROUND ROBIN database allocation.
+
+Example:
+
+User 1 -> DB-2
+User 2 -> DB-3
+User 3 -> DB-4
+User 4 -> DB-5
+User 5 -> DB-2
+...
+
+The same logic should apply to shops.
+
+This is required because I may add more databases in the future.
+
+=========================================================
+
+STEP 8
+
+Create the following environment variables:
+
+MAIN_DB_URL=
+
+DB_2_URL=
+DB_3_URL=
+DB_4_URL=
+DB_5_URL=
+
+=========================================================
+
+STEP 9
+
+MIGRATE MY EXISTING CODEBASE.
+
+Every API must automatically use the Database Router.
+
+Examples:
+
+- Login
+- Registration
+- Shop Registration
+- Cart
+- Products
+- Orders
+- Profile
+- Wishlist
+- Addresses
+- Notifications
+
+The system should automatically determine which database to use.
+
+=========================================================
+
+STEP 10
+
+IMPORTANT REQUIREMENTS
+
+- Database 1 must remain very small.
+- Never store products, orders or carts inside Database 1.
+- Database 2-5 must have identical schemas.
+- Keep my existing authentication system unchanged.
+- Make the system scalable so I can add DB_6, DB_7, etc. later.
+
+Before making any changes, analyze my entire codebase and safely migrate it to the new multi-database architecture without breaking the existing production authentication system.
