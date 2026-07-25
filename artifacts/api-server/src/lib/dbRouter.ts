@@ -73,7 +73,7 @@ const SHARD_POOLS = [_db2Pool, _db3Pool, _db4Pool, _db5Pool];
 // Avoids a DB1 round-trip on every request after the first lookup.
 // Simple FIFO eviction when the cache grows past MAX_SIZE.
 
-const MAX_CACHE_SIZE = 2_000;
+const MAX_CACHE_SIZE = 10_000;
 
 function cacheSet(cache: Map<string, ShardNo>, key: string, value: ShardNo): void {
   if (cache.size >= MAX_CACHE_SIZE) {

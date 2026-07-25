@@ -7,6 +7,24 @@ import { mi, miArr } from "../../utils/mapId.js";
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
+// ── In-memory cache for public bucket lists ───────────────────────────────────
+// Each bucket GET resolves N product lists + shop name lookups (N+1 pattern).
+// Caching the fully-resolved response for 10 minutes eliminates all of those
+// Neon round-trips on every homepage and cart load. Any admin write below
+// calls invalidateBucketCache() so stale data is never served after an update.
+const BUCKET_TTL_MS = 10 * 60 * 1000; // 10 minutes
+let _homepageCache: { data: unknown; expiresAt: number } | null = null;
+let _addonsCache:   { data: unknown; expiresAt: number } | null = null;
+
+function getBucketCache(cache: typeof _homepageCache): unknown | null {
+  if (cache && Date.now() < cache.expiresAt) return cache.data;
+  return null;
+}
+function invalidateBucketCache(): void {
+  _homepageCache = null;
+  _addonsCache = null;
+}
+
 async function enrichWithShopNames(rows: Record<string, unknown>[]) {
   const shopIds = [...new Set(rows.map(p => p["shopId"] as string).filter(Boolean))];
   if (shopIds.length === 0) return rows;
@@ -30,6 +48,9 @@ async function resolveBucketProducts(productIds: string[], limit = 12) {
 
 // GET /api/buckets — public, active buckets flagged for the home page
 router.get("/", async (_req: Request, res: Response): Promise<void> => {
+  const hit = getBucketCache(_homepageCache);
+  if (hit) { res.json(hit); return; }
+
   const rows = await db.select().from(buckets)
     .where(and(eq(buckets.isActive, true), eq(buckets.showOnHomepage, true)))
     .orderBy(asc(buckets.sortOrder));
@@ -40,11 +61,16 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
     return { ...mi(b), products: bucketProducts };
   }));
 
-  res.json({ success: true, buckets: resolved.filter(b => b.products.length > 0) });
+  const payload = { success: true, buckets: resolved.filter(b => b.products.length > 0) };
+  _homepageCache = { data: payload, expiresAt: Date.now() + BUCKET_TTL_MS };
+  res.json(payload);
 });
 
 // GET /api/buckets/addons — public, active buckets flagged as checkout/cart add-ons
 router.get("/addons", async (_req: Request, res: Response): Promise<void> => {
+  const hit = getBucketCache(_addonsCache);
+  if (hit) { res.json(hit); return; }
+
   const rows = await db.select().from(buckets)
     .where(and(eq(buckets.isActive, true), eq(buckets.showAsAddon, true)))
     .orderBy(asc(buckets.sortOrder));
@@ -55,7 +81,9 @@ router.get("/addons", async (_req: Request, res: Response): Promise<void> => {
     return { ...mi(b), products: bucketProducts };
   }));
 
-  res.json({ success: true, buckets: resolved.filter(b => b.products.length > 0) });
+  const payload = { success: true, buckets: resolved.filter(b => b.products.length > 0) };
+  _addonsCache = { data: payload, expiresAt: Date.now() + BUCKET_TTL_MS };
+  res.json(payload);
 });
 
 // GET /api/buckets/admin — admin, all buckets raw (no product resolution)
@@ -79,6 +107,7 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
     isActive: body["isActive"] != null ? Boolean(body["isActive"]) : true,
     sortOrder: body["sortOrder"] != null ? Number(body["sortOrder"]) : 0,
   }).returning();
+  invalidateBucketCache();
   res.status(201).json({ success: true, bucket: mi(bucket!) });
 });
 
@@ -89,6 +118,7 @@ router.patch("/reorder", authenticate, A, async (req: AuthRequest, res: Response
   await Promise.all(order.map(({ id, sortOrder }) =>
     db.update(buckets).set({ sortOrder }).where(eq(buckets.id, id))
   ));
+  invalidateBucketCache();
   res.json({ success: true });
 });
 
@@ -113,12 +143,14 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
     .where(eq(buckets.id, req.params["id"] as string))
     .returning();
   if (!bucket) { res.status(404).json({ success: false, message: "Bucket not found" }); return; }
+  invalidateBucketCache();
   res.json({ success: true, bucket: mi(bucket) });
 });
 
 // DELETE /api/buckets/:id — admin, delete bucket
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   await db.delete(buckets).where(eq(buckets.id, req.params["id"] as string));
+  invalidateBucketCache();
   res.json({ success: true, message: "Bucket deleted" });
 });
 

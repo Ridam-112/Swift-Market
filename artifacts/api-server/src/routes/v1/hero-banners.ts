@@ -12,13 +12,36 @@ function scheduleCleanup(set: Set<string>, key: string, ttlMs: number) {
   setTimeout(() => set.delete(key), ttlMs);
 }
 
+// ── In-memory cache for public banner list ────────────────────────────────────
+// Banners change only when an admin creates/updates/deletes one. Caching the
+// public GET response for 15 minutes eliminates a full DB round-trip on every
+// page load. Any write operation below calls invalidateBannerCache().
+const BANNER_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+let _bannerCache: { data: unknown; expiresAt: number } | null = null;
+
+function getBannerCache(): unknown | null {
+  if (_bannerCache && Date.now() < _bannerCache.expiresAt) return _bannerCache.data;
+  _bannerCache = null;
+  return null;
+}
+function setBannerCache(data: unknown): void {
+  _bannerCache = { data, expiresAt: Date.now() + BANNER_CACHE_TTL_MS };
+}
+function invalidateBannerCache(): void {
+  _bannerCache = null;
+}
+
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
 // GET /api/hero-banners — public, active banners sorted by displayOrder
 router.get("/", async (_req: Request, res: Response): Promise<void> => {
+  const hit = getBannerCache();
+  if (hit) { res.json(hit); return; }
   const banners = await db.select().from(heroBanners).where(eq(heroBanners.isActive, true)).orderBy(asc(heroBanners.displayOrder));
-  res.json({ success: true, banners: miArr(banners) });
+  const payload = { success: true, banners: miArr(banners) };
+  setBannerCache(payload);
+  res.json(payload);
 });
 
 // GET /api/hero-banners/admin — admin, all banners with analytics totals
@@ -42,6 +65,7 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
     isActive: body["isActive"] != null ? Boolean(body["isActive"]) : true,
     displayOrder: body["displayOrder"] != null ? Number(body["displayOrder"]) : 0,
   }).returning();
+  invalidateBannerCache();
   res.status(201).json({ success: true, banner: mi(banner!) });
 });
 
@@ -99,6 +123,7 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
     void deleteFromImageKit(oldBanner.imageUrl);
   }
 
+  invalidateBannerCache();
   res.json({ success: true, banner: mi(banner) });
 });
 
@@ -110,6 +135,7 @@ router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): 
     .limit(1);
   // Delete from DB first — Cloudinary cleanup is non-blocking so a CDN failure never orphans the DB record
   await db.delete(heroBanners).where(eq(heroBanners.id, req.params["id"] as string));
+  invalidateBannerCache();
   if (banner?.imageUrl) {
     deleteFromImageKit(banner.imageUrl).catch(() => {});
   }

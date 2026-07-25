@@ -1,5 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import helmet from "helmet";
+import compression from "compression";
 import pinoHttp from "pino-http";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -10,6 +11,11 @@ import { globalApiLimiter } from "./middlewares/rateLimiter.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app: Express = express();
+
+// Gzip compression — applied before all routes so every JSON and static
+// response is compressed. Skips already-compressed content (images, etc.)
+// via the default filter. No-op for responses smaller than 1 KB (threshold).
+app.use(compression({ threshold: 1024 }));
 
 app.use(
   pinoHttp({

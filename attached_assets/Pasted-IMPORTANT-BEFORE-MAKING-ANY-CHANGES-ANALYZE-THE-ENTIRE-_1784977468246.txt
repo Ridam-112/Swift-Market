@@ -1,0 +1,83 @@
+IMPORTANT: BEFORE MAKING ANY CHANGES, ANALYZE THE ENTIRE AUTHENTICATION FLOW.
+
+DO NOT LOG OUT ANY EXISTING USERS.
+
+DO NOT:
+- Modify existing JWT token structure.
+- Modify tokenVersion logic.
+- Modify Neon Auth.
+- Break Google Login.
+- Break OTP Login.
+- Delete or modify existing users.
+- Force any existing users to re-login.
+- Change the multi-database allocation logic.
+- Change existing database mappings.
+
+I want to add Truecaller Authentication to SwiftMart as an ADDITIONAL login method.
+
+Current login methods must continue working exactly as before.
+
+Existing Login Methods:
+- Google Login
+- OTP Login (if enabled)
+- Existing JWT Authentication
+
+I want to add:
+- Continue with Truecaller
+
+Requirements:
+
+1. Existing users must remain logged in.
+2. Truecaller login must be completely optional.
+3. No downtime is allowed.
+4. No user data should be lost or modified.
+5. Existing authentication flow must remain unchanged.
+
+TRUECALLER LOGIN FLOW:
+
+User clicks:
+→ Continue with Truecaller
+
+↓
+
+Truecaller verifies the user's mobile number.
+
+↓
+
+Backend receives the verified user information.
+
+↓
+
+Check if the phone number already exists in the database.
+
+IF USER EXISTS:
+- Login the existing user.
+- Generate JWT normally.
+- Do NOT create a duplicate account.
+
+IF USER DOES NOT EXIST:
+- Create a new user account.
+- Generate UUID.
+- Assign the user to the correct database using the existing multi-database allocation logic.
+- Save all required user information.
+- Generate JWT normally.
+
+IMPORTANT:
+
+- Use the existing user creation logic.
+- Use the existing JWT generation logic.
+- Use the existing multi-database architecture.
+- Use the existing authentication middleware.
+- Use the existing session management.
+
+Please implement Truecaller as a completely separate login provider without affecting any existing authentication methods.
+
+BEFORE WRITING ANY CODE:
+
+1. Explain the complete integration plan.
+2. List all files that will be modified.
+3. Identify any potential risks.
+4. Confirm that no existing users will be logged out.
+5. Confirm that Google Login and OTP Login will continue working.
+
+Only after presenting the plan and receiving my approval should you make any code changes.
