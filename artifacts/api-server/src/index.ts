@@ -20,16 +20,24 @@ function validateEnv(): void {
   // PORT is injected by Render at runtime — warn only, do not crash
   const required = [
     "DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET",
-    // Multi-database secrets (Phase 1+): all 5 Neon DBs must be configured
-    "DATABASE1_URL", "DATABASE2_URL", "DATABASE3_URL", "DATABASE4_URL", "DATABASE5_URL",
   ];
   const missing = required.filter(k => !process.env[k]);
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
   }
+
+  // Multi-database sharding: DATABASE1–5_URL are required in production.
+  // In development (single-DB Replit), they fall back to DATABASE_URL automatically.
+  const shardKeys = ["DATABASE1_URL", "DATABASE2_URL", "DATABASE3_URL", "DATABASE4_URL", "DATABASE5_URL"];
+  const missingShards = shardKeys.filter(k => !process.env[k]);
+  if (missingShards.length > 0) {
+    logger.warn({ missingShards }, "[startup] Shard DB secrets not set — falling back to DATABASE_URL for all shards (dev mode)");
+  }
+
   // Log which Neon hosts the DB secrets resolve to (host only — no credentials)
   const neonHost = (envKey: string) => {
-    try { return new URL(process.env[envKey]!).host; } catch { return "(invalid URL)"; }
+    const url = process.env[envKey] ?? process.env["DATABASE_URL"];
+    try { return new URL(url!).host; } catch { return "(invalid URL)"; }
   };
   logger.info({
     DB1: neonHost("DATABASE1_URL"),

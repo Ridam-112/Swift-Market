@@ -50,10 +50,12 @@ function createNeonPool(url: string, label: string): pg.Pool {
 import { db as db1 } from "@workspace/db";
 export { db1 };
 
-const _db2Pool = createNeonPool(process.env.DATABASE2_URL!, "DB2");
-const _db3Pool = createNeonPool(process.env.DATABASE3_URL!, "DB3");
-const _db4Pool = createNeonPool(process.env.DATABASE4_URL!, "DB4");
-const _db5Pool = createNeonPool(process.env.DATABASE5_URL!, "DB5");
+// Fall back to DATABASE_URL when a shard-specific secret is not set (dev/single-DB mode).
+const fallback = process.env.DATABASE_URL!;
+const _db2Pool = createNeonPool(process.env.DATABASE2_URL ?? fallback, "DB2");
+const _db3Pool = createNeonPool(process.env.DATABASE3_URL ?? fallback, "DB3");
+const _db4Pool = createNeonPool(process.env.DATABASE4_URL ?? fallback, "DB4");
+const _db5Pool = createNeonPool(process.env.DATABASE5_URL ?? fallback, "DB5");
 
 export const db2 = drizzle(_db2Pool, { schema });
 export const db3 = drizzle(_db3Pool, { schema });
