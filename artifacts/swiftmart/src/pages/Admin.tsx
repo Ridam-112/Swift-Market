@@ -14,9 +14,10 @@ import {
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
   ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown, Home, Mail,
   Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin, Truck, Bike,
-  UserCheck, Gift,
+  UserCheck, Gift, QrCode,
   type LucideIcon,
 } from "lucide-react";
+import { generateShopSticker } from "@/lib/shopSticker";
 import { categories } from "@/data/categories";
 import { GROCERY_SUBCAT_OPTIONS as GROCERY_SUBCAT_OPTIONS_ADMIN } from "@/data/grocerySubcats";
 import { VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog, Vendor } from "@/types";
@@ -3691,6 +3692,19 @@ function ShopListPanel({ onManageProducts }: { onManageProducts: (shop: ApiShopF
   const [linkEmail, setLinkEmail] = useState('');
   const [linkSaving, setLinkSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [downloadingStickerId, setDownloadingStickerId] = useState<string | null>(null);
+
+  const handleDownloadSticker = async (shop: ApiShopFull) => {
+    setDownloadingStickerId(shop._id);
+    try {
+      await generateShopSticker(shop._id, shop.shopName);
+      toast.success(`Sticker downloaded for ${shop.shopName}`);
+    } catch (e) {
+      toast.error((e as Error).message ?? 'Failed to generate sticker');
+    } finally {
+      setDownloadingStickerId(null);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -4114,6 +4128,16 @@ function ShopListPanel({ onManageProducts }: { onManageProducts: (shop: ApiShopF
                         className={`p-2 rounded-xl hover:bg-muted transition-colors ${isLinkingOwner ? 'text-emerald-600 bg-emerald-500/10' : 'text-muted-foreground'}`}
                       >
                         <UserCheck className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDownloadSticker(shop)}
+                        disabled={downloadingStickerId === shop._id}
+                        title="Download shop sticker (QR)"
+                        className="p-2 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-600 transition-colors disabled:opacity-50"
+                      >
+                        {downloadingStickerId === shop._id
+                          ? <RefreshCw className="w-4 h-4 animate-spin" />
+                          : <QrCode className="w-4 h-4" />}
                       </button>
                       <button onClick={() => openEdit(shop)} title="Edit" className="p-2 rounded-xl hover:bg-muted text-muted-foreground transition-colors">
                         <Edit2 className="w-4 h-4" />
