@@ -44,12 +44,13 @@ Run `node scripts/check-secrets.mjs` to see full secret status.
 - **OTP SMS (2factor.in):** `TWO_FACTOR_API_KEY`
 - **Supabase Storage:** configured via `@supabase/storage-js`
 
-## Replit setup status (last verified: 2026-07-25)
+## Replit setup status (last verified: 2026-07-27)
 
 - `pnpm install` — ✅ all workspace dependencies installed
 - `cd lib/db && pnpm drizzle-kit push` — ✅ schema pushed to Replit PostgreSQL
 - `JWT_SECRET` / `JWT_REFRESH_SECRET` — ✅ configured as Replit Secrets
 - `DATABASE_URL` — ✅ auto-provisioned by Replit PostgreSQL
+- `.replit` modules — ✅ `postgresql-16` present (required for DB tooling)
 - App verified running: API on :8080, frontend on :5000
 
 ## User preferences
