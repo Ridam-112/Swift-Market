@@ -29,11 +29,11 @@ router.get("/all", authenticate, A, async (_req: Request, res: Response): Promis
 });
 
 router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { name, shopTypes: shopTypesList, commissionRate, emoji, color, subcategories } = req.body as {
-    name: string; shopTypes?: string[]; commissionRate?: number; emoji?: string; color?: string; subcategories?: string[];
+  const { name, shopTypes: shopTypesList, commissionRate, packagingCharge, emoji, color, subcategories } = req.body as {
+    name: string; shopTypes?: string[]; commissionRate?: number; packagingCharge?: number; emoji?: string; color?: string; subcategories?: string[];
   };
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  const [cat] = await db.insert(categories).values({ name, slug, shopTypes: shopTypesList ?? [], commissionRate, emoji, color, subcategories: subcategories ?? [] }).returning();
+  const [cat] = await db.insert(categories).values({ name, slug, shopTypes: shopTypesList ?? [], commissionRate, packagingCharge: packagingCharge != null ? Math.round(packagingCharge) : undefined, emoji, color, subcategories: subcategories ?? [] }).returning();
   void invalidateCategoryCache();
   res.status(201).json({ success: true, category: mi(cat) });
 });
@@ -44,6 +44,7 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
   if (body["name"] !== undefined) update["name"] = String(body["name"]);
   if (body["shopTypes"] !== undefined) update["shopTypes"] = Array.isArray(body["shopTypes"]) ? body["shopTypes"] : [];
   if (body["commissionRate"] !== undefined) update["commissionRate"] = Number(body["commissionRate"]);
+  if (body["packagingCharge"] !== undefined) update["packagingCharge"] = body["packagingCharge"] != null ? Math.round(Number(body["packagingCharge"])) : null;
   if (body["emoji"] !== undefined) update["emoji"] = body["emoji"] ? String(body["emoji"]) : null;
   if (body["color"] !== undefined) update["color"] = body["color"] ? String(body["color"]) : null;
   if (body["subcategories"] !== undefined) update["subcategories"] = Array.isArray(body["subcategories"]) ? body["subcategories"] : [];

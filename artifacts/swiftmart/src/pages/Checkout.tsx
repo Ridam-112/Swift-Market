@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
@@ -112,15 +112,64 @@ export default function Checkout() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMultiShop, shopId, items.length, shops.length]);
 
+  // ─── Packaging & GST (dynamic) ───────────────────────────────────────────────
+  const RESTAURANT_TYPES = new Set(["restaurant", "fast-food", "cloud-kitchen"]);
+
+  // Category-level packaging charges fetched from API (for non-restaurant shops)
+  const [categoryPackagingCharges, setCategoryPackagingCharges] = useState<Record<string, number>>({});
+  useEffect(() => {
+    api.get<{ success: boolean; categories: Array<{ slug: string; packagingCharge?: number | null }> }>("/categories")
+      .then(d => {
+        const map: Record<string, number> = {};
+        for (const cat of (d.categories ?? [])) {
+          if (cat.packagingCharge != null) map[cat.slug] = cat.packagingCharge;
+        }
+        setCategoryPackagingCharges(map);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Per-shop subtotals (needed for GST calculation)
+  const shopSubtotals = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of items) {
+      const sid = item.product.vendorId;
+      const base = item.product.discountedPrice != null && item.product.discountedPrice < item.product.price
+        ? item.product.discountedPrice : item.product.price;
+      let unitPrice = base;
+      if (item.selectedGrams) {
+        const parsed = parseUnit(item.product.unit);
+        if (parsed.type === "weight" && parsed.baseGrams > 0) {
+          unitPrice = +(priceForWeight(base, parsed.baseGrams, item.selectedGrams)).toFixed(2);
+        }
+      }
+      map.set(sid, +(((map.get(sid) ?? 0) + unitPrice * item.qty)).toFixed(2));
+    }
+    return map;
+  }, [items]);
+
+  const getShopPackagingCharge = (sid: string): number => {
+    const shopObj = shops.find(s => s.id === sid);
+    if (!shopObj) return 0;
+    if (RESTAURANT_TYPES.has(shopObj.category)) return shopObj.packagingCharge ?? 0;
+    return categoryPackagingCharges[shopObj.category] ?? 0;
+  };
+
+  const getShopGst = (sid: string): number => {
+    const shopObj = shops.find(s => s.id === sid);
+    if (!shopObj?.gstEnabled || !shopObj.gstRate) return 0;
+    const shopSub = shopSubtotals.get(sid) ?? 0;
+    return +(shopSub * shopObj.gstRate / 100).toFixed(2);
+  };
+
   const slotFee = deliverySlot === 'instant' ? 25 : deliverySlot === 'standard' ? 20 : 15;
   // Each shop's order carries the full delivery fee — not split
   const totalDeliveryFee = slotFee * uniqueShopIds.length;
-  // Flat ₹6 packaging fee, charged per shop order (mirrors delivery fee behavior)
-  const PACKAGING_FEE_PER_SHOP = 6;
-  const totalPackagingFee = PACKAGING_FEE_PER_SHOP * uniqueShopIds.length;
+  const totalPackagingFee = uniqueShopIds.reduce((sum, sid) => sum + getShopPackagingCharge(sid), 0);
+  const totalGstAmount = uniqueShopIds.reduce((sum, sid) => sum + getShopGst(sid), 0);
   const orderTotalForCoupon = subtotal + totalDeliveryFee;
   const couponDiscount = couponApplied?.discount ?? 0;
-  const totalAmount = subtotal + totalDeliveryFee + totalPackagingFee - couponDiscount;
+  const totalAmount = subtotal + totalDeliveryFee + totalPackagingFee + totalGstAmount - couponDiscount;
 
   const handleApplyCoupon = async () => {
     const code = couponInput.trim().toUpperCase();
@@ -642,6 +691,7 @@ export default function Checkout() {
             deliveryType={deliverySlot}
             shopCount={uniqueShopIds.length}
             packagingFee={totalPackagingFee}
+            gstAmount={totalGstAmount}
             couponDiscount={couponApplied?.discount ?? 0}
             couponCode={couponApplied?.code}
           />

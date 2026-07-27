@@ -293,6 +293,9 @@ router.post("/:id/reject-certificate", authenticate, A, async (req: AuthRequest,
   res.json({ success: true, shop: mi(shop) });
 });
 
+// Shop types that can self-manage packaging charges
+const RESTAURANT_SHOP_TYPES = new Set(["restaurant", "fast-food", "cloud-kitchen"]);
+
 // PATCH /api/shops/my/profile — vendor updates their own shop profile (safe fields only)
 router.patch("/my/profile", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body as Record<string, unknown>;
@@ -300,6 +303,30 @@ router.patch("/my/profile", authenticate, async (req: AuthRequest, res: Response
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (body[key] !== undefined) update[key] = body[key];
+  }
+
+  // GST fields — allowed for all vendors
+  if (body["gstEnabled"] !== undefined) update["gstEnabled"] = Boolean(body["gstEnabled"]);
+  if (body["gstRate"] !== undefined) {
+    const rate = Number(body["gstRate"]);
+    update["gstRate"] = (!isNaN(rate) && rate >= 0 && rate <= 100) ? rate : null;
+  }
+
+  // Packaging charge — only restaurant/fast-food/cloud-kitchen vendors can set their own
+  if (body["packagingCharge"] !== undefined) {
+    // Determine current shopType from body (if being updated) or from DB
+    const shopType = body["shopType"] ? String(body["shopType"]) : null;
+    if (shopType && RESTAURANT_SHOP_TYPES.has(shopType)) {
+      const charge = Number(body["packagingCharge"]);
+      update["packagingCharge"] = (!isNaN(charge) && charge >= 0) ? Math.round(charge) : null;
+    } else if (!shopType) {
+      // Need to check from DB
+      const [existing] = await db.select({ shopType: shops.shopType }).from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
+      if (existing && RESTAURANT_SHOP_TYPES.has(existing.shopType ?? "")) {
+        const charge = Number(body["packagingCharge"]);
+        update["packagingCharge"] = (!isNaN(charge) && charge >= 0) ? Math.round(charge) : null;
+      }
+    }
   }
   // M2: fetch old image/banner before update so we can clean up replaced Cloudinary assets
   const [oldShop] = await db.select({ image: shops.image, banner: shops.banner })

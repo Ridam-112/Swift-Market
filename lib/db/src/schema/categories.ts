@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, doublePrecision, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, doublePrecision, integer, jsonb } from "drizzle-orm/pg-core";
 
 export const categories = pgTable("categories", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -7,6 +7,7 @@ export const categories = pgTable("categories", {
   shopTypes: jsonb("shop_types").notNull().default([]),
   isActive: boolean("is_active").notNull().default(true),
   commissionRate: doublePrecision("commission_rate"),
+  packagingCharge: integer("packaging_charge"),
   emoji: text("emoji"),
   color: text("color"),
   subcategories: jsonb("subcategories").notNull().default([]),

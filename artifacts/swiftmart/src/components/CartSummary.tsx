@@ -6,6 +6,7 @@ export function CartSummary({
   deliveryType = 'instant',
   shopCount = 1,
   packagingFee = 0,
+  gstAmount = 0,
   couponDiscount = 0,
   couponCode,
 }: {
@@ -14,10 +15,11 @@ export function CartSummary({
   deliveryType?: 'instant' | 'standard' | 'saver';
   shopCount?: number;
   packagingFee?: number;
+  gstAmount?: number;
   couponDiscount?: number;
   couponCode?: string;
 }) {
-  const total = subtotal + deliveryFee + packagingFee - couponDiscount;
+  const total = subtotal + deliveryFee + packagingFee + gstAmount - couponDiscount;
   const perShopFee = shopCount > 1 ? deliveryFee / shopCount : deliveryFee;
   const deliveryLabel =
     deliveryType === 'standard' ? 'Standard Delivery (2–4 hrs)'
@@ -51,13 +53,18 @@ export function CartSummary({
         <div className="flex justify-between text-muted-foreground">
           <div>
             <span>Packaging Fee</span>
-            {shopCount > 1 && (
-              <p className="text-[10px] mt-0.5 text-muted-foreground">
-                ₹{packagingFee / shopCount} × {shopCount} shops
-              </p>
+            {shopCount > 1 && packagingFee > 0 && (
+              <p className="text-[10px] mt-0.5 text-muted-foreground">per shop</p>
             )}
           </div>
           <span className="font-medium text-foreground">{formatINR(packagingFee)}</span>
+        </div>
+      )}
+
+      {gstAmount > 0 && (
+        <div className="flex justify-between text-muted-foreground">
+          <span>GST</span>
+          <span className="font-medium text-foreground">{formatINR(gstAmount)}</span>
         </div>
       )}
 

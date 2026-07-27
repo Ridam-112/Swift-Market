@@ -5265,10 +5265,14 @@ interface ApiCategory {
   description?: string;
   isActive: boolean;
   commissionRate: number;
+  packagingCharge?: number | null;
   emoji?: string;
   color?: string;
   createdAt: string;
 }
+
+// Restaurant-style categories manage their own packaging charges
+const RESTAURANT_SLUGS = new Set(["restaurant", "fast-food", "cloud-kitchen"]);
 
 function CategoriesTab() {
   const [cats, setCats] = useState<ApiCategory[]>([]);
@@ -5276,9 +5280,11 @@ function CategoriesTab() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editRate, setEditRate] = useState("");
+  const [editingPackagingId, setEditingPackagingId] = useState<string | null>(null);
+  const [editPackagingCharge, setEditPackagingCharge] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", slug: "", description: "", commissionRate: "5", emoji: "", color: "#f59e0b" });
+  const [createForm, setCreateForm] = useState({ name: "", slug: "", description: "", commissionRate: "5", packagingCharge: "", emoji: "", color: "#f59e0b" });
   const [creating, setCreating] = useState(false);
   const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all");
 
@@ -5322,6 +5328,19 @@ function CategoriesTab() {
     }
   };
 
+  const handleSavePackaging = async (cat: ApiCategory) => {
+    const charge = editPackagingCharge.trim() === "" ? null : parseInt(editPackagingCharge, 10);
+    if (charge !== null && (isNaN(charge) || charge < 0)) { toast.error("Enter a valid packaging charge"); return; }
+    try {
+      await api.patch(`/categories/${cat._id}`, { packagingCharge: charge });
+      setCats(prev => prev.map(c => c._id === cat._id ? { ...c, packagingCharge: charge } : c));
+      setEditingPackagingId(null);
+      toast.success("Packaging charge updated");
+    } catch {
+      toast.error("Failed to update packaging charge");
+    }
+  };
+
   const handleDelete = async (cat: ApiCategory) => {
     if (!confirm(`Delete category "${cat.name}"? This cannot be undone.`)) return;
     setDeletingId(cat._id);
@@ -5342,17 +5361,19 @@ function CategoriesTab() {
     if (isNaN(rate) || rate < 0) { toast.error("Enter a valid commission rate"); return; }
     setCreating(true);
     try {
+      const pkgCharge = createForm.packagingCharge.trim() ? parseInt(createForm.packagingCharge, 10) : undefined;
       const data = await api.post<{ success: boolean; category: ApiCategory }>("/categories", {
         name: createForm.name.trim(),
         slug: createForm.slug.trim().toLowerCase().replace(/\s+/g, "-"),
         description: createForm.description.trim(),
         commissionRate: rate,
+        packagingCharge: pkgCharge != null && !isNaN(pkgCharge) ? pkgCharge : undefined,
         isActive: true,
         emoji: createForm.emoji.trim() || "🛍️",
         color: createForm.color || "#f59e0b",
       });
       setCats(prev => [data.category, ...prev]);
-      setCreateForm({ name: "", slug: "", description: "", commissionRate: "5", emoji: "", color: "#f59e0b" });
+      setCreateForm({ name: "", slug: "", description: "", commissionRate: "5", packagingCharge: "", emoji: "", color: "#f59e0b" });
       setShowCreate(false);
       toast.success("Category created");
     } catch {
@@ -5416,6 +5437,13 @@ function CategoriesTab() {
               <label className="text-xs text-muted-foreground">Commission Rate (%)</label>
               <Input type="number" min="0" value={createForm.commissionRate}
                 onChange={e => setCreateForm(f => ({ ...f, commissionRate: e.target.value }))}
+                className="h-9 neu-inset border-none bg-background" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Packaging Charge (₹) <span className="text-muted-foreground/60">optional — leave blank for restaurant-type</span></label>
+              <Input type="number" min="0" step="1" value={createForm.packagingCharge}
+                onChange={e => setCreateForm(f => ({ ...f, packagingCharge: e.target.value }))}
+                placeholder="e.g. 6"
                 className="h-9 neu-inset border-none bg-background" />
             </div>
             <div className="space-y-1">
@@ -5491,6 +5519,28 @@ function CategoriesTab() {
                     <Edit2 className="w-3 h-3" />
                     {cat.commissionRate}% commission
                   </button>
+                )}
+
+                {/* Packaging charge — hidden for restaurant-type slugs (they self-manage) */}
+                {!RESTAURANT_SLUGS.has(cat.slug) && (
+                  editingPackagingId === cat._id ? (
+                    <>
+                      <Input type="number" min="0" step="1" value={editPackagingCharge}
+                        onChange={e => setEditPackagingCharge(e.target.value)}
+                        className="w-20 h-8 text-xs neu-inset border-none bg-background"
+                        placeholder="₹ pkg" />
+                      <Button size="sm" onClick={() => handleSavePackaging(cat)} className="rounded-lg h-8 shadow-none">Save</Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingPackagingId(null)} className="rounded-lg h-8 shadow-none">Cancel</Button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => { setEditingPackagingId(cat._id); setEditPackagingCharge(cat.packagingCharge != null ? String(cat.packagingCharge) : ""); }}
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                      {cat.packagingCharge != null ? `₹${cat.packagingCharge} pkg` : "No pkg charge"}
+                    </button>
+                  )
                 )}
 
                 <Button size="sm" variant="outline"

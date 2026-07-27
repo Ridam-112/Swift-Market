@@ -1,0 +1,99 @@
+Packaging Charge System
+
+1. Restaurants & Fast Food Shops
+--------------------------------
+- Vendors can set their own custom packaging charges.
+- The packaging charge will be applied per order.
+- Example:
+    - Restaurant A -> Rs. 10
+    - Restaurant B -> Rs. 25
+    - Restaurant C -> Rs. 15
+
+The vendor can change this value anytime from their vendor panel.
+
+2. All Other Shop Categories
+----------------------------
+- Vendors cannot edit packaging charges.
+- Packaging charges will be managed only by the SwiftMart Admin Panel.
+
+Examples:
+- Grocery -> Rs. 6
+- Medicine -> Rs. 6
+- Bakery -> Rs. 8
+- Stationery -> Rs. 5
+- Cosmetics -> Rs. 6
+- Electronics -> Rs. 10
+
+The admin can configure packaging charges category-wise from the Admin Panel.
+
+------------------------------------------------------------
+
+GST System
+
+- GST is optional and vendor specific.
+- Only GST registered vendors should enable GST.
+
+Vendor Panel:
+- GST Applicable (Yes / No)
+- GST Rate (Custom value)
+
+Examples:
+- 5%
+- 12%
+- 18%
+
+GST Formula:
+
+GST Amount = (Product Subtotal × GST Rate) / 100
+
+GST should NOT be applied on:
+- Delivery Charges
+- Packaging Charges
+- Platform Charges
+
+------------------------------------------------------------
+
+Checkout Flow
+
+Subtotal of Products
++
+Packaging Charge
++
+GST Amount (if applicable)
++
+Delivery Charge
+=
+Grand Total
+
+------------------------------------------------------------
+
+Vendor Permissions
+
+Restaurants & Fast Food:
+- Can set custom packaging charges.
+- Can enable/disable GST.
+- Can set GST rate.
+
+All Other Vendors:
+- Cannot edit packaging charges.
+- Can enable/disable GST if applicable.
+- Packaging charges are controlled by the Admin Panel.
+
+------------------------------------------------------------
+
+Admin Panel Requirements
+
+Add category-wise packaging charge settings.
+
+Examples:
+- Grocery Packaging Charge
+- Medicine Packaging Charge
+- Bakery Packaging Charge
+- Sweet Shop Packaging Charge
+- Electronics Packaging Charge
+- Clothing Packaging Charge
+- Cosmetics Packaging Charge
+
+Restaurants and Fast Food should be excluded from the admin-controlled packaging charge system because they manage their own packaging charges.
+
+The implementation must be fully dynamic and scalable without any hardcoded values in the checkout logic.

@@ -34,6 +34,9 @@ interface ApiShop {
   category?: string;
   timings?: ShopTimings;
   status: string;
+  packagingCharge?: number | null;
+  gstEnabled?: boolean;
+  gstRate?: number | null;
 }
 
 async function uploadImage(file: File, endpoint: string): Promise<string | null> {
@@ -165,6 +168,9 @@ export default function ShopProfile() {
   const [category, setCategory] = useState("");
   const [timingsOpen, setTimingsOpen] = useState("09:00");
   const [timingsClose, setTimingsClose] = useState("21:00");
+  const [packagingCharge, setPackagingCharge] = useState<string>("");
+  const [gstEnabled, setGstEnabled] = useState(false);
+  const [gstRate, setGstRate] = useState<string>("");
 
   useEffect(() => {
     api.get<{ success: boolean; categories: ApiCategory[] }>("/categories")
@@ -191,6 +197,9 @@ export default function ShopProfile() {
         setCategory(shop.category ?? "");
         setTimingsOpen(shop.timings?.open ?? "09:00");
         setTimingsClose(shop.timings?.close ?? "21:00");
+        setPackagingCharge(shop.packagingCharge != null ? String(shop.packagingCharge) : "");
+        setGstEnabled(shop.gstEnabled ?? false);
+        setGstRate(shop.gstRate != null ? String(shop.gstRate) : "");
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -220,6 +229,11 @@ export default function ShopProfile() {
         shopType,
         category,
         timings: { open: timingsOpen, close: timingsClose },
+        gstEnabled,
+        gstRate: gstEnabled && gstRate.trim() ? Number(gstRate) : null,
+        ...(["restaurant", "fast-food", "cloud-kitchen"].includes(shopType)
+          ? { packagingCharge: packagingCharge.trim() ? Number(packagingCharge) : null }
+          : {}),
       });
       toast.success("Shop profile updated successfully");
     } catch (err) {
@@ -385,6 +399,61 @@ export default function ShopProfile() {
               placeholder="State"
             />
           </div>
+        </section>
+
+        {/* Packaging charge — only for restaurant/fast-food/cloud-kitchen */}
+        {["restaurant", "fast-food", "cloud-kitchen"].includes(shopType) && (
+          <section className="bg-card p-6 rounded-3xl neu-card space-y-5">
+            <h3 className="font-semibold text-base text-foreground">Packaging Charge</h3>
+            <p className="text-xs text-muted-foreground -mt-3">Set the packaging fee charged to customers per order.</p>
+            <div className="space-y-2">
+              <Label htmlFor="packagingCharge">Packaging Charge (₹)</Label>
+              <Input
+                id="packagingCharge"
+                type="number"
+                min="0"
+                step="1"
+                value={packagingCharge}
+                onChange={e => setPackagingCharge(e.target.value)}
+                className="bg-background neu-inset border-none"
+                placeholder="e.g. 10"
+              />
+            </div>
+          </section>
+        )}
+
+        {/* GST settings — all vendors */}
+        <section className="bg-card p-6 rounded-3xl neu-card space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-base text-foreground">GST Settings</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Only enable if your business is GST-registered.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setGstEnabled(v => !v)}
+              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${gstEnabled ? "bg-primary" : "bg-muted"}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${gstEnabled ? "translate-x-5" : "translate-x-0"}`} />
+            </button>
+          </div>
+          {gstEnabled && (
+            <div className="space-y-2">
+              <Label htmlFor="gstRate">GST Rate (%)</Label>
+              <Input
+                id="gstRate"
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={gstRate}
+                onChange={e => setGstRate(e.target.value)}
+                className="bg-background neu-inset border-none"
+                placeholder="e.g. 5, 12, 18"
+              />
+              <p className="text-xs text-muted-foreground">Applied to product subtotal only — not on delivery or packaging fees.</p>
+            </div>
+          )}
         </section>
 
         <section className="bg-card p-6 rounded-3xl neu-card space-y-5">

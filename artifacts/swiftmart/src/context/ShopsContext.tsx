@@ -18,6 +18,9 @@ export interface ShopListing {
   image: string;
   status: string;
   eta: string;
+  packagingCharge?: number;
+  gstEnabled?: boolean;
+  gstRate?: number;
 }
 
 interface ApiShopItem {
@@ -35,6 +38,9 @@ interface ApiShopItem {
   image?: string;
   status: string;
   eta?: string;
+  packagingCharge?: number;
+  gstEnabled?: boolean;
+  gstRate?: number;
 }
 
 export function mapApiShop(s: ApiShopItem): ShopListing {
@@ -54,6 +60,9 @@ export function mapApiShop(s: ApiShopItem): ShopListing {
     image: s.image || `/assets/cat-${s.shopType}.png`,
     status: s.status,
     eta: s.eta ?? "",
+    packagingCharge: s.packagingCharge ?? undefined,
+    gstEnabled: s.gstEnabled ?? false,
+    gstRate: s.gstRate ?? undefined,
   };
 }
 

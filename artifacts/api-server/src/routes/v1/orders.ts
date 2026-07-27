@@ -1,7 +1,7 @@
 import { Router, type Response } from "express";
 import Razorpay from "razorpay";
 import { z } from "zod";
-import { db, orders, products, shops, users, payouts, coupons, deliveryPartners } from "@workspace/db";
+import { db, orders, products, shops, categories, users, payouts, coupons, deliveryPartners } from "@workspace/db";
 import { eq, and, ilike, or, gte, ne, desc, count, sql, inArray } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { validateUuidParams } from "../../middlewares/validateUuid.js";
@@ -14,8 +14,8 @@ import { mi, miArr } from "../../utils/mapId.js";
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
-// Flat packaging fee (₹) charged per shop order — server-enforced, never trusted from client.
-const PACKAGING_FEE = 6;
+// Shop types that manage their own packaging charges (restaurant-style vendors)
+const RESTAURANT_SHOP_TYPES = new Set(["restaurant", "fast-food", "cloud-kitchen"]);
 
 // ─── Weight variant helpers ───────────────────────────────────────────────────
 /** Parse a product unit string (e.g. "1 kg", "500g") into grams. Returns null if not weight-based. */
@@ -292,11 +292,29 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
   const items = parsed.data.items as OrderItemInput[];
   const shopId = String(body["shopId"] ?? "");
 
-  // Pre-transaction read: fetch shop (needed for commission resolution + payout)
+  // Pre-transaction read: fetch shop (needed for commission resolution + payout + packaging/GST)
   const [shop] = await db
-    .select({ id: shops.id, ownerId: shops.ownerId, shopType: shops.shopType, ownerName: shops.ownerName, shopName: shops.shopName })
+    .select({ id: shops.id, ownerId: shops.ownerId, shopType: shops.shopType, ownerName: shops.ownerName, shopName: shops.shopName, packagingCharge: shops.packagingCharge, gstEnabled: shops.gstEnabled, gstRate: shops.gstRate })
     .from(shops).where(eq(shops.id, shopId)).limit(1);
   const vendorId = shop ? shop.ownerId : shopId;
+
+  // Determine packaging fee from shop type:
+  //   - Restaurant/fast-food/cloud-kitchen: vendor's own packagingCharge
+  //   - All other categories: admin-configured packagingCharge on the category
+  const isRestaurantType = RESTAURANT_SHOP_TYPES.has(shop?.shopType ?? "");
+  let packagingFee = 0;
+  if (shop) {
+    if (isRestaurantType) {
+      packagingFee = shop.packagingCharge ?? 0;
+    } else {
+      const [cat] = await db
+        .select({ packagingCharge: categories.packagingCharge })
+        .from(categories)
+        .where(eq(categories.slug, shop.shopType ?? ""))
+        .limit(1);
+      packagingFee = cat?.packagingCharge ?? 0;
+    }
+  }
 
   const couponCode = typeof body["couponCode"] === "string" && body["couponCode"].trim()
     ? body["couponCode"].trim().toUpperCase()
@@ -442,10 +460,14 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
 
       const commissionAmount = +totalCommissionAmount.toFixed(2);
       const deliveryCharge = Number(body["deliveryCharge"] ?? 0);
-      const packagingFee = PACKAGING_FEE;
+      // packagingFee determined pre-transaction from shop type / category config
       const couponDiscount = Number(body["couponDiscount"] ?? 0);
-      const netAmount = subtotal + deliveryCharge + packagingFee - couponDiscount;
-      // Packaging fee is platform revenue, not vendor income — excluded from vendor payable.
+      // GST applies to product subtotal only — never on delivery, packaging, or platform charges
+      const gstAmount = (shop?.gstEnabled && shop?.gstRate && shop.gstRate > 0)
+        ? +(subtotal * shop.gstRate / 100).toFixed(2)
+        : 0;
+      const netAmount = subtotal + deliveryCharge + packagingFee + gstAmount - couponDiscount;
+      // Packaging fee is platform revenue; GST goes to vendor (collected on vendor's behalf).
       const vendorPayable = +(netAmount - commissionAmount - packagingFee).toFixed(2);
       const avgRate = enrichedItems.length > 0
         ? +(enrichedItems.reduce((s, it) => s + it.commissionRate, 0) / enrichedItems.length).toFixed(2)
@@ -498,6 +520,7 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
         subtotal,
         deliveryCharge,
         packagingFee,
+        gstAmount,
         couponDiscount,
         netAmount,
         commissionRate: avgRate,
