@@ -1366,7 +1366,7 @@ router.post("/truecaller", truecallerAuthLimiter, async (req: Request, res: Resp
   }
 
   // Verify the token with Truecaller's profile API
-  let profileRes: Response;
+  let profileRes: globalThis.Response;
   try {
     profileRes = await fetch("https://api4.truecaller.com/v1/userProfile", {
       headers: { Authorization: `Bearer ${accessToken}` },

@@ -17,17 +17,16 @@
  */
 
 import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
+// @ts-ignore — @types/pg types the CJS entry; moduleResolution:bundler resolves ESM which has no .d.ts
+import { Pool } from "pg";
 import * as schema from "@workspace/db/schema";
 import { usersMapping, shopsMapping } from "@workspace/db";
 import { eq, count } from "drizzle-orm";
 import { logger } from "./logger.js";
 
-const { Pool } = pg;
-
 // ─── Connection factory ────────────────────────────────────────────────────────
 
-function createNeonPool(url: string, label: string): pg.Pool {
+function createNeonPool(url: string, label: string): Pool {
   const pool = new Pool({
     connectionString: url,
     ssl: { rejectUnauthorized: false },   // all 5 DBs are Neon — always SSL
@@ -36,7 +35,7 @@ function createNeonPool(url: string, label: string): pg.Pool {
     connectionTimeoutMillis: 10_000,
     keepAlive: true,
   });
-  pool.on("error", (err) => {
+  pool.on("error", (err: Error) => {
     logger.error({ label, msg: err.message }, `[dbRouter] idle client error on ${label}`);
   });
   return pool;
