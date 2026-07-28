@@ -13,8 +13,8 @@ function requireEnv(name: string): string {
 
 const ACCESS_SECRET: string = requireEnv("JWT_SECRET");
 const REFRESH_SECRET: string = requireEnv("JWT_REFRESH_SECRET");
-const ACCESS_EXPIRY = "15m";
-const REFRESH_EXPIRY = "30d";
+const ACCESS_EXPIRY = "7d";
+const REFRESH_EXPIRY = "90d";
 
 export interface JwtPayload {
   userId: string;

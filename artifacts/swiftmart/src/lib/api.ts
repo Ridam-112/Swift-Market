@@ -131,10 +131,11 @@ async function request<T>(path: string, options: RequestInit = {}, retry = true)
     const { token: newToken, invalid } = await refreshTokens();
     if (newToken) return request<T>(path, options, false);
     if (invalid) {
-      // Refresh token is genuinely expired/revoked — this is a real logout.
-      clearTokens();
-      redirectToAuth();
-      throw new Error("Session expired");
+      // Refresh token is genuinely expired/revoked.
+      // Do NOT auto-redirect or clear tokens — let the user stay "logged in"
+      // with their cached state. Individual API calls that need auth will fail
+      // gracefully. Only an explicit logout tap should clear the session.
+      throw new Error("Session expired — please log in again.");
     }
     // Transient failure (network blip, rate-limited refresh, server hiccup) —
     // keep the session intact and just surface this one request as failed.

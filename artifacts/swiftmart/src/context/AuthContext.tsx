@@ -235,19 +235,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (u.addresses?.length > 0) setSelectedDeliveryAddress(u.addresses[0]);
           touchLastActive(); // refresh the 30-day countdown on every successful open
         })
-        .catch((err: unknown) => {
-          // Only wipe the session on a definitive auth failure.
-          // A transient network error keeps the cached user so the UI doesn't
-          // flicker to logged-out on a bad connection.
-          const isAuthFailure =
-            err instanceof Error &&
-            (err.message === "Session expired" ||
-              err.message.includes("401") ||
-              err.message.includes("403"));
-          if (isAuthFailure) {
-            hardLogout();
-          }
-          // else: network error — keep cached user, try again next open
+        .catch(() => {
+          // Keep the cached user on ANY failure — network error, expired token,
+          // server blip. Only an explicit logout tap should clear the session.
+          // With 7-day access tokens and 90-day refresh tokens, genuine expiry
+          // is rare; when it does happen the user sees individual action errors
+          // rather than being silently kicked to the login screen.
         })
         .finally(() => setIsLoading(false));
     } else {
