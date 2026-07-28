@@ -173,23 +173,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ─── Session persistence helpers ─────────────────────────────────────────
-  // User stays logged in forever unless they tap Logout.
-  // Exception: if they haven't opened the app in 30 days, auto-logout.
-  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-
-  const touchLastActive = () => {
-    localStorage.setItem("sm_last_active", String(Date.now()));
-  };
-
-  const isInactive30Days = (): boolean => {
-    const raw = localStorage.getItem("sm_last_active");
-    if (!raw) return false; // first-ever login — no stamp yet
-    return Date.now() - parseInt(raw, 10) > THIRTY_DAYS_MS;
-  };
+  // User stays logged in forever unless they explicitly tap Logout.
+  // No automatic logout on inactivity.
 
   const hardLogout = () => {
     clearTokens();
-    localStorage.removeItem("sm_last_active");
     localStorage.removeItem("swiftmart_cart");
     localStorage.removeItem("swiftmart_role");
     setUser(null);
@@ -207,12 +195,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const hasSession = !!(access || refresh);
 
     // ── 30-day inactivity check ───────────────────────────────────────────
-    if (hasSession && isInactive30Days()) {
-      hardLogout();
-      setIsLoading(false);
-      return;
-    }
-
     // ── Restore cached user immediately so UI doesn't flash logged-out ────
     if (savedUser) {
       try {
@@ -233,7 +215,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem("sm_user", JSON.stringify(u));
           localStorage.setItem("sm_role", d.user.role);
           if (u.addresses?.length > 0) setSelectedDeliveryAddress(u.addresses[0]);
-          touchLastActive(); // refresh the 30-day countdown on every successful open
         })
         .catch(() => {
           // Keep the cached user on ANY failure — network error, expired token,
@@ -268,7 +249,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const dashRole = apiUser.role === 'vendor' ? 'vendor' : 'customer';
     setRoleState(dashRole);
     localStorage.setItem("swiftmart_role", dashRole);
-    touchLastActive(); // start / refresh the 30-day inactivity clock on every login
 
     api.get<{ success: boolean; user: ApiUser }>("/auth/me")
       .then(d => {
