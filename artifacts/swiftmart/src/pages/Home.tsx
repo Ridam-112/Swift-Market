@@ -298,6 +298,12 @@ export default function Home() {
   const { user } = useAuth();
   const { shops, isLoading: shopsLoading } = useShops();
   const loading = shopsLoading;
+
+  // When a delivery city is selected, restrict dynamic sections to products from visible shops.
+  const visibleShopIds = useMemo(
+    () => new Set(shops.map(s => s.id)),
+    [shops]
+  );
   const [, setLocation] = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [apiCategories, setApiCategories] = useState<DisplayCategory[]>([]);
@@ -548,6 +554,10 @@ export default function Home() {
         </section>
       ) : dynamicSections.length > 0 ? (
         dynamicSections
+          .map(section => ({
+            ...section,
+            products: section.products.filter(p => !p.shopId || visibleShopIds.size === 0 || visibleShopIds.has(p.shopId)),
+          }))
           .filter(s => s.products.length > 0)
           .map(section => <DynamicSection key={section._id} section={section} />)
       ) : null}

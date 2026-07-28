@@ -160,10 +160,18 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [fetchShops]);
 
+  // City-based filtering — when the user has picked a delivery address, only show
+  // shops that serve that city.  allShops stays full so lookups (getShopById) still work.
+  const selectedCity = (auth?.selectedDeliveryAddress?.city ?? "").trim().toLowerCase();
+  const shops = useMemo(() => {
+    if (!selectedCity) return allShops;
+    return allShops.filter(s => s.city.trim().toLowerCase() === selectedCity);
+  }, [allShops, selectedCity]);
+
   const getShopById = (id: string) => allShops.find(s => s.id === id);
 
   return (
-    <ShopsContext.Provider value={{ shops: allShops, allShops, isLoading, error, refetch: fetchShops, getShopById }}>
+    <ShopsContext.Provider value={{ shops, allShops, isLoading, error, refetch: fetchShops, getShopById }}>
       {children}
     </ShopsContext.Provider>
   );
