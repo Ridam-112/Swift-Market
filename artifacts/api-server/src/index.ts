@@ -48,17 +48,17 @@ function validateEnv(): void {
   }, "[startup] Multi-database hosts configured");
 
   const optionalWarnings: Array<[string, string]> = [
-    ["GOOGLE_CLIENT_ID",      "Google Sign-In will not work — /api/auth/config will return empty googleClientId"],
-    ["RAZORPAY_KEY_ID",       "Razorpay payments will not work"],
-    ["RAZORPAY_KEY_SECRET",   "Razorpay payments will not work"],
-    ["CLOUDINARY_CLOUD_NAME", "Image uploads will not work"],
-    ["CLOUDINARY_API_KEY",    "Image uploads will not work"],
-    ["CLOUDINARY_API_SECRET", "Image uploads will not work"],
-    ["TWO_FACTOR_API_KEY",    "OTP SMS will not work (set OTP_MODE=demo to suppress)"],
-    ["FIREBASE_PROJECT_ID",   "FCM push notifications will not work"],
-    ["FIREBASE_CLIENT_EMAIL", "FCM push notifications will not work"],
-    ["FIREBASE_PRIVATE_KEY",  "FCM push notifications will not work"],
-    ["REDIS_URL",             "Redis caching disabled — all requests will hit PostgreSQL directly"],
+    ["GOOGLE_CLIENT_ID",        "Google Sign-In will not work — /api/auth/config will return empty googleClientId"],
+    ["RAZORPAY_KEY_ID",         "Razorpay payments will not work"],
+    ["RAZORPAY_KEY_SECRET",     "Razorpay payments will not work"],
+    ["IMAGEKIT_PUBLIC_KEY",     "Image uploads will not work"],
+    ["IMAGEKIT_PRIVATE_KEY",    "Image uploads will not work"],
+    ["IMAGEKIT_URL_ENDPOINT",   "Image uploads will not work"],
+    ["TWO_FACTOR_API_KEY",      "OTP SMS will not work (set OTP_MODE=demo to suppress)"],
+    ["FIREBASE_CLIENT_EMAIL",   "FCM push notifications will not work"],
+    ["FIREBASE_PRIVATE_KEY",    "FCM push notifications will not work"],
+    ["RESEND_API_KEY",          "Password-reset emails will not work"],
+    ["REDIS_URL",               "Redis caching disabled — all requests will hit PostgreSQL directly"],
   ];
   if (process.env["GOOGLE_CLIENT_ID"]) {
     logger.info({ googleClientIdLength: process.env["GOOGLE_CLIENT_ID"].length }, "GOOGLE_CLIENT_ID is set — Google Sign-In enabled");
