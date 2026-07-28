@@ -129,7 +129,9 @@ async function restoreStock(items: OrderItem[]): Promise<void> {
     if (updated && updated.stock > 0 && updated.status === "out_of_stock") {
       await db.update(products).set({ status: "active" }).where(eq(products.id, item.productId));
     }
-  }));
+  })).catch((err: unknown) => {
+    logger.error({ err }, "restoreStock: one or more product stock updates failed (non-fatal)");
+  });
 }
 
 // Cancel the payout associated with an order and decrement coupon usage

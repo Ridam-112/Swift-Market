@@ -57,22 +57,32 @@ router.post("/register-token", authenticate, async (req: AuthRequest, res: Respo
 // POST /api/fcm/unregister-token — deactivate a specific FCM token
 router.post("/unregister-token", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const { token } = req.body as { token?: string };
-  if (token) {
-    await db.update(fcmTokens)
-      .set({ isActive: false, updatedAt: new Date() })
-      .where(and(eq(fcmTokens.token, token), eq(fcmTokens.userId, req.user!.userId)));
+  try {
+    if (token) {
+      await db.update(fcmTokens)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(and(eq(fcmTokens.token, token), eq(fcmTokens.userId, req.user!.userId)));
+    }
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err, userId: req.user!.userId }, "[FCM] unregister-token error");
+    res.status(500).json({ success: false, message: "Failed to unregister token" });
   }
-  res.json({ success: true });
 });
 
 // POST /api/fcm/unregister-all — deactivate ALL tokens for this user
 router.post("/unregister-all", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user!.userId;
-  await db.update(fcmTokens)
-    .set({ isActive: false, updatedAt: new Date() })
-    .where(and(eq(fcmTokens.userId, userId), eq(fcmTokens.isActive, true)));
-  logger.info({ userId }, "[FCM] unregister-all");
-  res.json({ success: true });
+  try {
+    await db.update(fcmTokens)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(and(eq(fcmTokens.userId, userId), eq(fcmTokens.isActive, true)));
+    logger.info({ userId }, "[FCM] unregister-all");
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err, userId }, "[FCM] unregister-all error");
+    res.status(500).json({ success: false, message: "Failed to unregister tokens" });
+  }
 });
 
 // GET /api/fcm/my-token — check if the current user has an active FCM token
