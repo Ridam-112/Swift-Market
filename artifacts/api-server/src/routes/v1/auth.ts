@@ -101,6 +101,8 @@ router.get("/config", async (_req: Request, res: Response): Promise<void> => {
       servicePincodes = envPincodes.map(p => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal" }));
     }
 
+    const truecallerAppKey = process.env["TRUECALLER_APP_KEY"] ?? "";
+
     res.set("Cache-Control", "no-store, no-cache, must-revalidate");
     res.json({
       success: true,
@@ -108,6 +110,7 @@ router.get("/config", async (_req: Request, res: Response): Promise<void> => {
       googleClientId: authMode !== "otp" ? googleClientId : "",
       firebaseConfig,
       servicePincodes,
+      truecallerAppKey,
     });
   } catch (err) {
     logger.error({ err }, "/api/auth/config unexpected error — returning safe defaults");

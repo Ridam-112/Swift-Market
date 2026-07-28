@@ -150,6 +150,8 @@ export default function Auth() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [truecallerLoading, setTruecallerLoading] = useState(false);
   const [configFetching, setConfigFetching] = useState(true);
+  // Truecaller app key — populated from /auth/config; empty string means "not configured".
+  const [truecallerAppKey, setTruecallerAppKey] = useState("");
 
   // Android-only: whether Truecaller is installed and the SDK is usable.
   const [tcAvailable, setTcAvailable] = useState(false);
@@ -181,9 +183,10 @@ export default function Auth() {
         }
         return r.json();
       })
-      .then((d: { authMode?: string; googleClientId?: string }) => {
+      .then((d: { authMode?: string; googleClientId?: string; truecallerAppKey?: string }) => {
         console.log("[Auth] Config loaded:", JSON.stringify(d));
         setAuthConfig((d.authMode ?? "both") as Parameters<typeof setAuthConfig>[0], d.googleClientId ?? "");
+        if (d.truecallerAppKey) setTruecallerAppKey(d.truecallerAppKey);
       })
       .catch((err) => {
         console.warn("[Auth] Config fetch failed — defaulting to 'both' mode:", err);
@@ -224,6 +227,30 @@ export default function Auth() {
       setResetToken(token);
       setStep("reset");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Truecaller web callback ───────────────────────────────────────────────
+  // After the user approves in the Truecaller app, Truecaller redirects the
+  // browser back to this page with ?accessToken=... in the URL.
+  // Detect it here and auto-complete the sign-in without any user interaction.
+  useEffect(() => {
+    if (isCapacitorShell) return; // native flow handles its own callback
+    const params = new URLSearchParams(search);
+    const tcToken = params.get("accessToken");
+    if (!tcToken) return;
+    // Strip the accessToken from the URL so it doesn't linger
+    const clean = window.location.pathname;
+    window.history.replaceState({}, "", clean);
+    setTruecallerLoading(true);
+    signInWithTruecaller(tcToken)
+      .then(result => refreshUser().then(() => result))
+      .then(result => setLocation(result.needsProfile ? "/complete-profile" : "/"))
+      .catch(err => {
+        const msg = err instanceof Error ? err.message : "Truecaller Sign-In failed";
+        toast.error(msg);
+      })
+      .finally(() => setTruecallerLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -298,23 +325,48 @@ export default function Auth() {
   };
 
   // ─── Truecaller sign-in ───────────────────────────────────────────────────────
-  // Android only. Triggers the Truecaller bottom-sheet consent, then exchanges
-  // the accessToken with POST /api/auth/truecaller for JWT tokens.
+  // Native Android: triggers Truecaller bottom-sheet consent via Capacitor plugin.
+  // Web: opens the truecallersdk:// deeplink — user approves in the Truecaller app
+  //   and is redirected back to this page with ?accessToken=... which the effect
+  //   above auto-detects and completes the login without further interaction.
   const handleTruecallerSignIn = async () => {
-    setTruecallerLoading(true);
-    try {
-      const { truecallerLogin } = await import("@/lib/truecallerNativeAuth");
-      const profile = await truecallerLogin();
-      const result = await signInWithTruecaller(profile.accessToken);
-      await refreshUser();
-      setLocation(result.needsProfile ? "/complete-profile" : "/");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Truecaller Sign-In failed";
-      if (!msg.includes("TRUECALLER_NOT_INSTALLED") && !msg.includes("cancelled")) {
-        toast.error(msg);
+    if (isCapacitorShell) {
+      // ── Native Android ──────────────────────────────────────────────────────
+      setTruecallerLoading(true);
+      try {
+        const { truecallerLogin } = await import("@/lib/truecallerNativeAuth");
+        const profile = await truecallerLogin();
+        const result = await signInWithTruecaller(profile.accessToken);
+        await refreshUser();
+        setLocation(result.needsProfile ? "/complete-profile" : "/");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Truecaller Sign-In failed";
+        if (!msg.includes("TRUECALLER_NOT_INSTALLED") && !msg.includes("cancelled")) {
+          toast.error(msg);
+        }
+      } finally {
+        setTruecallerLoading(false);
       }
-    } finally {
-      setTruecallerLoading(false);
+    } else {
+      // ── Web deeplink ────────────────────────────────────────────────────────
+      // Build the callback URL: Truecaller will redirect here with ?accessToken=...
+      const callbackUrl = `${window.location.origin}/auth`;
+      const params = new URLSearchParams({
+        requestNonce: crypto.randomUUID(),
+        partnerKey:   truecallerAppKey,
+        partnerName:  "SwiftMart",
+        lang:         "en",
+        loginPrefix:  "getstarted",
+        loginSuffix:  "tologin",
+        ctaPrefix:    "use",
+        ctaColor:     "%23009BBD",
+        ctaTextColor: "%23ffffff",
+        btnShape:     "round",
+        skipOption:   "skip",
+        callbackUrl,
+      });
+      setTruecallerLoading(true); // spinner while waiting for redirect
+      window.location.href = `truecallersdk://truesdk/web_verify?${params.toString()}`;
     }
   };
 
@@ -539,8 +591,12 @@ export default function Auth() {
                       />
                     )}
 
-                    {/* ── Truecaller button — only shown on Android when Truecaller is installed ── */}
-                    {tcAvailable && (
+                    {/* ── Truecaller button ──────────────────────────────────────────────────
+                        Android native: shown when Truecaller app is installed (tcAvailable).
+                        Web:            shown when truecallerAppKey is configured — opens
+                                        truecallersdk:// deeplink; works on Android mobile web.
+                    ─────────────────────────────────────────────────────────────────── */}
+                    {(isCapacitorShell ? tcAvailable : !!truecallerAppKey) && (
                       <TruecallerButton
                         onClick={handleTruecallerSignIn}
                         loading={truecallerLoading}
