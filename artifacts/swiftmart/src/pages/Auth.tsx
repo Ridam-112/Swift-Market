@@ -162,6 +162,10 @@ export default function Auth() {
   // "available"   → Android, plugin loaded successfully
   // "unavailable" → Android, plugin missing / not synced
   const isCapacitorShell = api.isCapacitorNative;
+  // Truecaller deeplink only works on Android mobile browsers — hide on desktop/iOS
+  const isAndroidPhone = !isCapacitorShell &&
+    typeof navigator !== "undefined" &&
+    /android/i.test(navigator.userAgent);
   const [nativeGoogleStatus, setNativeGoogleStatus] = useState<"web" | "checking" | "available" | "unavailable">(
     isCapacitorShell ? "checking" : "web"
   );
@@ -592,11 +596,11 @@ export default function Auth() {
                     )}
 
                     {/* ── Truecaller button ──────────────────────────────────────────────────
-                        Android native: shown when Truecaller app is installed (tcAvailable).
-                        Web:            shown when truecallerAppKey is configured — opens
-                                        truecallersdk:// deeplink; works on Android mobile web.
+                        Android native app: shown when Truecaller is installed (tcAvailable).
+                        Android mobile web: shown when truecallerAppKey is set.
+                        Desktop / iOS:      always hidden (deeplink only works on Android).
                     ─────────────────────────────────────────────────────────────────── */}
-                    {(isCapacitorShell ? tcAvailable : !!truecallerAppKey) && (
+                    {(isCapacitorShell ? tcAvailable : (isAndroidPhone && !!truecallerAppKey)) && (
                       <TruecallerButton
                         onClick={handleTruecallerSignIn}
                         loading={truecallerLoading}
