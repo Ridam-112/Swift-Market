@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useProducts } from "@/hooks/useProducts";
 import { useShops } from "@/hooks/useShops";

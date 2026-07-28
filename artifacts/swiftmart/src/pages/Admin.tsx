@@ -334,7 +334,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
 
 function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) {
   const { reports } = useAuth();
-  const { shops } = useShops();
+  const { allShops: shops } = useShops();
   const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<ApiOrder[]>([]);
   const [overviewLoading, setOverviewLoading] = useState(false);
@@ -3673,6 +3673,7 @@ function ShopsManagementTab() {
 }
 
 function ShopListPanel({ onManageProducts }: { onManageProducts: (shop: ApiShopFull) => void }) {
+  const { isLoading: authLoading } = useAuth();
   const [shops, setShops] = useState<ApiShopFull[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -3718,7 +3719,12 @@ function ShopListPanel({ onManageProducts }: { onManageProducts: (shop: ApiShopF
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  // Wait for auth to finish restoring the session before fetching — avoids
+  // a 401 when the component mounts before the access token is loaded.
+  useEffect(() => {
+    if (authLoading) return;
+    load();
+  }, [authLoading, load]);
 
   const filteredShops = useMemo(() => shops.filter(s => {
     if (statusFilter !== 'all' && s.status !== statusFilter) return false;
