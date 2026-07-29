@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import { globalApiLimiter } from "./middlewares/rateLimiter.js";
+import { maintenanceMode } from "./middlewares/maintenanceMode.js";
 import { db } from "@workspace/db";
 import * as schema from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -209,10 +210,16 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: true }));
 
-// ─── Health check — must be before rate limiter and API router ───────────────
+// ─── Health check — must be before rate limiter, API router, and maintenance ──
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ ok: true, service: "swiftmart-api" });
 });
+
+// ─── Maintenance mode ─────────────────────────────────────────────────────────
+// Placed after helmet/CORS/body-parser (so the bypass cookie can be read and
+// headers are already set) but before API routes and static serving.
+// /health and /api/maintenance-bypass are explicitly allowed through.
+app.use(maintenanceMode);
 
 // ─── Block scanner / exploit paths ───────────────────────────────────────────
 const SCANNER_RE = /^\/(\.git|\.env|\.htaccess|wp-admin|wp-includes|wp-content|xmlrpc\.php|phpmyadmin|cgi-bin|admin\.php|config\.php)/i;

@@ -22,6 +22,7 @@ import { PincodeSelector } from "@/components/PincodeSelector";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { RobotsManager, SEO } from "@/components/SEO";
+import MaintenancePage from "@/pages/MaintenancePage";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { useAuth } from "@/hooks/useAuth";
 import { setupPushMessageListener, playNotificationSound, playAdminOrderAlert } from "@/lib/pushNotifications";
@@ -476,7 +477,19 @@ function PushManager() {
   return <NotificationPrompt userId={user.id} />;
 }
 
+// ─── Maintenance mode guard ───────────────────────────────────────────────────
+// In production the Express server intercepts ALL routes before the SPA is
+// served, so this React-level check only fires in the Vite dev server.
+// Set VITE_MAINTENANCE_MODE=true in your .env / Replit Secrets to activate it.
+const IS_MAINTENANCE = (import.meta.env["VITE_MAINTENANCE_MODE"] as string | undefined)?.toLowerCase() === "true";
+
 function App() {
+  // Dev-server maintenance mode: show the page before mounting any providers
+  // so no API calls or auth checks happen while the site is down.
+  if (IS_MAINTENANCE) {
+    return <MaintenancePage />;
+  }
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

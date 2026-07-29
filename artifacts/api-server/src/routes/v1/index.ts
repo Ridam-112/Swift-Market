@@ -23,6 +23,7 @@ import analyticsRouter from "./analytics.js";
 import homepageSectionsRouter from "./homepage-sections.js";
 import servicePincodesRouter from "./servicePincodes.js";
 import bucketsRouter from "./buckets.js";
+import maintenanceBypassRouter from "./maintenanceBypass.js";
 
 const router = Router();
 
@@ -50,5 +51,6 @@ router.use("/admin/analytics", analyticsRouter);
 router.use("/homepage-sections", homepageSectionsRouter);
 router.use("/service-pincodes", servicePincodesRouter);
 router.use("/buckets", bucketsRouter);
+router.use("/maintenance-bypass", maintenanceBypassRouter);
 
 export default router;
