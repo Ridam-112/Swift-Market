@@ -248,15 +248,25 @@ export default function Auth() {
     window.history.replaceState({}, "", clean);
     setTruecallerLoading(true);
     signInWithTruecaller(tcToken)
-      .then(result => refreshUser().then(() => result))
-      .then(result => setLocation(result.needsProfile ? "/complete-profile" : "/"))
+      .then(result => {
+        // Navigate immediately — don't block on refreshUser.
+        // Waiting for refreshUser before setLocation causes a race where the
+        // AuthContext init (which runs concurrently on fresh page load) may
+        // call setUser(null) after signInWithTruecaller's setUser(user),
+        // leaving AuthGuard with no user when we navigate.
+        setLocation(result.needsProfile ? "/complete-profile" : "/");
+        // Refresh user data in background so the profile is up-to-date.
+        void refreshUser();
+      })
       .catch(err => {
-        const msg = err instanceof Error ? err.message : "Truecaller Sign-In failed";
+        const msg = err instanceof Error ? err.message : "Truecaller login failed. Please try again.";
         toast.error(msg);
       })
       .finally(() => setTruecallerLoading(false));
+  // Include `search` so this re-fires if Truecaller's redirect is a client-side
+  // URL change (no full reload) on some Android browsers.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [search]);
 
   // Redirect if already logged in
   useEffect(() => {
