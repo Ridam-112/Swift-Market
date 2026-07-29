@@ -23,6 +23,7 @@ function sanitizeImages(raw: unknown): string[] {
 
 // GET /api/products
 router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
   const authReq = req as AuthRequest;
   const isPrivileged = authReq.user?.role === "admin" || authReq.user?.role === "super_admin" || authReq.user?.role === "vendor";
 
@@ -131,6 +132,10 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     void cacheSet(productsCacheKey(query), payload, TTL.PRODUCTS);
   }
   res.json(payload);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message: "Failed to load products. Please try again.", _dbError: msg });
+  }
 });
 
 // GET /api/products/admin-review — admin: list products for approval with shop name
@@ -199,16 +204,20 @@ router.get("/trending-manager", authenticate, A, async (req: AuthRequest, res: R
 // GET /api/products/:id
 // L4 fix: strip admin-only fields (rejectionReason, commissionRate) for public/non-admin callers
 router.get("/:id", optionalAuth, async (req: Request, res: Response): Promise<void> => {
-  const authReq = req as AuthRequest;
-  const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
-  const [product] = await db.select().from(products).where(eq(products.id, req.params["id"] as string)).limit(1);
-  if (!product) { res.status(404).json({ success: false, message: "Not found" }); return; }
-  const mapped = mi(product) as Record<string, unknown>;
-  if (!isAdmin) {
-    delete mapped["rejectionReason"];
-    delete mapped["commissionRate"];
+  try {
+    const authReq = req as AuthRequest;
+    const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
+    const [product] = await db.select().from(products).where(eq(products.id, req.params["id"] as string)).limit(1);
+    if (!product) { res.status(404).json({ success: false, message: "Not found" }); return; }
+    const mapped = mi(product) as Record<string, unknown>;
+    if (!isAdmin) {
+      delete mapped["rejectionReason"];
+      delete mapped["commissionRate"];
+    }
+    res.json({ success: true, product: mapped });
+  } catch {
+    res.status(500).json({ success: false, message: "Failed to load product. Please try again." });
   }
-  res.json({ success: true, product: mapped });
 });
 
 // POST /api/products

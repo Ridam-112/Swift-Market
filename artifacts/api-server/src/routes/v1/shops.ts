@@ -20,6 +20,7 @@ function stripSensitiveFields(shop: Record<string, unknown>): Record<string, unk
 
 // GET /api/shops
 router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
   const authReq = req as AuthRequest;
   const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
 
@@ -68,6 +69,9 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
   const mapped = miArr(result);
   const sanitised = isAdmin ? mapped : mapped.map(s => stripSensitiveFields(s as Record<string, unknown>));
   res.json({ success: true, shops: sanitised, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
+  } catch {
+    res.status(500).json({ success: false, message: "Failed to load shops. Please try again." });
+  }
 });
 
 // GET /api/shops/:id/details — admin: shop + products + recent orders + owner
@@ -92,12 +96,16 @@ router.get("/:id/details", authenticate, A, async (req: AuthRequest, res: Respon
 
 // GET /api/shops/:id
 router.get("/:id", optionalAuth, async (req: Request, res: Response): Promise<void> => {
-  const authReq = req as AuthRequest;
-  const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
-  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"] as string)).limit(1);
-  if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
-  const mapped = mi(shop) as Record<string, unknown>;
-  res.json({ success: true, shop: isAdmin ? mapped : stripSensitiveFields(mapped) });
+  try {
+    const authReq = req as AuthRequest;
+    const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
+    const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"] as string)).limit(1);
+    if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+    const mapped = mi(shop) as Record<string, unknown>;
+    res.json({ success: true, shop: isAdmin ? mapped : stripSensitiveFields(mapped) });
+  } catch {
+    res.status(500).json({ success: false, message: "Failed to load shop. Please try again." });
+  }
 });
 
 // POST /api/shops/admin-create

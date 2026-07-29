@@ -83,7 +83,12 @@ export default function SectionProducts() {
 
   return (
     <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto">
-      <SEO />
+      <SEO
+        title={title !== "Products" ? title : undefined}
+        description={`Shop ${title.toLowerCase()} products with fast delivery in Balurghat on SwiftMart. Fresh stock, trusted local shops.`}
+        canonical={`/section/${sectionId}`}
+        noIndex={true}
+      />
       {/* Header */}
       <div className="flex items-center gap-3 mb-5">
         <button

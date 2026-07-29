@@ -7,8 +7,78 @@ import { fileURLToPath } from "url";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import { globalApiLimiter } from "./middlewares/rateLimiter.js";
+import { db } from "@workspace/db";
+import * as schema from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const BASE_URL = "https://swiftmart.space";
+
+// ─── Dynamic sitemap ──────────────────────────────────────────────────────────
+// Generated from DB at request time. In-memory cache expires after 1 hour so
+// newly approved shops/products appear in the sitemap within ~60 minutes.
+// Includes every public indexable URL; keeps Googlebot from flagging "page
+// discovered but not in sitemap".
+let sitemapCache: { xml: string; builtAt: number } | null = null;
+const SITEMAP_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+const STATIC_SITEMAP_URLS: Array<{ loc: string; changefreq: string; priority: string }> = [
+  { loc: `${BASE_URL}/`,                    changefreq: "daily",   priority: "1.0" },
+  { loc: `${BASE_URL}/shops`,               changefreq: "daily",   priority: "0.9" },
+  { loc: `${BASE_URL}/products`,            changefreq: "daily",   priority: "0.9" },
+  { loc: `${BASE_URL}/grocery`,             changefreq: "daily",   priority: "0.8" },
+  { loc: `${BASE_URL}/categories`,          changefreq: "weekly",  priority: "0.8" },
+  { loc: `${BASE_URL}/search`,              changefreq: "weekly",  priority: "0.7" },
+  { loc: `${BASE_URL}/contact-support`,     changefreq: "monthly", priority: "0.6" },
+  { loc: `${BASE_URL}/privacy`,             changefreq: "monthly", priority: "0.5" },
+  { loc: `${BASE_URL}/terms`,               changefreq: "monthly", priority: "0.5" },
+  { loc: `${BASE_URL}/refund-cancellation`, changefreq: "monthly", priority: "0.5" },
+];
+
+async function buildSitemap(): Promise<string> {
+  if (sitemapCache && Date.now() - sitemapCache.builtAt < SITEMAP_TTL_MS) {
+    return sitemapCache.xml;
+  }
+
+  const fmt = (d: Date | string | null | undefined): string =>
+    d ? new Date(d as Date).toISOString().split("T")[0]! : new Date().toISOString().split("T")[0]!;
+  const today = new Date().toISOString().split("T")[0]!;
+
+  const [shopRows, productRows, categoryRows] = await Promise.all([
+    db.select({ id: schema.shops.id, updatedAt: schema.shops.updatedAt })
+      .from(schema.shops).where(eq(schema.shops.status, "approved")),
+    db.select({ id: schema.products.id, updatedAt: schema.products.updatedAt })
+      .from(schema.products).where(eq(schema.products.status, "active")),
+    db.select({ slug: schema.categories.slug, updatedAt: schema.categories.updatedAt })
+      .from(schema.categories).where(eq(schema.categories.isActive, true)),
+  ]);
+
+  const urlTags = [
+    ...STATIC_SITEMAP_URLS.map(u =>
+      `  <url><loc>${u.loc}</loc><lastmod>${today}</lastmod><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`
+    ),
+    ...shopRows.map((s: { id: string; updatedAt: Date | null }) =>
+      `  <url><loc>${BASE_URL}/shop/${s.id}</loc><lastmod>${fmt(s.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`
+    ),
+    ...productRows.map((p: { id: string; updatedAt: Date | null }) =>
+      `  <url><loc>${BASE_URL}/product/${p.id}</loc><lastmod>${fmt(p.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
+    ),
+    ...categoryRows.map((c: { slug: string; updatedAt: Date | null }) =>
+      `  <url><loc>${BASE_URL}/category/${c.slug}</loc><lastmod>${fmt(c.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
+    ),
+  ];
+
+  const xml = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+    ...urlTags,
+    `</urlset>`,
+  ].join("\n");
+
+  sitemapCache = { xml, builtAt: Date.now() };
+  return xml;
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 const app: Express = express();
 
@@ -51,6 +121,10 @@ app.use(helmet({
     },
   },
   crossOriginEmbedderPolicy: false,
+  // Allow external crawlers (Google Images, Bing, etc.) to load our assets
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  // 'no-referrer' breaks Google Analytics referral signals; use the standard policy instead
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
 }));
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
@@ -58,7 +132,7 @@ app.use(helmet({
 // origin callback has access to `req.headers` for the same-origin check.
 //
 // Allowed origins (in production):
-//   1. No Origin header  — server-to-server / curl, always OK
+//   1. No Origin header  — server-to-server / curl / Googlebot crawl, always OK
 //   2. Capacitor WebView — https://localhost or capacitor://localhost (APK)
 //   3. Same-origin       — the request's Origin matches this server's own host
 //                          (browser fetch from the deployed .replit.app page)
@@ -102,8 +176,10 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
   const allowed = resolveAllowed();
 
   if (allowed === null) {
-    // Log and reject — same behaviour as before
-    next(new Error(`CORS: origin '${origin}' not allowed`));
+    // Return 403 explicitly rather than escalating to the global error handler
+    // (which would return 500 and be counted as a server error by Googlebot).
+    logger.warn({ origin }, "CORS: blocked cross-origin request");
+    res.status(403).json({ success: false, message: "Forbidden: cross-origin request not allowed" });
     return;
   }
 
@@ -148,24 +224,64 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
   next();
 });
 
+// ─── Trailing-slash redirect ──────────────────────────────────────────────────
+// /shops/ → /shops  (301 permanent)
+// Prevents Google from treating /path and /path/ as separate duplicate pages.
+// The root "/" is explicitly excluded so it is never redirected to "".
+app.use((req: Request, res: Response, next: NextFunction): void => {
+  if (req.path.length > 1 && req.path.endsWith("/")) {
+    const qs = req.url.slice(req.path.length); // preserve query string / hash
+    res.redirect(301, req.path.slice(0, -1) + qs);
+    return;
+  }
+  next();
+});
+
+// ─── API routes ───────────────────────────────────────────────────────────────
+// Add X-Robots-Tag: noindex to all /api responses so Googlebot never tries to
+// index raw JSON endpoints as web pages (prevents spurious "discovered URLs").
+app.use("/api", (_req: Request, res: Response, next: NextFunction): void => {
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
+  next();
+});
+
 app.use("/api/uploads", express.static(path.join(__dirname, "..", "uploads")));
 app.use("/api", globalApiLimiter, router);
 
-// In production: serve the built React frontend and handle SPA routing.
-// Dotfiles and suspicious paths never receive index.html.
+// ─── Production: dynamic sitemap + React SPA ─────────────────────────────────
 if (process.env.NODE_ENV === "production") {
   const frontendDist = path.join(__dirname, "..", "..", "swiftmart", "dist", "public");
+
+  // Dynamic sitemap — registered BEFORE express.static so this route takes
+  // precedence over the static public/sitemap.xml baked into the build.
+  app.get("/sitemap.xml", async (_req: Request, res: Response) => {
+    try {
+      const xml = await buildSitemap();
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
+      res.send(xml);
+    } catch (err) {
+      logger.error({ err }, "Failed to generate dynamic sitemap; serving empty fallback");
+      // Return a valid but empty sitemap so Googlebot doesn't see a 5xx
+      res.status(200)
+        .setHeader("Content-Type", "application/xml; charset=utf-8")
+        .send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`);
+    }
+  });
+
   // Hashed assets (e.g. /assets/index-DP9kdDoW.js) are content-addressed — safe to cache forever.
-  // Everything else (index.html, manifest, robots.txt) must revalidate on every request.
+  // HTML, manifest, robots.txt: use no-cache (revalidate) but NOT no-store.
+  // no-store tells Google it cannot keep a copy → "No information available for this page".
   app.use(express.static(frontendDist, {
     setHeaders(res, filePath) {
       if (filePath.includes(`${path.sep}assets${path.sep}`)) {
         res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       } else {
-        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        res.setHeader("Cache-Control", "no-cache, must-revalidate");
       }
     },
   }));
+
   app.get("/{*splat}", (req: Request, res: Response) => {
     // Never serve SPA for dotfiles or scanner paths (already blocked above,
     // but guard here too so static middleware bypasses don't sneak through)
@@ -173,6 +289,7 @@ if (process.env.NODE_ENV === "production") {
       res.status(404).end();
       return;
     }
+    res.setHeader("Cache-Control", "no-cache, must-revalidate");
     res.sendFile(path.join(frontendDist, "index.html"));
   });
 }
