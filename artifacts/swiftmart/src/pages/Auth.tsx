@@ -223,16 +223,20 @@ export default function Auth() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Detect reset-password token in URL query params
+  // Detect reset-password token in URL query params.
+  // Depends on `search` so it re-fires if the URL changes without a full reload
+  // (e.g. email client opens the link in an already-open browser tab).
   useEffect(() => {
     const params = new URLSearchParams(search);
     const token = params.get("token");
     if (token) {
       setResetToken(token);
       setStep("reset");
+      // Remove token from URL so it doesn't linger in history
+      window.history.replaceState({}, "", window.location.pathname);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [search]);
 
   // ─── Truecaller web callback ───────────────────────────────────────────────
   // After the user approves in the Truecaller app, Truecaller redirects the
