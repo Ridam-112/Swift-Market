@@ -1,0 +1,61 @@
+Let me do a full parallel audit across all the relevant areas simultaneously.
+
+
+19 actions
+Good. I have most of the picture. Let me grab the remaining gaps before writing all the fixes.
+
+
+8 actions
+I have a complete picture now. Let me check the remaining gaps in parallel before making all changes.
+
+
+6 actions
+Now I have everything I need. Let me read the two public routes that lack try-catch before writing all fixes.
+
+
+4 actions
+Now I have the complete picture. Here are all the issues I found:
+
+5xx — GET /api/products, GET /api/products/:id, GET /api/shops, GET /api/shops/:id all lack try-catch. Any DB timeout → unhandled throw → 500 to Googlebot.
+Duplicates — SectionProducts page uses <SEO /> with no props (same default title as homepage). Server sends identical index.html for all routes with no server-side canonical hint.
+Incomplete sitemap — Only 8 static URLs. Missing /grocery, /categories, all /shop/:id, /product/:id, /category/:slug pages.
+Trailing slash duplicates — /shops/ and /shops both resolve to the same page with no redirect.
+API paths indexed — No X-Robots-Tag: noindex on /api/... responses.
+no-store header — Fixed in previous session (code done, needs deploy).
+Now fixing all of them in parallel:
+
+
+4 actions
+I have everything I need. Now making all the fixes in parallel — 5 files changed simultaneously.
+
+
+2 actions
+Now fix the remaining 4 files in parallel — try-catch on public routes, SectionProducts SEO, and updated static sitemap.
+
+
+5 actions
+The try { blocks need their closing catch too. Let me find the exact end of each handler.
+
+
+5 actions
+Now close all four try { blocks with their catch handlers in parallel.
+
+
+5 actions
+Now build and verify TypeScript compiles cleanly.
+
+
+2 actions
+The TS6305 errors are all pre-existing (missing lib/db built output — esbuild handles this differently). The only NEW errors are the three implicit-any in my app.ts map callbacks. Let me fix those and then build.
+
+
+4 actions
+Build succeeded. Let me restart the app and verify all the fixes are working.
+
+
+5 actions
+The artifact API server is still running the old build — it grabbed port 8080 first. I also need to move the sitemap outside the production block so it works everywhere. Let me fix both issues.
+
+
+2 actions
+You've reached your monthly free quota limit. It will reset on August 27, 20

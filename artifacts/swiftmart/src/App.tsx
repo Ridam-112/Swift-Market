@@ -21,7 +21,7 @@ import { DeliveryGuard } from "@/components/DeliveryGuard";
 import { PincodeSelector } from "@/components/PincodeSelector";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { InstallPrompt } from "@/components/InstallPrompt";
-import { RobotsManager } from "@/components/SEO";
+import { RobotsManager, SEO } from "@/components/SEO";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { useAuth } from "@/hooks/useAuth";
 import { setupPushMessageListener, playNotificationSound, playAdminOrderAlert } from "@/lib/pushNotifications";
@@ -124,6 +124,12 @@ function Categories() {
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-7xl mx-auto space-y-6">
+      <SEO
+        title="All Categories"
+        description="Browse all product categories on SwiftMart Balurghat — groceries, vegetables, fruits, dairy, bakery, medicines, snacks and more. Fast local delivery."
+        canonical="/categories"
+        keywords="SwiftMart categories, grocery categories Balurghat, online shopping categories"
+      />
       <SectionHeader title="All Categories" />
       {catLoading ? (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">

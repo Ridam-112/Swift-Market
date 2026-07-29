@@ -14,6 +14,12 @@
     <meta name="keywords" content="SwiftMart, SwiftMart Balurghat, Balurghat Grocery, Balurghat Online Shopping, Quick Commerce Balurghat, Food Delivery Balurghat" />
     <meta name="robots" content="index,follow" />
 
+    <!-- Static canonical fallback — overridden per-page by react-helmet-async.
+         Needed for crawlers / link-previewers that don't execute JS: without this
+         every page (including /shop/:id, /product/:id, etc.) appears to share
+         the same URL, causing "Duplicate without user-selected canonical". -->
+    <link rel="canonical" href="https://swiftmart.space/" />
+
     <!-- Open Graph (static fallback — overridden per-page by react-helmet-async) -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="SwiftMart" />

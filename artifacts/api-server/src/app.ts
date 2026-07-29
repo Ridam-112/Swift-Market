@@ -224,6 +224,28 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
   next();
 });
 
+// ─── www → non-www canonical redirect ────────────────────────────────────────
+// www.swiftmart.space/... → swiftmart.space/... (301 permanent)
+// Without this Google crawls both www and non-www, triggering "Duplicate without
+// user-selected canonical" in Search Console even when the <link rel="canonical">
+// in the HTML points to the non-www version.
+// We read x-forwarded-host because Replit's reverse proxy strips the Host header.
+app.use((req: Request, res: Response, next: NextFunction): void => {
+  const host = (
+    (req.headers["x-forwarded-host"] as string | undefined) ?? req.headers.host ?? ""
+  ).split(",")[0]?.trim() ?? "";
+
+  if (host.startsWith("www.")) {
+    const proto = (
+      (req.headers["x-forwarded-proto"] as string | undefined) ?? "https"
+    ).split(",")[0]?.trim() ?? "https";
+    const bare = host.slice(4); // strip leading "www."
+    res.redirect(301, `${proto}://${bare}${req.url}`);
+    return;
+  }
+  next();
+});
+
 // ─── Trailing-slash redirect ──────────────────────────────────────────────────
 // /shops/ → /shops  (301 permanent)
 // Prevents Google from treating /path and /path/ as separate duplicate pages.
