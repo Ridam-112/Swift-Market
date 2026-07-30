@@ -160,6 +160,14 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
     if (!origin) return "*";
     // Dev → allow everything
     if (!isProd) return origin;
+    // Non-API routes (SPA pages, robots.txt, sitemap.xml, static assets) are
+    // public and must be reachable by any origin — browsers, crawlers, social
+    // previewers, and Google's Inspection Tool all send an Origin header but
+    // are not making authenticated cross-origin API calls.  Enforcing CORS
+    // here would return 403 to Googlebot and cause "Blocked by robots.txt"
+    // errors in Google Search Console even when robots.txt explicitly allows /.
+    if (!req.path.startsWith("/api")) return "*";
+    // API routes: strict CORS — only allow trusted origins
     // Capacitor APK WebView
     if (CAPACITOR_ORIGINS.has(origin)) return origin;
     // Same-origin: browser fetch from the page served by THIS server.
