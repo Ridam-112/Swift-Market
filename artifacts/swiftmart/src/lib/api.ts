@@ -131,10 +131,15 @@ async function request<T>(path: string, options: RequestInit = {}, retry = true)
     const { token: newToken, invalid } = await refreshTokens();
     if (newToken) return request<T>(path, options, false);
     if (invalid) {
-      // Refresh token is genuinely expired/revoked.
-      // Do NOT auto-redirect or clear tokens — let the user stay "logged in"
-      // with their cached state. Individual API calls that need auth will fail
-      // gracefully. Only an explicit logout tap should clear the session.
+      // Refresh token is genuinely expired or revoked — the session cannot be
+      // recovered silently. Clear stored tokens and signal the auth layer to
+      // log the user out and send them to the login screen.
+      clearTokens();
+      window.dispatchEvent(
+        new CustomEvent("swiftmart:session-expired", {
+          detail: { returnTo: window.location.pathname },
+        })
+      );
       throw new Error("Session expired — please log in again.");
     }
     // Transient failure (network blip, rate-limited refresh, server hiccup) —

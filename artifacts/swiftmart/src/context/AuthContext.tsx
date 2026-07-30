@@ -186,6 +186,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSelectedDeliveryAddress(null);
   };
 
+  // ─── Auto-logout on session invalidation ─────────────────────────────────
+  // api.ts fires this event when a refresh token is rejected (genuinely expired
+  // or revoked). We respond by clearing all local state and sending the user to
+  // the login page, preserving their destination so they can deep-link back.
+  useEffect(() => {
+    const handleSessionExpired = (e: Event) => {
+      const returnTo = (e as CustomEvent<{ returnTo?: string }>).detail?.returnTo;
+      // Clear all auth state
+      setUser(null);
+      setUserRole('customer');
+      setRoleState('customer');
+      setSelectedDeliveryAddress(null);
+      setReports([]);
+      localStorage.removeItem("sm_user");
+      localStorage.removeItem("sm_role");
+      localStorage.removeItem("swiftmart_role");
+      toast.error("Your session has expired. Please log in again.", { duration: 5000 });
+      // Redirect to auth, preserving where the user was so they can return
+      const dest = returnTo && returnTo !== "/auth" ? `/auth?next=${encodeURIComponent(returnTo)}` : "/auth";
+      window.location.href = dest;
+    };
+    window.addEventListener("swiftmart:session-expired", handleSessionExpired);
+    return () => window.removeEventListener("swiftmart:session-expired", handleSessionExpired);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const savedUser = localStorage.getItem("sm_user");
     const savedRole = localStorage.getItem("sm_role");

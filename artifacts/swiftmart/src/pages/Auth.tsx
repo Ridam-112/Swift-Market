@@ -258,7 +258,7 @@ export default function Auth() {
         // AuthContext init (which runs concurrently on fresh page load) may
         // call setUser(null) after signInWithTruecaller's setUser(user),
         // leaving AuthGuard with no user when we navigate.
-        setLocation(result.needsProfile ? "/complete-profile" : "/");
+        setLocation(result.needsProfile ? "/complete-profile" : getNextPath());
         // Refresh user data in background so the profile is up-to-date.
         void refreshUser();
       })
@@ -272,9 +272,18 @@ export default function Auth() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
+  // Resolve where to send the user after a successful login.
+  // Priority: ?next= param (from session-expired redirect) → "/" fallback.
+  const getNextPath = () => {
+    const p = new URLSearchParams(search).get("next");
+    if (p && p.startsWith("/") && !p.startsWith("//")) return p;
+    return "/";
+  };
+
   // Redirect if already logged in
   useEffect(() => {
-    if (!authLoading && user) setLocation("/");
+    if (!authLoading && user) setLocation(getNextPath());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading, setLocation]);
 
   // ─── Email step ─────────────────────────────────────────────────────────────
@@ -311,7 +320,7 @@ export default function Auth() {
       if (result.needsProfile) {
         setLocation("/complete-profile");
       } else {
-        setLocation("/");
+        setLocation(getNextPath());
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Sign-in failed";
@@ -332,7 +341,7 @@ export default function Auth() {
       if (result.needsProfile) {
         setLocation("/complete-profile");
       } else {
-        setLocation("/");
+        setLocation(getNextPath());
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Sign-up failed";
@@ -356,7 +365,7 @@ export default function Auth() {
         const profile = await truecallerLogin();
         const result = await signInWithTruecaller(profile.accessToken);
         await refreshUser();
-        setLocation(result.needsProfile ? "/complete-profile" : "/");
+        setLocation(result.needsProfile ? "/complete-profile" : getNextPath());
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Truecaller Sign-In failed";
         if (!msg.includes("TRUECALLER_NOT_INSTALLED") && !msg.includes("cancelled")) {
