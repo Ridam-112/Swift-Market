@@ -41,7 +41,7 @@ Two super-admin accounts are seeded automatically on startup:
 
 Run `node scripts/check-secrets.mjs` to see full secret status.
 
-## Secrets status (last verified: 2026-07-28)
+## Secrets status (last verified: 2026-07-30)
 
 | Group | Status |
 |-------|--------|
@@ -49,10 +49,10 @@ Run `node scripts/check-secrets.mjs` to see full secret status.
 | Neon DB shards (DATABASE1–5_URL) | ✅ All set |
 | Google OAuth + Firebase | ✅ All set |
 | FCM push (FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) | ✅ Set |
-| OTP SMS (TWO_FACTOR_API_KEY) | ✅ Set |
+| OTP SMS (TWO_FACTOR_API_KEY) | ✅ Set — OTP_MODE=real (env var) |
 | Truecaller (TRUECALLER_APP_KEY) | ✅ Set |
 | ImageKit uploads (IMAGEKIT_PUBLIC/PRIVATE_KEY, URL_ENDPOINT) | ✅ Set |
-| Razorpay payments | ❌ Not yet configured |
+| Razorpay payments | ❌ Not yet configured — checkout will fail |
 | Password-reset emails (RESEND_API_KEY) | ✅ Set |
 | VAPID + Firebase VAPID push | ✅ Set |
 
