@@ -162,7 +162,7 @@ export default function Checkout() {
     return +(shopSub * shopObj.gstRate / 100).toFixed(2);
   };
 
-  const slotFee = deliverySlot === 'instant' ? 25 : deliverySlot === 'standard' ? 20 : 15;
+  const slotFee = deliverySlot === 'instant' ? 25 : deliverySlot === 'standard' ? 20 : 0;
   // Each shop's order carries the full delivery fee — not split
   const totalDeliveryFee = slotFee * uniqueShopIds.length;
   const totalPackagingFee = uniqueShopIds.reduce((sum, sid) => sum + getShopPackagingCharge(sid), 0);
@@ -259,7 +259,7 @@ export default function Checkout() {
     });
   };
 
-  const MINIMUM_ORDER_AMOUNT = 99;
+  const MINIMUM_ORDER_AMOUNT = 50;
 
   const handlePlaceOrder = async () => {
     if (subtotal < MINIMUM_ORDER_AMOUNT) {
@@ -604,7 +604,7 @@ export default function Checkout() {
               )}>🌿</div>
               <div className="font-bold text-xs leading-tight">Saver</div>
               <div className="text-[10px] text-muted-foreground leading-tight">Same day</div>
-              <div className={cn("font-extrabold text-sm", deliverySlot === 'saver' ? "text-green-500" : "text-foreground")}>₹15</div>
+              <div className={cn("font-extrabold text-sm", deliverySlot === 'saver' ? "text-green-500" : "text-foreground")}>FREE</div>
             </div>
 
           </div>
