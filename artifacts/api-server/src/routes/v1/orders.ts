@@ -307,14 +307,14 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
   let packagingFee = 0;
   if (shop) {
     if (isRestaurantType) {
-      packagingFee = shop.packagingCharge ?? 0;
+      packagingFee = shop.packagingCharge ?? 2;
     } else {
       const [cat] = await db
         .select({ packagingCharge: categories.packagingCharge })
         .from(categories)
         .where(eq(categories.slug, shop.shopType ?? ""))
         .limit(1);
-      packagingFee = cat?.packagingCharge ?? 0;
+      packagingFee = cat?.packagingCharge ?? 2;
     }
   }
 

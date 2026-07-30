@@ -14,9 +14,10 @@ import { parseUnit, weightPresets, priceForWeight, formatWeight } from "@/lib/we
 interface ProductCardProps {
   product: Product;
   index?: number;
+  maxQtyPerCart?: number | null;
 }
 
-export function ProductCard({ product, index = 0 }: ProductCardProps) {
+export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardProps) {
   const { items, addToCart, updateQty, updateWeight } = useCart();
   const [, navigate] = useLocation();
 
@@ -35,6 +36,12 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const category = categories.find(c => c.id === product.category);
   const isOutOfStock = product.stock === 0;
   const isLowStock = product.stock > 0 && product.stock <= 5;
+
+  // Bucket offer limit: cap how many can be added to cart
+  const effectiveMaxQty: number | undefined = maxQtyPerCart != null
+    ? (product.stock > 0 ? Math.min(maxQtyPerCart, product.stock) : maxQtyPerCart)
+    : (product.stock > 0 ? product.stock : undefined);
+  const atBucketLimit = maxQtyPerCart != null && totalQtyInCart >= maxQtyPerCart;
 
   // Weight-based helpers
   const baseGrams = isWeightBased && unitInfo.type === "weight" ? unitInfo.baseGrams : 1000;
@@ -212,12 +219,25 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
               )
             ) : (
               totalQtyInCart > 0 ? (
-                <QuantityStepper
-                  qty={totalQtyInCart}
-                  maxQty={product.stock}
-                  onChange={handleStepperChange}
-                  size="sm"
-                />
+                atBucketLimit ? (
+                  <div className="flex items-center gap-1">
+                    <QuantityStepper
+                      qty={totalQtyInCart}
+                      maxQty={effectiveMaxQty}
+                      onChange={handleStepperChange}
+                      size="sm"
+                    />
+                  </div>
+                ) : (
+                  <QuantityStepper
+                    qty={totalQtyInCart}
+                    maxQty={effectiveMaxQty}
+                    onChange={handleStepperChange}
+                    size="sm"
+                  />
+                )
+              ) : atBucketLimit ? (
+                <span className="text-[10px] font-semibold text-muted-foreground px-2">Added ✓</span>
               ) : (
                 <Button
                   size="sm"

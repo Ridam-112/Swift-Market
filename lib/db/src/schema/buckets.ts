@@ -14,6 +14,7 @@ export const buckets = pgTable("buckets", {
   showOnHomepage: boolean("show_on_homepage").notNull().default(true),
   showAsAddon: boolean("show_as_addon").notNull().default(true),
   isActive: boolean("is_active").notNull().default(true),
+  maxQtyPerCart: integer("max_qty_per_cart"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

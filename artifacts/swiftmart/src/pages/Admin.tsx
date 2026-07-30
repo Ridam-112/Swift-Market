@@ -7167,6 +7167,7 @@ interface BucketRow {
   badgeText: string;
   accentColor: string;
   comboPrice?: number | null;
+  maxQtyPerCart?: number | null;
   productIds: string[];
   showOnHomepage: boolean;
   showAsAddon: boolean;
@@ -7190,6 +7191,7 @@ function BucketsTab() {
   const [formShowOnHomepage, setFormShowOnHomepage] = useState(true);
   const [formShowAsAddon, setFormShowAsAddon] = useState(true);
   const [formComboPrice, setFormComboPrice] = useState<string>("");
+  const [formMaxQtyPerCart, setFormMaxQtyPerCart] = useState<string>("");
   const [formProductIds, setFormProductIds] = useState<string[]>([]);
   const [formProductNames, setFormProductNames] = useState<Record<string, string>>({});
   const [formProductSearch, setFormProductSearch] = useState("");
@@ -7228,7 +7230,7 @@ function BucketsTab() {
     setFormTitle(""); setFormSubtitle(""); setFormBadgeText("🔥 Hot Pick");
     setFormAccentColor(ACCENT_PRESETS[0]!);
     setFormShowOnHomepage(true); setFormShowAsAddon(true);
-    setFormComboPrice("");
+    setFormComboPrice(""); setFormMaxQtyPerCart("");
     setFormProductIds([]); setFormProductNames({});
     resetPickerState();
     setShowForm(true);
@@ -7240,6 +7242,7 @@ function BucketsTab() {
     setFormBadgeText(b.badgeText); setFormAccentColor(b.accentColor);
     setFormShowOnHomepage(b.showOnHomepage); setFormShowAsAddon(b.showAsAddon);
     setFormComboPrice(b.comboPrice != null ? String(b.comboPrice) : "");
+    setFormMaxQtyPerCart(b.maxQtyPerCart != null ? String(b.maxQtyPerCart) : "");
     const ids = b.productIds ?? [];
     setFormProductIds(ids);
     if (ids.length > 0) {
@@ -7262,6 +7265,7 @@ function BucketsTab() {
     if (formProductIds.length === 0) { toast.error("Select at least one product"); return; }
     setSaving("form");
     const comboPriceNum = formComboPrice.trim() !== "" ? parseInt(formComboPrice, 10) : null;
+    const maxQtyNum = formMaxQtyPerCart.trim() !== "" ? parseInt(formMaxQtyPerCart, 10) : null;
     const payload = {
       title: formTitle,
       subtitle: formSubtitle,
@@ -7270,6 +7274,7 @@ function BucketsTab() {
       showOnHomepage: formShowOnHomepage,
       showAsAddon: formShowAsAddon,
       comboPrice: !isNaN(comboPriceNum as number) ? comboPriceNum : null,
+      maxQtyPerCart: maxQtyNum != null && !isNaN(maxQtyNum) && maxQtyNum > 0 ? maxQtyNum : null,
       productIds: formProductIds,
     };
     try {
@@ -7483,6 +7488,20 @@ function BucketsTab() {
                   className="rounded-xl pl-7"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                Max Qty Per Cart <span className="normal-case font-normal text-muted-foreground/70">(optional — e.g. 1 to allow only 1 per customer, blank = unlimited)</span>
+              </label>
+              <Input
+                type="number"
+                min="1"
+                value={formMaxQtyPerCart}
+                onChange={e => setFormMaxQtyPerCart(e.target.value)}
+                placeholder="Leave blank for unlimited"
+                className="rounded-xl"
+              />
             </div>
 
             <div>

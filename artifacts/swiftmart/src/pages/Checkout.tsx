@@ -151,8 +151,8 @@ export default function Checkout() {
   const getShopPackagingCharge = (sid: string): number => {
     const shopObj = shops.find(s => s.id === sid);
     if (!shopObj) return 0;
-    if (RESTAURANT_TYPES.has(shopObj.category)) return shopObj.packagingCharge ?? 0;
-    return categoryPackagingCharges[shopObj.category] ?? 0;
+    if (RESTAURANT_TYPES.has(shopObj.category)) return shopObj.packagingCharge ?? 2;
+    return categoryPackagingCharges[shopObj.category] ?? 2;
   };
 
   const getShopGst = (sid: string): number => {

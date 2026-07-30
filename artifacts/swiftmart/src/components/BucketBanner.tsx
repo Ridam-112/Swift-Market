@@ -39,6 +39,7 @@ interface BucketRow {
   badgeText: string;
   accentColor: string;
   comboPrice?: number | null;
+  maxQtyPerCart?: number | null;
   products: Product[];
 }
 
@@ -119,7 +120,7 @@ export function BucketBanner() {
           <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide snap-x -mx-1 px-1 relative z-10">
             {bucket.products.slice(0, 10).map((product, i) => (
               <div key={product.id} className="snap-start shrink-0 w-[42vw] max-w-[170px] min-w-[140px]">
-                <ProductCard product={product} index={i} />
+                <ProductCard product={product} index={i} maxQtyPerCart={bucket.maxQtyPerCart} />
               </div>
             ))}
           </div>
