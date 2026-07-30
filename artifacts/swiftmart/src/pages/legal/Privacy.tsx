@@ -8,7 +8,6 @@ export default function Privacy() {
       title="Privacy Policy"
       description="Read SwiftMart's privacy policy. Learn how we collect, use and protect your personal data on our hyperlocal delivery platform in Balurghat."
       canonical="/privacy"
-      noIndex={true}
     />
     <LegalLayout
       title="Privacy Policy"

@@ -55,7 +55,7 @@ export default defineConfig({
       strict: true,
     },
     headers: {
-      "Cache-Control": "no-store",
+      "Cache-Control": "no-cache, must-revalidate",
     },
     proxy: {
       "/api": {
