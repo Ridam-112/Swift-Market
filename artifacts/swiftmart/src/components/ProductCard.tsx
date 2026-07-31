@@ -18,7 +18,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardProps) {
-  const { items, addToCart, updateQty, updateWeight } = useCart();
+  const { items, addToCart, updateQty, updateWeight, productLimits } = useCart();
   const [, navigate] = useLocation();
 
   const hasVariants = (product.colors?.length ?? 0) > 0 || (product.sizes?.length ?? 0) > 0;
@@ -37,11 +37,12 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
   const isOutOfStock = product.stock === 0;
   const isLowStock = product.stock > 0 && product.stock <= 5;
 
+  const resolvedMaxQtyPerCart = maxQtyPerCart ?? productLimits[product.id];
   // Bucket offer limit: cap how many can be added to cart
-  const effectiveMaxQty: number | undefined = maxQtyPerCart != null
-    ? (product.stock > 0 ? Math.min(maxQtyPerCart, product.stock) : maxQtyPerCart)
+  const effectiveMaxQty: number | undefined = resolvedMaxQtyPerCart != null
+    ? (product.stock > 0 ? Math.min(resolvedMaxQtyPerCart, product.stock) : resolvedMaxQtyPerCart)
     : (product.stock > 0 ? product.stock : undefined);
-  const atBucketLimit = maxQtyPerCart != null && totalQtyInCart >= maxQtyPerCart;
+  const atBucketLimit = resolvedMaxQtyPerCart != null && totalQtyInCart >= resolvedMaxQtyPerCart;
 
   // Weight-based helpers
   const baseGrams = isWeightBased && unitInfo.type === "weight" ? unitInfo.baseGrams : 1000;

@@ -1,7 +1,7 @@
 import { Router, type Response } from "express";
 import Razorpay from "razorpay";
 import { z } from "zod";
-import { db, orders, products, shops, categories, users, payouts, coupons, deliveryPartners } from "@workspace/db";
+import { db, orders, products, shops, categories, users, payouts, coupons, deliveryPartners, buckets } from "@workspace/db";
 import { eq, and, ilike, or, gte, ne, desc, count, sql, inArray } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { validateUuidParams } from "../../middlewares/validateUuid.js";
@@ -327,6 +327,34 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
 
   try {
     createdOrder = await db.transaction(async (tx) => {
+      // 0. Validate promotional bucket quantity limits
+      const productQtys: Record<string, number> = {};
+      for (const item of items) {
+        productQtys[item.productId] = (productQtys[item.productId] || 0) + item.qty;
+      }
+
+      const activeBuckets = await tx.select()
+        .from(buckets)
+        .where(eq(buckets.isActive, true));
+
+      for (const item of items) {
+        const totalQty = productQtys[item.productId] || item.qty;
+        const matchingBuckets = activeBuckets.filter(b => {
+          const productIds = (b.productIds ?? []) as string[];
+          return productIds.includes(item.productId) && b.maxQtyPerCart !== null && b.maxQtyPerCart !== undefined;
+        });
+
+        if (matchingBuckets.length > 0) {
+          const minLimit = Math.min(...matchingBuckets.map(b => b.maxQtyPerCart!));
+          if (totalQty > minLimit) {
+            throw Object.assign(
+              new Error(`Quantity limit exceeded for "${item.productName}". Maximum allowed is ${minLimit}.`),
+              { statusCode: 400 },
+            );
+          }
+        }
+      }
+
       // 1. Deduct stock for every item atomically — if any item fails the whole tx rolls back
        const reducedProducts: Array<{
          productId: string;

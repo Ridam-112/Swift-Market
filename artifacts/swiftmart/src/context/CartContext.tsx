@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from "react";
 import { CartItem, Product } from "@/types";
 import { parseUnit, priceForWeight } from "@/lib/weightUtils";
+import { api } from "@/lib/api";
 
 export function weightVariantId(productId: string, grams: number): string {
   return `${productId}:weight:${grams}`;
@@ -24,6 +25,7 @@ interface CartContextType {
   clearCart: () => void;
   totalItems: number;
   subtotal: number;
+  productLimits: Record<string, number>;
 }
 
 export const CartContext = createContext<CartContextType | null>(null);
@@ -60,9 +62,48 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
+  const [productLimits, setProductLimits] = useState<Record<string, number>>({});
+
   useEffect(() => {
     localStorage.setItem("swiftmart_cart", JSON.stringify(items));
   }, [items]);
+
+  useEffect(() => {
+    const updateLimits = (bucketsList: any[]) => {
+      setProductLimits(prev => {
+        const next = { ...prev };
+        for (const bucket of bucketsList) {
+          if (bucket.maxQtyPerCart != null && bucket.maxQtyPerCart > 0) {
+            const productIds = (bucket.productIds || []) as string[];
+            for (const pid of productIds) {
+              if (next[pid] !== undefined) {
+                next[pid] = Math.min(next[pid], bucket.maxQtyPerCart);
+              } else {
+                next[pid] = bucket.maxQtyPerCart;
+              }
+            }
+          }
+        }
+        return next;
+      });
+    };
+
+    api.get<{ success: boolean; buckets: any[] }>("/buckets")
+      .then(res => {
+        if (res.success && res.buckets) {
+          updateLimits(res.buckets);
+        }
+      })
+      .catch(() => {});
+
+    api.get<{ success: boolean; buckets: any[] }>("/buckets/addons")
+      .then(res => {
+        if (res.success && res.buckets) {
+          updateLimits(res.buckets);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const addToCart = (
     product: Product,
@@ -76,20 +117,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const existing = current.find(
         item => cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams) === key
       );
+      const limit = productLimits[product.id];
+
       if (existing) {
         const newQty = existing.qty + qty;
-        const capped = product.stock > 0 ? Math.min(newQty, product.stock) : newQty;
+        let capped = product.stock > 0 ? Math.min(newQty, product.stock) : newQty;
+        if (limit !== undefined) {
+          capped = Math.min(capped, limit);
+        }
         return current.map(item =>
           cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams) === key
             ? { ...item, qty: capped }
             : item
         );
       }
+
+      let initialQty = selectedGrams !== undefined ? 1 : Math.min(qty, product.stock > 0 ? product.stock : qty);
+      if (limit !== undefined) {
+        initialQty = Math.min(initialQty, limit);
+      }
+
       return [
         ...current,
         {
           product,
-          qty: selectedGrams !== undefined ? 1 : Math.min(qty, product.stock > 0 ? product.stock : qty),
+          qty: initialQty,
           selectedColor,
           selectedSize,
           selectedGrams,
@@ -116,7 +168,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       current.map(item => {
         if (cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams) !== key) return item;
         const stock = item.product.stock;
-        const capped = stock > 0 ? Math.min(qty, stock) : qty;
+        let capped = stock > 0 ? Math.min(qty, stock) : qty;
+        const limit = productLimits[item.product.id];
+        if (limit !== undefined) {
+          capped = Math.min(capped, limit);
+        }
         return { ...item, qty: capped };
       })
     );
@@ -146,7 +202,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const subtotal = items.reduce((sum, item) => sum + itemPrice(item), 0);
 
   return (
-    <CartContext.Provider value={{ items, addToCart, removeFromCart, updateQty, updateWeight, clearCart, totalItems, subtotal }}>
+    <CartContext.Provider value={{ items, addToCart, removeFromCart, updateQty, updateWeight, clearCart, totalItems, subtotal, productLimits }}>
       {children}
     </CartContext.Provider>
   );

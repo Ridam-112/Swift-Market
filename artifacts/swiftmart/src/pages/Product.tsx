@@ -27,7 +27,7 @@ export default function Product() {
   const [, params] = useRoute("/product/:id");
   const id = params?.id;
   const { products, isLoading: globalLoading } = useProducts();
-  const { items, addToCart, updateQty, updateWeight } = useCart();
+  const { items, addToCart, updateQty, updateWeight, productLimits } = useCart();
 
   // Try to find the product in the globally-cached list first.
   // If not found after the global list finishes loading, fetch it directly by ID
@@ -75,6 +75,7 @@ export default function Product() {
   }, [id, cached, globalLoading]);
 
   const product = cached ?? directProduct;
+  const limit = product ? productLimits[product.id] : undefined;
 
   const allImages = product?.images?.filter(Boolean) ?? (product?.image ? [product.image] : []);
   const hasColors = (product?.colors?.length ?? 0) > 0;
@@ -501,7 +502,7 @@ export default function Product() {
               )
             ) : qty > 0 ? (
               <div className="flex items-center gap-4">
-                <QuantityStepper qty={qty} maxQty={product.stock} onChange={(newQty) => updateQty(itemKey, newQty)} />
+                <QuantityStepper qty={qty} maxQty={limit !== undefined ? (product.stock > 0 ? Math.min(limit, product.stock) : limit) : product.stock} onChange={(newQty) => updateQty(itemKey, newQty)} />
                 <div className="text-sm text-muted-foreground font-medium">
                   {selectedColor && <span className="font-semibold">{selectedColor}</span>}
                   {selectedColor && selectedSize && " · "}
@@ -548,7 +549,7 @@ export default function Product() {
               </Button>
             )
           ) : qty > 0 ? (
-            <QuantityStepper qty={qty} maxQty={product.stock} onChange={(newQty) => updateQty(itemKey, newQty)} />
+            <QuantityStepper qty={qty} maxQty={limit !== undefined ? (product.stock > 0 ? Math.min(limit, product.stock) : limit) : product.stock} onChange={(newQty) => updateQty(itemKey, newQty)} />
           ) : (
             <Button size="sm" className="rounded-full font-bold shadow-none neu-card px-5 shrink-0" onClick={handleAddToCart}>
               Add to Cart

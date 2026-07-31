@@ -15,7 +15,7 @@ const COLOR_HEX: Record<string, string> = {
 };
 
 export function CartItemRow({ item }: { item: CartItem }) {
-  const { updateQty, updateWeight, removeFromCart } = useCart();
+  const { updateQty, updateWeight, removeFromCart, productLimits } = useCart();
   const { product, qty, selectedColor, selectedSize, selectedGrams } = item;
   const key = cartKey(product.id, selectedColor, selectedSize, selectedGrams);
 
@@ -114,7 +114,7 @@ export function CartItemRow({ item }: { item: CartItem }) {
         ) : (
           <QuantityStepper
             qty={qty}
-            maxQty={product.stock}
+            maxQty={productLimits[product.id] !== undefined ? (product.stock > 0 ? Math.min(productLimits[product.id], product.stock) : productLimits[product.id]) : product.stock}
             onChange={(newQty) => updateQty(key, newQty)}
             size="sm"
           />
