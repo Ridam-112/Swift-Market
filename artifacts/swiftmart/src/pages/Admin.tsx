@@ -133,7 +133,7 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers';
 
 import { SEO } from "@/components/SEO";
 import FleetMapTab from "@/components/FleetMapTab";
@@ -227,6 +227,7 @@ export default function Admin() {
               {activeSection === 'service-areas' && <ServiceAreasTab />}
               {activeSection === 'delivery-partners' && <DeliveryPartnersTab />}
               {activeSection === 'fleet-map' && <FleetMapTab />}
+              {activeSection === 'managers' && <ManagersTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -276,6 +277,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
   { id: 'service-areas', label: 'Service Areas', icon: MapPin },
   { id: 'delivery-partners', label: 'Delivery Partners', icon: Truck },
   { id: 'fleet-map', label: 'Fleet Map', icon: MapPin },
+  { id: 'managers', label: 'Managers', icon: Shield },
   ];
 
   return (
@@ -8517,6 +8519,246 @@ function DeliveryPartnersTab() {
             {search || statusFilter !== "all" ? ` matching filters` : " total"}
             {" · "}{stats.active} active · {stats.available} available now
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── MANAGERS SECTION ────────────────────────────────────────────────────────
+interface City {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+
+interface Manager {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  status: "active" | "suspended";
+  assignedCities: Array<{ cityId: string; cityName: string }>;
+}
+
+function ManagersTab() {
+  const [managers, setManagers] = useState<Manager[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Form states
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchManagersAndCities = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [mgrRes, cityRes] = await Promise.all([
+        api.get<{ success: boolean; managers: Manager[] }>("/admin/managers"),
+        api.get<{ success: boolean; cities: City[] }>("/admin/cities")
+      ]);
+      setManagers(mgrRes.managers || []);
+      setCities(cityRes.cities || []);
+    } catch {
+      toast.error("Failed to load managers or cities");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchManagersAndCities();
+  }, [fetchManagersAndCities]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !phone) {
+      toast.error("Name and Phone are required");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.post("/admin/managers", {
+        name,
+        phone,
+        email: email || undefined,
+        cityIds: selectedCities
+      });
+      toast.success("Manager added/elevated successfully");
+      setShowAddForm(false);
+      setName("");
+      setPhone("");
+      setEmail("");
+      setSelectedCities([]);
+      fetchManagersAndCities();
+    } catch {
+      toast.error("Failed to onboard manager");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleToggleStatus = async (id: string, currentStatus: "active" | "suspended") => {
+    const newStatus = currentStatus === "active" ? "suspended" : "active";
+    try {
+      await api.patch(`/admin/managers/${id}`, { status: newStatus });
+      toast.success(`Manager ${newStatus === 'active' ? 'activated' : 'suspended'}`);
+      fetchManagersAndCities();
+    } catch {
+      toast.error("Failed to update status");
+    }
+  };
+
+  const handleRemoveManager = async (id: string) => {
+    if (!confirm("Are you sure you want to demote this manager? They will revert to a normal customer role.")) return;
+    try {
+      await api.delete(`/admin/managers/${id}`);
+      toast.success("Manager demoted successfully");
+      fetchManagersAndCities();
+    } catch {
+      toast.error("Failed to remove manager");
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">City Managers</h2>
+          <p className="text-xs text-muted-foreground mt-1">Assign managers to specific cities. Only assigned managers will see the Manager Panel on their profile.</p>
+        </div>
+        <Button onClick={() => setShowAddForm(!showAddForm)} className="rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/95 flex items-center gap-1.5">
+          <Plus className="w-4.5 h-4.5" /> Onboard Manager
+        </Button>
+      </div>
+
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.form
+            onSubmit={handleSubmit}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-card border border-border p-6 rounded-3xl space-y-4 max-w-xl shadow-lg"
+          >
+            <div className="flex justify-between items-center mb-1">
+              <h4 className="font-extrabold text-sm text-foreground">Onboard/Elevate City Manager</h4>
+              <button type="button" onClick={() => setShowAddForm(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-muted-foreground uppercase">Full Name</label>
+                <Input placeholder="Manager Name" value={name} onChange={e => setName(e.target.value)} required />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-muted-foreground uppercase">Phone Number</label>
+                <Input placeholder="e.g. 9876543210" value={phone} onChange={e => setPhone(e.target.value)} required />
+              </div>
+              <div className="space-y-1 col-span-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase">Email Address (Optional)</label>
+                <Input placeholder="email@example.com" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase block mb-1">Assign Cities</label>
+                {cities.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No cities created. Please add cities first.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-muted/40 border border-border rounded-xl">
+                    {cities.map(city => (
+                      <label key={city.id} className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedCities.includes(city.id)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setSelectedCities([...selectedCities, city.id]);
+                            } else {
+                              setSelectedCities(selectedCities.filter(id => id !== city.id));
+                            }
+                          }}
+                          className="rounded text-primary focus:ring-0 w-4 h-4 cursor-pointer"
+                        />
+                        {city.name}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setShowAddForm(false)}>Cancel</Button>
+              <Button type="submit" disabled={submitting} className="bg-primary text-primary-foreground font-bold">
+                {submitting ? "Processing..." : "Add Manager"}
+              </Button>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
+
+      {loading && managers.length === 0 ? (
+        <div className="h-48 bg-card border border-border rounded-3xl animate-pulse flex items-center justify-center text-muted-foreground text-sm font-semibold">
+          Loading managers ledger...
+        </div>
+      ) : managers.length === 0 ? (
+        <div className="text-center py-16 bg-card border border-border/30 rounded-3xl text-muted-foreground">
+          No city managers configured. Tap Onboard Manager to assign.
+        </div>
+      ) : (
+        <div className="bg-card rounded-3xl border border-border/40 overflow-hidden shadow-sm">
+          <table className="w-full border-collapse text-left text-sm">
+            <thead className="bg-muted/40 border-b border-border/20 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              <tr>
+                <th className="p-4">Manager Info</th>
+                <th className="p-4">Phone</th>
+                <th className="p-4">Assigned Cities</th>
+                <th className="p-4">Status</th>
+                <th className="p-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/20">
+              {managers.map(m => (
+                <tr key={m.id} className="hover:bg-muted/5">
+                  <td className="p-4">
+                    <div className="font-bold text-foreground leading-snug">{m.name}</div>
+                    {m.email && <div className="text-[10px] text-muted-foreground">{m.email}</div>}
+                  </td>
+                  <td className="p-4 font-semibold text-muted-foreground">{m.phone}</td>
+                  <td className="p-4">
+                    <div className="flex flex-wrap gap-1">
+                      {m.assignedCities && m.assignedCities.length > 0 ? (
+                        m.assignedCities.map(ac => (
+                          <Badge key={ac.cityId} className="bg-primary/10 text-primary border-none text-[9px] font-bold">
+                            {ac.cityName || ac.cityId}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">None (Global access check)</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <Badge className={`border-none font-bold text-[9px] uppercase ${m.status === "active" ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}>
+                      {m.status}
+                    </Badge>
+                  </td>
+                  <td className="p-4 text-right space-x-1.5">
+                    <Button size="sm" variant="ghost" onClick={() => handleToggleStatus(m.id, m.status)} className="rounded-xl text-xs">
+                      {m.status === "active" ? "Suspend" : "Activate"}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleRemoveManager(m.id)} className="rounded-xl text-xs text-red-500 hover:bg-red-500/10">
+                      Remove
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
