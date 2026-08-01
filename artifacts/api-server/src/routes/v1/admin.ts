@@ -1,5 +1,5 @@
 import { Router, type Response } from "express";
-import { db, admins, users, shops, orders, deliveryPartners, payouts, cities, managerCities, managerActivityLogs } from "@workspace/db";
+import { db, admins, users, shops, orders, deliveryPartners, payouts, cities, managerCities, managerActivityLogs, servicePincodes } from "@workspace/db";
 import { eq, and, inArray, count, sum, gte, desc } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { mi, miArr } from "../../utils/mapId.js";
@@ -109,6 +109,24 @@ router.delete("/admins/:id", authenticate, SA, async (req: AuthRequest, res: Res
 // GET /api/admin/cities — list all cities
 router.get("/cities", authenticate, A, async (_req, res: Response): Promise<void> => {
   try {
+    // Sync from active service areas (servicePincodes)
+    const pinAreas = await db.select({ area: servicePincodes.area })
+      .from(servicePincodes)
+      .where(eq(servicePincodes.isActive, true));
+
+    const uniqueCities = Array.from(new Set(pinAreas.map(p => p.area.trim()).filter(Boolean)));
+
+    if (uniqueCities.length > 0) {
+      await Promise.all(uniqueCities.map(async (cityName) => {
+        const slug = cityName.toLowerCase().replace(/\s+/g, '-');
+        await db.insert(cities).values({
+          id: slug,
+          name: cityName,
+          isActive: true
+        }).onConflictDoNothing();
+      }));
+    }
+
     const list = await db.select().from(cities).orderBy(cities.name);
     res.json({ success: true, cities: list });
   } catch (err: any) {

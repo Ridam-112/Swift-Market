@@ -1,5 +1,5 @@
 import { Router, type Response, type NextFunction } from "express";
-import { db, users, shops, orders, deliveryPartners, payouts, coupons, supportTickets, cities, managerCities, managerActivityLogs } from "@workspace/db";
+import { db, users, shops, orders, deliveryPartners, payouts, coupons, supportTickets, cities, managerCities, managerActivityLogs, servicePincodes } from "@workspace/db";
 import { eq, and, inArray, count, sum, gte, desc, sql } from "drizzle-orm";
 import { authenticate, type AuthRequest } from "../../middlewares/auth.js";
 import { mi, miArr } from "../../utils/mapId.js";
@@ -71,6 +71,24 @@ async function logAction(managerId: string, managerName: string, cityId: string 
 // List all cities managed by the current manager
 router.get("/cities", authenticate, requireManager, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    // Sync from active service areas (servicePincodes)
+    const pinAreas = await db.select({ area: servicePincodes.area })
+      .from(servicePincodes)
+      .where(eq(servicePincodes.isActive, true));
+
+    const uniqueCities = Array.from(new Set(pinAreas.map(p => p.area.trim()).filter(Boolean)));
+
+    if (uniqueCities.length > 0) {
+      await Promise.all(uniqueCities.map(async (cityName) => {
+        const slug = cityName.toLowerCase().replace(/\s+/g, '-');
+        await db.insert(cities).values({
+          id: slug,
+          name: cityName,
+          isActive: true
+        }).onConflictDoNothing();
+      }));
+    }
+
     if (req.user!.role === "super_admin") {
       const list = await db.select().from(cities).orderBy(cities.name);
       res.json({ success: true, cities: list });

@@ -511,54 +511,33 @@ export default function Home() {
               }
             />
             {shopsLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[1, 2].map(i => (
-                  <SkeletonShopCardHorizontal key={i} />
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="snap-start shrink-0 block w-[calc(75vw)] max-w-[260px] min-w-[200px] bg-card rounded-2xl p-3 animate-pulse h-20" />
                 ))}
               </div>
             ) : popularShops.length === 0 ? (
               <p className="text-sm text-muted-foreground px-3">No shops available yet.</p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {popularShops.map(shop => (
-                  <Link key={shop.id} href={`/shop/${shop.id}`}>
-                    <div className="flex items-center gap-3.5 bg-card p-3 rounded-2xl cursor-pointer hover:shadow-md transition-all active:scale-[0.99] border border-border/40 group relative overflow-hidden h-[104px] neu-card">
-                      {/* background highlight glow on hover */}
-                      <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                      <div className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-muted border border-border/20">
-                        <img
-                          src={shop.image}
-                          alt={shop.storeName}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        {!shop.isOpen && (
-                          <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center">
-                            <span className="text-[10px] text-white font-extrabold uppercase tracking-wider px-1.5 py-0.5 bg-red-600 rounded">Closed</span>
-                          </div>
-                        )}
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
+                {popularShops.map((shop) => (
+                  <Link key={shop.id} href={`/shop/${shop.id}`} className="snap-start shrink-0 block w-[calc(75vw)] max-w-[260px] min-w-[200px]">
+                    <div className="bg-card rounded-2xl p-3 neu-card flex gap-3 items-center h-full">
+                      <div className="w-14 h-14 rounded-xl overflow-hidden bg-background neu-inset flex-shrink-0">
+                        <img src={shop.image} alt={shop.storeName} className="w-full h-full object-cover" />
                       </div>
-
-                      <div className="flex-1 min-w-0 flex flex-col justify-between h-full py-0.5">
-                        <div>
-                          <h3 className="font-extrabold text-[15px] text-foreground leading-snug truncate group-hover:text-primary transition-colors">
-                            {shop.storeName}
-                          </h3>
-                          <p className="text-xs text-muted-foreground capitalize mt-0.5 leading-none">
-                            {shop.category}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-auto leading-none">
-                          {shop.rating > 0 && (
-                            <div className="flex items-center gap-0.5 text-amber-500 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded-md text-[10px]">
-                              <Star className="w-3 h-3 fill-amber-500" />
-                              {shop.rating.toFixed(1)}
-                            </div>
-                          )}
-                          {shop.eta && (
-                            <div className="flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded-md text-[10px] font-medium text-foreground">
-                              <span>🛵</span> {shop.eta}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-sm truncate text-foreground">{shop.storeName}</h3>
+                        <div className="text-[10px] text-muted-foreground mb-1 truncate">{shop.category}</div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                            <Star className="w-3 h-3 fill-current" />
+                            {shop.rating > 0 ? shop.rating.toFixed(1) : "New"}
+                          </div>
+                          {user?.pincode && shop.pincode === user.pincode && (
+                            <div className="flex items-center gap-0.5 text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                              <Zap className="w-2.5 h-2.5 fill-current" />
+                              Quick
                             </div>
                           )}
                         </div>
