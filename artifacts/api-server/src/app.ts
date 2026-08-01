@@ -289,6 +289,36 @@ app.use("/api", globalApiLimiter, router);
 if (process.env.NODE_ENV === "production") {
   const frontendDist = path.join(__dirname, "..", "..", "swiftmart", "dist", "public");
 
+  // Explicit robots.txt handler — served BEFORE express.static to prevent HTML SPA fallbacks
+  app.get("/robots.txt", (_req: Request, res: Response) => {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=86400, must-revalidate");
+    res.sendFile(path.join(frontendDist, "robots.txt"), (err) => {
+      if (err) {
+        res.send(`User-agent: *
+Allow: /
+Disallow: /auth
+Disallow: /google-callback
+Disallow: /complete-profile
+Disallow: /cart
+Disallow: /checkout
+Disallow: /order/
+Disallow: /orders
+Disallow: /profile
+Disallow: /notifications
+Disallow: /vendor-register
+Disallow: /vendor-status
+Disallow: /vendor/
+Disallow: /admin
+Disallow: /delivery-dashboard
+Disallow: /delivery/
+Disallow: /delete-account
+
+Sitemap: https://swiftmart.space/sitemap.xml`);
+      }
+    });
+  });
+
   // Dynamic sitemap — registered BEFORE express.static so this route takes
   // precedence over the static public/sitemap.xml baked into the build.
   app.get("/sitemap.xml", async (_req: Request, res: Response) => {

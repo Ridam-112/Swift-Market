@@ -377,8 +377,13 @@ export function maintenanceMode(req: Request, res: Response, next: NextFunction)
   const enabled = (process.env["MAINTENANCE_MODE"] ?? "false").toLowerCase() === "true";
   if (!enabled) { next(); return; }
 
-  // Always pass through: health check and the bypass endpoint itself
-  if (req.path === "/health" || req.path.startsWith("/api/maintenance-bypass")) {
+  // Always pass through: health check, bypass endpoint, robots.txt, and sitemap.xml
+  if (
+    req.path === "/health" ||
+    req.path.startsWith("/api/maintenance-bypass") ||
+    req.path === "/robots.txt" ||
+    req.path === "/sitemap.xml"
+  ) {
     next(); return;
   }
 
