@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
+import { motion } from "framer-motion";
 import { useProducts } from "@/hooks/useProducts";
 import { useShops } from "@/hooks/useShops";
 import { HeroBannerSlider } from "@/components/HeroBannerSlider";
@@ -295,8 +296,9 @@ function DynamicSection({ section }: { section: HomepageSection }) {
 }
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, selectedDeliveryAddress } = useAuth();
   const { shops, isLoading: shopsLoading } = useShops();
+  const selectedCity = (selectedDeliveryAddress?.city ?? "").trim();
   const loading = shopsLoading;
 
   // When a delivery city is selected, restrict dynamic sections to products from visible shops.
@@ -356,6 +358,7 @@ export default function Home() {
 
   const SHOPS_PREVIEW = 4;
   const popularShops = shops.slice(0, SHOPS_PREVIEW);
+  const isCityEmpty = !!selectedCity && !shopsLoading && shops.length === 0;
 
   return (
     <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto space-y-6 overflow-x-hidden">
@@ -381,192 +384,228 @@ export default function Home() {
 
       <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
-      {/* First-order promo banner — dismissable */}
-      {!bannerDismissed && (
-        <div className="flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-2xl px-4 py-2.5">
-          <span className="text-xl shrink-0" aria-hidden="true">🎉</span>
-          <p className="flex-1 text-sm font-semibold text-foreground leading-snug">
-            New here? Use code{" "}
-            <span className="text-primary font-extrabold tracking-wide">FIRST50</span>{" "}
-            for ₹50 off your first order!
-          </p>
-          <button
-            onClick={() => {
-              setBannerDismissed(true);
-              localStorage.setItem("sm_promo_banner_v1", "1");
-            }}
-            aria-label="Dismiss offer banner"
-            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-muted/50"
+      {isCityEmpty ? (
+        <div className="py-12 md:py-24 flex items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-3xl neu-card max-w-md mx-auto space-y-4 border border-primary/10"
           >
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
-            </svg>
-          </button>
+            <div className="relative w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-2">
+              <motion.div
+                animate={{ y: [0, -8, 0] }}
+                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+              >
+                <MapPin className="w-10 h-10 fill-primary/20" />
+              </motion.div>
+              <div className="absolute inset-0 rounded-full border border-primary/20 animate-ping opacity-40" />
+            </div>
+            <h2 className="text-2xl font-black bg-gradient-to-r from-primary to-orange-500 bg-clip-text text-transparent">
+              Coming Soon to Your City!
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              SwiftMart is currently expanding its network. We will start delivering fresh groceries, food, and daily essentials to <span className="font-semibold text-foreground capitalize">{selectedCity}</span> very soon!
+            </p>
+          </motion.div>
         </div>
-      )}
+      ) : (
+        <>
+          {/* First-order promo banner — dismissable */}
+          {!bannerDismissed && (
+            <div className="flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-2xl px-4 py-2.5">
+              <span className="text-xl shrink-0" aria-hidden="true">🎉</span>
+              <p className="flex-1 text-sm font-semibold text-foreground leading-snug">
+                New here? Use code{" "}
+                <span className="text-primary font-extrabold tracking-wide">FIRST50</span>{" "}
+                for ₹50 off your first order!
+              </p>
+              <button
+                onClick={() => {
+                  setBannerDismissed(true);
+                  localStorage.setItem("sm_promo_banner_v1", "1");
+                }}
+                aria-label="Dismiss offer banner"
+                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-muted/50"
+              >
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+          )}
 
-      <HeroBannerSlider />
+          <HeroBannerSlider />
 
-      {/* Admin-curated highlighted bucket bundles */}
-      <BucketBanner />
+          {/* Admin-curated highlighted bucket bundles */}
+          <BucketBanner />
 
-      {/* ── Grocery mini-banner ─────────────────────────────────── */}
-      <Link href="/grocery">
-        <div className="relative rounded-2xl overflow-hidden cursor-pointer group">
-          {/* gradient background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-green-500 to-teal-400" />
-          {/* subtle pattern overlay */}
-          <div
-            className="absolute inset-0 opacity-10"
-            style={{
-              backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px), radial-gradient(circle at 60% 80%, white 1px, transparent 1px)",
-              backgroundSize: "30px 30px",
-            }}
-          />
-          {/* decorative blob */}
-          <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full" />
-          <div className="absolute right-16 -bottom-4 w-20 h-20 bg-white/10 rounded-full" />
+          {/* ── Grocery mini-banner ─────────────────────────────────── */}
+          <Link href="/grocery">
+            <div className="relative rounded-2xl overflow-hidden cursor-pointer group">
+              {/* gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-green-500 to-teal-400" />
+              {/* subtle pattern overlay */}
+              <div
+                className="absolute inset-0 opacity-10"
+                style={{
+                  backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px), radial-gradient(circle at 60% 80%, white 1px, transparent 1px)",
+                  backgroundSize: "30px 30px",
+                }}
+              />
+              {/* decorative blob */}
+              <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full" />
+              <div className="absolute right-16 -bottom-4 w-20 h-20 bg-white/10 rounded-full" />
 
-          <div className="relative flex items-center justify-between px-4 py-3.5">
-            <div className="flex items-center gap-3">
-              {/* icon cluster */}
-              <div className="flex -space-x-2">
-                {["🥛", "🥦", "🍎", "🛒"].map((em, i) => (
-                  <div key={i} className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-base shadow-sm" style={{ zIndex: 4 - i }}>
-                    {em}
+              <div className="relative flex items-center justify-between px-4 py-3.5">
+                <div className="flex items-center gap-3">
+                  {/* icon cluster */}
+                  <div className="flex -space-x-2">
+                    {["🥛", "🥦", "🍎", "🛒"].map((em, i) => (
+                      <div key={i} className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-base shadow-sm" style={{ zIndex: 4 - i }}>
+                        {em}
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <p className="text-white font-extrabold text-sm leading-tight">Fresh Grocery Store</p>
+                    <p className="text-white/80 text-xs mt-0.5">Dairy · Veggies · Snacks · Daily needs</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 bg-white text-emerald-700 font-bold text-xs px-3 py-1.5 rounded-full shadow-md group-hover:scale-105 transition-transform shrink-0">
+                  Shop Now
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* ── Category bubble list ───────────────────────────────── */}
+          <section className="w-full">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-[15px] font-extrabold text-foreground tracking-tight">Shop by Category</h2>
+            </div>
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-x-2.5 gap-y-4">
+              {apiCategories.map(cat => (
+                <CategoryBubble key={cat.id} category={cat} />
+              ))}
+            </div>
+          </section>
+
+          {/* ── Popular Shops ─────────────────────────────────────── */}
+          <section>
+            <SectionHeader
+              title="Shops in Your Area"
+              action={
+                shops.length > SHOPS_PREVIEW ? (
+                  <Link
+                    href="/shops"
+                    className="flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80 transition-opacity"
+                  >
+                    See all <ChevronRight className="w-4 h-4" />
+                  </Link>
+                ) : (
+                  <span className="text-xs text-muted-foreground font-medium">
+                    {shops.length} active
+                  </span>
+                )
+              }
+            />
+            {shopsLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[1, 2].map(i => (
+                  <SkeletonShopCardHorizontal key={i} />
+                ))}
+              </div>
+            ) : popularShops.length === 0 ? (
+              <p className="text-sm text-muted-foreground px-3">No shops available yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {popularShops.map(shop => (
+                  <Link key={shop.id} href={`/shop/${shop.id}`}>
+                    <div className="flex items-center gap-3.5 bg-card p-3 rounded-2xl cursor-pointer hover:shadow-md transition-all active:scale-[0.99] border border-border/40 group relative overflow-hidden h-[104px] neu-card">
+                      {/* background highlight glow on hover */}
+                      <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                      <div className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-muted border border-border/20">
+                        <img
+                          src={shop.image}
+                          alt={shop.storeName}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        {!shop.isOpen && (
+                          <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center">
+                            <span className="text-[10px] text-white font-extrabold uppercase tracking-wider px-1.5 py-0.5 bg-red-600 rounded">Closed</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0 flex flex-col justify-between h-full py-0.5">
+                        <div>
+                          <h3 className="font-extrabold text-[15px] text-foreground leading-snug truncate group-hover:text-primary transition-colors">
+                            {shop.storeName}
+                          </h3>
+                          <p className="text-xs text-muted-foreground capitalize mt-0.5 leading-none">
+                            {shop.category}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-auto leading-none">
+                          {shop.rating > 0 && (
+                            <div className="flex items-center gap-0.5 text-amber-500 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded-md text-[10px]">
+                              <Star className="w-3 h-3 fill-amber-500" />
+                              {shop.rating.toFixed(1)}
+                            </div>
+                          )}
+                          {shop.eta && (
+                            <div className="flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded-md text-[10px] font-medium text-foreground">
+                              <span>🛵</span> {shop.eta}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* ── Dynamic Admin Sections ───────────────────────────── */}
+          {sectionsLoading ? (
+            <section className="w-full">
+              <Skeleton className="h-6 w-48 mb-4 rounded-md" />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
+                {[1,2,3,4,5,6,7,8].map(i => (
+                  <div key={i} className="bg-card rounded-2xl p-2.5 flex flex-col gap-2 neu-card">
+                    <Skeleton className="aspect-square w-full rounded-xl" />
+                    <Skeleton className="h-3.5 w-12 rounded" />
+                    <Skeleton className="h-4 w-full rounded" />
+                    <Skeleton className="h-4 w-3/4 rounded" />
+                    <div className="flex items-center justify-between mt-auto pt-1">
+                      <Skeleton className="h-5 w-14 rounded" />
+                      <Skeleton className="h-8 w-16 rounded-full" />
+                    </div>
                   </div>
                 ))}
               </div>
-              <div>
-                <p className="text-white font-extrabold text-sm leading-tight">Fresh Grocery Store</p>
-                <p className="text-white/80 text-xs mt-0.5">Dairy · Veggies · Snacks · Daily needs</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 bg-white text-emerald-700 font-bold text-xs px-3 py-1.5 rounded-full shadow-md group-hover:scale-105 transition-transform shrink-0">
-              Shop Now
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
-            </div>
-          </div>
-        </div>
-      </Link>
+            </section>
+          ) : dynamicSections.length > 0 ? (
+            dynamicSections
+              .map(section => ({
+                ...section,
+                products: section.products.filter(p => !p.shopId || visibleShopIds.size === 0 || visibleShopIds.has(p.shopId)),
+              }))
+              .filter(s => s.products.length > 0)
+              .map(section => <DynamicSection key={section._id} section={section} />)
+          ) : null}
 
-      {/* Shop by Category */}
-      <section>
-        <SectionHeader
-          title="Shop by Category"
-          action={
-            <Link href="/categories" className="flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80 transition-opacity">
-              See more <ChevronRight className="w-4 h-4" />
-            </Link>
-          }
-        />
-        {apiCategories.length === 0 ? (
-          <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8">
-            {[1,2,3,4,5,6,7,8].map(i => (
-              <div key={i} className="flex justify-center">
-                <div className="flex flex-col items-center gap-1.5">
-                  <Skeleton className="w-14 h-14 rounded-2xl" />
-                  <Skeleton className="h-2.5 w-10 rounded" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8">
-            {apiCategories.slice(0, VISIBLE_CATEGORIES).map((category) => (
-              <div key={category.id} className="flex justify-center">
-                <CategoryBubble category={category} />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+          {/* FAQ Section */}
+          <FaqSection />
 
-      {/* Popular Shops */}
-      <section>
-        <SectionHeader
-          title="Popular Shops"
-          action={
-            shops.length > SHOPS_PREVIEW ? (
-              <Link href="/shops" className="flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80 transition-opacity">
-                See more <ChevronRight className="w-4 h-4" />
-              </Link>
-            ) : undefined
-          }
-        />
-        {shopsLoading ? (
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
-            {[1, 2, 3].map(i => (
-              <SkeletonShopCardHorizontal key={i} />
-            ))}
-          </div>
-        ) : popularShops.length === 0 ? (
-          <p className="text-sm text-muted-foreground px-3">No shops available yet.</p>
-        ) : (
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
-            {popularShops.map((shop) => (
-              <Link key={shop.id} href={`/shop/${shop.id}`} className="snap-start shrink-0 block w-[calc(75vw)] max-w-[260px] min-w-[200px]">
-                <div className="bg-card rounded-2xl p-3 neu-card flex gap-3 items-center h-full">
-                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-background neu-inset flex-shrink-0">
-                    <img src={shop.image} alt={shop.storeName} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-sm truncate text-foreground">{shop.storeName}</h3>
-                    <div className="text-[10px] text-muted-foreground mb-1 truncate">{shop.category}</div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className="flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
-                        <Star className="w-3 h-3 fill-current" />
-                        {shop.rating > 0 ? shop.rating.toFixed(1) : "New"}
-                      </div>
-                      {user?.pincode && shop.pincode === user.pincode && (
-                        <div className="flex items-center gap-0.5 text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
-                          <Zap className="w-2.5 h-2.5 fill-current" />
-                          Quick
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Dynamic Admin-Configured Sections */}
-      {sectionsLoading ? (
-        <section>
-          <Skeleton className="h-5 w-48 mb-4" />
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
-            {[1,2,3,4,5,6,7,8].map(i => (
-              <div key={i} className="bg-card rounded-2xl p-2.5 flex flex-col gap-2 neu-card">
-                <Skeleton className="aspect-square w-full rounded-xl" />
-                <Skeleton className="h-3.5 w-12 rounded" />
-                <Skeleton className="h-4 w-full rounded" />
-                <Skeleton className="h-4 w-3/4 rounded" />
-                <div className="flex items-center justify-between mt-auto pt-1">
-                  <Skeleton className="h-5 w-14 rounded" />
-                  <Skeleton className="h-8 w-16 rounded-full" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : dynamicSections.length > 0 ? (
-        dynamicSections
-          .map(section => ({
-            ...section,
-            products: section.products.filter(p => !p.shopId || visibleShopIds.size === 0 || visibleShopIds.has(p.shopId)),
-          }))
-          .filter(s => s.products.length > 0)
-          .map(section => <DynamicSection key={section._id} section={section} />)
-      ) : null}
-
-      {/* FAQ Section */}
-      <FaqSection />
-
-      {/* Service Coverage + Map */}
-      <CoverageSection />
+          {/* Service Coverage + Map */}
+          <CoverageSection />
+        </>
+      )}
 
       {/* About + Footer */}
       <SiteFooter />

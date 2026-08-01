@@ -343,7 +343,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) 
     setOverviewLoading(true);
     Promise.all([
       api.get<{ success: boolean; stats: AdminStats }>('/admin/stats').then(d => setAdminStats(d.stats)).catch(() => {}),
-      api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=200').then(d => setRecentOrders(d.orders)).catch(() => {}),
+      api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?status=delivered&limit=200').then(d => setRecentOrders(d.orders)).catch(() => {}),
     ]).finally(() => setOverviewLoading(false));
   }, []);
 
@@ -400,10 +400,9 @@ function OverviewTab({ onNavigate }: { onNavigate: (s: AdminSection) => void }) 
         <StatCard title="Total Customers" value={totalUsers} icon={Users} color="text-purple-600" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard title="Total Orders" value={totalOrdersCount} icon={ShoppingBag} color="text-indigo-600" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <StatCard title="Delivered Orders" value={totalOrdersCount} icon={ShoppingBag} color="text-indigo-600" />
         <StatCard title="Open Reports" value={openReports} icon={Flag} color="text-red-600" />
-        <StatCard title="Pending Orders" value={adminStats?.pendingOrders ?? 0} icon={CreditCard} color="text-teal-600" />
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -1411,6 +1410,7 @@ function OrdersTab() {
   const [platformOrders, setPlatformOrders] = useState<PlatformOrder[]>([]);
   const [partnerMap, setPartnerMap] = useState<Record<string, string | null>>({});
   const [activePartners, setActivePartners] = useState<ActivePartner[]>([]);
+  const [shopsList, setShopsList] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<PlatformOrder['status'] | 'all'>('all');
@@ -1420,16 +1420,27 @@ function OrdersTab() {
   const [assigningOrder, setAssigningOrder] = useState<string | null>(null);
   const [pendingAssign, setPendingAssign] = useState<Record<string, string>>({});
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  // Form states for manual order creation
+  const [showForm, setShowForm] = useState(false);
+  const [formName, setFormName] = useState("");
+  const [formPhone, setFormPhone] = useState("");
+  const [formShopId, setFormShopId] = useState("");
+  const [formAmount, setFormAmount] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
   const toggleItems = (id: string) =>
     setExpandedItems(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
   const loadOrders = useCallback(async () => {
     setLoadingOrders(true);
     try {
-      const [ordersData, partnersData] = await Promise.all([
+      const [ordersData, partnersData, shopsData] = await Promise.all([
         api.get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=200'),
         api.get<{ success: boolean; partners: ActivePartner[] }>('/delivery'),
+        api.get<{ success: boolean; shops: any[] }>('/shops?status=approved&limit=100'),
       ]);
+      setShopsList(shopsData.shops ?? []);
       const rawOrders = ordersData.orders ?? [];
       setPlatformOrders(rawOrders.map(o => ({
         id: o._id,
@@ -1470,6 +1481,41 @@ function OrdersTab() {
   }, []);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
+
+  const handleCreateOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formName || !formPhone || !formShopId || !formAmount) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    const amt = parseFloat(formAmount);
+    if (isNaN(amt) || amt <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await api.post<{ success: boolean; order: any }>("/orders/admin", {
+        customerName: formName,
+        customerPhone: formPhone,
+        shopId: formShopId,
+        totalAmount: amt
+      });
+      if (res.success) {
+        toast.success("Manual order created successfully");
+        setShowForm(false);
+        setFormName("");
+        setFormPhone("");
+        setFormShopId("");
+        setFormAmount("");
+        loadOrders();
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to create manual order");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const updateOrderStatus = async (orderId: string, status: PlatformOrder['status']) => {
     try {
@@ -1558,10 +1604,98 @@ function OrdersTab() {
             {unassignedCount} need delivery partner
           </Badge>
         )}
-        <button onClick={loadOrders} className="ml-auto p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted">
-          <RefreshCw className="w-4 h-4" />
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button onClick={() => setShowForm(!showForm)} className="rounded-xl gap-1.5 shadow-none neu-card font-bold text-sm bg-primary text-primary-foreground hover:bg-primary/95 flex items-center">
+            <Plus className="w-4 h-4" /> Create Manual Order
+          </Button>
+          <button onClick={loadOrders} className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted">
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
       </div>
+
+      <AnimatePresence>
+        {showForm && (
+          <motion.form
+            onSubmit={handleCreateOrder}
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            className="bg-card rounded-3xl neu-card p-6 space-y-4 border border-primary/5"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-extrabold text-lg text-foreground">Create Manual Order</h3>
+              <button type="button" onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold block mb-1.5 text-muted-foreground uppercase tracking-wide">Customer Name</label>
+                <Input 
+                  placeholder="Enter customer name"
+                  value={formName}
+                  onChange={e => setFormName(e.target.value)}
+                  className="bg-background neu-inset border-none rounded-xl animate-none focus-visible:ring-0"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold block mb-1.5 text-muted-foreground uppercase tracking-wide">Customer Phone Number</label>
+                <Input 
+                  placeholder="Enter 10-digit phone number"
+                  type="tel"
+                  pattern="[0-9]{10}"
+                  value={formPhone}
+                  onChange={e => setFormPhone(e.target.value)}
+                  className="bg-background neu-inset border-none rounded-xl animate-none focus-visible:ring-0"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold block mb-1.5 text-muted-foreground uppercase tracking-wide text-left">Select Shop (Vendor)</label>
+                <select
+                  value={formShopId}
+                  onChange={e => setFormShopId(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl bg-background border-none text-sm text-foreground focus:outline-none focus:ring-0 shadow-inner"
+                  required
+                >
+                  <option value="">-- Choose an approved shop --</option>
+                  {shopsList.map(s => (
+                    <option key={s.id} value={s.id}>{s.storeName} ({s.ownerName})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold block mb-1.5 text-muted-foreground uppercase tracking-wide">Total Order Amount (₹)</label>
+                <Input 
+                  placeholder="Enter order amount"
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={formAmount}
+                  onChange={e => setFormAmount(e.target.value)}
+                  className="bg-background neu-inset border-none rounded-xl animate-none focus-visible:ring-0"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setShowForm(false)} className="rounded-xl border-none bg-background text-foreground neu-inset">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submitting} className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold px-6">
+                {submitting ? "Creating..." : "Create Order"}
+              </Button>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
 
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">

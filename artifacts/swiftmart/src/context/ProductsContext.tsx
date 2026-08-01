@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useCallback, useContext, use
 import { Product } from "@/types";
 import { api } from "@/lib/api";
 import { AuthContext } from "@/context/AuthContext";
+import { ShopsContext } from "@/context/ShopsContext";
 
 interface ProductsContextType {
   products: Product[];
@@ -65,6 +66,7 @@ const BG_INTERVAL_MS = 60_000;
 
 export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const auth = useContext(AuthContext);
+  const shopsContext = useContext(ShopsContext);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -176,8 +178,15 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const filteredProducts = useMemo(() => {
+    const selectedCity = (auth?.selectedDeliveryAddress?.city ?? "").trim().toLowerCase();
+    if (!selectedCity) return products;
+    const visibleShopIds = new Set((shopsContext?.shops || []).map(s => s.id));
+    return products.filter(p => !p.shopId || visibleShopIds.has(p.shopId));
+  }, [products, shopsContext?.shops, auth?.selectedDeliveryAddress?.city]);
+
   return (
-    <ProductsContext.Provider value={{ products, isLoading, error, addProduct, updateProduct, deleteProduct, refetch: () => fetchProducts() }}>
+    <ProductsContext.Provider value={{ products: filteredProducts, isLoading, error, addProduct, updateProduct, deleteProduct, refetch: () => fetchProducts() }}>
       {children}
     </ProductsContext.Provider>
   );

@@ -25,7 +25,7 @@ router.get("/stats", authenticate, A, async (_req, res: Response): Promise<void>
     db.select({ totalUsers: count() }).from(users).where(eq(users.role, "customer")),
     db.select({ totalShops: count() }).from(shops).where(eq(shops.status, "approved")),
     db.select({ pendingShops: count() }).from(shops).where(eq(shops.status, "pending")),
-    db.select({ totalOrders: count() }).from(orders),
+    db.select({ totalOrders: count() }).from(orders).where(eq(orders.status, "delivered")),
     // Active statuses in the real order lifecycle (placed → confirmed → packed → out_for_delivery → delivered)
     db.select({ pendingOrders: count() }).from(orders).where(inArray(orders.status, ["placed", "confirmed", "packed", "out_for_delivery"])),
     db.select({ activeDelivery: count() }).from(deliveryPartners).where(and(eq(deliveryPartners.status, "active"), eq(deliveryPartners.isAvailable, true))),

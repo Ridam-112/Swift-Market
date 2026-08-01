@@ -495,8 +495,8 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>
-            <ProductsProvider>
-              <ShopsProvider>
+            <ShopsProvider>
+              <ProductsProvider>
                 <CartProvider>
                   <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                     <RobotsManager />
@@ -506,8 +506,8 @@ function App() {
                   <InstallPrompt />
                   <Toaster />
                 </CartProvider>
-              </ShopsProvider>
-            </ProductsProvider>
+              </ProductsProvider>
+            </ShopsProvider>
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>

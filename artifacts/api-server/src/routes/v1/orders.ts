@@ -831,4 +831,108 @@ router.patch("/:id/assign-partner", authenticate, A, validateUuidParams("id"), a
   res.json({ success: true, order: mi(updated!) });
 });
 
+// POST /api/orders/admin — create order manually by admins
+router.post("/admin", authenticate, requireRole("admin", "super_admin"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const { customerName, customerPhone, shopId, totalAmount } = req.body;
+  if (!customerName || !customerPhone || !shopId || totalAmount === undefined || totalAmount === null) {
+    res.status(400).json({ success: false, message: "Missing required fields: customerName, customerPhone, shopId, totalAmount" });
+    return;
+  }
+  const amt = Number(totalAmount);
+  if (isNaN(amt) || amt <= 0) {
+    res.status(400).json({ success: false, message: "Invalid totalAmount" });
+    return;
+  }
+
+  try {
+    const [shop] = await db.select().from(shops).where(eq(shops.id, shopId)).limit(1);
+    if (!shop) {
+      res.status(404).json({ success: false, message: "Shop not found" });
+      return;
+    }
+
+    // Wrap the user query and order insertion inside a transaction
+    const newOrder = await db.transaction(async (tx) => {
+      // Find or create customer
+      let customerId: string;
+      const [existingUser] = await tx.select().from(users).where(eq(users.phone, customerPhone)).limit(1);
+      if (existingUser) {
+        customerId = existingUser.id;
+      } else {
+        const [newUser] = await tx.insert(users).values({
+          name: customerName,
+          phone: customerPhone,
+          role: "customer",
+          status: "active"
+        }).returning();
+        customerId = newUser!.id;
+      }
+
+      const commissionRate = shop.commissionRate ?? 5;
+      const commissionAmount = +(amt * commissionRate / 100).toFixed(2);
+      const subtotal = amt;
+      const netAmount = amt;
+      const vendorPayable = +(netAmount - commissionAmount).toFixed(2);
+      const platformRevenue = commissionAmount;
+
+      const dummyItem = {
+        name: "Manual Admin Order",
+        qty: 1,
+        price: amt,
+        totalPrice: amt,
+        commissionType: "flat",
+        commissionRate,
+        commissionAmount,
+        commissionLevel: "shop"
+      };
+
+      const [order] = await tx.insert(orders).values({
+        customerId,
+        customerName,
+        customerPhone,
+        shopId,
+        shopName: shop.shopName,
+        items: [dummyItem],
+        subtotal,
+        deliveryCharge: 0,
+        packagingFee: 0,
+        gstAmount: 0,
+        couponDiscount: 0,
+        netAmount,
+        commissionRate,
+        commissionAmount,
+        vendorPayable,
+        platformRevenue,
+        status: "placed",
+        paymentMethod: "COD",
+        paymentStatus: "pending",
+        deliveryType: "instant",
+        address: { line1: "Manual Order by Admin", city: shop.address && typeof shop.address === 'object' && 'city' in shop.address ? String((shop.address as any).city) : "", pincode: "" },
+        deliveryOtp: String(Math.floor(1000 + Math.random() * 9000)),
+      }).returning();
+
+      // Create payout record
+      if (vendorPayable > 0) {
+        await tx.insert(payouts).values({
+          vendorId: shop.ownerId,
+          vendorName: shop.ownerName ?? shop.shopName,
+          shopId,
+          amount: vendorPayable,
+          orderTotal: netAmount,
+          commissionAmount,
+          status: "pending",
+          ordersIncluded: [order!.id],
+        });
+      }
+
+      return order;
+    });
+
+    res.status(201).json({ success: true, order: mi(newOrder!) });
+  } catch (err: unknown) {
+    logger.error({ err }, "Admin manual order creation failed");
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
 export default router;
