@@ -8,6 +8,7 @@ import { clearDemoData } from "./utils/seedDemoData.js";
 import { cleanupAbandonedOrders } from "./utils/orderCleanup.js";
 import { OTP_MODE } from "./lib/sms.js";
 import { verifyShardConnections } from "./lib/dbRouter.js";
+import { migrateDataToBalurghat } from "./utils/migrateBalurghat.js";
 
 // AUTH_MODE controls which login methods are enabled (otp | google | both).
 // Default is "otp" — safe to run without a domain or Google OAuth credentials.
@@ -128,6 +129,7 @@ async function main() {
       await seedCategories();
       await clearDemoData();
       logger.info("Seed complete");
+      await migrateDataToBalurghat();
     } catch (err) {
       logger.error({ err }, "Seed error (non-fatal)");
     }

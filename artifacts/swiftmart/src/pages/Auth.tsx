@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import HandwritingBackground from "@/components/HandwritingBackground";
@@ -149,6 +149,7 @@ export default function Auth() {
   const [resetToken, setResetToken] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
   const [truecallerLoading, setTruecallerLoading] = useState(false);
+  const truecallerRan = useRef(false);
   const [configFetching, setConfigFetching] = useState(true);
   // Truecaller app key — populated from /auth/config; empty string means "not configured".
   const [truecallerAppKey, setTruecallerAppKey] = useState("");
@@ -247,20 +248,18 @@ export default function Auth() {
     const params = new URLSearchParams(search);
     const tcToken = params.get("accessToken");
     if (!tcToken) return;
+    if (truecallerRan.current) return;
+    truecallerRan.current = true;
+
     // Strip the accessToken from the URL so it doesn't linger
     const clean = window.location.pathname;
     window.history.replaceState({}, "", clean);
     setTruecallerLoading(true);
     signInWithTruecaller(tcToken)
-      .then(result => {
-        // Navigate immediately — don't block on refreshUser.
-        // Waiting for refreshUser before setLocation causes a race where the
-        // AuthContext init (which runs concurrently on fresh page load) may
-        // call setUser(null) after signInWithTruecaller's setUser(user),
-        // leaving AuthGuard with no user when we navigate.
+      .then(async (result) => {
+        // Hydrate AuthContext state fully before navigating to prevent AuthGuard bounce
+        await refreshUser();
         setLocation(result.needsProfile ? "/complete-profile" : getNextPath());
-        // Refresh user data in background so the profile is up-to-date.
-        void refreshUser();
       })
       .catch(err => {
         const msg = err instanceof Error ? err.message : "Truecaller login failed. Please try again.";

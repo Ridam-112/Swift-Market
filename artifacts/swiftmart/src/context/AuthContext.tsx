@@ -213,6 +213,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // If we are in the middle of a Google or Truecaller redirect callback,
+    // do NOT run the initialization check, because the callback handler
+    // will exchange the code/token and hydrate the context state itself.
+    const searchParams = new URLSearchParams(window.location.search);
+    const isCallback = searchParams.has("accessToken") || searchParams.has("code") || window.location.pathname.startsWith("/auth/google/callback");
+    if (isCallback) {
+      if (import.meta.env.DEV) console.log("[AuthContext] Callback detected, skipping auto-restore/me query");
+      return;
+    }
+
     const savedUser = localStorage.getItem("sm_user");
     const savedRole = localStorage.getItem("sm_role");
     const savedDashRole = localStorage.getItem("swiftmart_role");
@@ -275,6 +285,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const dashRole = apiUser.role === 'vendor' ? 'vendor' : 'customer';
     setRoleState(dashRole);
     localStorage.setItem("swiftmart_role", dashRole);
+    setIsLoading(false);
 
     api.get<{ success: boolean; user: ApiUser }>("/auth/me")
       .then(d => {
@@ -285,7 +296,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem("sm_role", d.user.role);
         if (fullUser.addresses?.length > 0) setSelectedDeliveryAddress(fullUser.addresses[0]);
       })
-      .catch(() => { /* silent */ });
+      .finally(() => {
+        setIsLoading(false);
+      });
 
     return u;
   };
@@ -326,7 +339,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const d = await api.get<{ success: boolean; user: ApiUser }>("/auth/me");
       applyAuthResult(d.user);
-    } catch { /* silent — tokens may not be valid yet */ }
+    } catch (err) {
+      setIsLoading(false);
+      throw err;
+    }
   };
 
   const persistAddresses = async (addresses: Address[], rollbackUser?: User) => {
@@ -405,13 +421,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithTruecaller = async (tcAccessToken: string): Promise<{ needsProfile: boolean; user?: User }> => {
-    const data = await api.post<{ success: boolean; isNewUser: boolean; needsProfile: boolean; accessToken: string; refreshToken: string; user: ApiUser }>(
-      "/auth/truecaller",
-      { accessToken: tcAccessToken }
-    );
-    setTokens(data.accessToken, data.refreshToken);
-    const u = applyAuthResult(data.user);
-    return { needsProfile: data.needsProfile ?? false, user: u };
+    try {
+      const data = await api.post<{ success: boolean; isNewUser: boolean; needsProfile: boolean; accessToken: string; refreshToken: string; user: ApiUser }>(
+        "/auth/truecaller",
+        { accessToken: tcAccessToken }
+      );
+      setTokens(data.accessToken, data.refreshToken);
+      const u = applyAuthResult(data.user);
+      return { needsProfile: data.needsProfile ?? false, user: u };
+    } catch (err) {
+      setIsLoading(false);
+      throw err;
+    }
   };
 
   const forgotPassword = async (email: string): Promise<void> => {

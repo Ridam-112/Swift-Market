@@ -67,6 +67,24 @@ async function logAction(managerId: string, managerName: string, cityId: string 
   }
 }
 
+// Check city access for a specific record
+async function checkRecordCityAccess(req: AuthRequest, res: Response, cityId: string | null): Promise<boolean> {
+  if (req.user!.role === "super_admin") return true;
+  if (!cityId) {
+    res.status(403).json({ success: false, message: "Forbidden: Record has no city assigned" });
+    return false;
+  }
+  const [assignment] = await db.select()
+    .from(managerCities)
+    .where(and(eq(managerCities.managerId, req.user!.userId), eq(managerCities.cityId, cityId)))
+    .limit(1);
+  if (!assignment) {
+    res.status(403).json({ success: false, message: "Forbidden: You do not manage this city" });
+    return false;
+  }
+  return true;
+}
+
 // ─── GET /api/manager/cities ──────────────────────────────────────────────────
 // List all cities managed by the current manager
 router.get("/cities", authenticate, requireManager, async (req: AuthRequest, res: Response): Promise<void> => {
@@ -241,6 +259,9 @@ router.patch("/orders/:id/status", authenticate, requireManager, async (req: Aut
       return;
     }
 
+    const hasAccess = await checkRecordCityAccess(req, res, order.cityId);
+    if (!hasAccess) return;
+
     const updates: Record<string, any> = { updatedAt: new Date() };
     if (status) updates.status = status;
     if (deliveryPartnerId !== undefined) updates.deliveryPartnerId = deliveryPartnerId || null;
@@ -276,6 +297,9 @@ router.patch("/shops/:id/status", authenticate, requireManager, async (req: Auth
       return;
     }
 
+    const hasAccess = await checkRecordCityAccess(req, res, shop.cityId);
+    if (!hasAccess) return;
+
     const [updated] = await db.update(shops).set({ status, updatedAt: new Date() }).where(eq(shops.id, shop.id)).returning();
     
     await logAction(req.user!.userId, req.user!.phone, shop.cityId, "Updated Shop Status", `Shop ${shop.shopName} set to ${status}`);
@@ -306,6 +330,9 @@ router.patch("/customers/:id/status", authenticate, requireManager, async (req: 
       return;
     }
 
+    const hasAccess = await checkRecordCityAccess(req, res, user.cityId);
+    if (!hasAccess) return;
+
     await db.update(users).set({ status, updatedAt: new Date() }).where(eq(users.id, user.id));
     await logAction(req.user!.userId, req.user!.phone, user.cityId, status === "suspended" ? "Blocked Customer" : "Unblocked Customer", `User ${user.name || user.phone} set to ${status}`);
     
@@ -334,6 +361,9 @@ router.patch("/delivery/:id/status", authenticate, requireManager, async (req: A
       res.status(404).json({ success: false, message: "Delivery partner not found" });
       return;
     }
+
+    const hasAccess = await checkRecordCityAccess(req, res, partner.cityId);
+    if (!hasAccess) return;
 
     const [updated] = await db.update(deliveryPartners).set({ status, updatedAt: new Date() }).where(eq(deliveryPartners.id, partner.id)).returning();
     await logAction(req.user!.userId, req.user!.phone, partner.cityId, "Updated Rider Status", `Rider ${partner.name} set to ${status}`);
@@ -426,6 +456,9 @@ router.patch("/support/:id", authenticate, requireManager, async (req: AuthReque
       res.status(404).json({ success: false, message: "Ticket not found" });
       return;
     }
+
+    const hasAccess = await checkRecordCityAccess(req, res, ticket.cityId);
+    if (!hasAccess) return;
 
     const updates: Record<string, any> = { updatedAt: new Date() };
     if (adminNote) updates.adminNote = adminNote;
