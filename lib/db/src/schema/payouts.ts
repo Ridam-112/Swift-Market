@@ -5,6 +5,7 @@ export const payouts = pgTable("payouts", {
   vendorId: text("vendor_id").notNull(),
   vendorName: text("vendor_name").notNull().default(""),
   shopId: text("shop_id").notNull(),
+  cityId: text("city_id"),
   amount: doublePrecision("amount").notNull().default(0),
   orderTotal: doublePrecision("order_total").notNull().default(0),
   commissionAmount: doublePrecision("commission_amount").notNull().default(0),

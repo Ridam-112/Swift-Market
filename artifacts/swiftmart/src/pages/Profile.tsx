@@ -11,7 +11,7 @@ import { AddressCard } from "@/components/AddressCard";
 import { AddressForm } from "@/components/AddressForm";
 import { PincodeSelector } from "@/components/PincodeSelector";
 import { toast } from "sonner";
-import { LogOut, MapPin, Store, Clock, XCircle, Shield, HelpCircle, ChevronDown, ChevronUp, Send, Bike } from "lucide-react";
+import { LogOut, MapPin, Store, Clock, XCircle, Shield, HelpCircle, ChevronDown, ChevronUp, Send, Bike, Briefcase } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
@@ -24,7 +24,8 @@ const SUPPORTED_PINCODES = [
 import { SEO } from "@/components/SEO";
 
 export default function Profile() {
-  const { user, logout, updateUser, addAddress, deleteAddress, updateAddress, setRole, role, isAdmin } = useAuth();
+  const { user, logout, updateUser, addAddress, deleteAddress, updateAddress, setRole, role, userRole, isAdmin } = useAuth();
+  const isManager = userRole === "city_manager" || userRole === "super_admin";
   const [, setLocation] = useLocation();
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
@@ -305,6 +306,16 @@ export default function Profile() {
           <Link href="/admin">
             <Button variant="outline" className="w-full rounded-2xl h-14 font-bold text-lg shadow-none neu-inset bg-background text-foreground border-none">
               <Shield className="w-5 h-5 mr-2 text-primary" /> Admin Panel
+            </Button>
+          </Link>
+        </section>
+      )}
+
+      {isManager && (
+        <section>
+          <Link href="/manager-panel">
+            <Button variant="outline" className="w-full rounded-2xl h-14 font-bold text-lg shadow-none neu-inset bg-background text-foreground border-none">
+              <Briefcase className="w-5 h-5 mr-2 text-primary" /> Manager Panel
             </Button>
           </Link>
         </section>

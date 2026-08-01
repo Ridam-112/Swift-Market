@@ -24,6 +24,7 @@ import homepageSectionsRouter from "./homepage-sections.js";
 import servicePincodesRouter from "./servicePincodes.js";
 import bucketsRouter from "./buckets.js";
 import maintenanceBypassRouter from "./maintenanceBypass.js";
+import managerRouter from "./manager.js";
 
 const router = Router();
 
@@ -52,5 +53,6 @@ router.use("/homepage-sections", homepageSectionsRouter);
 router.use("/service-pincodes", servicePincodesRouter);
 router.use("/buckets", bucketsRouter);
 router.use("/maintenance-bypass", maintenanceBypassRouter);
+router.use("/manager", managerRouter);
 
 export default router;

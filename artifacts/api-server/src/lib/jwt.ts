@@ -19,7 +19,7 @@ const REFRESH_EXPIRY = "3650d"; // 10 years — never auto-logout users
 export interface JwtPayload {
   userId: string;
   phone: string;
-  role: "customer" | "vendor" | "delivery_partner" | "admin" | "super_admin";
+  role: "customer" | "vendor" | "delivery_partner" | "admin" | "super_admin" | "city_manager";
   tokenVersion: number;
 }
 

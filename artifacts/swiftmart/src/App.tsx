@@ -69,6 +69,7 @@ const VendorRegister     = lazy(() => import("@/pages/VendorRegister"));
 const VendorStatus       = lazy(() => import("@/pages/VendorStatus"));
 
 const Admin            = lazy(() => import("@/pages/Admin"));
+const ManagerPanel     = lazy(() => import("@/pages/ManagerPanel"));
 const DeliveryDashboard = lazy(() => import("@/pages/DeliveryDashboard"));
 const AllProducts     = lazy(() => import("@/pages/AllProducts"));
 const SectionProducts = lazy(() => import("@/pages/SectionProducts"));
@@ -411,6 +412,14 @@ function Router() {
           <AdminLayout>
             <Suspense fallback={<PageLoader />}>
               <DeliveryGuard><DeliveryDashboard /></DeliveryGuard>
+            </Suspense>
+          </AdminLayout>
+        </Route>
+
+        <Route path="/manager-panel">
+          <AdminLayout>
+            <Suspense fallback={<PageLoader />}>
+              <ManagerPanel />
             </Suspense>
           </AdminLayout>
         </Route>

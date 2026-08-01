@@ -3,6 +3,7 @@ import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
 export const supportTickets = pgTable("support_tickets", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").notNull(),
+  cityId: text("city_id"),
   userPhone: text("user_phone").notNull().default(""),
   userName: text("user_name").notNull().default(""),
   category: text("category").notNull().default("general"),

@@ -24,3 +24,7 @@ export * from "./buckets";
 // Routing tables — live in DATABASE1 only, never replicated to shards
 export * from "./usersMapping";
 export * from "./shopsMapping";
+
+export * from "./cities";
+export * from "./managerCities";
+export * from "./managerActivityLogs";

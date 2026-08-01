@@ -17,6 +17,7 @@ export const users = pgTable("users", {
   status: text("status").notNull().default("active"),
   vendorStatus: text("vendor_status").notNull().default("none"),
   pincode: text("pincode"),
+  cityId: text("city_id"),
   addresses: jsonb("addresses").notNull().default([]),
   tokenVersion: integer("token_version").notNull().default(1),
   lastLoginAt: timestamp("last_login_at"),

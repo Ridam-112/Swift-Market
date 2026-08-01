@@ -3,7 +3,7 @@ import { User, Address, VendorApplication, AdminCustomer, PlatformOrder, Report 
 import { toast } from "sonner";
 import { api, setTokens, clearTokens } from "@/lib/api";
 
-export type UserRole = 'customer' | 'vendor' | 'admin' | 'super_admin';
+export type UserRole = 'customer' | 'vendor' | 'admin' | 'super_admin' | 'city_manager';
 
 interface AuthContextType {
   user: User | null;

@@ -6,6 +6,7 @@ export const deliveryPartners = pgTable("delivery_partners", {
   name: text("name").notNull(),
   phone: text("phone").notNull().unique(),
   userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+  cityId: text("city_id"),
   vehicle: text("vehicle"),
   isAvailable: boolean("is_available").notNull().default(true),
   status: text("status").notNull().default("active"),

@@ -7,6 +7,7 @@ export const orders = pgTable("orders", {
   customerPhone: text("customer_phone").notNull().default(""),
   shopId: text("shop_id").notNull(),
   shopName: text("shop_name").notNull().default(""),
+  cityId: text("city_id"),
   items: jsonb("items").notNull().default([]),
   subtotal: doublePrecision("subtotal").notNull().default(0),
   deliveryCharge: doublePrecision("delivery_charge").notNull().default(0),

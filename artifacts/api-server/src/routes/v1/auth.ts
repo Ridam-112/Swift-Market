@@ -59,7 +59,7 @@ function issueTokens(u: typeof users.$inferSelect) {
   const payload = {
     userId: u.id,
     phone: u.phone ?? "",
-    role: u.role as "customer" | "vendor" | "admin" | "super_admin",
+    role: u.role as "customer" | "vendor" | "admin" | "super_admin" | "city_manager",
     tokenVersion: u.tokenVersion ?? 1,
   };
   return {

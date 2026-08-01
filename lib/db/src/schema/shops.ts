@@ -8,6 +8,7 @@ export const shops = pgTable("shops", {
   phone: text("phone").notNull(),
   ownerId: text("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   address: jsonb("address").notNull().default({}),
+  cityId: text("city_id"),
   shopType: text("shop_type"),
   category: text("category"),
   subcategory: text("subcategory"),

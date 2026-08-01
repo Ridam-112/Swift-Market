@@ -3,6 +3,7 @@ import { pgTable, text, timestamp, boolean, doublePrecision, integer } from "dri
 export const coupons = pgTable("coupons", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   code: text("code").notNull().unique(),
+  cityId: text("city_id"),
   type: text("type").notNull().default("percentage"),
   value: doublePrecision("value").notNull().default(0),
   minimumOrder: doublePrecision("minimum_order").notNull().default(0),
