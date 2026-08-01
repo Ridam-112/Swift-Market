@@ -2,17 +2,26 @@ import { db, admins, users } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 
-const SUPER_ADMIN_PHONES = (process.env["SUPER_ADMIN_PHONES"] ?? "6296118949,7602584238")
-  .split(",")
-  .map((p) => p.trim())
-  .filter(Boolean);
+// Founder accounts that are ALWAYS super_admin (cannot be downgraded by any operation)
+const HARDCODED_SUPER_ADMIN_PHONES = ["6296118949"];
+const HARDCODED_SUPER_ADMIN_EMAILS = ["thrid5564@gmail.com"];
 
-export const SUPER_ADMIN_EMAIL_SET = new Set(
-  (process.env["SUPER_ADMIN_EMAILS"] ?? "")
+const SUPER_ADMIN_PHONES = [
+  ...new Set([
+    ...HARDCODED_SUPER_ADMIN_PHONES,
+    ...(process.env["SUPER_ADMIN_PHONES"] ?? "6296118949,7602584238")
+      .split(",").map((p) => p.trim()).filter(Boolean),
+  ])
+];
+
+export const SUPER_ADMIN_EMAIL_SET = new Set([
+  ...HARDCODED_SUPER_ADMIN_EMAILS,
+  ...(process.env["SUPER_ADMIN_EMAILS"] ?? "thrid5564@gmail.com")
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean),
-);
+]);
+
 
 export function isSuperAdminEmail(email: string): boolean {
   return SUPER_ADMIN_EMAIL_SET.has(email.trim().toLowerCase());

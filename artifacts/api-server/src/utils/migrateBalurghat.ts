@@ -1,6 +1,10 @@
-import { db, users, shops, orders, deliveryPartners, payouts, coupons, supportTickets, cities } from "@workspace/db";
-import { isNull } from "drizzle-orm";
+import { db, users, shops, orders, deliveryPartners, payouts, coupons, supportTickets, cities, managerCities } from "@workspace/db";
+import { isNull, eq } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
+
+// Founder phone & email — always get Balurghat manager assignment auto-synced
+const FOUNDER_PHONES = ["6296118949"];
+const FOUNDER_EMAILS = ["thrid5564@gmail.com"];
 
 export async function migrateDataToBalurghat(): Promise<void> {
   logger.info("[migration] Starting Balurghat data migration check...");
@@ -12,7 +16,7 @@ export async function migrateDataToBalurghat(): Promise<void> {
       isActive: true
     }).onConflictDoNothing();
 
-    // 2. Migrate users
+    // 2. Migrate users (null cityId → balurghat)
     const usersRes = await db.update(users).set({ cityId: "balurghat" }).where(isNull(users.cityId)).returning();
     if (usersRes.length > 0) logger.info({ count: usersRes.length }, "[migration] Migrated users to Balurghat");
 
@@ -39,6 +43,25 @@ export async function migrateDataToBalurghat(): Promise<void> {
     // 8. Migrate payouts
     const payoutsRes = await db.update(payouts).set({ cityId: "balurghat" }).where(isNull(payouts.cityId)).returning();
     if (payoutsRes.length > 0) logger.info({ count: payoutsRes.length }, "[migration] Migrated payouts to Balurghat");
+
+    // 9. Auto-assign founder / super_admin accounts to Balurghat in managerCities.
+    //    This ensures the Manager Panel shows Balurghat data immediately — no manual
+    //    city assignment needed from the Admin Panel.
+    const superAdmins = await db.select().from(users).where(eq(users.role, "super_admin"));
+
+    for (const admin of superAdmins) {
+      const isFounder =
+        FOUNDER_PHONES.includes(admin.phone ?? "") ||
+        FOUNDER_EMAILS.includes((admin.email ?? "").toLowerCase()) ||
+        admin.role === "super_admin";
+
+      if (isFounder) {
+        await db.insert(managerCities)
+          .values({ managerId: admin.id, cityId: "balurghat" })
+          .onConflictDoNothing();
+        logger.info({ userId: admin.id, phone: admin.phone }, "[migration] Auto-assigned super_admin to Balurghat manager panel");
+      }
+    }
 
     logger.info("[migration] Balurghat data migration check completed successfully.");
   } catch (err: any) {

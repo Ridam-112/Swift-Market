@@ -225,8 +225,11 @@ router.post("/managers", authenticate, SA, async (req: AuthRequest, res: Respons
     
     let managerId: string;
     if (existing) {
-      // Elevate existing user to city_manager
-      await db.update(users).set({ role: "city_manager", updatedAt: new Date() }).where(eq(users.id, existing.id));
+      // IMPORTANT: Never downgrade a super_admin — they already have all access.
+      // Just assign cities to them so they can also use the Manager Panel.
+      if (existing.role !== "super_admin") {
+        await db.update(users).set({ role: "city_manager", updatedAt: new Date() }).where(eq(users.id, existing.id));
+      }
       managerId = existing.id;
     } else {
       // Create new user with city_manager role
@@ -240,11 +243,11 @@ router.post("/managers", authenticate, SA, async (req: AuthRequest, res: Respons
       managerId = newUser!.id;
     }
     
-    // Assign cities
+    // Assign cities (on conflict do nothing for existing assignments)
     if (cityIds && cityIds.length > 0) {
       await db.insert(managerCities).values(
         cityIds.map(cityId => ({ managerId, cityId }))
-      );
+      ).onConflictDoNothing();
     }
     
     res.status(201).json({ success: true, managerId });
@@ -283,10 +286,17 @@ router.patch("/managers/:id", authenticate, SA, async (req: AuthRequest, res: Re
 router.delete("/managers/:id", authenticate, SA, async (req: AuthRequest, res: Response): Promise<void> => {
   const managerId = req.params["id"] as string;
   try {
-    // Reset role to customer and remove city assignments
-    await db.update(users).set({ role: "customer", updatedAt: new Date() }).where(eq(users.id, managerId));
+    // Never demote a super_admin — they always keep their role
+    const [mgr] = await db.select().from(users).where(eq(users.id, managerId)).limit(1);
+    if (!mgr) {
+      res.status(404).json({ success: false, message: "Manager not found" });
+      return;
+    }
+    if (mgr.role !== "super_admin") {
+      await db.update(users).set({ role: "customer", updatedAt: new Date() }).where(eq(users.id, managerId));
+    }
     await db.delete(managerCities).where(eq(managerCities.managerId, managerId));
-    res.json({ success: true, message: "Manager removed successfully" });
+    res.json({ success: true, message: mgr.role === "super_admin" ? "City assignments removed (super admin role preserved)" : "Manager removed successfully" });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
