@@ -80,6 +80,15 @@ function validateEnv(): void {
   }
 }
 
+import { execSync } from "child_process";
+try {
+  logger.info("[startup] Running database migrations push...");
+  execSync("pnpm --filter @workspace/db run push", { stdio: "inherit" });
+  logger.info("[startup] Database migrations applied successfully ✅");
+} catch (err: any) {
+  logger.error({ err: err.message }, "[startup] Database migration push failed (non-fatal) ⚠️");
+}
+
 validateEnv();
 connectRedis();
 

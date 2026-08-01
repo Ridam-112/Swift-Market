@@ -27,6 +27,9 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+echo "Applying database migrations..."
+pnpm --filter @workspace/db run push
+
 echo "Starting API server on port 8080..."
 PORT=8080 node --enable-source-maps artifacts/api-server/dist/index.mjs &
 API_PID=$!
