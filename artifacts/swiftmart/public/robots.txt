@@ -1,7 +1,7 @@
-User-agent: *
-Allow: /
+# SwiftMart robots.txt
+# Googlebot and all crawlers: allow everything except private/account routes
 
-# Private / account-only routes — no indexing needed
+User-agent: *
 Disallow: /auth
 Disallow: /google-callback
 Disallow: /complete-profile
@@ -15,11 +15,46 @@ Disallow: /vendor-register
 Disallow: /vendor-status
 Disallow: /vendor/
 Disallow: /admin
+Disallow: /manager-panel
 Disallow: /delivery-dashboard
 Disallow: /delivery/
 Disallow: /delete-account
 
-# AI search crawlers — explicitly welcomed for generative engine indexing
+# Explicitly allow all public pages for Googlebot
+User-agent: Googlebot
+Allow: /
+Disallow: /auth
+Disallow: /google-callback
+Disallow: /complete-profile
+Disallow: /cart
+Disallow: /checkout
+Disallow: /order/
+Disallow: /orders
+Disallow: /profile
+Disallow: /notifications
+Disallow: /vendor-register
+Disallow: /vendor-status
+Disallow: /vendor/
+Disallow: /admin
+Disallow: /manager-panel
+Disallow: /delivery-dashboard
+Disallow: /delivery/
+Disallow: /delete-account
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Googlebot-Video
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# Bing
+User-agent: Bingbot
+Allow: /
+
+# AI crawlers — welcomed for generative engine indexing
 User-agent: GPTBot
 Allow: /
 
@@ -36,12 +71,6 @@ User-agent: ClaudeBot
 Allow: /
 
 User-agent: PerplexityBot
-Allow: /
-
-User-agent: Google-Extended
-Allow: /
-
-User-agent: Bingbot
 Allow: /
 
 User-agent: cohere-ai
@@ -71,12 +100,7 @@ Allow: /
 User-agent: Diffbot
 Allow: /
 
-User-agent: Googlebot
-Allow: /
-
-User-agent: Googlebot-Image
-Allow: /
-
+# Social sharing crawlers
 User-agent: facebookexternalhit
 Allow: /
 
