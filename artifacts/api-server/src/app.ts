@@ -289,36 +289,14 @@ app.use("/api", globalApiLimiter, router);
 if (process.env.NODE_ENV === "production") {
   const frontendDist = path.join(__dirname, "..", "..", "swiftmart", "dist", "public");
 
-  // Explicit robots.txt handler — served BEFORE express.static to prevent HTML SPA fallbacks
+  // robots.txt — served inline (no dependency on build artifact) so it's always fresh
+  // Explicit Allow: / as the first directive under User-agent: * is required for Google
+  // Search Console to recognise the homepage as crawlable.
+  const ROBOTS_TXT = `User-agent: *\nAllow: /\nDisallow: /auth\nDisallow: /google-callback\nDisallow: /complete-profile\nDisallow: /cart\nDisallow: /checkout\nDisallow: /order/\nDisallow: /orders\nDisallow: /profile\nDisallow: /notifications\nDisallow: /vendor-register\nDisallow: /vendor-status\nDisallow: /vendor/\nDisallow: /admin\nDisallow: /manager-panel\nDisallow: /delivery-dashboard\nDisallow: /delivery/\nDisallow: /delete-account\n\nSitemap: https://swiftmart.space/sitemap.xml\n`;
   app.get("/robots.txt", (_req: Request, res: Response) => {
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    // no-cache: Google must revalidate every time — prevents stale "blocked" results in Search Console
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    res.sendFile(path.join(frontendDist, "robots.txt"), (err) => {
-      if (err) {
-        res.send(`User-agent: *
-Allow: /
-Disallow: /auth
-Disallow: /google-callback
-Disallow: /complete-profile
-Disallow: /cart
-Disallow: /checkout
-Disallow: /order/
-Disallow: /orders
-Disallow: /profile
-Disallow: /notifications
-Disallow: /vendor-register
-Disallow: /vendor-status
-Disallow: /vendor/
-Disallow: /admin
-Disallow: /manager-panel
-Disallow: /delivery-dashboard
-Disallow: /delivery/
-Disallow: /delete-account
-
-Sitemap: https://swiftmart.space/sitemap.xml`);
-      }
-    });
+    res.send(ROBOTS_TXT);
   });
 
 
