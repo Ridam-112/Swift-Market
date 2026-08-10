@@ -2866,6 +2866,7 @@ interface ApiBanner {
   views: number;
   clicks: number;
   createdAt: string;
+  accentColor?: string;
 }
 
 interface BannerForm {
@@ -2877,27 +2878,36 @@ interface BannerForm {
   redirectValue: string;
   isActive: boolean;
   displayOrder: number;
+  accentColor: string;
 }
 
 const defaultBannerForm: BannerForm = {
   imageUrl: "", title: "", subtitle: "", buttonText: "",
-  redirectType: "internal", redirectValue: "", isActive: true, displayOrder: 0,
+  redirectType: "category", redirectValue: "", isActive: true, displayOrder: 0,
+  accentColor: "#FFFFFF",
+};
+
+const BANNER_LOCATIONS = [
+  { value: "swiftmart", label: "SwiftMart Home (180px, ~16:9/2:1)" },
+  { value: "food", label: "Cafe & Food (160px, ~2.2:1)" },
+  { value: "rakhi", label: "Rakhi Festive (180px)" },
+  { value: "super", label: "Super Store (180px)" },
+  { value: "category", label: "Categories Top Promo (140px)" },
+];
+
+const locationHints: Record<string, string> = {
+  swiftmart: "Aspect ratio: ~16:9 or 2:1 ratio (Height 180px)",
+  food: "Aspect ratio: ~2.2:1 ratio (Height 160px)",
+  rakhi: "Target height: 180px",
+  super: "Target height: 180px",
+  category: "Target height: 140px",
 };
 
 const redirectTypeLabels: Record<string, string> = {
   category: "Category",
-  shop: "Shop",
-  product: "Product",
-  internal: "Internal Page",
-  external: "External URL",
+  shop: "Seller Shop",
 };
 
-const redirectValuePlaceholders: Record<string, string> = {
-  shop: "Shop ID (e.g. from /shop/...)",
-  product: "Product ID (e.g. from /product/...)",
-  internal: "/offers, /shops, /categories",
-  external: "https://instagram.com/yourpage",
-};
 
 function HeroBannersTab() {
   const [banners, setBanners] = useState<ApiBanner[]>([]);
@@ -2956,6 +2966,7 @@ function HeroBannersTab() {
       redirectValue: b.redirectValue,
       isActive: b.isActive,
       displayOrder: b.displayOrder,
+      accentColor: b.accentColor ?? "#FFFFFF",
     });
     setShowForm(true);
   };
@@ -3078,25 +3089,46 @@ function HeroBannersTab() {
                 />
               </label>
             )}
+            {form.title && (
+              <p className="text-xs text-primary mt-1.5 font-medium">
+                💡 {locationHints[form.title] ?? "Recommended: high-quality landscape image"}
+              </p>
+            )}
           </div>
 
-          {/* Title / Subtitle / Button Text */}
+          {/* Title (Dropdown) / Subtitle / Button Text */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { key: "title" as const, label: "Title", placeholder: "Bold headline text" },
-              { key: "subtitle" as const, label: "Subtitle", placeholder: "Supporting description" },
-              { key: "buttonText" as const, label: "Button Text", placeholder: "Shop Now" },
-            ].map(({ key, label, placeholder }) => (
-              <div key={key}>
-                <label className="text-sm font-medium block mb-1">{label}</label>
-                <Input
-                  value={form[key]}
-                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                  placeholder={placeholder}
-                  className="bg-background neu-inset border-none"
-                />
-              </div>
-            ))}
+            <div>
+              <label className="text-sm font-medium block mb-1">Banner Location / Target Page <span className="text-destructive">*</span></label>
+              <select
+                value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer"
+              >
+                <option value="">Select location…</option>
+                {BANNER_LOCATIONS.map(loc => (
+                  <option key={loc.value} value={loc.value}>{loc.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1">Subtitle / Promo Text</label>
+              <Input
+                value={form.subtitle}
+                onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))}
+                placeholder="Supporting description text"
+                className="bg-background neu-inset border-none"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1">Button Text</label>
+              <Input
+                value={form.buttonText}
+                onChange={e => setForm(f => ({ ...f, buttonText: e.target.value }))}
+                placeholder="e.g. Shop Now"
+                className="bg-background neu-inset border-none"
+              />
+            </div>
           </div>
 
           {/* Redirect Type + Value */}
@@ -3108,40 +3140,27 @@ function HeroBannersTab() {
                 onChange={e => setForm(f => ({ ...f, redirectType: e.target.value as BannerForm["redirectType"], redirectValue: "" }))}
                 className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer"
               >
-                {(["category", "shop", "product", "internal", "external"] as const).map(t => (
+                {(["category", "shop"] as const).map(t => (
                   <option key={t} value={t}>{redirectTypeLabels[t]}</option>
                 ))}
               </select>
             </div>
             <div>
               <label className="text-sm font-medium block mb-1">
-                {redirectTypeLabels[form.redirectType]} <span className="text-destructive">*</span>
+                Redirect Value (Category Slug or Shop UUID) <span className="text-destructive">*</span>
               </label>
-              {form.redirectType === "category" ? (
-                <select
-                  value={form.redirectValue}
-                  onChange={e => setForm(f => ({ ...f, redirectValue: e.target.value }))}
-                  className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer"
-                >
-                  <option value="">Select a category…</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
-                  ))}
-                </select>
-              ) : (
-                <Input
-                  value={form.redirectValue}
-                  onChange={e => setForm(f => ({ ...f, redirectValue: e.target.value }))}
-                  placeholder={redirectValuePlaceholders[form.redirectType]}
-                  className="bg-background neu-inset border-none"
-                />
-              )}
+              <Input
+                value={form.redirectValue}
+                onChange={e => setForm(f => ({ ...f, redirectValue: e.target.value }))}
+                placeholder={form.redirectType === "category" ? "e.g. fruits-vegetables" : "Enter Shop UUID (e.g. dfd4bed1-...)"}
+                className="bg-background neu-inset border-none"
+              />
             </div>
           </div>
 
-          {/* Display Order + Active */}
-          <div className="flex flex-wrap items-end gap-5">
-            <div className="w-36">
+          {/* Display Order + Active + Accent Color */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-end">
+            <div>
               <label className="text-sm font-medium block mb-1">Display Order</label>
               <Input
                 type="number"
@@ -3151,7 +3170,24 @@ function HeroBannersTab() {
                 className="bg-background neu-inset border-none"
               />
             </div>
-            <div className="flex items-center gap-3 pb-1">
+            <div>
+              <label className="text-sm font-medium block mb-1">Accent Color (Fallback Background)</label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="color"
+                  value={form.accentColor || "#FFFFFF"}
+                  onChange={e => setForm(f => ({ ...f, accentColor: e.target.value }))}
+                  className="w-10 h-10 border border-border rounded-xl cursor-pointer p-0.5"
+                />
+                <Input
+                  value={form.accentColor}
+                  onChange={e => setForm(f => ({ ...f, accentColor: e.target.value }))}
+                  placeholder="#FFFFFF"
+                  className="bg-background neu-inset border-none"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3 pb-2">
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, isActive: !f.isActive }))}

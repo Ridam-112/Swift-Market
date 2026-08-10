@@ -62,6 +62,7 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
     buttonText: body["buttonText"] ? String(body["buttonText"]) : undefined,
     redirectType: body["redirectType"] ? String(body["redirectType"]) : undefined,
     redirectValue: body["redirectValue"] ? String(body["redirectValue"]) : undefined,
+    accentColor: body["accentColor"] ? String(body["accentColor"]) : undefined,
     isActive: body["isActive"] != null ? Boolean(body["isActive"]) : true,
     displayOrder: body["displayOrder"] != null ? Number(body["displayOrder"]) : 0,
   }).returning();
@@ -108,17 +109,28 @@ router.post("/:id/click", async (req: Request, res: Response): Promise<void> => 
 // PATCH /api/hero-banners/:id — admin, update banner
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body as Record<string, unknown>;
-  // M2: fetch old imageUrl before update so we can clean up replaced Cloudinary asset
   const [oldBanner] = await db.select({ imageUrl: heroBanners.imageUrl })
     .from(heroBanners).where(eq(heroBanners.id, req.params["id"] as string)).limit(1);
 
+  // Sanitise properties
+  const updates: Record<string, any> = { updatedAt: new Date() };
+  if ("imageUrl" in body) updates.imageUrl = String(body["imageUrl"]);
+  if ("title" in body) updates.title = body["title"] ? String(body["title"]) : null;
+  if ("subtitle" in body) updates.subtitle = body["subtitle"] ? String(body["subtitle"]) : null;
+  if ("buttonText" in body) updates.buttonText = body["buttonText"] ? String(body["buttonText"]) : null;
+  if ("redirectType" in body) updates.redirectType = body["redirectType"] ? String(body["redirectType"]) : null;
+  if ("redirectValue" in body) updates.redirectValue = body["redirectValue"] ? String(body["redirectValue"]) : null;
+  if ("accentColor" in body) updates.accentColor = body["accentColor"] ? String(body["accentColor"]) : null;
+  if ("isActive" in body) updates.isActive = Boolean(body["isActive"]);
+  if ("displayOrder" in body) updates.displayOrder = Number(body["displayOrder"]);
+
   const [banner] = await db.update(heroBanners)
-    .set(body)
+    .set(updates)
     .where(eq(heroBanners.id, req.params["id"] as string))
     .returning();
   if (!banner) { res.status(404).json({ success: false, message: "Banner not found" }); return; }
 
-  // Delete old Cloudinary image if imageUrl was replaced
+  // Delete old Cloudinary/ImageKit image if imageUrl was replaced
   if (oldBanner?.imageUrl && "imageUrl" in body && body["imageUrl"] !== oldBanner.imageUrl) {
     void deleteFromImageKit(oldBanner.imageUrl);
   }

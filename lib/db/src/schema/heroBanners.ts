@@ -8,6 +8,7 @@ export const heroBanners = pgTable("hero_banners", {
   buttonText: text("button_text"),
   redirectType: text("redirect_type"),
   redirectValue: text("redirect_value"),
+  accentColor: text("accent_color"),
   isActive: boolean("is_active").notNull().default(true),
   displayOrder: integer("display_order").notNull().default(0),
   views: integer("views").notNull().default(0),
