@@ -29,11 +29,11 @@ router.get("/all", authenticate, A, async (_req: Request, res: Response): Promis
 });
 
 router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { name, shopTypes: shopTypesList, commissionRate, packagingCharge, emoji, color, subcategories } = req.body as {
-    name: string; shopTypes?: string[]; commissionRate?: number; packagingCharge?: number; emoji?: string; color?: string; subcategories?: string[];
+  const { name, shopTypes: shopTypesList, commissionRate, packagingCharge, emoji, color, subcategories, parentTab, group } = req.body as {
+    name: string; shopTypes?: string[]; commissionRate?: number; packagingCharge?: number; emoji?: string; color?: string; subcategories?: string[]; parentTab?: string; group?: string;
   };
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  const [cat] = await db.insert(categories).values({ name, slug, shopTypes: shopTypesList ?? [], commissionRate, packagingCharge: packagingCharge != null ? Math.round(packagingCharge) : undefined, emoji, color, subcategories: subcategories ?? [] }).returning();
+  const [cat] = await db.insert(categories).values({ name, slug, shopTypes: shopTypesList ?? [], commissionRate, packagingCharge: packagingCharge != null ? Math.round(packagingCharge) : undefined, emoji, color, subcategories: subcategories ?? [], parentTab, group }).returning();
   void invalidateCategoryCache();
   res.status(201).json({ success: true, category: mi(cat) });
 });
@@ -49,6 +49,8 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
   if (body["color"] !== undefined) update["color"] = body["color"] ? String(body["color"]) : null;
   if (body["subcategories"] !== undefined) update["subcategories"] = Array.isArray(body["subcategories"]) ? body["subcategories"] : [];
   if (body["isActive"] !== undefined) update["isActive"] = Boolean(body["isActive"]);
+  if (body["parentTab"] !== undefined) update["parentTab"] = body["parentTab"] ? String(body["parentTab"]) : null;
+  if (body["group"] !== undefined) update["group"] = body["group"] ? String(body["group"]) : null;
   const [cat] = await db.update(categories).set(update).where(eq(categories.id, req.params["id"] as string)).returning();
   if (!cat) { res.status(404).json({ success: false, message: "Not found" }); return; }
   void invalidateCategoryCache();

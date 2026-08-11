@@ -5446,6 +5446,8 @@ interface ApiCategory {
   packagingCharge?: number | null;
   emoji?: string;
   color?: string;
+  parentTab?: string;
+  group?: string;
   createdAt: string;
 }
 
@@ -5462,7 +5464,7 @@ function CategoriesTab() {
   const [editPackagingCharge, setEditPackagingCharge] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", slug: "", description: "", commissionRate: "5", packagingCharge: "", emoji: "", color: "#f59e0b" });
+  const [createForm, setCreateForm] = useState({ name: "", slug: "", description: "", commissionRate: "5", packagingCharge: "", emoji: "", color: "#f59e0b", parentTab: "swiftmart", group: "Grocery & Kitchen" });
   const [creating, setCreating] = useState(false);
   const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all");
 
@@ -5549,9 +5551,11 @@ function CategoriesTab() {
         isActive: true,
         emoji: createForm.emoji.trim() || "🛍️",
         color: createForm.color || "#f59e0b",
+        parentTab: createForm.parentTab.trim() || "swiftmart",
+        group: createForm.group.trim() || "Grocery & Kitchen",
       });
       setCats(prev => [data.category, ...prev]);
-      setCreateForm({ name: "", slug: "", description: "", commissionRate: "5", packagingCharge: "", emoji: "", color: "#f59e0b" });
+      setCreateForm({ name: "", slug: "", description: "", commissionRate: "5", packagingCharge: "", emoji: "", color: "#f59e0b", parentTab: "swiftmart", group: "Grocery & Kitchen" });
       setShowCreate(false);
       toast.success("Category created");
     } catch {
@@ -5631,6 +5635,24 @@ function CategoriesTab() {
                 placeholder="Optional"
                 className="h-9 neu-inset border-none bg-background" />
             </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Parent Tab</label>
+              <select value={createForm.parentTab}
+                onChange={e => setCreateForm(f => ({ ...f, parentTab: e.target.value }))}
+                className="w-full h-9 px-3 rounded-lg bg-background neu-inset border-none text-xs text-foreground appearance-none cursor-pointer"
+              >
+                <option value="swiftmart">SwiftMart Home (swiftmart)</option>
+                <option value="food">Cafe & Food (food)</option>
+                <option value="super">Super Store (super)</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Category Group</label>
+              <Input value={createForm.group}
+                onChange={e => setCreateForm(f => ({ ...f, group: e.target.value }))}
+                placeholder="e.g. Grocery & Kitchen"
+                className="h-9 neu-inset border-none bg-background" />
+            </div>
           </div>
           <div className="flex gap-2">
             <Button onClick={handleCreate} disabled={creating} className="rounded-xl shadow-none">
@@ -5677,6 +5699,18 @@ function CategoriesTab() {
                 {cat.description && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">{cat.description}</p>
                 )}
+                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                  {cat.parentTab && (
+                    <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                      Tab: {cat.parentTab}
+                    </span>
+                  )}
+                  {cat.group && (
+                    <span className="text-[10px] bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded-full font-medium">
+                      Group: {cat.group}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap shrink-0">

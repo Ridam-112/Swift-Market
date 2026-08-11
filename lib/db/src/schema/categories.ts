@@ -10,6 +10,8 @@ export const categories = pgTable("categories", {
   packagingCharge: integer("packaging_charge"),
   emoji: text("emoji"),
   color: text("color"),
+  parentTab: text("parent_tab"),
+  group: text("group"),
   subcategories: jsonb("subcategories").notNull().default([]),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
