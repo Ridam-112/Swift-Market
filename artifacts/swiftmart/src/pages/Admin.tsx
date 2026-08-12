@@ -133,7 +133,7 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign';
 
 import { SEO } from "@/components/SEO";
 import FleetMapTab from "@/components/FleetMapTab";
@@ -228,6 +228,7 @@ export default function Admin() {
               {activeSection === 'delivery-partners' && <DeliveryPartnersTab />}
               {activeSection === 'fleet-map' && <FleetMapTab />}
               {activeSection === 'managers' && <ManagersTab />}
+              {activeSection === 'seasonal-campaign' && <SeasonalCampaignTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -278,6 +279,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
   { id: 'delivery-partners', label: 'Delivery Partners', icon: Truck },
   { id: 'fleet-map', label: 'Fleet Map', icon: MapPin },
   { id: 'managers', label: 'Managers', icon: Shield },
+  { id: 'seasonal-campaign', label: 'Seasonal Campaign', icon: Flame },
   ];
 
   return (
@@ -9181,6 +9183,538 @@ function ManagersTab() {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+interface GridBlock {
+  title: string;
+  subtitle: string;
+  backgroundColor: string;
+  imageUrl: string;
+  targetCategorySlug: string;
+}
+
+interface CampaignConfig {
+  isActive: boolean;
+  tabName: string;
+  theme: {
+    backgroundColor: string;
+    textColor: string;
+    accentColor: string;
+  };
+  headerText: {
+    topText: string;
+    mainTitle: string;
+    subText: string;
+  };
+  gridBlocks: GridBlock[];
+}
+
+function SeasonalCampaignTab() {
+  const [config, setConfig] = useState<CampaignConfig | null>(null);
+  const [categoriesList, setCategoriesList] = useState<ApiCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Grid block form editing state
+  const [editingBlockIndex, setEditingBlockIndex] = useState<number | null>(null);
+  const [isAddingBlock, setIsAddingBlock] = useState(false);
+  const [blockForm, setBlockForm] = useState<GridBlock>({
+    title: "",
+    subtitle: "",
+    backgroundColor: "#FCE7F3",
+    imageUrl: "",
+    targetCategorySlug: ""
+  });
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [campRes, catRes] = await Promise.all([
+        api.get<{ success: boolean; campaign: CampaignConfig }>("/seasonal-campaign"),
+        api.get<{ success: boolean; categories: ApiCategory[] }>("/categories/all")
+      ]);
+      setConfig(campRes.campaign);
+      setCategoriesList(catRes.categories || []);
+    } catch {
+      toast.error("Failed to load campaign settings");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleSave = async (updatedConfig: CampaignConfig) => {
+    setSaving(true);
+    try {
+      const res = await api.post<{ success: boolean; campaign: CampaignConfig }>("/seasonal-campaign", updatedConfig);
+      setConfig(res.campaign);
+      toast.success("Seasonal store campaign configuration saved");
+    } catch {
+      toast.error("Failed to save campaign settings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBlockImageUpload = async (file: File) => {
+    setUploadingImage(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const { access } = api.getTokens();
+      const res = await fetch("/api/upload/banner-image", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${access ?? ""}` },
+        body: fd,
+      });
+      const data = await res.json() as { success: boolean; imageUrl: string };
+      if (data.success) {
+        setBlockForm(prev => ({ ...prev, imageUrl: data.imageUrl }));
+        toast.success("Grid block image uploaded");
+      } else {
+        toast.error("Upload failed");
+      }
+    } catch {
+      toast.error("Upload failed");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleAddOrUpdateBlock = () => {
+    if (!blockForm.title.trim()) { toast.error("Title is required"); return; }
+    if (!blockForm.imageUrl.trim()) { toast.error("Image is required"); return; }
+    if (!blockForm.targetCategorySlug) { toast.error("Please select a target category"); return; }
+    if (!config) return;
+
+    let updatedBlocks = [...config.gridBlocks];
+    if (editingBlockIndex !== null) {
+      updatedBlocks[editingBlockIndex] = blockForm;
+    } else {
+      updatedBlocks.push(blockForm);
+    }
+
+    const updated = { ...config, gridBlocks: updatedBlocks };
+    setConfig(updated);
+    handleSave(updated);
+
+    // Reset block form states
+    setIsAddingBlock(false);
+    setEditingBlockIndex(null);
+    setBlockForm({ title: "", subtitle: "", backgroundColor: "#FCE7F3", imageUrl: "", targetCategorySlug: "" });
+  };
+
+  const handleDeleteBlock = (index: number) => {
+    if (!config || !confirm("Delete this grid block?")) return;
+    const updatedBlocks = config.gridBlocks.filter((_, i) => i !== index);
+    const updated = { ...config, gridBlocks: updatedBlocks };
+    setConfig(updated);
+    handleSave(updated);
+  };
+
+  const handleMoveBlock = (index: number, direction: "up" | "down") => {
+    if (!config) return;
+    const blocks = [...config.gridBlocks];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= blocks.length) return;
+
+    // Swap
+    const temp = blocks[index];
+    blocks[index] = blocks[targetIndex];
+    blocks[targetIndex] = temp;
+
+    const updated = { ...config, gridBlocks: blocks };
+    setConfig(updated);
+    handleSave(updated);
+  };
+
+  if (loading || !config) {
+    return (
+      <div className="h-64 bg-card border border-border rounded-3xl animate-pulse flex items-center justify-center text-muted-foreground text-sm font-semibold">
+        Loading campaign manager...
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Seasonal Campaign Manager</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Build and deploy server-driven themed store pages instantly (e.g. Diwali, Durga Puja, Christmas) inside the app.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 bg-card px-4 py-2 rounded-2xl border border-border/40 shadow-sm">
+          <span className="text-xs font-semibold text-muted-foreground">Campaign Status:</span>
+          <button
+            onClick={() => handleSave({ ...config, isActive: !config.isActive })}
+            className={`text-xs font-bold px-3 py-1 rounded-xl transition-colors ${
+              config.isActive
+                ? "bg-green-500/10 text-green-600 hover:bg-green-500/20"
+                : "bg-red-500/10 text-red-500 hover:bg-red-500/20"
+            }`}
+          >
+            {config.isActive ? "● Live / Active" : "○ Inactive / Off"}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Settings Panel */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* General & Theme Settings */}
+          <div className="bg-card rounded-3xl border border-border/40 p-6 space-y-4 shadow-sm">
+            <h3 className="font-bold text-base text-foreground pb-2 border-b border-border/30">General & Theme</h3>
+            
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Navigation Tab Name</label>
+              <Input
+                value={config.tabName}
+                onChange={e => setConfig({ ...config, tabName: e.target.value })}
+                placeholder="e.g. Diwali Dhamaka"
+                className="h-10 neu-inset border-none bg-background text-sm"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 pt-2">
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-muted-foreground block">Background</label>
+                <div className="flex gap-1.5 items-center">
+                  <input
+                    type="color"
+                    value={config.theme.backgroundColor}
+                    onChange={e => setConfig({
+                      ...config,
+                      theme: { ...config.theme, backgroundColor: e.target.value }
+                    })}
+                    className="w-7 h-7 rounded-lg border-none bg-transparent cursor-pointer"
+                  />
+                  <span className="text-[10px] font-mono text-muted-foreground uppercase">{config.theme.backgroundColor}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-muted-foreground block">Text Title</label>
+                <div className="flex gap-1.5 items-center">
+                  <input
+                    type="color"
+                    value={config.theme.textColor}
+                    onChange={e => setConfig({
+                      ...config,
+                      theme: { ...config.theme, textColor: e.target.value }
+                    })}
+                    className="w-7 h-7 rounded-lg border-none bg-transparent cursor-pointer"
+                  />
+                  <span className="text-[10px] font-mono text-muted-foreground uppercase">{config.theme.textColor}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-muted-foreground block">Accent Color</label>
+                <div className="flex gap-1.5 items-center">
+                  <input
+                    type="color"
+                    value={config.theme.accentColor}
+                    onChange={e => setConfig({
+                      ...config,
+                      theme: { ...config.theme, accentColor: e.target.value }
+                    })}
+                    className="w-7 h-7 rounded-lg border-none bg-transparent cursor-pointer"
+                  />
+                  <span className="text-[10px] font-mono text-muted-foreground uppercase">{config.theme.accentColor}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Header Texts */}
+          <div className="bg-card rounded-3xl border border-border/40 p-6 space-y-4 shadow-sm">
+            <h3 className="font-bold text-base text-foreground pb-2 border-b border-border/30">Header Banner Texts</h3>
+            
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Kicker / Top Subtitle</label>
+              <Input
+                value={config.headerText.topText}
+                onChange={e => setConfig({
+                  ...config,
+                  headerText: { ...config.headerText, topText: e.target.value }
+                })}
+                placeholder="e.g. Celebrate"
+                className="h-10 neu-inset border-none bg-background text-sm"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Main Title</label>
+              <Input
+                value={config.headerText.mainTitle}
+                onChange={e => setConfig({
+                  ...config,
+                  headerText: { ...config.headerText, mainTitle: e.target.value }
+                })}
+                placeholder="e.g. Diwali Dhamaka"
+                className="h-10 neu-inset border-none bg-background text-sm"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Footer / Date Label</label>
+              <Input
+                value={config.headerText.subText}
+                onChange={e => setConfig({
+                  ...config,
+                  headerText: { ...config.headerText, subText: e.target.value }
+                })}
+                placeholder="e.g. 1st November onwards"
+                className="h-10 neu-inset border-none bg-background text-sm"
+              />
+            </div>
+
+            <Button
+              onClick={() => handleSave(config)}
+              disabled={saving}
+              className="w-full rounded-xl bg-primary text-primary-foreground font-bold mt-2 shadow-none"
+            >
+              {saving ? "Saving configs..." : "Save Texts & Theme"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Grid Layout & Blocks list */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Add / Edit Block Modal style container */}
+          {(isAddingBlock || editingBlockIndex !== null) && (
+            <div className="bg-card rounded-3xl border border-primary/30 p-6 space-y-4 shadow-md transition-all duration-200">
+              <h3 className="font-bold text-base text-foreground pb-2 border-b border-border/30">
+                {editingBlockIndex !== null ? `Edit Grid Block #${editingBlockIndex + 1}` : "Add New Grid Block"}
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Card Title</label>
+                    <Input
+                      value={blockForm.title}
+                      onChange={e => setBlockForm({ ...blockForm, title: e.target.value })}
+                      placeholder="e.g. Sweets Box"
+                      className="h-10 neu-inset border-none bg-background text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Card Subtitle</label>
+                    <Input
+                      value={blockForm.subtitle}
+                      onChange={e => setBlockForm({ ...blockForm, subtitle: e.target.value })}
+                      placeholder="e.g. Up to 40% Off"
+                      className="h-10 neu-inset border-none bg-background text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Card Background Color</label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="color"
+                        value={blockForm.backgroundColor}
+                        onChange={e => setBlockForm({ ...blockForm, backgroundColor: e.target.value })}
+                        className="w-9 h-9 rounded-lg border-none bg-transparent cursor-pointer"
+                      />
+                      <Input
+                        value={blockForm.backgroundColor}
+                        onChange={e => setBlockForm({ ...blockForm, backgroundColor: e.target.value })}
+                        className="h-9 neu-inset border-none bg-background text-xs font-mono uppercase w-32"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Target Redirect Category</label>
+                    <select
+                      value={blockForm.targetCategorySlug}
+                      onChange={e => setBlockForm({ ...blockForm, targetCategorySlug: e.target.value })}
+                      className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer"
+                    >
+                      <option value="">Select a Category</option>
+                      {categoriesList.map(cat => (
+                        <option key={cat._id} value={cat.slug}>
+                          {cat.name} ({cat.slug})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Image</label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={blockForm.imageUrl}
+                        onChange={e => setBlockForm({ ...blockForm, imageUrl: e.target.value })}
+                        placeholder="https://example.com/banner.png"
+                        className="h-10 neu-inset border-none bg-background text-xs flex-1"
+                      />
+                      <div className="relative shrink-0">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) handleBlockImageUpload(file);
+                          }}
+                          className="hidden"
+                          id="campaign-block-image-upload"
+                          disabled={uploadingImage}
+                        />
+                        <Button
+                          asChild
+                          variant="outline"
+                          className="rounded-xl shadow-none h-10 px-4"
+                          disabled={uploadingImage}
+                        >
+                          <label htmlFor="campaign-block-image-upload" className="cursor-pointer flex items-center gap-1.5">
+                            {uploadingImage ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Upload"}
+                          </label>
+                        </Button>
+                      </div>
+                    </div>
+                    {blockForm.imageUrl && (
+                      <div className="mt-2 w-20 h-16 rounded-xl border border-border overflow-hidden relative">
+                        <img src={blockForm.imageUrl} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsAddingBlock(false);
+                    setEditingBlockIndex(null);
+                    setBlockForm({ title: "", subtitle: "", backgroundColor: "#FCE7F3", imageUrl: "", targetCategorySlug: "" });
+                  }}
+                  className="rounded-xl shadow-none"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAddOrUpdateBlock}
+                  className="rounded-xl bg-primary text-primary-foreground font-bold shadow-none"
+                >
+                  {editingBlockIndex !== null ? "Save Updates" : "Add Block"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Grid Blocks Ledger */}
+          <div className="bg-card rounded-3xl border border-border/40 p-6 space-y-4 shadow-sm">
+            <div className="flex justify-between items-center border-b border-border/30 pb-3">
+              <div>
+                <h3 className="font-bold text-base text-foreground">Category Cards Grid Blocks</h3>
+                <p className="text-[10px] text-muted-foreground">Arrange, reorder, and link cards dynamically on the campaign page.</p>
+              </div>
+              <Button
+                onClick={() => {
+                  setIsAddingBlock(true);
+                  setEditingBlockIndex(null);
+                  setBlockForm({ title: "", subtitle: "", backgroundColor: "#FCE7F3", imageUrl: "", targetCategorySlug: "" });
+                }}
+                disabled={isAddingBlock || editingBlockIndex !== null}
+                className="rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/95 flex items-center gap-1 h-9 shadow-none text-xs"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Block
+              </Button>
+            </div>
+
+            {config.gridBlocks.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-sm border border-dashed border-border/60 rounded-2xl">
+                No cards added to the grid yet. Click "Add Block" to start adding campaign banners.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {config.gridBlocks.map((block, idx) => (
+                  <div
+                    key={idx}
+                    className="border border-border/40 rounded-2xl p-4 flex gap-3 relative hover:shadow-sm transition-all duration-200"
+                    style={{ backgroundColor: block.backgroundColor ? `${block.backgroundColor}22` : "transparent" }}
+                  >
+                    <div className="w-16 h-16 rounded-xl border border-border overflow-hidden shrink-0 bg-muted">
+                      {block.imageUrl ? (
+                        <img src={block.imageUrl} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground font-mono">No Image</div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm text-foreground truncate leading-tight">{block.title}</div>
+                      <div className="text-xs text-muted-foreground truncate mt-0.5">{block.subtitle || "No subtitle"}</div>
+                      <div className="mt-2 flex items-center gap-2 flex-wrap">
+                        <Badge className="bg-primary/10 text-primary border-none text-[9px] font-bold">
+                          👉 {block.targetCategorySlug}
+                        </Badge>
+                        <Badge className="bg-muted text-muted-foreground border-none text-[8px] font-mono uppercase">
+                          BG: {block.backgroundColor}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Operations toolbar */}
+                    <div className="absolute top-2 right-2 flex items-center gap-1">
+                      <button
+                        onClick={() => handleMoveBlock(idx, "up")}
+                        disabled={idx === 0}
+                        className="p-1 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-30"
+                        title="Move Up"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleMoveBlock(idx, "down")}
+                        disabled={idx === config.gridBlocks.length - 1}
+                        className="p-1 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-30"
+                        title="Move Down"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingBlockIndex(idx);
+                          setIsAddingBlock(false);
+                          setBlockForm(block);
+                        }}
+                        className="p-1 rounded-lg text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                        title="Edit Block"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBlock(idx)}
+                        className="p-1 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
+                        title="Delete Block"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

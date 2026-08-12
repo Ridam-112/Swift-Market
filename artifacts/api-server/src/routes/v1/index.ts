@@ -25,6 +25,7 @@ import servicePincodesRouter from "./servicePincodes.js";
 import bucketsRouter from "./buckets.js";
 import maintenanceBypassRouter from "./maintenanceBypass.js";
 import managerRouter from "./manager.js";
+import seasonalCampaignRouter from "./seasonal-campaign.js";
 import { db, categories } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { miArr } from "../../utils/mapId.js";
@@ -88,5 +89,6 @@ router.use("/service-pincodes", servicePincodesRouter);
 router.use("/buckets", bucketsRouter);
 router.use("/maintenance-bypass", maintenanceBypassRouter);
 router.use("/manager", managerRouter);
+router.use("/seasonal-campaign", seasonalCampaignRouter);
 
 export default router;

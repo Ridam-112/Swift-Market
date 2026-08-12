@@ -28,3 +28,4 @@ export * from "./shopsMapping";
 export * from "./cities";
 export * from "./managerCities";
 export * from "./managerActivityLogs";
+export * from "./seasonalCampaign";
