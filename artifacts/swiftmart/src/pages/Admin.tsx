@@ -2487,6 +2487,10 @@ function AdminNotificationsTab() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [redirectType, setRedirectType] = useState<"none" | "product" | "category" | "shop">("none");
   const [redirectValue, setRedirectValue] = useState("");
+  const [showTimer, setShowTimer] = useState(false);
+  const [timerHours, setTimerHours] = useState("");
+  const [timerMinutes, setTimerMinutes] = useState("");
+  const [progress, setProgress] = useState("");
   const [sending, setSending] = useState(false);
   const [history, setHistory] = useState<BroadcastRecord[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -2557,6 +2561,28 @@ function AdminNotificationsTab() {
     if (!title.trim() || !message.trim()) { toast.error("Title and message are required"); return; }
     if (targetAudience === "specific" && !targetUserId.trim()) { toast.error("Please enter a User ID"); return; }
     if (redirectType !== "none" && !redirectValue.trim()) { toast.error("Please enter a Redirect Value (slug or ID)"); return; }
+    
+    let timerSecVal = 0;
+    if (showTimer) {
+      const hrs = parseInt(timerHours, 10) || 0;
+      const mins = parseInt(timerMinutes, 10) || 0;
+      timerSecVal = (hrs * 3600) + (mins * 60);
+      if (timerSecVal <= 0) {
+        toast.error("Please enter a valid timer duration greater than 0");
+        return;
+      }
+    }
+    
+    let progressVal = "";
+    if (progress.trim()) {
+      const p = parseInt(progress, 10);
+      if (isNaN(p) || p < 0 || p > 100) {
+        toast.error("Progress percentage must be between 0 and 100");
+        return;
+      }
+      progressVal = String(p);
+    }
+
     setSending(true);
     try {
       const res = await api.post<{ success: boolean; sentCount: number; pushSent: number; pushFailed: number }>("/notifications/send-custom", {
@@ -2567,6 +2593,9 @@ function AdminNotificationsTab() {
         targetUserId: targetAudience === "specific" ? targetUserId.trim() : undefined,
         redirectType,
         redirectValue: redirectType !== "none" ? redirectValue.trim() : undefined,
+        showTimer: showTimer ? "true" : "false",
+        timerSeconds: showTimer ? String(timerSecVal) : "0",
+        progress: progressVal || undefined,
       });
       toast.success(
         `Saved to ${res.sentCount} user${res.sentCount !== 1 ? "s" : ""}` +
@@ -2578,6 +2607,10 @@ function AdminNotificationsTab() {
       setImageUrl("");
       setRedirectType("none");
       setRedirectValue("");
+      setShowTimer(false);
+      setTimerHours("");
+      setTimerMinutes("");
+      setProgress("");
       fetchHistory();
       fetchDiagnostics();
     } catch (e: unknown) {
@@ -2901,6 +2934,71 @@ function AdminNotificationsTab() {
                 />
               </div>
             )}
+          </div>
+
+          {/* Countdown & Progress Styling */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-border/40 pt-4">
+            {/* Countdown timer */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-foreground">Include Countdown Timer</label>
+                <input
+                  type="checkbox"
+                  checked={showTimer}
+                  onChange={e => {
+                    setShowTimer(e.target.checked);
+                    if (!e.target.checked) {
+                      setTimerHours("");
+                      setTimerMinutes("");
+                    }
+                  }}
+                  className="w-4 h-4 text-primary rounded border-none bg-background neu-inset cursor-pointer accent-primary"
+                />
+              </div>
+              
+              {showTimer && (
+                <div className="flex gap-2 items-center">
+                  <div className="flex-1">
+                    <label className="text-[10px] text-muted-foreground block mb-0.5">Hours</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={timerHours}
+                      onChange={e => setTimerHours(e.target.value)}
+                      placeholder="e.g. 2"
+                      className="bg-background neu-inset border-none h-9 text-xs"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[10px] text-muted-foreground block mb-0.5">Minutes</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={timerMinutes}
+                      onChange={e => setTimerMinutes(e.target.value)}
+                      placeholder="e.g. 30"
+                      className="bg-background neu-inset border-none h-9 text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Progress percentage */}
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1">Progress Bar Percentage (Optional, 0-100)</label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                value={progress}
+                onChange={e => setProgress(e.target.value)}
+                placeholder="e.g. 75"
+                className="bg-background neu-inset border-none h-10"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Leaves progress bar hidden if empty.</p>
+            </div>
           </div>
 
           <Button

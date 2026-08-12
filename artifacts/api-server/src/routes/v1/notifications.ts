@@ -126,7 +126,7 @@ router.get("/broadcasts", authenticate, A, async (_req: AuthRequest, res: Respon
 
 // POST /api/notifications/send-custom — admin sends a custom push notification with deep-linking payload
 router.post("/send-custom", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { title, message, imageUrl, target, targetUserId, redirectType, redirectValue } = req.body as {
+  const { title, message, imageUrl, target, targetUserId, redirectType, redirectValue, showTimer, timerSeconds, progress } = req.body as {
     title: string;
     message: string;
     imageUrl?: string;
@@ -134,6 +134,9 @@ router.post("/send-custom", authenticate, A, async (req: AuthRequest, res: Respo
     targetUserId?: string;
     redirectType: "none" | "product" | "category" | "shop";
     redirectValue?: string;
+    showTimer?: string | boolean;
+    timerSeconds?: string | number;
+    progress?: string | number;
   };
 
   if (!title || !message || !target) {
@@ -191,6 +194,9 @@ router.post("/send-custom", authenticate, A, async (req: AuthRequest, res: Respo
       imageUrl: imageUrl || "",
       redirectType: redirectType || "none",
       redirectValue: redirectValue || "",
+      showTimer: showTimer === "true" || showTimer === true ? "true" : "false",
+      timerSeconds: timerSeconds != null ? String(timerSeconds) : "0",
+      progress: progress != null ? String(progress) : "",
     }
   };
 
