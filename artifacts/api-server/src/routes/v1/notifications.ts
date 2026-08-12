@@ -118,10 +118,118 @@ router.post("/broadcast", authenticate, A, async (req: AuthRequest, res: Respons
   res.json({ success: true, sentCount: recipientIds.length, pushSent, pushFailed });
 });
 
-// GET /api/notifications/broadcasts — admin broadcast history
+// POST /api/notifications/broadcasts — admin broadcast history
 router.get("/broadcasts", authenticate, A, async (_req: AuthRequest, res: Response): Promise<void> => {
   const broadcasts = await db.select().from(adminBroadcasts).orderBy(desc(adminBroadcasts.createdAt)).limit(50);
   res.json({ success: true, broadcasts: miArr(broadcasts) });
+});
+
+// POST /api/notifications/send-custom — admin sends a custom push notification with deep-linking payload
+router.post("/send-custom", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { title, message, imageUrl, target, targetUserId, redirectType, redirectValue } = req.body as {
+    title: string;
+    message: string;
+    imageUrl?: string;
+    target: "all" | "specific" | "customers" | "vendors";
+    targetUserId?: string;
+    redirectType: "none" | "product" | "category" | "shop";
+    redirectValue?: string;
+  };
+
+  if (!title || !message || !target) {
+    res.status(400).json({ success: false, message: "title, message and target are required" });
+    return;
+  }
+
+  let recipientIds: string[] = [];
+
+  if (target === "specific") {
+    if (!targetUserId) {
+      res.status(400).json({ success: false, message: "targetUserId is required for target='specific'" });
+      return;
+    }
+    const [userExists] = await db.select({ id: users.id }).from(users).where(eq(users.id, targetUserId)).limit(1);
+    if (!userExists) {
+      res.status(400).json({ success: false, message: "Specified user ID does not exist" });
+      return;
+    }
+    recipientIds = [targetUserId];
+  } else if (target === "customers") {
+    const rows = await db.select({ id: users.id }).from(users).where(eq(users.role, "customer"));
+    recipientIds = rows.map(r => r.id);
+  } else if (target === "vendors") {
+    const rows = await db.select({ id: users.id }).from(users).where(eq(users.role, "vendor"));
+    recipientIds = rows.map(r => r.id);
+  } else {
+    // Broadcast to all users
+    const allUsers = await db.select({ id: users.id }).from(users);
+    recipientIds = allUsers.map(u => u.id);
+  }
+
+  if (recipientIds.length === 0) {
+    res.status(400).json({ success: false, message: "No recipients found" });
+    return;
+  }
+
+  // Create deep link URL for web clients or fallback links
+  let targetUrl = "/notifications";
+  if (redirectType === "product" && redirectValue) {
+    targetUrl = `/product/${redirectValue}`;
+  } else if (redirectType === "category" && redirectValue) {
+    targetUrl = `/category/${redirectValue}`;
+  } else if (redirectType === "shop" && redirectValue) {
+    targetUrl = `/shop/${redirectValue}`;
+  }
+
+  // Prepare standard payload including data attributes for Android/iOS native click/routing extraction
+  const payload = {
+    type: "promo" as const,
+    title,
+    message,
+    data: {
+      url: targetUrl,
+      imageUrl: imageUrl || "",
+      redirectType: redirectType || "none",
+      redirectValue: redirectValue || "",
+    }
+  };
+
+  // 1. Save in-app notification records (so they persist in the notification bell history)
+  await Promise.all(recipientIds.map(id =>
+    createNotificationLimited(id, payload, { noPush: true })
+  ));
+
+  // 2. Dispatch FCM push notification
+  const { sent: pushSent, failed: pushFailed } = await sendPushToUsers(recipientIds, payload);
+
+  // 3. Log broadcast history
+  try {
+    await db.insert(adminBroadcasts).values({
+      title,
+      message,
+      targetAudience: target,
+      targetUserId: target === "specific" ? targetUserId : null,
+      sentCount: recipientIds.length,
+      pushSent,
+      pushFailed,
+    });
+  } catch {
+    // Fallback for legacy DB version without push count tracking
+    await db.insert(adminBroadcasts).values({
+      title,
+      message,
+      targetAudience: target,
+      targetUserId: target === "specific" ? targetUserId : null,
+      sentCount: recipientIds.length,
+    });
+  }
+
+  res.json({
+    success: true,
+    sentCount: recipientIds.length,
+    pushSent,
+    pushFailed
+  });
 });
 
 // POST /api/notifications/admin/cleanup — admin: trim all users to 10-notification cap

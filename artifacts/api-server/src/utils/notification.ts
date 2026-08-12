@@ -48,6 +48,7 @@ async function sendFcm(userId: string, payload: NotificationPayload): Promise<vo
         url:      targetUrl,
         title:    payload.title,
         body:     payload.message,
+        ...(payload.data ? Object.fromEntries(Object.entries(payload.data).map(([k, v]) => [k, String(v)])) : {}),
       },
       android: {
         priority: "high",
@@ -145,6 +146,7 @@ export async function sendFcmToUsers(
           url:   targetUrl,
           title: payload.title,
           body:  payload.message,
+          ...(payload.data ? Object.fromEntries(Object.entries(payload.data).map(([k, v]) => [k, String(v)])) : {}),
         },
         webpush: {
           notification: {

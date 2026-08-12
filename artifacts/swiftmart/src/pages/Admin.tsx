@@ -14,7 +14,7 @@ import {
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
   ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown, Home, Mail,
   Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin, Truck, Bike,
-  UserCheck, Gift, QrCode,
+  UserCheck, Gift, QrCode, Upload,
   type LucideIcon,
 } from "lucide-react";
 import { generateShopSticker } from "@/lib/shopSticker";
@@ -2483,6 +2483,10 @@ function AdminNotificationsTab() {
   const [message, setMessage] = useState("");
   const [targetAudience, setTargetAudience] = useState<"all" | "customers" | "vendors" | "specific">("all");
   const [targetUserId, setTargetUserId] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [redirectType, setRedirectType] = useState<"none" | "product" | "category" | "shop">("none");
+  const [redirectValue, setRedirectValue] = useState("");
   const [sending, setSending] = useState(false);
   const [history, setHistory] = useState<BroadcastRecord[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -2519,6 +2523,31 @@ function AdminNotificationsTab() {
       .finally(() => setLoadingHistory(false));
   };
 
+  const handleCustomImageUpload = async (file: File) => {
+    setUploadingImage(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const { access } = api.getTokens();
+      const res = await fetch("/api/upload/banner-image", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${access ?? ""}` },
+        body: fd,
+      });
+      const data = await res.json() as { success: boolean; imageUrl: string };
+      if (data.success) {
+        setImageUrl(data.imageUrl);
+        toast.success("Image uploaded successfully");
+      } else {
+        toast.error("Upload failed");
+      }
+    } catch {
+      toast.error("Upload failed");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   useEffect(() => {
     fetchHistory();
     fetchDiagnostics();
@@ -2527,16 +2556,28 @@ function AdminNotificationsTab() {
   const handleSend = async () => {
     if (!title.trim() || !message.trim()) { toast.error("Title and message are required"); return; }
     if (targetAudience === "specific" && !targetUserId.trim()) { toast.error("Please enter a User ID"); return; }
+    if (redirectType !== "none" && !redirectValue.trim()) { toast.error("Please enter a Redirect Value (slug or ID)"); return; }
     setSending(true);
     try {
-      const res = await api.post<{ success: boolean; sentCount: number; pushSent: number; pushFailed: number }>("/notifications/broadcast", {
-        title, message, targetAudience, targetUserId: targetAudience === "specific" ? targetUserId : undefined,
+      const res = await api.post<{ success: boolean; sentCount: number; pushSent: number; pushFailed: number }>("/notifications/send-custom", {
+        title,
+        message,
+        imageUrl: imageUrl.trim() || undefined,
+        target: targetAudience,
+        targetUserId: targetAudience === "specific" ? targetUserId.trim() : undefined,
+        redirectType,
+        redirectValue: redirectType !== "none" ? redirectValue.trim() : undefined,
       });
       toast.success(
         `Saved to ${res.sentCount} user${res.sentCount !== 1 ? "s" : ""}` +
         (res.pushSent > 0 ? ` · FCM push sent to ${res.pushSent} device${res.pushSent !== 1 ? "s" : ""}` : " · No active FCM devices")
       );
-      setTitle(""); setMessage(""); setTargetUserId("");
+      setTitle("");
+      setMessage("");
+      setTargetUserId("");
+      setImageUrl("");
+      setRedirectType("none");
+      setRedirectValue("");
       fetchHistory();
       fetchDiagnostics();
     } catch (e: unknown) {
@@ -2764,6 +2805,102 @@ function AdminNotificationsTab() {
               rows={3}
               className="bg-background neu-inset border-none resize-none"
             />
+          </div>
+
+          {/* Image URL with Upload Option */}
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-1">Image URL (Optional for Rich Push)</label>
+            <div className="flex gap-2">
+              <Input
+                value={imageUrl}
+                onChange={e => setImageUrl(e.target.value)}
+                placeholder="https://example.com/banner.jpg"
+                className="bg-background neu-inset border-none flex-1"
+              />
+              <div className="relative">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) handleCustomImageUpload(file);
+                  }}
+                  className="hidden"
+                  id="custom-notif-image-upload"
+                  disabled={uploadingImage}
+                />
+                <Button
+                  asChild
+                  variant="outline"
+                  className="rounded-xl shadow-none h-10 px-4"
+                  disabled={uploadingImage}
+                >
+                  <label htmlFor="custom-notif-image-upload" className="cursor-pointer flex items-center gap-1.5">
+                    {uploadingImage ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" /> Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" /> Upload
+                      </>
+                    )}
+                  </label>
+                </Button>
+              </div>
+            </div>
+            {imageUrl && (
+              <div className="mt-2 relative w-24 h-16 rounded-xl overflow-hidden border border-border">
+                <img src={imageUrl} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setImageUrl("")}
+                  className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 hover:bg-black/80 transition-colors"
+                >
+                  <span className="text-[9px] font-bold block px-1">✕</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Deep Linking redirection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1">On Tap Action (Redirect)</label>
+              <select
+                value={redirectType}
+                onChange={e => {
+                  const type = e.target.value as any;
+                  setRedirectType(type);
+                  if (type === "none") setRedirectValue("");
+                }}
+                className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer"
+              >
+                <option value="none">None (Open App Only)</option>
+                <option value="product">Product Detail Page</option>
+                <option value="category">Category Collection Grid</option>
+                <option value="shop">Seller Shop Front</option>
+              </select>
+            </div>
+
+            {redirectType !== "none" && (
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1">
+                  {redirectType === "product" && "Product ID (UUID)"}
+                  {redirectType === "category" && "Category Slug (e.g. fruits-vegetables)"}
+                  {redirectType === "shop" && "Shop ID (UUID)"}
+                </label>
+                <Input
+                  value={redirectValue}
+                  onChange={e => setRedirectValue(e.target.value)}
+                  placeholder={
+                    redirectType === "product" ? "e.g. d3b07384-d113..." :
+                    redirectType === "category" ? "e.g. grocery" : "e.g. shop-uuid..."
+                  }
+                  className="bg-background neu-inset border-none"
+                />
+              </div>
+            )}
           </div>
 
           <Button
