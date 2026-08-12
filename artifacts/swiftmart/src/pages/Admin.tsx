@@ -5683,6 +5683,9 @@ interface ApiCategory {
   color?: string;
   parentTab?: string;
   group?: string;
+  showOnHome?: boolean;
+  homeTab?: string;
+  filterOrder?: number;
   createdAt: string;
 }
 
@@ -5699,7 +5702,7 @@ function CategoriesTab() {
   const [editPackagingCharge, setEditPackagingCharge] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", slug: "", description: "", commissionRate: "5", packagingCharge: "", emoji: "", color: "#f59e0b", parentTab: "swiftmart", group: "Grocery & Kitchen" });
+  const [createForm, setCreateForm] = useState({ name: "", slug: "", description: "", commissionRate: "5", packagingCharge: "", emoji: "", color: "#f59e0b", parentTab: "swiftmart", group: "Grocery & Kitchen", showOnHome: false, homeTab: "swiftmart", filterOrder: "0" });
   const [creating, setCreating] = useState(false);
   const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all");
 
@@ -5788,9 +5791,12 @@ function CategoriesTab() {
         color: createForm.color || "#f59e0b",
         parentTab: createForm.parentTab.trim() || "swiftmart",
         group: createForm.group.trim() || "Grocery & Kitchen",
+        showOnHome: createForm.showOnHome,
+        homeTab: createForm.homeTab,
+        filterOrder: parseInt(createForm.filterOrder, 10) || 0,
       });
       setCats(prev => [data.category, ...prev]);
-      setCreateForm({ name: "", slug: "", description: "", commissionRate: "5", packagingCharge: "", emoji: "", color: "#f59e0b", parentTab: "swiftmart", group: "Grocery & Kitchen" });
+      setCreateForm({ name: "", slug: "", description: "", commissionRate: "5", packagingCharge: "", emoji: "", color: "#f59e0b", parentTab: "swiftmart", group: "Grocery & Kitchen", showOnHome: false, homeTab: "swiftmart", filterOrder: "0" });
       setShowCreate(false);
       toast.success("Category created");
     } catch {
@@ -5888,6 +5894,39 @@ function CategoriesTab() {
                 placeholder="e.g. Grocery & Kitchen"
                 className="h-9 neu-inset border-none bg-background" />
             </div>
+            <div className="space-y-1 sm:col-span-2 border-t border-border/40 pt-3 mt-1">
+              <label className="flex items-center gap-1.5 font-semibold text-xs text-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={createForm.showOnHome}
+                  onChange={e => setCreateForm(f => ({ ...f, showOnHome: e.target.checked }))}
+                  className="w-3.5 h-3.5 rounded border-none bg-background neu-inset cursor-pointer accent-primary"
+                />
+                Show on Home Screen Filter
+              </label>
+            </div>
+            {createForm.showOnHome && (
+              <>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Home Tab Location</label>
+                  <select value={createForm.homeTab}
+                    onChange={e => setCreateForm(f => ({ ...f, homeTab: e.target.value }))}
+                    className="w-full h-9 px-3 rounded-lg bg-background neu-inset border-none text-xs text-foreground appearance-none cursor-pointer"
+                  >
+                    <option value="swiftmart">SwiftMart (swiftmart)</option>
+                    <option value="super">Super Store (super)</option>
+                    <option value="food">Cafe & Food (food)</option>
+                    <option value="rakhi">Festive (rakhi)</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Filter Order (sorting)</label>
+                  <Input type="number" min="0" value={createForm.filterOrder}
+                    onChange={e => setCreateForm(f => ({ ...f, filterOrder: e.target.value }))}
+                    className="h-9 neu-inset border-none bg-background text-xs" />
+                </div>
+              </>
+            )}
           </div>
           <div className="flex gap-2">
             <Button onClick={handleCreate} disabled={creating} className="rounded-xl shadow-none">
@@ -5944,6 +5983,82 @@ function CategoriesTab() {
                     <span className="text-[10px] bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded-full font-medium">
                       Group: {cat.group}
                     </span>
+                  )}
+                  {cat.showOnHome && (
+                    <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+                      🏠 Home Filter ({cat.homeTab || "swiftmart"} · Order: {cat.filterOrder ?? 0})
+                    </span>
+                  )}
+                </div>
+
+                {/* Homepage Filter Settings */}
+                <div className="mt-3 pt-3 border-t border-border/40 flex items-center gap-4 flex-wrap text-xs">
+                  <label className="flex items-center gap-1.5 font-medium text-foreground cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={cat.showOnHome || false}
+                      onChange={async e => {
+                        const show = e.target.checked;
+                        try {
+                          await api.patch(`/categories/${cat._id}`, { showOnHome: show });
+                          setCats(prev => prev.map(c => c._id === cat._id ? { ...c, showOnHome: show } : c));
+                          toast.success(`Home filter status updated for "${cat.name}"`);
+                        } catch {
+                          toast.error("Failed to update home filter status");
+                        }
+                      }}
+                      className="w-3.5 h-3.5 rounded border-none bg-background neu-inset cursor-pointer accent-primary"
+                    />
+                    Show on Home Screen Filter
+                  </label>
+
+                  {cat.showOnHome && (
+                    <>
+                      <div className="flex items-center gap-1">
+                        <span className="text-muted-foreground text-[10px]">Location:</span>
+                        <select
+                          value={cat.homeTab || "swiftmart"}
+                          onChange={async e => {
+                            const tab = e.target.value;
+                            try {
+                              await api.patch(`/categories/${cat._id}`, { homeTab: tab });
+                              setCats(prev => prev.map(c => c._id === cat._id ? { ...c, homeTab: tab } : c));
+                              toast.success(`Home tab updated for "${cat.name}"`);
+                            } catch {
+                              toast.error("Failed to update home tab");
+                            }
+                          }}
+                          className="h-7 px-1.5 rounded-lg bg-background neu-inset border-none text-[10px] text-foreground font-medium cursor-pointer"
+                        >
+                          <option value="swiftmart">SwiftMart (swiftmart)</option>
+                          <option value="super">Super Store (super)</option>
+                          <option value="food">Cafe & Food (food)</option>
+                          <option value="rakhi">Festive (rakhi)</option>
+                        </select>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <span className="text-muted-foreground text-[10px]">Sort Order:</span>
+                        <input
+                          type="number"
+                          value={cat.filterOrder ?? 0}
+                          onChange={e => {
+                            const val = parseInt(e.target.value, 10) || 0;
+                            setCats(prev => prev.map(c => c._id === cat._id ? { ...c, filterOrder: val } : c));
+                          }}
+                          onBlur={async e => {
+                            const val = parseInt(e.target.value, 10) || 0;
+                            try {
+                              await api.patch(`/categories/${cat._id}`, { filterOrder: val });
+                              toast.success(`Filter order updated for "${cat.name}"`);
+                            } catch {
+                              toast.error("Failed to update filter order");
+                            }
+                          }}
+                          className="w-12 h-7 px-1 rounded-lg bg-background neu-inset border-none text-[10px] text-foreground font-medium text-center font-mono"
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
               </div>

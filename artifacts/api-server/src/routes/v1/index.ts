@@ -25,8 +25,42 @@ import servicePincodesRouter from "./servicePincodes.js";
 import bucketsRouter from "./buckets.js";
 import maintenanceBypassRouter from "./maintenanceBypass.js";
 import managerRouter from "./manager.js";
+import { db, categories } from "@workspace/db";
+import { eq, and, asc } from "drizzle-orm";
+import { miArr } from "../../utils/mapId.js";
 
 const router = Router();
+
+// GET /api/home-filters — public: fetch homepage pill filters grouped by parent tab
+router.get("/home-filters", async (_req, res): Promise<void> => {
+  try {
+    const list = await db.select()
+      .from(categories)
+      .where(and(eq(categories.isActive, true), eq(categories.showOnHome, true)))
+      .orderBy(asc(categories.filterOrder));
+
+    const mapped = miArr(list);
+
+    const grouped: Record<string, typeof mapped> = {
+      swiftmart: [],
+      super: [],
+      food: [],
+      rakhi: [],
+    };
+
+    for (const item of mapped) {
+      const tab = item.homeTab || "swiftmart";
+      if (!grouped[tab]) {
+        grouped[tab] = [];
+      }
+      grouped[tab].push(item);
+    }
+
+    res.json({ success: true, filters: grouped });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to load home filters", error: String(err) });
+  }
+});
 
 router.use("/auth", authRouter);
 router.use("/admin", adminRouter);
