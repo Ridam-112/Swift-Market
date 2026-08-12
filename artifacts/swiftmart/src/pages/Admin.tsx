@@ -9195,6 +9195,22 @@ interface GridBlock {
   targetCategorySlug: string;
 }
 
+interface ProductSection {
+  id: string;
+  sectionTitle: string;
+  sectionSubtitle: string;
+  productIds: string[];
+  sortOrder: number;
+  products?: Array<{
+    id: string;
+    name: string;
+    price: number;
+    discountedPrice?: number | null;
+    imageUrl: string;
+    stockStatus: string;
+  }>;
+}
+
 interface CampaignConfig {
   isActive: boolean;
   tabName: string;
@@ -9209,6 +9225,7 @@ interface CampaignConfig {
     subText: string;
   };
   gridBlocks: GridBlock[];
+  customProductSections: ProductSection[];
 }
 
 function SeasonalCampaignTab() {
@@ -9228,6 +9245,10 @@ function SeasonalCampaignTab() {
     targetCategorySlug: ""
   });
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Product Search State per Section
+  const [productQuery, setProductQuery] = useState<Record<string, string>>({});
+  const [searchResults, setSearchResults] = useState<Record<string, any[]>>({});
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -9332,6 +9353,130 @@ function SeasonalCampaignTab() {
     const updated = { ...config, gridBlocks: blocks };
     setConfig(updated);
     handleSave(updated);
+  };
+
+  // Custom Product Sections Handlers
+  const handleAddSection = async () => {
+    if (!config) return;
+    const sections = [...(config.customProductSections || [])];
+    const newSection: ProductSection = {
+      id: "section_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+      sectionTitle: "New Product Grid",
+      sectionSubtitle: "Featured Deals",
+      productIds: [],
+      sortOrder: sections.length + 1,
+      products: []
+    };
+    sections.push(newSection);
+
+    const updated = { ...config, customProductSections: sections };
+    setConfig(updated);
+    await handleSave(updated);
+  };
+
+  const handleUpdateSectionInfo = async (sectionId: string, title: string, subtitle: string) => {
+    if (!config) return;
+    const sections = [...(config.customProductSections || [])];
+    const sec = sections.find(s => s.id === sectionId);
+    if (!sec) return;
+
+    sec.sectionTitle = title;
+    sec.sectionSubtitle = subtitle;
+
+    const updated = { ...config, customProductSections: sections };
+    setConfig(updated);
+    await handleSave(updated);
+  };
+
+  const handleDeleteSection = async (sectionId: string) => {
+    if (!config || !confirm("Delete this entire product section?")) return;
+    const sections = (config.customProductSections || []).filter(s => s.id !== sectionId);
+
+    const updated = { ...config, customProductSections: sections };
+    setConfig(updated);
+    await handleSave(updated);
+  };
+
+  const handleMoveSection = async (index: number, direction: "up" | "down") => {
+    if (!config) return;
+    const sections = [...(config.customProductSections || [])];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= sections.length) return;
+
+    const temp = sections[index];
+    sections[index] = sections[targetIndex];
+    sections[targetIndex] = temp;
+
+    // Reset sortOrder
+    sections.forEach((s, idx) => {
+      s.sortOrder = idx + 1;
+    });
+
+    const updated = { ...config, customProductSections: sections };
+    setConfig(updated);
+    await handleSave(updated);
+  };
+
+  const handleProductSearchQuery = async (sectionId: string, query: string) => {
+    setProductQuery(prev => ({ ...prev, [sectionId]: query }));
+    if (!query.trim()) {
+      setSearchResults(prev => ({ ...prev, [sectionId]: [] }));
+      return;
+    }
+    try {
+      const res = await api.get<{ success: boolean; products: any[] }>(`/products?search=${encodeURIComponent(query)}&status=all&limit=8`);
+      setSearchResults(prev => ({ ...prev, [sectionId]: res.products || [] }));
+    } catch {
+      setSearchResults(prev => ({ ...prev, [sectionId]: [] }));
+    }
+  };
+
+  const handleAddProductToSection = async (sectionId: string, product: any) => {
+    if (!config) return;
+    const sections = [...(config.customProductSections || [])];
+    const sec = sections.find(s => s.id === sectionId);
+    if (!sec) return;
+
+    if (!sec.productIds) sec.productIds = [];
+    if (sec.productIds.includes(product.id)) {
+      toast.error("Product already added to this section");
+      return;
+    }
+
+    sec.productIds.push(product.id);
+    if (!sec.products) sec.products = [];
+    sec.products.push({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      discountedPrice: product.discountedPrice,
+      imageUrl: product.images?.[0] || "",
+      stockStatus: product.stock > 0 ? "in_stock" : "out_of_stock"
+    });
+
+    const updated = { ...config, customProductSections: sections };
+    setConfig(updated);
+    await handleSave(updated);
+
+    // Clear search query and matching options
+    setProductQuery(prev => ({ ...prev, [sectionId]: "" }));
+    setSearchResults(prev => ({ ...prev, [sectionId]: [] }));
+  };
+
+  const handleRemoveProductFromSection = async (sectionId: string, productId: string) => {
+    if (!config) return;
+    const sections = [...(config.customProductSections || [])];
+    const sec = sections.find(s => s.id === sectionId);
+    if (!sec) return;
+
+    sec.productIds = (sec.productIds || []).filter(id => id !== productId);
+    if (sec.products) {
+      sec.products = sec.products.filter(p => p.id !== productId);
+    }
+
+    const updated = { ...config, customProductSections: sections };
+    setConfig(updated);
+    await handleSave(updated);
   };
 
   if (loading || !config) {
@@ -9707,6 +9852,160 @@ function SeasonalCampaignTab() {
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Custom Handpicked Product Grids (Sections) */}
+          <div className="bg-card rounded-3xl border border-border/40 p-6 space-y-6 shadow-sm">
+            <div className="flex justify-between items-center border-b border-border/30 pb-3">
+              <div>
+                <h3 className="font-bold text-base text-foreground">Handpicked Product Grids</h3>
+                <p className="text-[10px] text-muted-foreground">Configure custom product groups (e.g. Sweets Under ₹99) and search to assign exact products.</p>
+              </div>
+              <Button
+                onClick={handleAddSection}
+                className="rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/95 flex items-center gap-1 h-9 shadow-none text-xs"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Grid Section
+              </Button>
+            </div>
+
+            {(!config.customProductSections || config.customProductSections.length === 0) ? (
+              <div className="text-center py-12 text-muted-foreground text-sm border border-dashed border-border/60 rounded-2xl">
+                No handpicked product grids added yet.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {(config.customProductSections || []).map((sec, idx) => (
+                  <div key={sec.id} className="border border-border/60 rounded-2xl p-4 bg-muted/20 relative space-y-3">
+                    {/* Header edit info */}
+                    <div className="flex gap-2 flex-wrap items-center">
+                      <div className="flex-1 min-w-[200px] grid grid-cols-2 gap-2">
+                        <Input
+                          value={sec.sectionTitle}
+                          onChange={e => {
+                            const title = e.target.value;
+                            setConfig(prev => {
+                              if (!prev) return null;
+                              return {
+                                ...prev,
+                                customProductSections: prev.customProductSections.map(s => s.id === sec.id ? { ...s, sectionTitle: title } : s)
+                              };
+                            });
+                          }}
+                          onBlur={e => handleUpdateSectionInfo(sec.id, e.target.value, sec.sectionSubtitle)}
+                          placeholder="Section Title"
+                          className="h-8 text-xs neu-inset border-none bg-background font-semibold"
+                        />
+                        <Input
+                          value={sec.sectionSubtitle}
+                          onChange={e => {
+                            const sub = e.target.value;
+                            setConfig(prev => {
+                              if (!prev) return null;
+                              return {
+                                ...prev,
+                                customProductSections: prev.customProductSections.map(s => s.id === sec.id ? { ...s, sectionSubtitle: sub } : s)
+                              };
+                            });
+                          }}
+                          onBlur={e => handleUpdateSectionInfo(sec.id, sec.sectionTitle, e.target.value)}
+                          placeholder="Subtitle (optional)"
+                          className="h-8 text-xs neu-inset border-none bg-background"
+                        />
+                      </div>
+
+                      {/* Controls */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleMoveSection(idx, "up")}
+                          disabled={idx === 0}
+                          className="p-1 rounded-lg text-muted-foreground hover:bg-background disabled:opacity-30"
+                          title="Move Grid Up"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleMoveSection(idx, "down")}
+                          disabled={idx === config.customProductSections.length - 1}
+                          className="p-1 rounded-lg text-muted-foreground hover:bg-background disabled:opacity-30"
+                          title="Move Grid Down"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSection(sec.id)}
+                          className="p-1 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
+                          title="Delete Grid Section"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Products search container */}
+                    <div className="relative">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+                        <Input
+                          value={productQuery[sec.id] || ""}
+                          onChange={e => handleProductSearchQuery(sec.id, e.target.value)}
+                          placeholder="Search product name to add..."
+                          className="pl-9 h-8 text-xs neu-inset border-none bg-background"
+                        />
+                      </div>
+                      
+                      {/* Dropdown list results */}
+                      {(searchResults[sec.id] || []).length > 0 && (
+                        <div className="absolute left-0 right-0 top-9 bg-card border border-border rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto divide-y divide-border/40">
+                          {(searchResults[sec.id] || []).map((p: any) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => handleAddProductToSection(sec.id, p)}
+                              className="w-full p-2.5 text-left text-xs hover:bg-muted flex items-center gap-2"
+                            >
+                              <div className="w-8 h-8 rounded border border-border overflow-hidden shrink-0">
+                                {p.images?.[0] ? <img src={p.images[0]} className="w-full h-full object-cover" /> : null}
+                              </div>
+                              <div className="flex-1 truncate">
+                                <div className="font-semibold truncate text-foreground">{p.name}</div>
+                                <div className="text-[10px] text-muted-foreground">₹{p.price} · stock: {p.stock}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Assigned products view */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {(sec.products || []).length === 0 ? (
+                        <span className="text-[10px] text-muted-foreground italic">No products added. Search and add above.</span>
+                      ) : (
+                        (sec.products || []).map((p: any) => (
+                          <div key={p.id} className="bg-background border border-border/40 pl-1.5 pr-1 py-1 rounded-xl flex items-center gap-1.5 max-w-[200px]">
+                            <div className="w-5 h-5 rounded overflow-hidden bg-muted border border-border shrink-0">
+                              {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-cover" /> : null}
+                            </div>
+                            <div className="flex-1 truncate min-w-0">
+                              <div className="text-[10px] font-bold text-foreground truncate leading-none mb-0.5">{p.name}</div>
+                              <div className="text-[8px] text-muted-foreground leading-none">₹{p.price}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveProductFromSection(sec.id, p.id)}
+                              className="text-muted-foreground hover:text-red-500 p-0.5 rounded"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 ))}

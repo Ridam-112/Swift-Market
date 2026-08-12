@@ -15,6 +15,7 @@ export const seasonalCampaign = pgTable("seasonal_campaign", {
                      subText: "Joy, lights and happiness!"
                    }),
   gridBlocks:      jsonb("grid_blocks").notNull().default([]),
+  customProductSections: jsonb("custom_product_sections").notNull().default([]),
   updatedAt:       timestamp("updated_at").notNull().defaultNow(),
 });
 
