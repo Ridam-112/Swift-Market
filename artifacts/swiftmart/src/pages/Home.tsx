@@ -15,7 +15,7 @@ import { SEO } from "@/components/SEO";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { api } from "@/lib/api";
-import { Star, ChevronRight, Zap, MapPin, Search } from "lucide-react";
+import { Star, ChevronRight, Zap, MapPin, Search, ChevronDown, ChevronUp } from "lucide-react";
 import type { Product } from "@/types";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -309,6 +309,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [apiCategories, setApiCategories] = useState<DisplayCategory[]>([]);
+  const [categoriesExpanded, setCategoriesExpanded] = useState(false);
   const [dynamicSections, setDynamicSections] = useState<HomepageSection[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(true);
   const [bannerDismissed, setBannerDismissed] = useState(() =>
@@ -485,10 +486,28 @@ export default function Home() {
               <h2 className="text-[15px] font-extrabold text-foreground tracking-tight">Shop by Category</h2>
             </div>
             <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-x-2.5 gap-y-4">
-              {apiCategories.map(cat => (
+              {(categoriesExpanded ? apiCategories : apiCategories.slice(0, 16)).map(cat => (
                 <CategoryBubble key={cat.id} category={cat} />
               ))}
             </div>
+            {apiCategories.length > 16 && (
+              <div className="flex justify-center mt-5">
+                <button
+                  onClick={() => setCategoriesExpanded(prev => !prev)}
+                  className="flex items-center gap-1 px-4 py-2 rounded-full text-xs font-extrabold text-muted-foreground hover:text-foreground hover:bg-muted/70 border border-border/80 bg-card/60 transition-all cursor-pointer shadow-sm hover:scale-105"
+                >
+                  {categoriesExpanded ? (
+                    <>
+                      See Less <ChevronUp className="w-3.5 h-3.5" />
+                    </>
+                  ) : (
+                    <>
+                      See More ({apiCategories.length - 16} more) <ChevronDown className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </section>
 
           {/* ── Popular Shops ─────────────────────────────────────── */}
