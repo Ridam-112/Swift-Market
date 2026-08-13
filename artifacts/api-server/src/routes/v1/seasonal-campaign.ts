@@ -1,5 +1,5 @@
 import { Router, type Response } from "express";
-import { db, seasonalCampaign, products } from "@workspace/db";
+import { db, seasonalCampaign, products, pool } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { miArr } from "../../utils/mapId.js";
@@ -9,6 +9,13 @@ const A = requireRole("admin", "super_admin");
 
 // Helper to ensure at least one config row exists
 async function getOrCreateCampaign() {
+  try {
+    // Gracefully migrate Neon database column if missing
+    await pool.query("ALTER TABLE seasonal_campaign ADD COLUMN IF NOT EXISTS layout_blocks JSONB NOT NULL DEFAULT '[]';");
+  } catch (err) {
+    console.error("[DB Migration] Failed to alter seasonal_campaign:", err);
+  }
+
   const [existing] = await db.select().from(seasonalCampaign).where(eq(seasonalCampaign.id, "default_campaign")).limit(1);
   if (existing) return existing;
 
@@ -30,7 +37,24 @@ async function getOrCreateCampaign() {
 // GET /api/seasonal-campaign — Fetch campaign configuration with populated product blocks
 router.get("/", async (_req, res): Promise<void> => {
   try {
-    const campaign = await getOrCreateCampaign();
+    let campaign = await getOrCreateCampaign();
+    
+    // Detect missing or invalid layoutBlocks array
+    const rawBlocks = (campaign as any).layoutBlocks;
+    const hasLegacyData = !Array.isArray(rawBlocks);
+
+    if (hasLegacyData) {
+      const [updated] = await db.update(seasonalCampaign)
+        .set({
+          layoutBlocks: [],
+          updatedAt: new Date()
+        })
+        .where(eq(seasonalCampaign.id, "default_campaign"))
+        .returning();
+      
+      campaign = updated;
+    }
+
     const blocks = (campaign.layoutBlocks as any[]) || [];
 
     const allProductIds = new Set<string>();

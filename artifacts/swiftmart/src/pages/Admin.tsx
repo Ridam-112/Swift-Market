@@ -9251,7 +9251,13 @@ function SeasonalCampaignTab() {
         api.get<{ success: boolean; campaign: CampaignConfig }>("/seasonal-campaign"),
         api.get<{ success: boolean; categories: ApiCategory[] }>("/categories/all")
       ]);
-      setConfig(campRes.campaign);
+      const fetched = campRes.campaign;
+      if (fetched) {
+        if (!fetched.layoutBlocks) {
+          fetched.layoutBlocks = [];
+        }
+        setConfig(fetched);
+      }
       setCategoriesList(catRes.categories || []);
     } catch {
       toast.error("Failed to load campaign settings");
