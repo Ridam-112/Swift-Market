@@ -9,13 +9,7 @@ export const seasonalCampaign = pgTable("seasonal_campaign", {
                      textColor: "#8A252C",
                      accentColor: "#F3A738"
                    }),
-  headerText:      jsonb("header_text").notNull().default({
-                     topText: "Celebrate",
-                     mainTitle: "Festive Season",
-                     subText: "Joy, lights and happiness!"
-                   }),
-  gridBlocks:      jsonb("grid_blocks").notNull().default([]),
-  customProductSections: jsonb("custom_product_sections").notNull().default([]),
+  layoutBlocks:    jsonb("layout_blocks").notNull().default([]),
   updatedAt:       timestamp("updated_at").notNull().defaultNow(),
 });
 

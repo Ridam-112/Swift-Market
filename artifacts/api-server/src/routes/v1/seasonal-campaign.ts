@@ -21,35 +21,27 @@ async function getOrCreateCampaign() {
       textColor: "#8A252C",
       accentColor: "#F3A738"
     },
-    headerText: {
-      topText: "Celebrate",
-      mainTitle: "Festive Season",
-      subText: "Joy, lights and happiness!"
-    },
-    gridBlocks: [],
-    customProductSections: []
+    layoutBlocks: []
   }).returning();
 
   return created;
 }
 
-// GET /api/seasonal-campaign — Fetch active campaign config with populated products
+// GET /api/seasonal-campaign — Fetch campaign configuration with populated product blocks
 router.get("/", async (_req, res): Promise<void> => {
   try {
     const campaign = await getOrCreateCampaign();
-    
-    // Resolve products details in the custom grids
-    const sections = (campaign.customProductSections as any[]) || [];
-    
+    const blocks = (campaign.layoutBlocks as any[]) || [];
+
     const allProductIds = new Set<string>();
-    for (const sec of sections) {
-      if (Array.isArray(sec.productIds)) {
-        for (const id of sec.productIds) {
+    for (const block of blocks) {
+      if (block.type === "product_slider" && block.data && Array.isArray(block.data.productIds)) {
+        for (const id of block.data.productIds) {
           if (id) allProductIds.add(id);
         }
       }
     }
-    
+
     const productMap = new Map<string, any>();
     if (allProductIds.size > 0) {
       const dbProducts = await db.select()
@@ -72,24 +64,30 @@ router.get("/", async (_req, res): Promise<void> => {
         });
       }
     }
-    
-    const populatedSections = sections.map(sec => {
-      const ids = Array.isArray(sec.productIds) ? sec.productIds : [];
-      const resolved = ids
-        .map((id: string) => productMap.get(id))
-        .filter((p: any) => p !== undefined);
-      
-      return {
-        ...sec,
-        products: resolved
-      };
+
+    const resolvedBlocks = blocks.map(block => {
+      if (block.type === "product_slider" && block.data) {
+        const ids = Array.isArray(block.data.productIds) ? block.data.productIds : [];
+        const resolved = ids
+          .map((id: string) => productMap.get(id))
+          .filter((p: any) => p !== undefined);
+        
+        return {
+          ...block,
+          data: {
+            ...block.data,
+            products: resolved
+          }
+        };
+      }
+      return block;
     });
-    
+
     res.json({
       success: true,
       campaign: {
         ...campaign,
-        customProductSections: populatedSections
+        layoutBlocks: resolvedBlocks
       }
     });
   } catch (err) {
@@ -97,28 +95,24 @@ router.get("/", async (_req, res): Promise<void> => {
   }
 });
 
-// POST /api/seasonal-campaign — Update campaign config (Admin only)
+// POST /api/seasonal-campaign — Save layout blocks and campaign details
 router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { isActive, tabName, theme, headerText, gridBlocks, customProductSections } = req.body as {
+    const { isActive, tabName, theme, layoutBlocks } = req.body as {
       isActive?: boolean;
       tabName?: string;
       theme?: any;
-      headerText?: any;
-      gridBlocks?: any[];
-      customProductSections?: any[];
+      layoutBlocks?: any[];
     };
 
     const update: Record<string, any> = {};
     if (isActive !== undefined) update.isActive = isActive;
     if (tabName !== undefined) update.tabName = tabName;
     if (theme !== undefined) update.theme = theme;
-    if (headerText !== undefined) update.headerText = headerText;
-    if (gridBlocks !== undefined) update.gridBlocks = gridBlocks;
-    if (customProductSections !== undefined) update.customProductSections = customProductSections;
+    if (layoutBlocks !== undefined) update.layoutBlocks = layoutBlocks;
     update.updatedAt = new Date();
 
-    // Ensure record exists
+    // Ensure config exists
     await getOrCreateCampaign();
 
     const [updated] = await db.update(seasonalCampaign)
@@ -128,7 +122,7 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
 
     res.json({ success: true, campaign: updated });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to update seasonal campaign", error: String(err) });
+    res.status(500).json({ success: false, message: "Failed to save seasonal campaign layouts", error: String(err) });
   }
 });
 

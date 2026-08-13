@@ -9187,28 +9187,38 @@ function ManagersTab() {
   );
 }
 
-interface GridBlock {
-  title: string;
-  subtitle: string;
-  backgroundColor: string;
+interface CarouselImage {
   imageUrl: string;
-  targetCategorySlug: string;
+  redirectSlug?: string;
 }
 
-interface ProductSection {
+interface CategoryCell {
+  imageUrl: string;
+  name: string;
+  categorySlug: string;
+}
+
+interface LayoutBlock {
   id: string;
-  sectionTitle: string;
-  sectionSubtitle: string;
-  productIds: string[];
+  type: 'banner_carousel' | 'category_grid' | 'product_slider' | 'single_banner';
   sortOrder: number;
-  products?: Array<{
-    id: string;
-    name: string;
-    price: number;
-    discountedPrice?: number | null;
-    imageUrl: string;
-    stockStatus: string;
-  }>;
+  data: {
+    title?: string;
+    subtitle?: string;
+    imageUrl?: string;
+    redirectSlug?: string;
+    images?: CarouselImage[];
+    categories?: CategoryCell[];
+    productIds?: string[];
+    products?: Array<{
+      id: string;
+      name: string;
+      price: number;
+      discountedPrice?: number | null;
+      imageUrl: string;
+      stockStatus: string;
+    }>;
+  };
 }
 
 interface CampaignConfig {
@@ -9219,13 +9229,7 @@ interface CampaignConfig {
     textColor: string;
     accentColor: string;
   };
-  headerText: {
-    topText: string;
-    mainTitle: string;
-    subText: string;
-  };
-  gridBlocks: GridBlock[];
-  customProductSections: ProductSection[];
+  layoutBlocks: LayoutBlock[];
 }
 
 function SeasonalCampaignTab() {
@@ -9233,20 +9237,10 @@ function SeasonalCampaignTab() {
   const [categoriesList, setCategoriesList] = useState<ApiCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingBlockId, setUploadingBlockId] = useState<string | null>(null);
+  const [uploadingSlideIndex, setUploadingSlideIndex] = useState<number | null>(null);
 
-  // Grid block form editing state
-  const [editingBlockIndex, setEditingBlockIndex] = useState<number | null>(null);
-  const [isAddingBlock, setIsAddingBlock] = useState(false);
-  const [blockForm, setBlockForm] = useState<GridBlock>({
-    title: "",
-    subtitle: "",
-    backgroundColor: "#FCE7F3",
-    imageUrl: "",
-    targetCategorySlug: ""
-  });
-  const [uploadingImage, setUploadingImage] = useState(false);
-
-  // Product Search State per Section
+  // Product Search State per Slider Block
   const [productQuery, setProductQuery] = useState<Record<string, string>>({});
   const [searchResults, setSearchResults] = useState<Record<string, any[]>>({});
 
@@ -9275,16 +9269,86 @@ function SeasonalCampaignTab() {
     try {
       const res = await api.post<{ success: boolean; campaign: CampaignConfig }>("/seasonal-campaign", updatedConfig);
       setConfig(res.campaign);
-      toast.success("Seasonal store campaign configuration saved");
+      toast.success("Campaign layouts saved successfully");
     } catch {
-      toast.error("Failed to save campaign settings");
+      toast.error("Failed to save campaign configurations");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleBlockImageUpload = async (file: File) => {
-    setUploadingImage(true);
+  const handleAddBlock = (type: LayoutBlock['type']) => {
+    if (!config) return;
+    const blocks = [...(config.layoutBlocks || [])];
+    
+    let defaultData: any = {};
+    if (type === 'banner_carousel') {
+      defaultData = { images: [] };
+    } else if (type === 'category_grid') {
+      defaultData = { title: "Shop by Category", categories: [] };
+    } else if (type === 'product_slider') {
+      defaultData = { title: "Featured Products", subtitle: "Handpicked deals", productIds: [], products: [] };
+    } else if (type === 'single_banner') {
+      defaultData = { imageUrl: "", redirectSlug: "" };
+    }
+
+    const newBlock: LayoutBlock = {
+      id: "block_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+      type,
+      sortOrder: blocks.length + 1,
+      data: defaultData
+    };
+
+    const updated = { ...config, layoutBlocks: [...blocks, newBlock] };
+    setConfig(updated);
+    handleSave(updated);
+  };
+
+  const handleDeleteBlock = (blockId: string) => {
+    if (!config || !confirm("Delete this layout block?")) return;
+    const updated = {
+      ...config,
+      layoutBlocks: (config.layoutBlocks || []).filter(b => b.id !== blockId)
+    };
+    setConfig(updated);
+    handleSave(updated);
+  };
+
+  const handleMoveBlock = (index: number, direction: 'up' | 'down') => {
+    if (!config) return;
+    const blocks = [...(config.layoutBlocks || [])];
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= blocks.length) return;
+
+    const temp = blocks[index];
+    blocks[index] = blocks[targetIdx];
+    blocks[targetIdx] = temp;
+
+    // Reset sortOrder values
+    blocks.forEach((b, idx) => {
+      b.sortOrder = idx + 1;
+    });
+
+    const updated = { ...config, layoutBlocks: blocks };
+    setConfig(updated);
+    handleSave(updated);
+  };
+
+  // Block Content Handlers
+  const handleUpdateBlockData = (blockId: string, updatedFields: any) => {
+    if (!config) return;
+    const updatedBlocks = (config.layoutBlocks || []).map(b => {
+      if (b.id === blockId) {
+        return { ...b, data: { ...b.data, ...updatedFields } };
+      }
+      return b;
+    });
+    const updated = { ...config, layoutBlocks: updatedBlocks };
+    setConfig(updated);
+  };
+
+  // Image Upload helper directly from React client to imagekit relay route
+  const uploadImage = async (file: File): Promise<string | null> => {
     try {
       const fd = new FormData();
       fd.append("image", file);
@@ -9295,157 +9359,41 @@ function SeasonalCampaignTab() {
         body: fd,
       });
       const data = await res.json() as { success: boolean; imageUrl: string };
-      if (data.success) {
-        setBlockForm(prev => ({ ...prev, imageUrl: data.imageUrl }));
-        toast.success("Grid block image uploaded");
-      } else {
-        toast.error("Upload failed");
-      }
+      return data.success ? data.imageUrl : null;
     } catch {
-      toast.error("Upload failed");
-    } finally {
-      setUploadingImage(false);
+      return null;
     }
   };
 
-  const handleAddOrUpdateBlock = () => {
-    if (!blockForm.title.trim()) { toast.error("Title is required"); return; }
-    if (!blockForm.imageUrl.trim()) { toast.error("Image is required"); return; }
-    if (!blockForm.targetCategorySlug) { toast.error("Please select a target category"); return; }
-    if (!config) return;
-
-    let updatedBlocks = [...config.gridBlocks];
-    if (editingBlockIndex !== null) {
-      updatedBlocks[editingBlockIndex] = blockForm;
-    } else {
-      updatedBlocks.push(blockForm);
-    }
-
-    const updated = { ...config, gridBlocks: updatedBlocks };
-    setConfig(updated);
-    handleSave(updated);
-
-    // Reset block form states
-    setIsAddingBlock(false);
-    setEditingBlockIndex(null);
-    setBlockForm({ title: "", subtitle: "", backgroundColor: "#FCE7F3", imageUrl: "", targetCategorySlug: "" });
-  };
-
-  const handleDeleteBlock = (index: number) => {
-    if (!config || !confirm("Delete this grid block?")) return;
-    const updatedBlocks = config.gridBlocks.filter((_, i) => i !== index);
-    const updated = { ...config, gridBlocks: updatedBlocks };
-    setConfig(updated);
-    handleSave(updated);
-  };
-
-  const handleMoveBlock = (index: number, direction: "up" | "down") => {
-    if (!config) return;
-    const blocks = [...config.gridBlocks];
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= blocks.length) return;
-
-    // Swap
-    const temp = blocks[index];
-    blocks[index] = blocks[targetIndex];
-    blocks[targetIndex] = temp;
-
-    const updated = { ...config, gridBlocks: blocks };
-    setConfig(updated);
-    handleSave(updated);
-  };
-
-  // Custom Product Sections Handlers
-  const handleAddSection = async () => {
-    if (!config) return;
-    const sections = [...(config.customProductSections || [])];
-    const newSection: ProductSection = {
-      id: "section_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
-      sectionTitle: "New Product Grid",
-      sectionSubtitle: "Featured Deals",
-      productIds: [],
-      sortOrder: sections.length + 1,
-      products: []
-    };
-    sections.push(newSection);
-
-    const updated = { ...config, customProductSections: sections };
-    setConfig(updated);
-    await handleSave(updated);
-  };
-
-  const handleUpdateSectionInfo = async (sectionId: string, title: string, subtitle: string) => {
-    if (!config) return;
-    const sections = [...(config.customProductSections || [])];
-    const sec = sections.find(s => s.id === sectionId);
-    if (!sec) return;
-
-    sec.sectionTitle = title;
-    sec.sectionSubtitle = subtitle;
-
-    const updated = { ...config, customProductSections: sections };
-    setConfig(updated);
-    await handleSave(updated);
-  };
-
-  const handleDeleteSection = async (sectionId: string) => {
-    if (!config || !confirm("Delete this entire product section?")) return;
-    const sections = (config.customProductSections || []).filter(s => s.id !== sectionId);
-
-    const updated = { ...config, customProductSections: sections };
-    setConfig(updated);
-    await handleSave(updated);
-  };
-
-  const handleMoveSection = async (index: number, direction: "up" | "down") => {
-    if (!config) return;
-    const sections = [...(config.customProductSections || [])];
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= sections.length) return;
-
-    const temp = sections[index];
-    sections[index] = sections[targetIndex];
-    sections[targetIndex] = temp;
-
-    // Reset sortOrder
-    sections.forEach((s, idx) => {
-      s.sortOrder = idx + 1;
-    });
-
-    const updated = { ...config, customProductSections: sections };
-    setConfig(updated);
-    await handleSave(updated);
-  };
-
-  const handleProductSearchQuery = async (sectionId: string, query: string) => {
-    setProductQuery(prev => ({ ...prev, [sectionId]: query }));
+  // Autocomplete products lookup for slider blocks
+  const handleProductSearch = async (blockId: string, query: string) => {
+    setProductQuery(prev => ({ ...prev, [blockId]: query }));
     if (!query.trim()) {
-      setSearchResults(prev => ({ ...prev, [sectionId]: [] }));
+      setSearchResults(prev => ({ ...prev, [blockId]: [] }));
       return;
     }
     try {
       const res = await api.get<{ success: boolean; products: any[] }>(`/products?search=${encodeURIComponent(query)}&status=all&limit=8`);
-      setSearchResults(prev => ({ ...prev, [sectionId]: res.products || [] }));
+      setSearchResults(prev => ({ ...prev, [blockId]: res.products || [] }));
     } catch {
-      setSearchResults(prev => ({ ...prev, [sectionId]: [] }));
+      setSearchResults(prev => ({ ...prev, [blockId]: [] }));
     }
   };
 
-  const handleAddProductToSection = async (sectionId: string, product: any) => {
+  const handleAddProductToSlider = (blockId: string, product: any) => {
     if (!config) return;
-    const sections = [...(config.customProductSections || [])];
-    const sec = sections.find(s => s.id === sectionId);
-    if (!sec) return;
+    const block = (config.layoutBlocks || []).find(b => b.id === blockId);
+    if (!block || block.type !== 'product_slider') return;
 
-    if (!sec.productIds) sec.productIds = [];
-    if (sec.productIds.includes(product.id)) {
-      toast.error("Product already added to this section");
+    const ids = [...(block.data.productIds || [])];
+    if (ids.includes(product.id)) {
+      toast.error("Product already added to this slider");
       return;
     }
 
-    sec.productIds.push(product.id);
-    if (!sec.products) sec.products = [];
-    sec.products.push({
+    ids.push(product.id);
+    const productsList = [...(block.data.products || [])];
+    productsList.push({
       id: product.id,
       name: product.name,
       price: product.price,
@@ -9454,51 +9402,42 @@ function SeasonalCampaignTab() {
       stockStatus: product.stock > 0 ? "in_stock" : "out_of_stock"
     });
 
-    const updated = { ...config, customProductSections: sections };
-    setConfig(updated);
-    await handleSave(updated);
-
-    // Clear search query and matching options
-    setProductQuery(prev => ({ ...prev, [sectionId]: "" }));
-    setSearchResults(prev => ({ ...prev, [sectionId]: [] }));
+    handleUpdateBlockData(blockId, { productIds: ids, products: productsList });
+    setProductQuery(prev => ({ ...prev, [blockId]: "" }));
+    setSearchResults(prev => ({ ...prev, [blockId]: [] }));
   };
 
-  const handleRemoveProductFromSection = async (sectionId: string, productId: string) => {
+  const handleRemoveProductFromSlider = (blockId: string, productId: string) => {
     if (!config) return;
-    const sections = [...(config.customProductSections || [])];
-    const sec = sections.find(s => s.id === sectionId);
-    if (!sec) return;
+    const block = (config.layoutBlocks || []).find(b => b.id === blockId);
+    if (!block || block.type !== 'product_slider') return;
 
-    sec.productIds = (sec.productIds || []).filter(id => id !== productId);
-    if (sec.products) {
-      sec.products = sec.products.filter(p => p.id !== productId);
-    }
+    const ids = (block.data.productIds || []).filter(id => id !== productId);
+    const productsList = (block.data.products || []).filter(p => p.id !== productId);
 
-    const updated = { ...config, customProductSections: sections };
-    setConfig(updated);
-    await handleSave(updated);
+    handleUpdateBlockData(blockId, { productIds: ids, products: productsList });
   };
 
   if (loading || !config) {
     return (
       <div className="h-64 bg-card border border-border rounded-3xl animate-pulse flex items-center justify-center text-muted-foreground text-sm font-semibold">
-        Loading campaign manager...
+        Loading page builder details...
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Seasonal Campaign Manager</h2>
+          <h2 className="text-2xl font-bold text-foreground">Seasonal Campaign Builder</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Build and deploy server-driven themed store pages instantly (e.g. Diwali, Durga Puja, Christmas) inside the app.
+            Build and arrange modular storefront grids dynamically (Carousels, Category grids, and Product sliders).
           </p>
         </div>
         <div className="flex items-center gap-2 bg-card px-4 py-2 rounded-2xl border border-border/40 shadow-sm">
-          <span className="text-xs font-semibold text-muted-foreground">Campaign Status:</span>
+          <span className="text-xs font-semibold text-muted-foreground">Store Page Live:</span>
           <button
             onClick={() => handleSave({ ...config, isActive: !config.isActive })}
             className={`text-xs font-bold px-3 py-1 rounded-xl transition-colors ${
@@ -9507,20 +9446,19 @@ function SeasonalCampaignTab() {
                 : "bg-red-500/10 text-red-500 hover:bg-red-500/20"
             }`}
           >
-            {config.isActive ? "● Live / Active" : "○ Inactive / Off"}
+            {config.isActive ? "● Active" : "○ Offline"}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Settings Panel */}
+        {/* Settings Column */}
         <div className="lg:col-span-1 space-y-6">
-          {/* General & Theme Settings */}
           <div className="bg-card rounded-3xl border border-border/40 p-6 space-y-4 shadow-sm">
-            <h3 className="font-bold text-base text-foreground pb-2 border-b border-border/30">General & Theme</h3>
+            <h3 className="font-bold text-base text-foreground pb-2 border-b border-border/30">Theme & Tab Details</h3>
             
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Navigation Tab Name</label>
+              <label className="text-xs font-semibold text-muted-foreground">Navigation Tab Label</label>
               <Input
                 value={config.tabName}
                 onChange={e => setConfig({ ...config, tabName: e.target.value })}
@@ -9547,7 +9485,7 @@ function SeasonalCampaignTab() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-muted-foreground block">Text Title</label>
+                <label className="text-[10px] font-semibold text-muted-foreground block">Typography</label>
                 <div className="flex gap-1.5 items-center">
                   <input
                     type="color"
@@ -9563,7 +9501,7 @@ function SeasonalCampaignTab() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-muted-foreground block">Accent Color</label>
+                <label className="text-[10px] font-semibold text-muted-foreground block">Accent Accent</label>
                 <div className="flex gap-1.5 items-center">
                   <input
                     type="color"
@@ -9578,246 +9516,80 @@ function SeasonalCampaignTab() {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Header Texts */}
-          <div className="bg-card rounded-3xl border border-border/40 p-6 space-y-4 shadow-sm">
-            <h3 className="font-bold text-base text-foreground pb-2 border-b border-border/30">Header Banner Texts</h3>
-            
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Kicker / Top Subtitle</label>
-              <Input
-                value={config.headerText.topText}
-                onChange={e => setConfig({
-                  ...config,
-                  headerText: { ...config.headerText, topText: e.target.value }
-                })}
-                placeholder="e.g. Celebrate"
-                className="h-10 neu-inset border-none bg-background text-sm"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Main Title</label>
-              <Input
-                value={config.headerText.mainTitle}
-                onChange={e => setConfig({
-                  ...config,
-                  headerText: { ...config.headerText, mainTitle: e.target.value }
-                })}
-                placeholder="e.g. Diwali Dhamaka"
-                className="h-10 neu-inset border-none bg-background text-sm"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Footer / Date Label</label>
-              <Input
-                value={config.headerText.subText}
-                onChange={e => setConfig({
-                  ...config,
-                  headerText: { ...config.headerText, subText: e.target.value }
-                })}
-                placeholder="e.g. 1st November onwards"
-                className="h-10 neu-inset border-none bg-background text-sm"
-              />
-            </div>
 
             <Button
               onClick={() => handleSave(config)}
               disabled={saving}
               className="w-full rounded-xl bg-primary text-primary-foreground font-bold mt-2 shadow-none"
             >
-              {saving ? "Saving configs..." : "Save Texts & Theme"}
+              {saving ? "Saving configs..." : "Save Basic Settings"}
             </Button>
           </div>
         </div>
 
-        {/* Grid Layout & Blocks list */}
+        {/* Dynamic Page Layout Blocks Builder */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Add / Edit Block Modal style container */}
-          {(isAddingBlock || editingBlockIndex !== null) && (
-            <div className="bg-card rounded-3xl border border-primary/30 p-6 space-y-4 shadow-md transition-all duration-200">
-              <h3 className="font-bold text-base text-foreground pb-2 border-b border-border/30">
-                {editingBlockIndex !== null ? `Edit Grid Block #${editingBlockIndex + 1}` : "Add New Grid Block"}
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">Card Title</label>
-                    <Input
-                      value={blockForm.title}
-                      onChange={e => setBlockForm({ ...blockForm, title: e.target.value })}
-                      placeholder="e.g. Sweets Box"
-                      className="h-10 neu-inset border-none bg-background text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">Card Subtitle</label>
-                    <Input
-                      value={blockForm.subtitle}
-                      onChange={e => setBlockForm({ ...blockForm, subtitle: e.target.value })}
-                      placeholder="e.g. Up to 40% Off"
-                      className="h-10 neu-inset border-none bg-background text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">Card Background Color</label>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="color"
-                        value={blockForm.backgroundColor}
-                        onChange={e => setBlockForm({ ...blockForm, backgroundColor: e.target.value })}
-                        className="w-9 h-9 rounded-lg border-none bg-transparent cursor-pointer"
-                      />
-                      <Input
-                        value={blockForm.backgroundColor}
-                        onChange={e => setBlockForm({ ...blockForm, backgroundColor: e.target.value })}
-                        className="h-9 neu-inset border-none bg-background text-xs font-mono uppercase w-32"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">Target Redirect Category</label>
-                    <select
-                      value={blockForm.targetCategorySlug}
-                      onChange={e => setBlockForm({ ...blockForm, targetCategorySlug: e.target.value })}
-                      className="w-full h-10 px-3 rounded-xl bg-background neu-inset border-none text-sm text-foreground appearance-none cursor-pointer"
-                    >
-                      <option value="">Select a Category</option>
-                      {categoriesList.map(cat => (
-                        <option key={cat._id} value={cat.slug}>
-                          {cat.name} ({cat.slug})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">Image</label>
-                    <div className="flex gap-2">
-                      <Input
-                        value={blockForm.imageUrl}
-                        onChange={e => setBlockForm({ ...blockForm, imageUrl: e.target.value })}
-                        placeholder="https://example.com/banner.png"
-                        className="h-10 neu-inset border-none bg-background text-xs flex-1"
-                      />
-                      <div className="relative shrink-0">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) handleBlockImageUpload(file);
-                          }}
-                          className="hidden"
-                          id="campaign-block-image-upload"
-                          disabled={uploadingImage}
-                        />
-                        <Button
-                          asChild
-                          variant="outline"
-                          className="rounded-xl shadow-none h-10 px-4"
-                          disabled={uploadingImage}
-                        >
-                          <label htmlFor="campaign-block-image-upload" className="cursor-pointer flex items-center gap-1.5">
-                            {uploadingImage ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Upload"}
-                          </label>
-                        </Button>
-                      </div>
-                    </div>
-                    {blockForm.imageUrl && (
-                      <div className="mt-2 w-20 h-16 rounded-xl border border-border overflow-hidden relative">
-                        <img src={blockForm.imageUrl} className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsAddingBlock(false);
-                    setEditingBlockIndex(null);
-                    setBlockForm({ title: "", subtitle: "", backgroundColor: "#FCE7F3", imageUrl: "", targetCategorySlug: "" });
-                  }}
-                  className="rounded-xl shadow-none"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleAddOrUpdateBlock}
-                  className="rounded-xl bg-primary text-primary-foreground font-bold shadow-none"
-                >
-                  {editingBlockIndex !== null ? "Save Updates" : "Add Block"}
-                </Button>
-              </div>
+          {/* Controls to Add New Blocks */}
+          <div className="bg-card rounded-3xl border border-border/40 p-4 shadow-sm flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h3 className="font-bold text-sm text-foreground">Block Assembly Manager</h3>
+              <p className="text-[10px] text-muted-foreground">Select a module type below to append it to the viewport layout.</p>
             </div>
-          )}
-
-          {/* Grid Blocks Ledger */}
-          <div className="bg-card rounded-3xl border border-border/40 p-6 space-y-4 shadow-sm">
-            <div className="flex justify-between items-center border-b border-border/30 pb-3">
-              <div>
-                <h3 className="font-bold text-base text-foreground">Category Cards Grid Blocks</h3>
-                <p className="text-[10px] text-muted-foreground">Arrange, reorder, and link cards dynamically on the campaign page.</p>
-              </div>
+            
+            <div className="flex gap-2">
               <Button
-                onClick={() => {
-                  setIsAddingBlock(true);
-                  setEditingBlockIndex(null);
-                  setBlockForm({ title: "", subtitle: "", backgroundColor: "#FCE7F3", imageUrl: "", targetCategorySlug: "" });
-                }}
-                disabled={isAddingBlock || editingBlockIndex !== null}
-                className="rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/95 flex items-center gap-1 h-9 shadow-none text-xs"
+                onClick={() => handleAddBlock('banner_carousel')}
+                size="sm"
+                variant="outline"
+                className="rounded-xl shadow-none text-xs flex items-center gap-1"
               >
-                <Plus className="w-3.5 h-3.5" /> Add Block
+                <Plus className="w-3.5 h-3.5" /> Carousel
+              </Button>
+              <Button
+                onClick={() => handleAddBlock('category_grid')}
+                size="sm"
+                variant="outline"
+                className="rounded-xl shadow-none text-xs flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Cat Grid
+              </Button>
+              <Button
+                onClick={() => handleAddBlock('product_slider')}
+                size="sm"
+                variant="outline"
+                className="rounded-xl shadow-none text-xs flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Prod Slider
+              </Button>
+              <Button
+                onClick={() => handleAddBlock('single_banner')}
+                size="sm"
+                variant="outline"
+                className="rounded-xl shadow-none text-xs flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Banner
               </Button>
             </div>
+          </div>
 
-            {config.gridBlocks.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground text-sm border border-dashed border-border/60 rounded-2xl">
-                No cards added to the grid yet. Click "Add Block" to start adding campaign banners.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {config.gridBlocks.map((block, idx) => (
-                  <div
-                    key={idx}
-                    className="border border-border/40 rounded-2xl p-4 flex gap-3 relative hover:shadow-sm transition-all duration-200"
-                    style={{ backgroundColor: block.backgroundColor ? `${block.backgroundColor}22` : "transparent" }}
-                  >
-                    <div className="w-16 h-16 rounded-xl border border-border overflow-hidden shrink-0 bg-muted">
-                      {block.imageUrl ? (
-                        <img src={block.imageUrl} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground font-mono">No Image</div>
-                      )}
+          {/* Blocks Render Stack */}
+          {(config.layoutBlocks || []).length === 0 ? (
+            <div className="text-center py-20 border-2 border-dashed border-border/60 rounded-3xl bg-card text-muted-foreground text-sm">
+              Your page is currently empty. Use the buttons above to append banners, sliders, and category blocks.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {(config.layoutBlocks || []).map((block, idx) => (
+                <div key={block.id} className="bg-card border border-border/60 rounded-3xl p-5 shadow-sm space-y-4 relative">
+                  {/* Block Header Info & Controls */}
+                  <div className="flex justify-between items-center border-b border-border/30 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono bg-primary/10 text-primary px-2 py-0.5 rounded font-bold uppercase">
+                        #{idx + 1} {block.type.replace('_', ' ')}
+                      </span>
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-sm text-foreground truncate leading-tight">{block.title}</div>
-                      <div className="text-xs text-muted-foreground truncate mt-0.5">{block.subtitle || "No subtitle"}</div>
-                      <div className="mt-2 flex items-center gap-2 flex-wrap">
-                        <Badge className="bg-primary/10 text-primary border-none text-[9px] font-bold">
-                          👉 {block.targetCategorySlug}
-                        </Badge>
-                        <Badge className="bg-muted text-muted-foreground border-none text-[8px] font-mono uppercase">
-                          BG: {block.backgroundColor}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {/* Operations toolbar */}
-                    <div className="absolute top-2 right-2 flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleMoveBlock(idx, "up")}
                         disabled={idx === 0}
@@ -9828,7 +9600,7 @@ function SeasonalCampaignTab() {
                       </button>
                       <button
                         onClick={() => handleMoveBlock(idx, "down")}
-                        disabled={idx === config.gridBlocks.length - 1}
+                        disabled={idx === (config.layoutBlocks || []).length - 1}
                         className="p-1 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-30"
                         title="Move Down"
                       >
@@ -9836,17 +9608,17 @@ function SeasonalCampaignTab() {
                       </button>
                       <button
                         onClick={() => {
-                          setEditingBlockIndex(idx);
-                          setIsAddingBlock(false);
-                          setBlockForm(block);
+                          if (config) {
+                            handleSave(config);
+                          }
                         }}
-                        className="p-1 rounded-lg text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20"
-                        title="Edit Block"
+                        className="p-1 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20"
+                        title="Save Changes"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        <CheckCircle className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => handleDeleteBlock(idx)}
+                        onClick={() => handleDeleteBlock(block.id)}
                         className="p-1 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
                         title="Delete Block"
                       >
@@ -9854,166 +9626,408 @@ function SeasonalCampaignTab() {
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
 
-          {/* Custom Handpicked Product Grids (Sections) */}
-          <div className="bg-card rounded-3xl border border-border/40 p-6 space-y-6 shadow-sm">
-            <div className="flex justify-between items-center border-b border-border/30 pb-3">
-              <div>
-                <h3 className="font-bold text-base text-foreground">Handpicked Product Grids</h3>
-                <p className="text-[10px] text-muted-foreground">Configure custom product groups (e.g. Sweets Under ₹99) and search to assign exact products.</p>
-              </div>
-              <Button
-                onClick={handleAddSection}
-                className="rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/95 flex items-center gap-1 h-9 shadow-none text-xs"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Grid Section
-              </Button>
-            </div>
-
-            {(!config.customProductSections || config.customProductSections.length === 0) ? (
-              <div className="text-center py-12 text-muted-foreground text-sm border border-dashed border-border/60 rounded-2xl">
-                No handpicked product grids added yet.
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {(config.customProductSections || []).map((sec, idx) => (
-                  <div key={sec.id} className="border border-border/60 rounded-2xl p-4 bg-muted/20 relative space-y-3">
-                    {/* Header edit info */}
-                    <div className="flex gap-2 flex-wrap items-center">
-                      <div className="flex-1 min-w-[200px] grid grid-cols-2 gap-2">
-                        <Input
-                          value={sec.sectionTitle}
-                          onChange={e => {
-                            const title = e.target.value;
-                            setConfig(prev => {
-                              if (!prev) return null;
-                              return {
-                                ...prev,
-                                customProductSections: prev.customProductSections.map(s => s.id === sec.id ? { ...s, sectionTitle: title } : s)
-                              };
-                            });
+                  {/* Block specific details */}
+                  {/* 1. Carousel Block Layout */}
+                  {block.type === 'banner_carousel' && (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-semibold text-muted-foreground">Carousel Slides List</label>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const current = block.data.images || [];
+                            handleUpdateBlockData(block.id, { images: [...current, { imageUrl: "", redirectSlug: "" }] });
                           }}
-                          onBlur={e => handleUpdateSectionInfo(sec.id, e.target.value, sec.sectionSubtitle)}
-                          placeholder="Section Title"
-                          className="h-8 text-xs neu-inset border-none bg-background font-semibold"
-                        />
-                        <Input
-                          value={sec.sectionSubtitle}
-                          onChange={e => {
-                            const sub = e.target.value;
-                            setConfig(prev => {
-                              if (!prev) return null;
-                              return {
-                                ...prev,
-                                customProductSections: prev.customProductSections.map(s => s.id === sec.id ? { ...s, sectionSubtitle: sub } : s)
-                              };
-                            });
-                          }}
-                          onBlur={e => handleUpdateSectionInfo(sec.id, sec.sectionTitle, e.target.value)}
-                          placeholder="Subtitle (optional)"
-                          className="h-8 text-xs neu-inset border-none bg-background"
-                        />
+                          className="text-xs font-bold text-primary h-7 px-2"
+                        >
+                          + Add Slide
+                        </Button>
                       </div>
 
-                      {/* Controls */}
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleMoveSection(idx, "up")}
-                          disabled={idx === 0}
-                          className="p-1 rounded-lg text-muted-foreground hover:bg-background disabled:opacity-30"
-                          title="Move Grid Up"
-                        >
-                          <ChevronUp className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleMoveSection(idx, "down")}
-                          disabled={idx === config.customProductSections.length - 1}
-                          className="p-1 rounded-lg text-muted-foreground hover:bg-background disabled:opacity-30"
-                          title="Move Grid Down"
-                        >
-                          <ChevronDown className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSection(sec.id)}
-                          className="p-1 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
-                          title="Delete Grid Section"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Products search container */}
-                    <div className="relative">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
-                        <Input
-                          value={productQuery[sec.id] || ""}
-                          onChange={e => handleProductSearchQuery(sec.id, e.target.value)}
-                          placeholder="Search product name to add..."
-                          className="pl-9 h-8 text-xs neu-inset border-none bg-background"
-                        />
-                      </div>
-                      
-                      {/* Dropdown list results */}
-                      {(searchResults[sec.id] || []).length > 0 && (
-                        <div className="absolute left-0 right-0 top-9 bg-card border border-border rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto divide-y divide-border/40">
-                          {(searchResults[sec.id] || []).map((p: any) => (
-                            <button
-                              key={p.id}
-                              type="button"
-                              onClick={() => handleAddProductToSection(sec.id, p)}
-                              className="w-full p-2.5 text-left text-xs hover:bg-muted flex items-center gap-2"
-                            >
-                              <div className="w-8 h-8 rounded border border-border overflow-hidden shrink-0">
-                                {p.images?.[0] ? <img src={p.images[0]} className="w-full h-full object-cover" /> : null}
+                      <div className="space-y-3">
+                        {(block.data.images || []).map((slide, slideIdx) => (
+                          <div key={slideIdx} className="border border-border/40 rounded-xl p-3 bg-muted/10 grid grid-cols-1 md:grid-cols-2 gap-3 relative">
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-muted-foreground font-semibold">Image Asset Link</label>
+                              <div className="flex gap-2">
+                                <Input
+                                  value={slide.imageUrl}
+                                  onChange={e => {
+                                    const list = [...(block.data.images || [])];
+                                    list[slideIdx].imageUrl = e.target.value;
+                                    handleUpdateBlockData(block.id, { images: list });
+                                  }}
+                                  placeholder="https://example.com/banner.jpg"
+                                  className="h-8 text-xs neu-inset border-none bg-background flex-1"
+                                />
+                                <div className="relative">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={async e => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        setUploadingBlockId(block.id);
+                                        setUploadingSlideIndex(slideIdx);
+                                        const url = await uploadImage(file);
+                                        if (url) {
+                                          const list = [...(block.data.images || [])];
+                                          list[slideIdx].imageUrl = url;
+                                          handleUpdateBlockData(block.id, { images: list });
+                                          toast.success("Uploaded carousel banner asset");
+                                        } else {
+                                          toast.error("Upload failed");
+                                        }
+                                        setUploadingBlockId(null);
+                                        setUploadingSlideIndex(null);
+                                      }
+                                    }}
+                                    id={`carousel-up-${block.id}-${slideIdx}`}
+                                    className="hidden"
+                                  />
+                                  <Button
+                                    asChild
+                                    variant="outline"
+                                    className="rounded-lg h-8 px-3"
+                                    disabled={uploadingBlockId === block.id && uploadingSlideIndex === slideIdx}
+                                  >
+                                    <label htmlFor={`carousel-up-${block.id}-${slideIdx}`} className="cursor-pointer">
+                                      {uploadingBlockId === block.id && uploadingSlideIndex === slideIdx ? "..." : "Upload"}
+                                    </label>
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="flex-1 truncate">
-                                <div className="font-semibold truncate text-foreground">{p.name}</div>
-                                <div className="text-[10px] text-muted-foreground">₹{p.price} · stock: {p.stock}</div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                            </div>
 
-                    {/* Assigned products view */}
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {(sec.products || []).length === 0 ? (
-                        <span className="text-[10px] text-muted-foreground italic">No products added. Search and add above.</span>
-                      ) : (
-                        (sec.products || []).map((p: any) => (
-                          <div key={p.id} className="bg-background border border-border/40 pl-1.5 pr-1 py-1 rounded-xl flex items-center gap-1.5 max-w-[200px]">
-                            <div className="w-5 h-5 rounded overflow-hidden bg-muted border border-border shrink-0">
-                              {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-cover" /> : null}
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-muted-foreground font-semibold">Redirect Link Category Slug</label>
+                              <select
+                                value={slide.redirectSlug || ""}
+                                onChange={e => {
+                                  const list = [...(block.data.images || [])];
+                                  list[slideIdx].redirectSlug = e.target.value;
+                                  handleUpdateBlockData(block.id, { images: list });
+                                }}
+                                className="w-full h-8 px-2 rounded-lg bg-background neu-inset border-none text-xs text-foreground appearance-none cursor-pointer"
+                              >
+                                <option value="">Select redirect target</option>
+                                {categoriesList.map(cat => (
+                                  <option key={cat._id} value={cat.slug}>{cat.name}</option>
+                                ))}
+                              </select>
                             </div>
-                            <div className="flex-1 truncate min-w-0">
-                              <div className="text-[10px] font-bold text-foreground truncate leading-none mb-0.5">{p.name}</div>
-                              <div className="text-[8px] text-muted-foreground leading-none">₹{p.price}</div>
-                            </div>
+
                             <button
-                              type="button"
-                              onClick={() => handleRemoveProductFromSection(sec.id, p.id)}
-                              className="text-muted-foreground hover:text-red-500 p-0.5 rounded"
+                              onClick={() => {
+                                const list = (block.data.images || []).filter((_, i) => i !== slideIdx);
+                                handleUpdateBlockData(block.id, { images: list });
+                              }}
+                              className="absolute top-1.5 right-1.5 text-xs text-red-500 hover:bg-red-50 p-0.5 rounded"
                             >
                               ✕
                             </button>
                           </div>
-                        ))
-                      )}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  )}
+
+                  {/* 2. Category Grid Block Layout */}
+                  {block.type === 'category_grid' && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-muted-foreground">Grid Section Title</label>
+                          <Input
+                            value={block.data.title || ""}
+                            onChange={e => handleUpdateBlockData(block.id, { title: e.target.value })}
+                            placeholder="e.g. Shop by Category"
+                            className="h-9 neu-inset border-none bg-background text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center border-t border-border/20 pt-2">
+                        <label className="text-xs font-semibold text-muted-foreground">Categories list cells</label>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const current = block.data.categories || [];
+                            handleUpdateBlockData(block.id, { categories: [...current, { imageUrl: "", name: "", categorySlug: "" }] });
+                          }}
+                          className="text-xs font-bold text-primary h-7 px-2"
+                        >
+                          + Add Category Cell
+                        </Button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {(block.data.categories || []).map((cell, cellIdx) => (
+                          <div key={cellIdx} className="border border-border/40 rounded-xl p-3 bg-muted/10 grid grid-cols-1 md:grid-cols-3 gap-3 relative">
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-muted-foreground font-semibold">Cell Label Name</label>
+                              <Input
+                                value={cell.name}
+                                onChange={e => {
+                                  const list = [...(block.data.categories || [])];
+                                  list[cellIdx].name = e.target.value;
+                                  handleUpdateBlockData(block.id, { categories: list });
+                                }}
+                                placeholder="e.g. Sweets"
+                                className="h-8 text-xs neu-inset border-none bg-background"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-muted-foreground font-semibold">Icon Image</label>
+                              <div className="flex gap-2">
+                                <Input
+                                  value={cell.imageUrl}
+                                  onChange={e => {
+                                    const list = [...(block.data.categories || [])];
+                                    list[cellIdx].imageUrl = e.target.value;
+                                    handleUpdateBlockData(block.id, { categories: list });
+                                  }}
+                                  placeholder="https://example.com/icon.png"
+                                  className="h-8 text-xs neu-inset border-none bg-background flex-1"
+                                />
+                                <div className="relative">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={async e => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        setUploadingBlockId(block.id);
+                                        setUploadingSlideIndex(cellIdx);
+                                        const url = await uploadImage(file);
+                                        if (url) {
+                                          const list = [...(block.data.categories || [])];
+                                          list[cellIdx].imageUrl = url;
+                                          handleUpdateBlockData(block.id, { categories: list });
+                                          toast.success("Uploaded cell thumbnail");
+                                        } else {
+                                          toast.error("Upload failed");
+                                        }
+                                        setUploadingBlockId(null);
+                                        setUploadingSlideIndex(null);
+                                      }
+                                    }}
+                                    id={`cell-up-${block.id}-${cellIdx}`}
+                                    className="hidden"
+                                  />
+                                  <Button
+                                    asChild
+                                    variant="outline"
+                                    className="rounded-lg h-8 px-3"
+                                    disabled={uploadingBlockId === block.id && uploadingSlideIndex === cellIdx}
+                                  >
+                                    <label htmlFor={`cell-up-${block.id}-${cellIdx}`} className="cursor-pointer">
+                                      {uploadingBlockId === block.id && uploadingSlideIndex === cellIdx ? "..." : "Upload"}
+                                    </label>
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-muted-foreground font-semibold">Target Category Slug</label>
+                              <select
+                                value={cell.categorySlug || ""}
+                                onChange={e => {
+                                  const list = [...(block.data.categories || [])];
+                                  list[cellIdx].categorySlug = e.target.value;
+                                  handleUpdateBlockData(block.id, { categories: list });
+                                }}
+                                className="w-full h-8 px-2 rounded-lg bg-background neu-inset border-none text-xs text-foreground appearance-none cursor-pointer"
+                              >
+                                <option value="">Select target category</option>
+                                {categoriesList.map(cat => (
+                                  <option key={cat._id} value={cat.slug}>{cat.name}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                const list = (block.data.categories || []).filter((_, i) => i !== cellIdx);
+                                handleUpdateBlockData(block.id, { categories: list });
+                              }}
+                              className="absolute top-1.5 right-1.5 text-xs text-red-500 hover:bg-red-50 p-0.5 rounded"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. Product Slider Block Layout */}
+                  {block.type === 'product_slider' && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-muted-foreground">Slider Title</label>
+                          <Input
+                            value={block.data.title || ""}
+                            onChange={e => handleUpdateBlockData(block.id, { title: e.target.value })}
+                            placeholder="e.g. Best Sellers"
+                            className="h-9 neu-inset border-none bg-background text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-muted-foreground">Slider Subtitle</label>
+                          <Input
+                            value={block.data.subtitle || ""}
+                            onChange={e => handleUpdateBlockData(block.id, { subtitle: e.target.value })}
+                            placeholder="e.g. Premium deals selected just for you"
+                            className="h-9 neu-inset border-none bg-background text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Products search container */}
+                      <div className="relative pt-2">
+                        <label className="text-xs font-semibold text-muted-foreground block mb-1">Add products to this slider</label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+                          <Input
+                            value={productQuery[block.id] || ""}
+                            onChange={e => handleProductSearch(block.id, e.target.value)}
+                            placeholder="Type product name to search..."
+                            className="pl-9 h-9 text-xs neu-inset border-none bg-background"
+                          />
+                        </div>
+
+                        {/* Search Matches dropdown */}
+                        {(searchResults[block.id] || []).length > 0 && (
+                          <div className="absolute left-0 right-0 top-18 bg-card border border-border rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto divide-y divide-border/40">
+                            {(searchResults[block.id] || []).map((p: any) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => handleAddProductToSlider(block.id, p)}
+                                className="w-full p-2.5 text-left text-xs hover:bg-muted flex items-center gap-2"
+                              >
+                                <div className="w-8 h-8 rounded border border-border overflow-hidden shrink-0">
+                                  {p.images?.[0] ? <img src={p.images[0]} className="w-full h-full object-cover" /> : null}
+                                </div>
+                                <div className="flex-1 truncate">
+                                  <div className="font-semibold truncate text-foreground">{p.name}</div>
+                                  <div className="text-[10px] text-muted-foreground">₹{p.price} · stock: {p.stock}</div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Configured Products stack */}
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {(block.data.products || []).length === 0 ? (
+                          <span className="text-[10px] text-muted-foreground italic">No products added. Use the search field above.</span>
+                        ) : (
+                          (block.data.products || []).map((p: any) => (
+                            <div key={p.id} className="bg-background border border-border/40 pl-1.5 pr-1 py-1 rounded-xl flex items-center gap-1.5 max-w-[200px]">
+                              <div className="w-5 h-5 rounded overflow-hidden bg-muted border border-border shrink-0">
+                                {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-cover" /> : null}
+                              </div>
+                              <div className="flex-1 truncate min-w-0">
+                                <div className="text-[9px] font-bold text-foreground truncate leading-none mb-0.5">{p.name}</div>
+                                <div className="text-[8px] text-muted-foreground leading-none">₹{p.price}</div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveProductFromSlider(block.id, p.id)}
+                                className="text-muted-foreground hover:text-red-500 p-0.5 rounded"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4. Single Banner Block Layout */}
+                  {block.type === 'single_banner' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Banner Image link</label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={block.data.imageUrl || ""}
+                            onChange={e => handleUpdateBlockData(block.id, { imageUrl: e.target.value })}
+                            placeholder="https://example.com/banner.png"
+                            className="h-9 neu-inset border-none bg-background text-xs flex-1"
+                          />
+                          <div className="relative">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={async e => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setUploadingBlockId(block.id);
+                                  const url = await uploadImage(file);
+                                  if (url) {
+                                    handleUpdateBlockData(block.id, { imageUrl: url });
+                                    toast.success("Uploaded banner banner image");
+                                  } else {
+                                    toast.error("Upload failed");
+                                  }
+                                  setUploadingBlockId(null);
+                                }
+                              }}
+                              id={`single-up-${block.id}`}
+                              className="hidden"
+                            />
+                            <Button
+                              asChild
+                              variant="outline"
+                              className="rounded-lg h-9 px-3 text-xs"
+                              disabled={uploadingBlockId === block.id}
+                            >
+                              <label htmlFor={`single-up-${block.id}`} className="cursor-pointer">
+                                {uploadingBlockId === block.id ? "..." : "Upload"}
+                              </label>
+                            </Button>
+                          </div>
+                        </div>
+                        {block.data.imageUrl && (
+                          <div className="mt-2 w-24 h-14 rounded-xl border border-border overflow-hidden bg-muted relative">
+                            <img src={block.data.imageUrl} className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Redirect Link Category Slug</label>
+                        <select
+                          value={block.data.redirectSlug || ""}
+                          onChange={e => handleUpdateBlockData(block.id, { redirectSlug: e.target.value })}
+                          className="w-full h-9 px-3 rounded-xl bg-background neu-inset border-none text-xs text-foreground appearance-none cursor-pointer"
+                        >
+                          <option value="">Select target category</option>
+                          {categoriesList.map(cat => (
+                            <option key={cat._id} value={cat.slug}>{cat.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
+
