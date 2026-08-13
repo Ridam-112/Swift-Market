@@ -47,22 +47,38 @@ router.get("/", async (_req, res): Promise<void> => {
     let config = await getOrCreateCafeConfig();
     
     // Detect missing or invalid layoutBlocks array
-    const rawBlocks = (config as any).layoutBlocks;
-    const hasLegacyData = !Array.isArray(rawBlocks);
+    const rawBlocks = config ? (config as any).layoutBlocks : null;
+    const hasLegacyData = !config || !Array.isArray(rawBlocks);
 
     if (hasLegacyData) {
-      const [updated] = await db.update(cafePageConfig)
-        .set({
-          layoutBlocks: [],
-          updatedAt: new Date()
-        })
-        .where(eq(cafePageConfig.id, "default_cafe_page"))
-        .returning();
-      
-      config = updated;
+      try {
+        const [updated] = await db.update(cafePageConfig)
+          .set({
+            layoutBlocks: [],
+            updatedAt: new Date()
+          })
+          .where(eq(cafePageConfig.id, "default_cafe_page"))
+          .returning();
+        
+        config = updated;
+      } catch (dbErr) {
+        console.error("[DB Sync] Failed to update empty fallback configurations:", dbErr);
+      }
     }
 
-    const blocks = (config.layoutBlocks as any[]) || [];
+    // Default template fallback if query returned empty/null config
+    const safeConfig = config || {
+      id: "default_cafe_page",
+      isActive: false,
+      theme: {
+        backgroundColor: "#FFF8F0",
+        textColor: "#8A252C",
+        accentColor: "#F3A738"
+      },
+      layoutBlocks: []
+    };
+
+    const blocks = (safeConfig.layoutBlocks as any[]) || [];
 
     // Extract productIds and shopIds to query in batch
     const allProductIds = new Set<string>();
@@ -83,43 +99,51 @@ router.get("/", async (_req, res): Promise<void> => {
 
     const productMap = new Map<string, any>();
     if (allProductIds.size > 0) {
-      const dbProducts = await db.select()
-        .from(products)
-        .where(inArray(products.id, Array.from(allProductIds)));
-      
-      const mapped = miArr(dbProducts);
-      for (const p of mapped) {
-        const isAvailable = (p.stock ?? 0) > 0 && p.status === "active";
-        const imgList = Array.isArray(p.images) ? p.images : [];
-        const imageUrl = imgList.length > 0 ? imgList[0] : "";
+      try {
+        const dbProducts = await db.select()
+          .from(products)
+          .where(inArray(products.id, Array.from(allProductIds)));
         
-        productMap.set(p.id, {
-          id: p.id,
-          name: p.name,
-          price: p.price,
-          discountedPrice: p.discountedPrice,
-          imageUrl: imageUrl,
-          stockStatus: isAvailable ? "in_stock" : "out_of_stock"
-        });
+        const mapped = miArr(dbProducts);
+        for (const p of mapped) {
+          const isAvailable = (p.stock ?? 0) > 0 && p.status === "active";
+          const imgList = Array.isArray(p.images) ? p.images : [];
+          const imageUrl = imgList.length > 0 ? imgList[0] : "";
+          
+          productMap.set(p.id, {
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            discountedPrice: p.discountedPrice,
+            imageUrl: imageUrl,
+            stockStatus: isAvailable ? "in_stock" : "out_of_stock"
+          });
+        }
+      } catch (prodErr) {
+        console.error("[Products Hydration] Failed to resolve products:", prodErr);
       }
     }
 
     const shopMap = new Map<string, any>();
     if (allShopIds.size > 0) {
-      const dbShops = await db.select()
-        .from(shops)
-        .where(inArray(shops.id, Array.from(allShopIds)));
-      
-      const mappedShops = miArr(dbShops);
-      for (const s of mappedShops) {
-        shopMap.set(s.id, {
-          id: s.id,
-          name: s.shopName,
-          imageUrl: s.image || "",
-          rating: s.rating ?? 0,
-          isOpen: s.isOpen ?? false,
-          status: s.status
-        });
+      try {
+        const dbShops = await db.select()
+          .from(shops)
+          .where(inArray(shops.id, Array.from(allShopIds)));
+        
+        const mappedShops = miArr(dbShops);
+        for (const s of mappedShops) {
+          shopMap.set(s.id, {
+            id: s.id,
+            name: s.shopName,
+            imageUrl: s.image || "",
+            rating: s.rating ?? 0,
+            isOpen: s.isOpen ?? false,
+            status: s.status
+          });
+        }
+      } catch (shopErr) {
+        console.error("[Shops Hydration] Failed to resolve shops:", shopErr);
       }
     }
 
@@ -155,15 +179,35 @@ router.get("/", async (_req, res): Promise<void> => {
       return block;
     });
 
+    const responsePayload = {
+      ...safeConfig,
+      layoutBlocks: resolvedBlocks
+    };
+
     res.json({
       success: true,
-      campaign: {
-        ...config,
-        layoutBlocks: resolvedBlocks
-      }
+      config: responsePayload,
+      campaign: responsePayload // backwards compatible for React Admin Panel
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to load cafe configuration", error: String(err) });
+    console.error("[Cafe Config GET Exception] Graceful fallback triggered:", err);
+    
+    const fallbackPayload = {
+      id: "default_cafe_page",
+      isActive: false,
+      theme: {
+        backgroundColor: "#FFF8F0",
+        textColor: "#8A252C",
+        accentColor: "#F3A738"
+      },
+      layoutBlocks: []
+    };
+
+    res.json({
+      success: true,
+      config: fallbackPayload,
+      campaign: fallbackPayload
+    });
   }
 });
 
