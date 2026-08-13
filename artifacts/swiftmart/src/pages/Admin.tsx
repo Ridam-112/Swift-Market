@@ -9475,7 +9475,7 @@ function SeasonalCampaignTab() {
 
             <div className="grid grid-cols-3 gap-2 pt-2">
               <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-muted-foreground block">Background</label>
+                <label className="text-[10px] font-semibold text-muted-foreground block">Top Hero Banner Color</label>
                 <div className="flex gap-1.5 items-center">
                   <input
                     type="color"

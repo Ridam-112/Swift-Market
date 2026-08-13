@@ -74,7 +74,7 @@ router.get("/", async (_req, res): Promise<void> => {
       
       const mapped = miArr(dbProducts);
       for (const p of mapped) {
-        const isAvailable = (p.stock ?? 0) > 0 && p.status === "approved";
+        const isAvailable = (p.stock ?? 0) > 0 && p.status === "active";
         const imgList = Array.isArray(p.images) ? p.images : [];
         const imageUrl = imgList.length > 0 ? imgList[0] : "";
         
