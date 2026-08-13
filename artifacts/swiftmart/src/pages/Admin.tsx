@@ -12,7 +12,7 @@ import {
   XCircle, Clock, Search, Shield, Star, ShoppingBag, Trash2, Eye, EyeOff,
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
-  ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, ArrowUpDown, Home, Mail,
+  ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, Coffee, ArrowUpDown, Home, Mail,
   Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin, Truck, Bike,
   UserCheck, Gift, QrCode, Upload,
   type LucideIcon,
@@ -133,7 +133,7 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config';
 
 import { SEO } from "@/components/SEO";
 import FleetMapTab from "@/components/FleetMapTab";
@@ -229,6 +229,7 @@ export default function Admin() {
               {activeSection === 'fleet-map' && <FleetMapTab />}
               {activeSection === 'managers' && <ManagersTab />}
               {activeSection === 'seasonal-campaign' && <SeasonalCampaignTab />}
+              {activeSection === 'cafe-config' && <CafePageConfigTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -280,6 +281,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
   { id: 'fleet-map', label: 'Fleet Map', icon: MapPin },
   { id: 'managers', label: 'Managers', icon: Shield },
   { id: 'seasonal-campaign', label: 'Seasonal Campaign', icon: Flame },
+  { id: 'cafe-config', label: 'Cafe Manager', icon: Coffee },
   ];
 
   return (
@@ -10000,6 +10002,995 @@ function SeasonalCampaignTab() {
                               disabled={uploadingBlockId === block.id}
                             >
                               <label htmlFor={`single-up-${block.id}`} className="cursor-pointer">
+                                {uploadingBlockId === block.id ? "..." : "Upload"}
+                              </label>
+                            </Button>
+                          </div>
+                        </div>
+                        {block.data.imageUrl && (
+                          <div className="mt-2 w-24 h-14 rounded-xl border border-border overflow-hidden bg-muted relative">
+                            <img src={block.data.imageUrl} className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Redirect Link Category Slug</label>
+                        <select
+                          value={block.data.redirectSlug || ""}
+                          onChange={e => handleUpdateBlockData(block.id, { redirectSlug: e.target.value })}
+                          className="w-full h-9 px-3 rounded-xl bg-background neu-inset border-none text-xs text-foreground appearance-none cursor-pointer"
+                        >
+                          <option value="">Select target category</option>
+                          {categoriesList.map(cat => (
+                            <option key={cat._id} value={cat.slug}>{cat.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface CafeLayoutBlock {
+  id: string;
+  type: 'banner_carousel' | 'category_grid' | 'product_slider' | 'single_banner' | 'shop_slider';
+  sortOrder: number;
+  data: {
+    title?: string;
+    subtitle?: string;
+    imageUrl?: string;
+    redirectSlug?: string;
+    images?: CarouselImage[];
+    categories?: CategoryCell[];
+    productIds?: string[];
+    products?: Array<{
+      id: string;
+      name: string;
+      price: number;
+      discountedPrice?: number | null;
+      imageUrl: string;
+      stockStatus: string;
+    }>;
+    shopIds?: string[];
+    shops?: Array<{
+      id: string;
+      name: string;
+      imageUrl: string;
+      rating: number;
+      isOpen: boolean;
+      status: string;
+    }>;
+  };
+}
+
+interface CafePageConfig {
+  isActive: boolean;
+  theme: {
+    backgroundColor: string;
+    textColor: string;
+    accentColor: string;
+  };
+  layoutBlocks: CafeLayoutBlock[];
+}
+
+function CafePageConfigTab() {
+  const [config, setConfig] = useState<CafePageConfig | null>(null);
+  const [categoriesList, setCategoriesList] = useState<ApiCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingBlockId, setUploadingBlockId] = useState<string | null>(null);
+  const [uploadingSlideIndex, setUploadingSlideIndex] = useState<number | null>(null);
+
+  // Product Search State per Slider Block
+  const [productQuery, setProductQuery] = useState<Record<string, string>>({});
+  const [searchResults, setSearchResults] = useState<Record<string, any[]>>({});
+
+  // Shop Search State per Slider Block
+  const [shopQuery, setShopQuery] = useState<Record<string, string>>({});
+  const [shopSearchResults, setShopSearchResults] = useState<Record<string, any[]>>({});
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [campRes, catRes] = await Promise.all([
+        api.get<{ success: boolean; campaign: CafePageConfig }>("/cafe-config"),
+        api.get<{ success: boolean; categories: ApiCategory[] }>("/categories/all")
+      ]);
+      const fetched = campRes.campaign;
+      if (fetched) {
+        if (!fetched.layoutBlocks) {
+          fetched.layoutBlocks = [];
+        }
+        setConfig(fetched);
+      }
+      setCategoriesList(catRes.categories || []);
+    } catch {
+      toast.error("Failed to load cafe configuration settings");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleSave = async (updatedConfig: CafePageConfig) => {
+    setSaving(true);
+    try {
+      const res = await api.post<{ success: boolean; campaign: CafePageConfig }>("/cafe-config", updatedConfig);
+      setConfig(res.campaign);
+      toast.success("Cafe Page layouts saved successfully");
+    } catch {
+      toast.error("Failed to save Cafe configurations");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddBlock = (type: CafeLayoutBlock['type']) => {
+    if (!config) return;
+    const blocks = [...(config.layoutBlocks || [])];
+    
+    let defaultData: any = {};
+    if (type === 'banner_carousel') {
+      defaultData = { images: [] };
+    } else if (type === 'category_grid') {
+      defaultData = { title: "Shop by Category", categories: [] };
+    } else if (type === 'product_slider') {
+      defaultData = { title: "Featured Items", subtitle: "Best selections", productIds: [], products: [] };
+    } else if (type === 'shop_slider') {
+      defaultData = { title: "Top Restaurants", subtitle: "Highly rated cafes", shopIds: [], shops: [] };
+    } else if (type === 'single_banner') {
+      defaultData = { imageUrl: "", redirectSlug: "" };
+    }
+
+    const newBlock: CafeLayoutBlock = {
+      id: "block_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+      type,
+      sortOrder: blocks.length + 1,
+      data: defaultData
+    };
+
+    const updated = { ...config, layoutBlocks: [...blocks, newBlock] };
+    setConfig(updated);
+    handleSave(updated);
+  };
+
+  const handleDeleteBlock = (blockId: string) => {
+    if (!config || !confirm("Delete this layout block?")) return;
+    const updated = {
+      ...config,
+      layoutBlocks: (config.layoutBlocks || []).filter(b => b.id !== blockId)
+    };
+    setConfig(updated);
+    handleSave(updated);
+  };
+
+  const handleMoveBlock = (index: number, direction: 'up' | 'down') => {
+    if (!config) return;
+    const blocks = [...(config.layoutBlocks || [])];
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= blocks.length) return;
+
+    const temp = blocks[index];
+    blocks[index] = blocks[targetIdx];
+    blocks[targetIdx] = temp;
+
+    blocks.forEach((b, idx) => {
+      b.sortOrder = idx + 1;
+    });
+
+    const updated = { ...config, layoutBlocks: blocks };
+    setConfig(updated);
+    handleSave(updated);
+  };
+
+  const handleUpdateBlockData = (blockId: string, updatedFields: any) => {
+    if (!config) return;
+    const updatedBlocks = (config.layoutBlocks || []).map(b => {
+      if (b.id === blockId) {
+        return { ...b, data: { ...b.data, ...updatedFields } };
+      }
+      return b;
+    });
+    const updated = { ...config, layoutBlocks: updatedBlocks };
+    setConfig(updated);
+  };
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const { access } = api.getTokens();
+      const res = await fetch("/api/upload/banner-image", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${access ?? ""}` },
+        body: fd,
+      });
+      const data = await res.json() as { success: boolean; imageUrl: string };
+      return data.success ? data.imageUrl : null;
+    } catch {
+      return null;
+    }
+  };
+
+  // Product Autocomplete for products block
+  const handleProductSearch = async (blockId: string, query: string) => {
+    setProductQuery(prev => ({ ...prev, [blockId]: query }));
+    if (!query.trim()) {
+      setSearchResults(prev => ({ ...prev, [blockId]: [] }));
+      return;
+    }
+    try {
+      const res = await api.get<{ success: boolean; products: any[] }>(`/products?search=${encodeURIComponent(query)}&status=all&limit=8`);
+      setSearchResults(prev => ({ ...prev, [blockId]: res.products || [] }));
+    } catch {
+      setSearchResults(prev => ({ ...prev, [blockId]: [] }));
+    }
+  };
+
+  const handleAddProductToSlider = (blockId: string, product: any) => {
+    if (!config) return;
+    const block = (config.layoutBlocks || []).find(b => b.id === blockId);
+    if (!block || block.type !== 'product_slider') return;
+
+    const ids = [...(block.data.productIds || [])];
+    if (ids.includes(product.id)) {
+      toast.error("Product already added to this slider");
+      return;
+    }
+
+    ids.push(product.id);
+    const productsList = [...(block.data.products || [])];
+    productsList.push({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      discountedPrice: product.discountedPrice,
+      imageUrl: product.images?.[0] || "",
+      stockStatus: product.stock > 0 ? "in_stock" : "out_of_stock"
+    });
+
+    handleUpdateBlockData(blockId, { productIds: ids, products: productsList });
+    setProductQuery(prev => ({ ...prev, [blockId]: "" }));
+    setSearchResults(prev => ({ ...prev, [blockId]: [] }));
+  };
+
+  const handleRemoveProductFromSlider = (blockId: string, productId: string) => {
+    if (!config) return;
+    const block = (config.layoutBlocks || []).find(b => b.id === blockId);
+    if (!block || block.type !== 'product_slider') return;
+
+    const ids = (block.data.productIds || []).filter(id => id !== productId);
+    const productsList = (block.data.products || []).filter(p => p.id !== productId);
+
+    handleUpdateBlockData(blockId, { productIds: ids, products: productsList });
+  };
+
+  // Shop/Restaurant Autocomplete for shop blocks
+  const handleShopSearch = async (blockId: string, query: string) => {
+    setShopQuery(prev => ({ ...prev, [blockId]: query }));
+    if (!query.trim()) {
+      setShopSearchResults(prev => ({ ...prev, [blockId]: [] }));
+      return;
+    }
+    try {
+      const res = await api.get<{ success: boolean; shops: any[] }>(`/shops?search=${encodeURIComponent(query)}&limit=8`);
+      setShopSearchResults(prev => ({ ...prev, [blockId]: res.shops || [] }));
+    } catch {
+      setShopSearchResults(prev => ({ ...prev, [blockId]: [] }));
+    }
+  };
+
+  const handleAddShopToSlider = (blockId: string, shop: any) => {
+    if (!config) return;
+    const block = (config.layoutBlocks || []).find(b => b.id === blockId);
+    if (!block || block.type !== 'shop_slider') return;
+
+    const ids = [...(block.data.shopIds || [])];
+    if (ids.includes(shop.id)) {
+      toast.error("Shop/Restaurant already added to this slider");
+      return;
+    }
+
+    ids.push(shop.id);
+    const shopsList = [...(block.data.shops || [])];
+    shopsList.push({
+      id: shop.id,
+      name: shop.shopName,
+      imageUrl: shop.image || "",
+      rating: shop.rating ?? 0,
+      isOpen: shop.isOpen ?? false,
+      status: shop.status
+    });
+
+    handleUpdateBlockData(blockId, { shopIds: ids, shops: shopsList });
+    setShopQuery(prev => ({ ...prev, [blockId]: "" }));
+    setShopSearchResults(prev => ({ ...prev, [blockId]: [] }));
+  };
+
+  const handleRemoveShopFromSlider = (blockId: string, shopId: string) => {
+    if (!config) return;
+    const block = (config.layoutBlocks || []).find(b => b.id === blockId);
+    if (!block || block.type !== 'shop_slider') return;
+
+    const ids = (block.data.shopIds || []).filter(id => id !== shopId);
+    const shopsList = (block.data.shops || []).filter(s => s.id !== shopId);
+
+    handleUpdateBlockData(blockId, { shopIds: ids, shops: shopsList });
+  };
+
+  if (loading || !config) {
+    return (
+      <div className="h-64 bg-card border border-border rounded-3xl animate-pulse flex items-center justify-center text-muted-foreground text-sm font-semibold">
+        Loading Cafe Manager details...
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Cafe Manager</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Build and arrange dynamic layout grids for the Cafe & Food storefront page.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 bg-card px-4 py-2 rounded-2xl border border-border/40 shadow-sm">
+          <span className="text-xs font-semibold text-muted-foreground">Cafe Tab Active:</span>
+          <button
+            onClick={() => handleSave({ ...config, isActive: !config.isActive })}
+            className={`text-xs font-bold px-3 py-1 rounded-xl transition-colors ${
+              config.isActive
+                ? "bg-green-500/10 text-green-600 hover:bg-green-500/20"
+                : "bg-red-500/10 text-red-500 hover:bg-red-500/20"
+            }`}
+          >
+            {config.isActive ? "● Active" : "○ Offline"}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Settings Column */}
+        <div className="lg:col-span-1 space-y-6">
+          <div className="bg-card rounded-3xl border border-border/40 p-6 space-y-4 shadow-sm">
+            <h3 className="font-bold text-base text-foreground pb-2 border-b border-border/30">Theme Details</h3>
+            
+            <div className="grid grid-cols-3 gap-2 pt-2">
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-muted-foreground block">Top Hero Banner Color</label>
+                <div className="flex gap-1.5 items-center">
+                  <input
+                    type="color"
+                    value={config.theme.backgroundColor}
+                    onChange={e => setConfig({
+                      ...config,
+                      theme: { ...config.theme, backgroundColor: e.target.value }
+                    })}
+                    className="w-7 h-7 rounded-lg border-none bg-transparent cursor-pointer"
+                  />
+                  <span className="text-[10px] font-mono text-muted-foreground uppercase">{config.theme.backgroundColor}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-muted-foreground block">Typography</label>
+                <div className="flex gap-1.5 items-center">
+                  <input
+                    type="color"
+                    value={config.theme.textColor}
+                    onChange={e => setConfig({
+                      ...config,
+                      theme: { ...config.theme, textColor: e.target.value }
+                    })}
+                    className="w-7 h-7 rounded-lg border-none bg-transparent cursor-pointer"
+                  />
+                  <span className="text-[10px] font-mono text-muted-foreground uppercase">{config.theme.textColor}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-muted-foreground block">Accent Color</label>
+                <div className="flex gap-1.5 items-center">
+                  <input
+                    type="color"
+                    value={config.theme.accentColor}
+                    onChange={e => setConfig({
+                      ...config,
+                      theme: { ...config.theme, accentColor: e.target.value }
+                    })}
+                    className="w-7 h-7 rounded-lg border-none bg-transparent cursor-pointer"
+                  />
+                  <span className="text-[10px] font-mono text-muted-foreground uppercase">{config.theme.accentColor}</span>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => handleSave(config)}
+              disabled={saving}
+              className="w-full rounded-xl bg-primary text-primary-foreground font-bold mt-2 shadow-none"
+            >
+              {saving ? "Saving configs..." : "Save Settings"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Dynamic Page Layout Blocks Builder */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Controls to Add New Blocks */}
+          <div className="bg-card rounded-3xl border border-border/40 p-4 shadow-sm flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h3 className="font-bold text-sm text-foreground">Block Assembly Manager</h3>
+              <p className="text-[10px] text-muted-foreground">Select a module type below to append it to the viewport layout.</p>
+            </div>
+            
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                onClick={() => handleAddBlock('banner_carousel')}
+                size="sm"
+                variant="outline"
+                className="rounded-xl shadow-none text-xs flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Carousel
+              </Button>
+              <Button
+                onClick={() => handleAddBlock('category_grid')}
+                size="sm"
+                variant="outline"
+                className="rounded-xl shadow-none text-xs flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Cat Grid
+              </Button>
+              <Button
+                onClick={() => handleAddBlock('product_slider')}
+                size="sm"
+                variant="outline"
+                className="rounded-xl shadow-none text-xs flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Prod Slider
+              </Button>
+              <Button
+                onClick={() => handleAddBlock('shop_slider')}
+                size="sm"
+                variant="outline"
+                className="rounded-xl shadow-none text-xs flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Restaurant Slider
+              </Button>
+              <Button
+                onClick={() => handleAddBlock('single_banner')}
+                size="sm"
+                variant="outline"
+                className="rounded-xl shadow-none text-xs flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Banner
+              </Button>
+            </div>
+          </div>
+
+          {/* Blocks Render Stack */}
+          {(config.layoutBlocks || []).length === 0 ? (
+            <div className="text-center py-20 border-2 border-dashed border-border/60 rounded-3xl bg-card text-muted-foreground text-sm">
+              Your Cafe & Food page layout is currently empty. Use the assembly buttons above to add modules.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {(config.layoutBlocks || []).map((block, idx) => (
+                <div key={block.id} className="bg-card border border-border/60 rounded-3xl p-5 shadow-sm space-y-4 relative">
+                  {/* Block Header Info & Controls */}
+                  <div className="flex justify-between items-center border-b border-border/30 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono bg-primary/10 text-primary px-2 py-0.5 rounded font-bold uppercase">
+                        #{idx + 1} {block.type.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleMoveBlock(idx, "up")}
+                        disabled={idx === 0}
+                        className="p-1 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-30"
+                        title="Move Up"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleMoveBlock(idx, "down")}
+                        disabled={idx === (config.layoutBlocks || []).length - 1}
+                        className="p-1 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-30"
+                        title="Move Down"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (config) {
+                            handleSave(config);
+                          }
+                        }}
+                        className="p-1 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20"
+                        title="Save Changes"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBlock(block.id)}
+                        className="p-1 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
+                        title="Delete Block"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Block specific details */}
+                  {/* 1. Carousel Block Layout */}
+                  {block.type === 'banner_carousel' && (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-semibold text-muted-foreground">Carousel Slides List</label>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const current = block.data.images || [];
+                            handleUpdateBlockData(block.id, { images: [...current, { imageUrl: "", redirectSlug: "" }] });
+                          }}
+                          className="text-xs font-bold text-primary h-7 px-2"
+                        >
+                          + Add Slide
+                        </Button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {(block.data.images || []).map((slide, slideIdx) => (
+                          <div key={slideIdx} className="border border-border/40 rounded-xl p-3 bg-muted/10 grid grid-cols-1 md:grid-cols-2 gap-3 relative">
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-muted-foreground font-semibold">Image Asset Link</label>
+                              <div className="flex gap-2">
+                                <Input
+                                  value={slide.imageUrl}
+                                  onChange={e => {
+                                    const list = [...(block.data.images || [])];
+                                    list[slideIdx].imageUrl = e.target.value;
+                                    handleUpdateBlockData(block.id, { images: list });
+                                  }}
+                                  placeholder="https://example.com/banner.jpg"
+                                  className="h-8 text-xs neu-inset border-none bg-background flex-1"
+                                />
+                                <div className="relative">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={async e => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        setUploadingBlockId(block.id);
+                                        setUploadingSlideIndex(slideIdx);
+                                        const url = await uploadImage(file);
+                                        if (url) {
+                                          const list = [...(block.data.images || [])];
+                                          list[slideIdx].imageUrl = url;
+                                          handleUpdateBlockData(block.id, { images: list });
+                                          toast.success("Uploaded carousel banner asset");
+                                        } else {
+                                          toast.error("Upload failed");
+                                        }
+                                        setUploadingBlockId(null);
+                                        setUploadingSlideIndex(null);
+                                      }
+                                    }}
+                                    id={`cafe-carousel-up-${block.id}-${slideIdx}`}
+                                    className="hidden"
+                                  />
+                                  <Button
+                                    asChild
+                                    variant="outline"
+                                    className="rounded-lg h-8 px-3"
+                                    disabled={uploadingBlockId === block.id && uploadingSlideIndex === slideIdx}
+                                  >
+                                    <label htmlFor={`cafe-carousel-up-${block.id}-${slideIdx}`} className="cursor-pointer">
+                                      {uploadingBlockId === block.id && uploadingSlideIndex === slideIdx ? "..." : "Upload"}
+                                    </label>
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-muted-foreground font-semibold">Redirect Link Category Slug</label>
+                              <select
+                                value={slide.redirectSlug || ""}
+                                onChange={e => {
+                                  const list = [...(block.data.images || [])];
+                                  list[slideIdx].redirectSlug = e.target.value;
+                                  handleUpdateBlockData(block.id, { images: list });
+                                }}
+                                className="w-full h-8 px-2 rounded-lg bg-background neu-inset border-none text-xs text-foreground appearance-none cursor-pointer"
+                              >
+                                <option value="">Select redirect target</option>
+                                {categoriesList.map(cat => (
+                                  <option key={cat._id} value={cat.slug}>{cat.name}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                const list = (block.data.images || []).filter((_, i) => i !== slideIdx);
+                                handleUpdateBlockData(block.id, { images: list });
+                              }}
+                              className="absolute top-1.5 right-1.5 text-xs text-red-500 hover:bg-red-50 p-0.5 rounded"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. Category Grid Block Layout */}
+                  {block.type === 'category_grid' && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-muted-foreground">Grid Section Title</label>
+                          <Input
+                            value={block.data.title || ""}
+                            onChange={e => handleUpdateBlockData(block.id, { title: e.target.value })}
+                            placeholder="e.g. Shop by Category"
+                            className="h-9 neu-inset border-none bg-background text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center border-t border-border/20 pt-2">
+                        <label className="text-xs font-semibold text-muted-foreground">Categories list cells</label>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const current = block.data.categories || [];
+                            handleUpdateBlockData(block.id, { categories: [...current, { imageUrl: "", name: "", categorySlug: "" }] });
+                          }}
+                          className="text-xs font-bold text-primary h-7 px-2"
+                        >
+                          + Add Category Cell
+                        </Button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {(block.data.categories || []).map((cell, cellIdx) => (
+                          <div key={cellIdx} className="border border-border/40 rounded-xl p-3 bg-muted/10 grid grid-cols-1 md:grid-cols-3 gap-3 relative">
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-muted-foreground font-semibold">Cell Label Name</label>
+                              <Input
+                                value={cell.name}
+                                onChange={e => {
+                                  const list = [...(block.data.categories || [])];
+                                  list[cellIdx].name = e.target.value;
+                                  handleUpdateBlockData(block.id, { categories: list });
+                                }}
+                                placeholder="e.g. Snacks"
+                                className="h-8 text-xs neu-inset border-none bg-background"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-muted-foreground font-semibold">Icon Image</label>
+                              <div className="flex gap-2">
+                                <Input
+                                  value={cell.imageUrl}
+                                  onChange={e => {
+                                    const list = [...(block.data.categories || [])];
+                                    list[cellIdx].imageUrl = e.target.value;
+                                    handleUpdateBlockData(block.id, { categories: list });
+                                  }}
+                                  placeholder="https://example.com/icon.png"
+                                  className="h-8 text-xs neu-inset border-none bg-background flex-1"
+                                />
+                                <div className="relative">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={async e => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        setUploadingBlockId(block.id);
+                                        setUploadingSlideIndex(cellIdx);
+                                        const url = await uploadImage(file);
+                                        if (url) {
+                                          const list = [...(block.data.categories || [])];
+                                          list[cellIdx].imageUrl = url;
+                                          handleUpdateBlockData(block.id, { categories: list });
+                                          toast.success("Uploaded cell thumbnail");
+                                        } else {
+                                          toast.error("Upload failed");
+                                        }
+                                        setUploadingBlockId(null);
+                                        setUploadingSlideIndex(null);
+                                      }
+                                    }}
+                                    id={`cafe-cell-up-${block.id}-${cellIdx}`}
+                                    className="hidden"
+                                  />
+                                  <Button
+                                    asChild
+                                    variant="outline"
+                                    className="rounded-lg h-8 px-3"
+                                    disabled={uploadingBlockId === block.id && uploadingSlideIndex === cellIdx}
+                                  >
+                                    <label htmlFor={`cafe-cell-up-${block.id}-${cellIdx}`} className="cursor-pointer">
+                                      {uploadingBlockId === block.id && uploadingSlideIndex === cellIdx ? "..." : "Upload"}
+                                    </label>
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-muted-foreground font-semibold">Target Category Slug</label>
+                              <select
+                                value={cell.categorySlug || ""}
+                                onChange={e => {
+                                  const list = [...(block.data.categories || [])];
+                                  list[cellIdx].categorySlug = e.target.value;
+                                  handleUpdateBlockData(block.id, { categories: list });
+                                }}
+                                className="w-full h-8 px-2 rounded-lg bg-background neu-inset border-none text-xs text-foreground appearance-none cursor-pointer"
+                              >
+                                <option value="">Select target category</option>
+                                {categoriesList.map(cat => (
+                                  <option key={cat._id} value={cat.slug}>{cat.name}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                const list = (block.data.categories || []).filter((_, i) => i !== cellIdx);
+                                handleUpdateBlockData(block.id, { categories: list });
+                              }}
+                              className="absolute top-1.5 right-1.5 text-xs text-red-500 hover:bg-red-50 p-0.5 rounded"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. Product Slider Block Layout */}
+                  {block.type === 'product_slider' && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-muted-foreground">Slider Title</label>
+                          <Input
+                            value={block.data.title || ""}
+                            onChange={e => handleUpdateBlockData(block.id, { title: e.target.value })}
+                            placeholder="e.g. Best Sellers"
+                            className="h-9 neu-inset border-none bg-background text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-muted-foreground">Slider Subtitle</label>
+                          <Input
+                            value={block.data.subtitle || ""}
+                            onChange={e => handleUpdateBlockData(block.id, { subtitle: e.target.value })}
+                            placeholder="e.g. Premium deals selected just for you"
+                            className="h-9 neu-inset border-none bg-background text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Products search container */}
+                      <div className="relative pt-2">
+                        <label className="text-xs font-semibold text-muted-foreground block mb-1">Add products to this slider</label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+                          <Input
+                            value={productQuery[block.id] || ""}
+                            onChange={e => handleProductSearch(block.id, e.target.value)}
+                            placeholder="Type product name to search..."
+                            className="pl-9 h-9 text-xs neu-inset border-none bg-background"
+                          />
+                        </div>
+
+                        {/* Search Matches dropdown */}
+                        {(searchResults[block.id] || []).length > 0 && (
+                          <div className="absolute left-0 right-0 top-18 bg-card border border-border rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto divide-y divide-border/40">
+                            {(searchResults[block.id] || []).map((p: any) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => handleAddProductToSlider(block.id, p)}
+                                className="w-full p-2.5 text-left text-xs hover:bg-muted flex items-center gap-2"
+                              >
+                                <div className="w-8 h-8 rounded border border-border overflow-hidden shrink-0">
+                                  {p.images?.[0] ? <img src={p.images[0]} className="w-full h-full object-cover" /> : null}
+                                </div>
+                                <div className="flex-1 truncate">
+                                  <div className="font-semibold truncate text-foreground">{p.name}</div>
+                                  <div className="text-[10px] text-muted-foreground">₹{p.price} · stock: {p.stock}</div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Configured Products stack */}
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {(block.data.products || []).length === 0 ? (
+                          <span className="text-[10px] text-muted-foreground italic">No products added. Use the search field above.</span>
+                        ) : (
+                          (block.data.products || []).map((p: any) => (
+                            <div key={p.id} className="bg-background border border-border/40 pl-1.5 pr-1 py-1 rounded-xl flex items-center gap-1.5 max-w-[200px]">
+                              <div className="w-5 h-5 rounded overflow-hidden bg-muted border border-border shrink-0">
+                                {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-cover" /> : null}
+                              </div>
+                              <div className="flex-1 truncate min-w-0">
+                                <div className="text-[9px] font-bold text-foreground truncate leading-none mb-0.5">{p.name}</div>
+                                <div className="text-[8px] text-muted-foreground leading-none">₹{p.price}</div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveProductFromSlider(block.id, p.id)}
+                                className="text-muted-foreground hover:text-red-500 p-0.5 rounded"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4. Restaurant/Shop Slider Block Layout */}
+                  {block.type === 'shop_slider' && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-muted-foreground">Slider Title</label>
+                          <Input
+                            value={block.data.title || ""}
+                            onChange={e => handleUpdateBlockData(block.id, { title: e.target.value })}
+                            placeholder="e.g. Popular Cafes"
+                            className="h-9 neu-inset border-none bg-background text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-muted-foreground">Slider Subtitle</label>
+                          <Input
+                            value={block.data.subtitle || ""}
+                            onChange={e => handleUpdateBlockData(block.id, { subtitle: e.target.value })}
+                            placeholder="e.g. Fast delivery on top local restaurants"
+                            className="h-9 neu-inset border-none bg-background text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Shops search container */}
+                      <div className="relative pt-2">
+                        <label className="text-xs font-semibold text-muted-foreground block mb-1">Add shops/cafes to this slider</label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+                          <Input
+                            value={shopQuery[block.id] || ""}
+                            onChange={e => handleShopSearch(block.id, e.target.value)}
+                            placeholder="Type restaurant/shop name to search..."
+                            className="pl-9 h-9 text-xs neu-inset border-none bg-background"
+                          />
+                        </div>
+
+                        {/* Search Matches dropdown */}
+                        {(shopSearchResults[block.id] || []).length > 0 && (
+                          <div className="absolute left-0 right-0 top-18 bg-card border border-border rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto divide-y divide-border/40">
+                            {(shopSearchResults[block.id] || []).map((s: any) => (
+                              <button
+                                key={s.id}
+                                type="button"
+                                onClick={() => handleAddShopToSlider(block.id, s)}
+                                className="w-full p-2.5 text-left text-xs hover:bg-muted flex items-center gap-2"
+                              >
+                                <div className="w-8 h-8 rounded border border-border overflow-hidden shrink-0">
+                                  {s.image ? <img src={s.image} className="w-full h-full object-cover" /> : null}
+                                </div>
+                                <div className="flex-1 truncate">
+                                  <div className="font-semibold truncate text-foreground">{s.shopName}</div>
+                                  <div className="text-[10px] text-muted-foreground">Rating: {s.rating} · status: {s.status}</div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Configured Shops stack */}
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {(block.data.shops || []).length === 0 ? (
+                          <span className="text-[10px] text-muted-foreground italic">No shops added. Use the search field above.</span>
+                        ) : (
+                          (block.data.shops || []).map((s: any) => (
+                            <div key={s.id} className="bg-background border border-border/40 pl-1.5 pr-1 py-1 rounded-xl flex items-center gap-1.5 max-w-[200px]">
+                              <div className="w-5 h-5 rounded overflow-hidden bg-muted border border-border shrink-0">
+                                {s.imageUrl ? <img src={s.imageUrl} className="w-full h-full object-cover" /> : null}
+                              </div>
+                              <div className="flex-1 truncate min-w-0">
+                                <div className="text-[9px] font-bold text-foreground truncate leading-none mb-0.5">{s.name}</div>
+                                <div className="text-[8px] text-muted-foreground leading-none">Rating: {s.rating}</div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveShopFromSlider(block.id, s.id)}
+                                className="text-muted-foreground hover:text-red-500 p-0.5 rounded"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 5. Single Banner Block Layout */}
+                  {block.type === 'single_banner' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Banner Image link</label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={block.data.imageUrl || ""}
+                            onChange={e => handleUpdateBlockData(block.id, { imageUrl: e.target.value })}
+                            placeholder="https://example.com/banner.png"
+                            className="h-9 neu-inset border-none bg-background text-xs flex-1"
+                          />
+                          <div className="relative">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={async e => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setUploadingBlockId(block.id);
+                                  const url = await uploadImage(file);
+                                  if (url) {
+                                    handleUpdateBlockData(block.id, { imageUrl: url });
+                                    toast.success("Uploaded banner image");
+                                  } else {
+                                    toast.error("Upload failed");
+                                  }
+                                  setUploadingBlockId(null);
+                                }
+                              }}
+                              id={`cafe-single-up-${block.id}`}
+                              className="hidden"
+                            />
+                            <Button
+                              asChild
+                              variant="outline"
+                              className="rounded-lg h-9 px-3 text-xs"
+                              disabled={uploadingBlockId === block.id}
+                            >
+                              <label htmlFor={`cafe-single-up-${block.id}`} className="cursor-pointer">
                                 {uploadingBlockId === block.id ? "..." : "Upload"}
                               </label>
                             </Button>

@@ -29,3 +29,4 @@ export * from "./cities";
 export * from "./managerCities";
 export * from "./managerActivityLogs";
 export * from "./seasonalCampaign";
+export * from "./cafePageConfig";
