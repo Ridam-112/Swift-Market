@@ -1,7 +1,11 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
-import helmet from "helmet";
-import compression from "compression";
-import pinoHttp from "pino-http";
+import * as helmetModule from "helmet";
+import * as compressionModule from "compression";
+import * as pinoHttpModule from "pino-http";
+
+const helmet: any = (helmetModule as any).default || helmetModule;
+const compression: any = (compressionModule as any).default || compressionModule;
+const pinoHttp: any = (pinoHttpModule as any).default || pinoHttpModule;
 import path from "path";
 import { fileURLToPath } from "url";
 import router from "./routes/index.js";
