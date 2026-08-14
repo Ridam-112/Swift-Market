@@ -596,7 +596,7 @@ router.post("/google", googleAuthLimiter, async (req: Request, res: Response): P
       if (!payload?.email) { res.status(400).json({ success: false, message: "Invalid Google token" }); return; }
       email = payload.email; name = payload.name; googleId = payload.sub; profilePhoto = payload.picture;
     } else {
-      const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      const resp: globalThis.Response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
         headers: { Authorization: `Bearer ${googleAccessToken}` },
       });
       if (!resp.ok) { res.status(400).json({ success: false, message: "Invalid Google access token" }); return; }
@@ -715,7 +715,7 @@ router.post("/google/exchange", googleAuthLimiter, async (req: Request, res: Res
   }
 
   try {
-    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    const tokenRes: globalThis.Response = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -758,7 +758,7 @@ router.post("/google/exchange", googleAuthLimiter, async (req: Request, res: Res
       if (!payload?.email) { res.status(400).json({ success: false, message: "Invalid Google token" }); return; }
       email = payload.email; name = payload.name; googleId = payload.sub; profilePhoto = payload.picture;
     } else if (tokenData.access_token) {
-      const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      const userRes: globalThis.Response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
         headers: { Authorization: `Bearer ${tokenData.access_token}` },
       });
       if (!userRes.ok) { res.status(400).json({ success: false, message: "Could not fetch profile from Google." }); return; }
@@ -1121,7 +1121,7 @@ router.post("/neon-bridge", loginLimiter, async (req: Request, res: Response): P
   type NeonAuthUser = { id: string; email: string; name?: string | null; image?: string | null };
   let authUser: NeonAuthUser | null = null;
   try {
-    const resp = await fetch(`${neonAuthUrl}/get-session`, {
+    const resp: globalThis.Response = await fetch(`${neonAuthUrl}/get-session`, {
       headers: { "Cookie": `better-auth.session_token=${sessionToken}` },
     });
     if (resp.ok) {
