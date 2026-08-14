@@ -7,6 +7,7 @@ const helmet: any = (helmetModule as any).default || helmetModule;
 const compression: any = (compressionModule as any).default || compressionModule;
 const pinoHttp: any = (pinoHttpModule as any).default || pinoHttpModule;
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
@@ -341,8 +342,13 @@ if (process.env.NODE_ENV === "production") {
       res.status(404).end();
       return;
     }
-    res.setHeader("Cache-Control", "no-cache, must-revalidate");
-    res.sendFile(path.join(frontendDist, "index.html"));
+    const indexPath = path.join(frontendDist, "index.html");
+    if (fs.existsSync(indexPath)) {
+      res.setHeader("Cache-Control", "no-cache, must-revalidate");
+      res.sendFile(indexPath);
+    } else {
+      res.status(200).json({ ok: true, message: "SwiftMart API Server is running" });
+    }
   });
 }
 
