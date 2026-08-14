@@ -116949,7 +116949,7 @@ if (!connectionString) {
 }
 var isNeon = connectionString.includes("neon") || connectionString.includes("sslmode=require");
 var pool = new Pool2({
-  connectionString,
+  connectionString: connectionString || void 0,
   ssl: isNeon ? { rejectUnauthorized: false } : void 0,
   max: isNeon ? 5 : 10,
   idleTimeoutMillis: isNeon ? 2e4 : 3e4,
@@ -122008,20 +122008,13 @@ var Resend = class {
 
 // src/lib/logger.ts
 var import_pino = __toESM(require_pino(), 1);
-var isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL === "1" || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
 var logger = (0, import_pino.default)({
   level: process.env.LOG_LEVEL ?? "info",
   redact: [
     "req.headers.authorization",
     "req.headers.cookie",
     "res.headers['set-cookie']"
-  ],
-  ...isProduction ? {} : {
-    transport: {
-      target: "pino-pretty",
-      options: { colorize: true }
-    }
-  }
+  ]
 });
 
 // src/lib/email.ts

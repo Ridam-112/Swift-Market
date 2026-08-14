@@ -1,5 +1,5 @@
 import { pgTable, text, timestamp, boolean, jsonb, index } from "drizzle-orm/pg-core";
-import { users } from "./users";
+import { users } from "./users.js";
 
 export const notifications = pgTable("notifications", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),

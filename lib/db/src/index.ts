@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import * as schema from "./schema";
+import * as schema from "./schema/index.js";
 
 const { Pool } = pg;
 
@@ -17,7 +17,7 @@ const isNeon =
   connectionString.includes("sslmode=require");
 
 export const pool = new Pool({
-  connectionString,
+  connectionString: connectionString || undefined,
   ssl: isNeon ? { rejectUnauthorized: false } : undefined,
   max: isNeon ? 5 : 10,
   idleTimeoutMillis: isNeon ? 20_000 : 30_000,
@@ -31,4 +31,4 @@ pool.on("error", (err) => {
 
 export const db = drizzle(pool, { schema });
 
-export * from "./schema";
+export * from "./schema/index.js";

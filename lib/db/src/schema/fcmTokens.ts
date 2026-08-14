@@ -1,5 +1,5 @@
 import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
-import { users } from "./users";
+import { users } from "./users.js";
 
 export const fcmTokens = pgTable("fcm_tokens", {
   id:          text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
