@@ -10,8 +10,10 @@
  *   import { cacheGet, cacheSet, cacheDel, cacheDelPattern, TTL, KEYS, productsCacheKey } from "../lib/cache.js";
  */
 
-import Redis from "ioredis";
+import * as IORedis from "ioredis";
 import { logger } from "./logger.js";
+
+const RedisClass: any = (IORedis as any).default || (IORedis as any).Redis || IORedis;
 
 // ── TTL constants (seconds) ───────────────────────────────────────────────────
 export const TTL = {
@@ -28,7 +30,7 @@ export const KEYS = {
 } as const;
 
 // ── Internal state ────────────────────────────────────────────────────────────
-let redis: Redis | null = null;
+let redis: any = null;
 let available = false;
 
 // ── Public helpers ────────────────────────────────────────────────────────────
@@ -138,7 +140,7 @@ export function connectRedis(): void {
     return;
   }
 
-  redis = new Redis(url, {
+  redis = new RedisClass(url, {
     // Don't queue commands while disconnected — fail fast so callers fall
     // through to PostgreSQL immediately rather than waiting for reconnect.
     enableOfflineQueue: false,
@@ -147,7 +149,7 @@ export function connectRedis(): void {
     // Give up on the initial TCP handshake after 5 s.
     connectTimeout: 5_000,
     // ioredis built-in reconnect: exponential backoff capped at 30 s.
-    retryStrategy: (times) => Math.min(times * 500, 30_000),
+    retryStrategy: (times: number) => Math.min(times * 500, 30_000),
   });
 
   redis.on("connect", () => {
