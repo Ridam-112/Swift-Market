@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://swiftmart-api-1d8w.onrender.com/api/:path*"
+      "destination": "https://swift-market-api-server-6w3x.vercel.app/api/:path*"
     },
     {
       "source": "/(.*)",
