@@ -1,3 +1,4 @@
+// Vercel Serverless Function Entrypoint
 import app from "../src/app.js";
 import { connectRedis } from "../src/lib/cache.js";
 
