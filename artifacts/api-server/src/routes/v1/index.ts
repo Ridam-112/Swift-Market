@@ -27,6 +27,8 @@ import maintenanceBypassRouter from "./maintenanceBypass.js";
 import managerRouter from "./manager.js";
 import seasonalCampaignRouter from "./seasonal-campaign.js";
 import cafeConfigRouter from "./cafe-config.js";
+import themeConfigRouter from "./themeConfig.js";
+import layoutsRouter from "./layouts.js";
 import { db, categories } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { miArr } from "../../utils/mapId.js";
@@ -92,5 +94,11 @@ router.use("/maintenance-bypass", maintenanceBypassRouter);
 router.use("/manager", managerRouter);
 router.use("/seasonal-campaign", seasonalCampaignRouter);
 router.use("/cafe-config", cafeConfigRouter);
+router.use("/theme-config", themeConfigRouter);
+router.use("/admin/theme-config", themeConfigRouter);
+router.use("/layout", layoutsRouter);
+router.use("/admin/layout", layoutsRouter);
+
+
 
 export default router;

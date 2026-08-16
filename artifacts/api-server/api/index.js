@@ -870,8 +870,8 @@ var require_depd = __commonJS({
       return typeName && callSite.getMethodName() ? typeName + "." + funcName : funcName;
     }
     function formatPlain(msg, caller, stack) {
-      var timestamp31 = (/* @__PURE__ */ new Date()).toUTCString();
-      var formatted = timestamp31 + " " + this._namespace + " deprecated " + msg;
+      var timestamp33 = (/* @__PURE__ */ new Date()).toUTCString();
+      var formatted = timestamp33 + " " + this._namespace + " deprecated " + msg;
       if (this._traced) {
         for (var i2 = 0; i2 < stack.length; i2++) {
           formatted += "\n    at " + stack[i2].toString();
@@ -15744,8 +15744,8 @@ var require_text = __commonJS({
     var debug = require_src()("body-parser:text");
     var read = require_read();
     var { normalizeOptions, passthrough } = require_utils();
-    module.exports = text31;
-    function text31(options) {
+    module.exports = text33;
+    function text33(options) {
       const normalizedOptions = normalizeOptions(options, "text/plain");
       return function textParser(req, res, next) {
         read(req, res, next, passthrough, debug, normalizedOptions);
@@ -19914,11 +19914,11 @@ var require_dist = __commonJS({
     exports.TokenData = TokenData;
     var PathError = class extends TypeError {
       constructor(message, originalPath) {
-        let text31 = message;
+        let text33 = message;
         if (originalPath)
-          text31 += `: ${originalPath}`;
-        text31 += `; visit https://git.new/pathToRegexpError for info`;
-        super(text31);
+          text33 += `: ${originalPath}`;
+        text33 += `; visit https://git.new/pathToRegexpError for info`;
+        super(text33);
         this.originalPath = originalPath;
       }
     };
@@ -20135,8 +20135,8 @@ var require_dist = __commonJS({
       if (node.key)
         keys.push(node.key);
       const children = Object.keys(node.children);
-      const text31 = children.map((id) => toRegExp(node.children[id], keys)).join("|");
-      return node.source + (children.length < 2 ? text31 : `(?:${text31})`);
+      const text33 = children.map((id) => toRegExp(node.children[id], keys)).join("|");
+      return node.source + (children.length < 2 ? text33 : `(?:${text33})`);
     }
     var SourceNode = class _SourceNode {
       constructor(source, key) {
@@ -20559,27 +20559,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router32;
+    module.exports = Router34;
     module.exports.Route = Route;
-    function Router32(options) {
-      if (!(this instanceof Router32)) {
-        return new Router32(options);
+    function Router34(options) {
+      if (!(this instanceof Router34)) {
+        return new Router34(options);
       }
       const opts = options || {};
-      function router32(req, res, next) {
-        router32.handle(req, res, next);
+      function router34(req, res, next) {
+        router34.handle(req, res, next);
       }
-      Object.setPrototypeOf(router32, this);
-      router32.caseSensitive = opts.caseSensitive;
-      router32.mergeParams = opts.mergeParams;
-      router32.params = {};
-      router32.strict = opts.strict;
-      router32.stack = [];
-      return router32;
+      Object.setPrototypeOf(router34, this);
+      router34.caseSensitive = opts.caseSensitive;
+      router34.mergeParams = opts.mergeParams;
+      router34.params = {};
+      router34.strict = opts.strict;
+      router34.stack = [];
+      return router34;
     }
-    Router32.prototype = function() {
+    Router34.prototype = function() {
     };
-    Router32.prototype.param = function param(name, fn) {
+    Router34.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -20599,7 +20599,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router32.prototype.handle = function handle(req, res, callback) {
+    Router34.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20726,7 +20726,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router32.prototype.use = function use(handler2) {
+    Router34.prototype.use = function use(handler2) {
       let offset = 0;
       let path4 = "/";
       if (typeof handler2 !== "function") {
@@ -20759,7 +20759,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router32.prototype.route = function route(path4) {
+    Router34.prototype.route = function route(path4) {
       const route2 = new Route(path4);
       const layer = new Layer(path4, {
         sensitive: this.caseSensitive,
@@ -20774,7 +20774,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router32.prototype[method] = function(path4) {
+      Router34.prototype[method] = function(path4) {
         const route = this.route(path4);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -20957,13 +20957,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router32 = require_router();
+    var Router34 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router32 = null;
+      var router34 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -20972,13 +20972,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router32 === null) {
-            router32 = new Router32({
+          if (router34 === null) {
+            router34 = new Router34({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router32;
+          return router34;
         }
       });
     };
@@ -21049,15 +21049,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router32 = this.router;
+      var router34 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router32.use(path4, fn2);
+          return router34.use(path4, fn2);
         }
         debug(".use app under %s", path4);
         fn2.mountpath = path4;
         fn2.parent = this;
-        router32.use(path4, function mounted_app(req, res, next) {
+        router34.use(path4, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -21841,8 +21841,8 @@ var require_fresh = __commonJS({
       return true;
     }
     function parseHttpDate(date) {
-      var timestamp31 = date && Date.parse(date);
-      return typeof timestamp31 === "number" ? timestamp31 : NaN;
+      var timestamp33 = date && Date.parse(date);
+      return typeof timestamp33 === "number" ? timestamp33 : NaN;
     }
     function parseTokenList(str) {
       var end = 0;
@@ -22889,8 +22889,8 @@ var require_send = __commonJS({
       return list;
     }
     function parseHttpDate(date) {
-      var timestamp31 = date && Date.parse(date);
-      return typeof timestamp31 === "number" ? timestamp31 : NaN;
+      var timestamp33 = date && Date.parse(date);
+      return typeof timestamp33 === "number" ? timestamp33 : NaN;
     }
     function parseTokenList(str) {
       var end = 0;
@@ -23584,7 +23584,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router32 = require_router();
+    var Router34 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -23606,8 +23606,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router32.Route;
-    exports.Router = Router32;
+    exports.Route = Router34.Route;
+    exports.Router = Router34;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -29100,7 +29100,7 @@ var require_pino = __commonJS({
         redact,
         crlf,
         serializers: serializers2,
-        timestamp: timestamp31,
+        timestamp: timestamp33,
         messageKey,
         errorKey,
         nestedKey,
@@ -29150,7 +29150,7 @@ var require_pino = __commonJS({
           chindings = coreChindings(Object.assign({}, base, { name }));
         }
       }
-      const time2 = timestamp31 instanceof Function ? timestamp31 : timestamp31 ? epochTime : nullTime;
+      const time2 = timestamp33 instanceof Function ? timestamp33 : timestamp33 ? epochTime : nullTime;
       const timeSliceIndex = time2().indexOf(":") + 1;
       if (useOnlyCustomLevels && !customLevels) throw Error("customLevels is required if useOnlyCustomLevels is set true");
       if (mixin && typeof mixin !== "function") throw Error(`Unknown mixin type "${typeof mixin}" - expected "function"`);
@@ -34475,15 +34475,15 @@ var require_timespan = __commonJS({
   "../../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/timespan.js"(exports, module) {
     var ms = require_ms();
     module.exports = function(time, iat) {
-      var timestamp31 = iat || Math.floor(Date.now() / 1e3);
+      var timestamp33 = iat || Math.floor(Date.now() / 1e3);
       if (typeof time === "string") {
         var milliseconds = ms(time);
         if (typeof milliseconds === "undefined") {
           return;
         }
-        return Math.floor(timestamp31 + milliseconds / 1e3);
+        return Math.floor(timestamp33 + milliseconds / 1e3);
       } else if (typeof time === "number") {
-        return timestamp31 + time;
+        return timestamp33 + time;
       } else {
         return;
       }
@@ -35192,8 +35192,8 @@ var require_eq = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.1/node_modules/semver/functions/eq.js"(exports, module) {
     "use strict";
     var compare = require_compare();
-    var eq34 = (a, b, loose) => compare(a, b, loose) === 0;
-    module.exports = eq34;
+    var eq36 = (a, b, loose) => compare(a, b, loose) === 0;
+    module.exports = eq36;
   }
 });
 
@@ -35231,7 +35231,7 @@ var require_lte = __commonJS({
 var require_cmp = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.1/node_modules/semver/functions/cmp.js"(exports, module) {
     "use strict";
-    var eq34 = require_eq();
+    var eq36 = require_eq();
     var neq = require_neq();
     var gt4 = require_gt();
     var gte5 = require_gte();
@@ -35258,7 +35258,7 @@ var require_cmp = __commonJS({
         case "":
         case "=":
         case "==":
-          return eq34(a, b, loose);
+          return eq36(a, b, loose);
         case "!=":
           return neq(a, b, loose);
         case ">":
@@ -36283,15 +36283,15 @@ var require_subset = __commonJS({
           return null;
         }
       }
-      for (const eq34 of eqSet) {
-        if (gt4 && !satisfies(eq34, String(gt4), options)) {
+      for (const eq36 of eqSet) {
+        if (gt4 && !satisfies(eq36, String(gt4), options)) {
           return null;
         }
-        if (lt2 && !satisfies(eq34, String(lt2), options)) {
+        if (lt2 && !satisfies(eq36, String(lt2), options)) {
           return null;
         }
         for (const c of dom) {
-          if (!satisfies(eq34, String(c), options)) {
+          if (!satisfies(eq36, String(c), options)) {
             return false;
           }
         }
@@ -36395,7 +36395,7 @@ var require_semver2 = __commonJS({
     var rsort = require_rsort();
     var gt4 = require_gt();
     var lt2 = require_lt();
-    var eq34 = require_eq();
+    var eq36 = require_eq();
     var neq = require_neq();
     var gte5 = require_gte();
     var lte = require_lte();
@@ -36434,7 +36434,7 @@ var require_semver2 = __commonJS({
       rsort,
       gt: gt4,
       lt: lt2,
-      eq: eq34,
+      eq: eq36,
       neq,
       gte: gte5,
       lte,
@@ -37346,15 +37346,15 @@ var require_sign2 = __commonJS({
           return failure(error);
         }
       }
-      const timestamp31 = payload.iat || Math.floor(Date.now() / 1e3);
+      const timestamp33 = payload.iat || Math.floor(Date.now() / 1e3);
       if (options.noTimestamp) {
         delete payload.iat;
       } else if (isObjectPayload) {
-        payload.iat = timestamp31;
+        payload.iat = timestamp33;
       }
       if (typeof options.notBefore !== "undefined") {
         try {
-          payload.nbf = timespan(options.notBefore, timestamp31);
+          payload.nbf = timespan(options.notBefore, timestamp33);
         } catch (err) {
           return failure(err);
         }
@@ -37364,7 +37364,7 @@ var require_sign2 = __commonJS({
       }
       if (typeof options.expiresIn !== "undefined" && typeof payload === "object") {
         try {
-          payload.exp = timespan(options.expiresIn, timestamp31);
+          payload.exp = timespan(options.expiresIn, timestamp33);
         } catch (err) {
           return failure(err);
         }
@@ -39639,8 +39639,8 @@ var require_common2 = __commonJS({
       }
       function redactString(obj, key) {
         if (typeof obj === "object" && obj !== null && typeof obj[key] === "string") {
-          const text31 = obj[key];
-          if (/grant_type=/i.test(text31) || /assertion=/i.test(text31) || /secret/i.test(text31)) {
+          const text33 = obj[key];
+          if (/grant_type=/i.test(text33) || /assertion=/i.test(text33) || /secret/i.test(text33)) {
             obj[key] = REDACT;
           }
         }
@@ -45649,8 +45649,8 @@ var init_body = __esm({
        * @return  Promise
        */
       async json() {
-        const text31 = await this.text();
-        return JSON.parse(text31);
+        const text33 = await this.text();
+        return JSON.parse(text33);
       }
       /**
        * Decode response as text
@@ -48802,18 +48802,18 @@ var require_parse3 = __commonJS({
         n: "\n",
         r: "\r",
         t: "	"
-      }, text31, error = function(m2) {
+      }, text33, error = function(m2) {
         throw {
           name: "SyntaxError",
           message: m2,
           at,
-          text: text31
+          text: text33
         };
       }, next = function(c) {
         if (c && c !== ch) {
           error("Expected '" + c + "' instead of '" + ch + "'");
         }
-        ch = text31.charAt(at);
+        ch = text33.charAt(at);
         at += 1;
         return ch;
       }, number = function() {
@@ -48860,12 +48860,12 @@ var require_parse3 = __commonJS({
           var startAt = at;
           while (next()) {
             if (ch === '"') {
-              if (at - 1 > startAt) string2 += text31.substring(startAt, at - 1);
+              if (at - 1 > startAt) string2 += text33.substring(startAt, at - 1);
               next();
               return string2;
             }
             if (ch === "\\") {
-              if (at - 1 > startAt) string2 += text31.substring(startAt, at - 1);
+              if (at - 1 > startAt) string2 += text33.substring(startAt, at - 1);
               next();
               if (ch === "u") {
                 uffff = 0;
@@ -48998,7 +48998,7 @@ var require_parse3 = __commonJS({
       };
       return function(source, reviver) {
         var result;
-        text31 = source + "";
+        text33 = source + "";
         at = 0;
         ch = " ";
         result = value();
@@ -49900,8 +49900,8 @@ var require_crypto = __commonJS({
         const result = new TextDecoder().decode(uint8array);
         return result;
       }
-      encodeBase64StringUtf8(text31) {
-        const uint8array = new TextEncoder().encode(text31);
+      encodeBase64StringUtf8(text33) {
+        const uint8array = new TextEncoder().encode(text33);
         const result = base64js.fromByteArray(uint8array);
         return result;
       }
@@ -49969,8 +49969,8 @@ var require_crypto2 = __commonJS({
       decodeBase64StringUtf8(base64) {
         return Buffer.from(base64, "base64").toString("utf-8");
       }
-      encodeBase64StringUtf8(text31) {
-        return Buffer.from(text31, "utf-8").toString("base64");
+      encodeBase64StringUtf8(text33) {
+        return Buffer.from(text33, "utf-8").toString("base64");
       }
       /**
        * Computes the SHA-256 hash of the provided string.
@@ -57061,12 +57061,12 @@ var require_utils_legacy = __commonJS({
       const outer = md5(Buffer.concat([Buffer.from(inner), salt]));
       return "md5" + outer;
     }
-    function sha256(text31) {
-      return nodeCrypto.createHash("sha256").update(text31).digest();
+    function sha256(text33) {
+      return nodeCrypto.createHash("sha256").update(text33).digest();
     }
-    function hashByName(hashName, text31) {
+    function hashByName(hashName, text33) {
       hashName = hashName.replace(/(\D)-/, "$1");
-      return nodeCrypto.createHash(hashName).update(text31).digest();
+      return nodeCrypto.createHash(hashName).update(text33).digest();
     }
     function hmacSha256(key, msg) {
       return nodeCrypto.createHmac("sha256", key).update(msg).digest();
@@ -57119,11 +57119,11 @@ var require_utils_webcrypto = __commonJS({
       const outer = await md5(Buffer.concat([Buffer.from(inner), salt]));
       return "md5" + outer;
     }
-    async function sha256(text31) {
-      return await subtleCrypto.digest("SHA-256", text31);
+    async function sha256(text33) {
+      return await subtleCrypto.digest("SHA-256", text33);
     }
-    async function hashByName(hashName, text31) {
-      return await subtleCrypto.digest(hashName, text31);
+    async function hashByName(hashName, text33) {
+      return await subtleCrypto.digest(hashName, text33);
     }
     async function hmacSha256(keyBuffer, msg) {
       const key = await subtleCrypto.importKey("raw", keyBuffer, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -57344,21 +57344,21 @@ var require_sasl = __commonJS({
         throw new Error("SASL: SCRAM-SERVER-FINAL-MESSAGE: server signature does not match");
       }
     }
-    function isPrintableChars(text31) {
-      if (typeof text31 !== "string") {
+    function isPrintableChars(text33) {
+      if (typeof text33 !== "string") {
         throw new TypeError("SASL: text must be a string");
       }
-      return text31.split("").map((_, i2) => text31.charCodeAt(i2)).every((c) => c >= 33 && c <= 43 || c >= 45 && c <= 126);
+      return text33.split("").map((_, i2) => text33.charCodeAt(i2)).every((c) => c >= 33 && c <= 43 || c >= 45 && c <= 126);
     }
-    function isBase64(text31) {
-      return /^(?:[a-zA-Z0-9+/]{4})*(?:[a-zA-Z0-9+/]{2}==|[a-zA-Z0-9+/]{3}=)?$/.test(text31);
+    function isBase64(text33) {
+      return /^(?:[a-zA-Z0-9+/]{4})*(?:[a-zA-Z0-9+/]{2}==|[a-zA-Z0-9+/]{3}=)?$/.test(text33);
     }
-    function parseAttributePairs(text31) {
-      if (typeof text31 !== "string") {
+    function parseAttributePairs(text33) {
+      if (typeof text33 !== "string") {
         throw new TypeError("SASL: attribute pairs text must be a string");
       }
       return new Map(
-        text31.split(",").map((attrValue) => {
+        text33.split(",").map((attrValue) => {
           if (!/^.=/.test(attrValue)) {
             throw new Error("SASL: Invalid attribute pair entry");
           }
@@ -58217,9 +58217,9 @@ var require_messages = __commonJS({
     };
     exports.ReadyForQueryMessage = ReadyForQueryMessage;
     var CommandCompleteMessage = class {
-      constructor(length, text31) {
+      constructor(length, text33) {
         this.length = length;
-        this.text = text31;
+        this.text = text33;
         this.name = "commandComplete";
       }
     };
@@ -58368,8 +58368,8 @@ var require_serializer = __commonJS({
         /* code.startup */
       );
     };
-    var query = (text31) => {
-      return writer.addCString(text31).flush(
+    var query = (text33) => {
+      return writer.addCString(text33).flush(
         81
         /* code.query */
       );
@@ -58489,8 +58489,8 @@ var require_serializer = __commonJS({
       return msg.name ? cstringMessage(68, `${msg.type}${msg.name || ""}`) : msg.type === "P" ? emptyDescribePortal : emptyDescribeStatement;
     };
     var close = (msg) => {
-      const text31 = `${msg.type}${msg.name || ""}`;
-      return cstringMessage(67, text31);
+      const text33 = `${msg.type}${msg.name || ""}`;
+      return cstringMessage(67, text33);
     };
     var copyData = (chunk) => {
       return writer.add(chunk).flush(
@@ -58762,8 +58762,8 @@ var require_parser = __commonJS({
       return new messages_1.ReadyForQueryMessage(LATEINIT_LENGTH, status);
     };
     var parseCommandCompleteMessage = (reader) => {
-      const text31 = reader.cstring();
-      return new messages_1.CommandCompleteMessage(LATEINIT_LENGTH, text31);
+      const text33 = reader.cstring();
+      return new messages_1.CommandCompleteMessage(LATEINIT_LENGTH, text33);
     };
     var parseCopyData = (reader, length) => {
       const chunk = reader.bytes(length - 4);
@@ -59130,8 +59130,8 @@ var require_connection = __commonJS({
         }
         return this.stream.write(buffer);
       }
-      query(text31) {
-        this._send(serialize.query(text31));
+      query(text33) {
+        this._send(serialize.query(text33));
       }
       // send parse message
       parse(query) {
@@ -60448,9 +60448,9 @@ var require_pg_pool = __commonJS({
         this._idle.push(new IdleItem(client, idleListener, tid));
         this._pulseQueue();
       }
-      query(text31, values, cb) {
-        if (typeof text31 === "function") {
-          const response2 = promisify2(this.Promise, text31);
+      query(text33, values, cb) {
+        if (typeof text33 === "function") {
+          const response2 = promisify2(this.Promise, text33);
           setImmediate(function() {
             return response2.callback(new Error("Passing a function as the first parameter to pool.query is not supported"));
           });
@@ -60478,7 +60478,7 @@ var require_pg_pool = __commonJS({
           client.once("error", onError);
           this.log("dispatching query");
           try {
-            client.query(text31, values, (err2, res) => {
+            client.query(text33, values, (err2, res) => {
               this.log("query dispatched");
               client.removeListener("error", onError);
               if (clientReleased) {
@@ -61725,8 +61725,8 @@ var require_dist5 = __commonJS({
         if (!msgSignature || !msgId || !msgTimestamp) {
           throw new WebhookVerificationError("Missing required headers");
         }
-        const timestamp31 = this.verifyTimestamp(msgTimestamp);
-        const computedSignature = this.sign(msgId, timestamp31, payload);
+        const timestamp33 = this.verifyTimestamp(msgTimestamp);
+        const computedSignature = this.sign(msgId, timestamp33, payload);
         const expectedSignature = computedSignature.split(",")[1];
         const passedSignatures = msgSignature.split(" ");
         const encoder = new globalThis.TextEncoder();
@@ -61741,7 +61741,7 @@ var require_dist5 = __commonJS({
         }
         throw new WebhookVerificationError("No matching signature found");
       }
-      sign(msgId, timestamp31, payload) {
+      sign(msgId, timestamp33, payload) {
         if (typeof payload === "string") {
         } else if (payload.constructor.name === "Buffer") {
           payload = payload.toString();
@@ -61749,24 +61749,24 @@ var require_dist5 = __commonJS({
           throw new Error("Expected payload to be of type string or Buffer.");
         }
         const encoder = new TextEncoder();
-        const timestampNumber = Math.floor(timestamp31.getTime() / 1e3);
+        const timestampNumber = Math.floor(timestamp33.getTime() / 1e3);
         const toSign = encoder.encode(`${msgId}.${timestampNumber}.${payload}`);
         const expectedSignature = base64.encode(sha256.hmac(this.key, toSign));
         return `v1,${expectedSignature}`;
       }
       verifyTimestamp(timestampHeader) {
         const now = Math.floor(Date.now() / 1e3);
-        const timestamp31 = parseInt(timestampHeader, 10);
-        if (isNaN(timestamp31)) {
+        const timestamp33 = parseInt(timestampHeader, 10);
+        if (isNaN(timestamp33)) {
           throw new WebhookVerificationError("Invalid Signature Headers");
         }
-        if (now - timestamp31 > WEBHOOK_TOLERANCE_IN_SECONDS) {
+        if (now - timestamp33 > WEBHOOK_TOLERANCE_IN_SECONDS) {
           throw new WebhookVerificationError("Message timestamp too old");
         }
-        if (timestamp31 > now + WEBHOOK_TOLERANCE_IN_SECONDS) {
+        if (timestamp33 > now + WEBHOOK_TOLERANCE_IN_SECONDS) {
           throw new WebhookVerificationError("Message timestamp too new");
         }
-        return new Date(timestamp31 * 1e3);
+        return new Date(timestamp33 * 1e3);
       }
     };
     exports.Webhook = Webhook2;
@@ -62845,20 +62845,20 @@ var require_lodash8 = __commonJS({
           return shuffleSelf(copyArray(array));
         }
         function assignMergeValue(object, key, value) {
-          if (value !== undefined2 && !eq34(object[key], value) || value === undefined2 && !(key in object)) {
+          if (value !== undefined2 && !eq36(object[key], value) || value === undefined2 && !(key in object)) {
             baseAssignValue(object, key, value);
           }
         }
         function assignValue(object, key, value) {
           var objValue = object[key];
-          if (!(hasOwnProperty.call(object, key) && eq34(objValue, value)) || value === undefined2 && !(key in object)) {
+          if (!(hasOwnProperty.call(object, key) && eq36(objValue, value)) || value === undefined2 && !(key in object)) {
             baseAssignValue(object, key, value);
           }
         }
         function assocIndexOf(array, key) {
           var length = array.length;
           while (length--) {
-            if (eq34(array[length][0], key)) {
+            if (eq36(array[length][0], key)) {
               return length;
             }
           }
@@ -63636,7 +63636,7 @@ var require_lodash8 = __commonJS({
           var index12 = -1, length = array.length, resIndex = 0, result2 = [];
           while (++index12 < length) {
             var value = array[index12], computed = iteratee2 ? iteratee2(value) : value;
-            if (!index12 || !eq34(computed, seen)) {
+            if (!index12 || !eq36(computed, seen)) {
               var seen = computed;
               result2[resIndex++] = value === 0 ? 0 : value;
             }
@@ -64332,7 +64332,7 @@ var require_lodash8 = __commonJS({
           return setWrapToString(setter(result2, newData), func, bitmask);
         }
         function customDefaultsAssignIn(objValue, srcValue, key, object) {
-          if (objValue === undefined2 || eq34(objValue, objectProto[key]) && !hasOwnProperty.call(object, key)) {
+          if (objValue === undefined2 || eq36(objValue, objectProto[key]) && !hasOwnProperty.call(object, key)) {
             return srcValue;
           }
           return objValue;
@@ -64407,7 +64407,7 @@ var require_lodash8 = __commonJS({
             case boolTag:
             case dateTag:
             case numberTag:
-              return eq34(+object, +other);
+              return eq36(+object, +other);
             case errorTag:
               return object.name == other.name && object.message == other.message;
             case regexpTag:
@@ -64691,7 +64691,7 @@ var require_lodash8 = __commonJS({
           }
           var type = typeof index12;
           if (type == "number" ? isArrayLike(object) && isIndex(index12, object.length) : type == "string" && index12 in object) {
-            return eq34(object[index12], value);
+            return eq36(object[index12], value);
           }
           return false;
         }
@@ -65174,7 +65174,7 @@ var require_lodash8 = __commonJS({
           var length = array == null ? 0 : array.length;
           if (length) {
             var index12 = baseSortedIndex(array, value);
-            if (index12 < length && eq34(array[index12], value)) {
+            if (index12 < length && eq36(array[index12], value)) {
               return index12;
             }
           }
@@ -65190,7 +65190,7 @@ var require_lodash8 = __commonJS({
           var length = array == null ? 0 : array.length;
           if (length) {
             var index12 = baseSortedIndex(array, value, true) - 1;
-            if (eq34(array[index12], value)) {
+            if (eq36(array[index12], value)) {
               return index12;
             }
           }
@@ -65821,7 +65821,7 @@ var require_lodash8 = __commonJS({
         function conformsTo(object, source) {
           return source == null || baseConformsTo(object, source, keys(source));
         }
-        function eq34(value, other) {
+        function eq36(value, other) {
           return value === other || value !== value && other !== other;
         }
         var gt4 = createRelationalOperation(baseGt);
@@ -66069,7 +66069,7 @@ var require_lodash8 = __commonJS({
             while (++propsIndex < propsLength) {
               var key = props[propsIndex];
               var value = object[key];
-              if (value === undefined2 || eq34(value, objectProto[key]) && !hasOwnProperty.call(object, key)) {
+              if (value === undefined2 || eq36(value, objectProto[key]) && !hasOwnProperty.call(object, key)) {
                 object[key] = source[key];
               }
             }
@@ -66950,7 +66950,7 @@ var require_lodash8 = __commonJS({
         lodash.defaultTo = defaultTo;
         lodash.divide = divide;
         lodash.endsWith = endsWith;
-        lodash.eq = eq34;
+        lodash.eq = eq36;
         lodash.escape = escape2;
         lodash.escapeRegExp = escapeRegExp;
         lodash.every = every;
@@ -79703,12 +79703,12 @@ var require_axios = __commonJS({
       };
     }
     function throttle(fn, freq) {
-      let timestamp31 = 0;
+      let timestamp33 = 0;
       let threshold = 1e3 / freq;
       let lastArgs;
       let timer;
       const invoke = (args, now = Date.now()) => {
-        timestamp31 = now;
+        timestamp33 = now;
         lastArgs = null;
         if (timer) {
           clearTimeout(timer);
@@ -79718,7 +79718,7 @@ var require_axios = __commonJS({
       };
       const throttled = (...args) => {
         const now = Date.now();
-        const passed = now - timestamp31;
+        const passed = now - timestamp33;
         if (passed >= threshold) {
           invoke(args, now);
         } else {
@@ -80680,9 +80680,9 @@ var require_axios = __commonJS({
           const cookies2 = document.cookie.split(";");
           for (let i2 = 0; i2 < cookies2.length; i2++) {
             const cookie = cookies2[i2].replace(/^\s+/, "");
-            const eq34 = cookie.indexOf("=");
-            if (eq34 !== -1 && cookie.slice(0, eq34) === name) {
-              return decodeURIComponent(cookie.slice(eq34 + 1));
+            const eq36 = cookie.indexOf("=");
+            if (eq36 !== -1 && cookie.slice(0, eq36) === name) {
+              return decodeURIComponent(cookie.slice(eq36 + 1));
             }
           }
           return null;
@@ -83416,8 +83416,8 @@ var require_webhook_signature = __commonJS({
       if (timestampString === void 0) {
         throw new Error(errorMessages_1.default.VERIFY_WEBHOOK_EVENT_TIMESTAMP_MISSING.message);
       }
-      var timestamp31 = parseInt(timestampString, 10);
-      if ((0, lodash_1.isNaN)(timestamp31) || timestamp31 < 0) {
+      var timestamp33 = parseInt(timestampString, 10);
+      if ((0, lodash_1.isNaN)(timestamp33) || timestamp33 < 0) {
         throw new Error(errorMessages_1.default.VERIFY_WEBHOOK_EVENT_TIMESTAMP_INVALID.message);
       }
       var v1 = (_b = itemMap.find(function(_a2) {
@@ -83427,17 +83427,17 @@ var require_webhook_signature = __commonJS({
       if (v1 === void 0) {
         throw new Error(errorMessages_1.default.VERIFY_WEBHOOK_EVENT_SIGNATURE_MISSING.message);
       }
-      return { timestamp: timestamp31, v1 };
+      return { timestamp: timestamp33, v1 };
     };
     var verify = function(payload, signature, secret) {
-      var _a = deserializeSignature(signature), timestamp31 = _a.timestamp, v1 = _a.v1;
+      var _a = deserializeSignature(signature), timestamp33 = _a.timestamp, v1 = _a.v1;
       var payloadAsString = typeof payload === "string" ? payload : Buffer.from(payload).toString("utf8");
-      var computedHmac = computeHmac(new Date(timestamp31), payloadAsString, secret);
+      var computedHmac = computeHmac(new Date(timestamp33), payloadAsString, secret);
       if (v1 !== computedHmac) {
         throw new Error(errorMessages_1.default.VERIFY_WEBHOOK_EVENT_SIGNATURE_INCORRECT.message);
       }
       return {
-        timestamp: timestamp31,
+        timestamp: timestamp33,
         event: JSON.parse(payloadAsString)
       };
     };
@@ -86915,11 +86915,11 @@ var require_decodeText = __commonJS({
         return typeof data === "string" ? data : data.toString();
       }
     };
-    function decodeText(text31, sourceEncoding, destEncoding) {
-      if (text31) {
-        return getDecoder2(destEncoding)(text31, sourceEncoding);
+    function decodeText(text33, sourceEncoding, destEncoding) {
+      if (text33) {
+        return getDecoder2(destEncoding)(text33, sourceEncoding);
       }
-      return text31;
+      return text33;
     }
     module.exports = decodeText;
   }
@@ -93582,7 +93582,7 @@ var require_defaults2 = __commonJS({
     function isNil(value) {
       return value == null;
     }
-    function eq34(value, other) {
+    function eq36(value, other) {
       return value === other || Number.isNaN(value) && Number.isNaN(other);
     }
     function isLength(value) {
@@ -93609,7 +93609,7 @@ var require_defaults2 = __commonJS({
         return false;
       }
       if (typeof index12 === "number" && isArrayLike(object) && isIndex(index12) && index12 < object.length || typeof index12 === "string" && index12 in object) {
-        return eq34(object[index12], value);
+        return eq36(object[index12], value);
       }
       return false;
     }
@@ -93628,7 +93628,7 @@ var require_defaults2 = __commonJS({
         const source = sources[i2];
         for (const key in source) {
           const value = object[key];
-          if (value === void 0 || !objectProto.hasOwnProperty.call(object, key) && eq34(value, objectProto[key])) {
+          if (value === void 0 || !objectProto.hasOwnProperty.call(object, key) && eq36(value, objectProto[key])) {
             object[key] = source[key];
           }
         }
@@ -98800,11 +98800,11 @@ var require_DataHandler = __commonJS({
           return false;
         }
         const len = replyStr.indexOf(" ");
-        const timestamp31 = replyStr.slice(0, len);
+        const timestamp33 = replyStr.slice(0, len);
         const argIndex = replyStr.indexOf('"');
         const args = replyStr.slice(argIndex + 1, -1).split('" "').map((elem) => elem.replace(/\\"/g, '"'));
         const dbAndSource = replyStr.slice(len + 2, argIndex - 2).split(" ");
-        this.redis.emit("monitor", timestamp31, args, dbAndSource[1], dbAndSource[0]);
+        this.redis.emit("monitor", timestamp33, args, dbAndSource[1], dbAndSource[0]);
         return true;
       }
       shiftCommand(reply) {
@@ -112677,7 +112677,7 @@ var require_bn = __commonJS({
       BN.prototype.eqn = function eqn(num) {
         return this.cmpn(num) === 0;
       };
-      BN.prototype.eq = function eq34(num) {
+      BN.prototype.eq = function eq36(num) {
         return this.cmp(num) === 0;
       };
       BN.red = function red(num) {
@@ -115715,7 +115715,7 @@ var require_src8 = __commonJS({
 });
 
 // src/app.ts
-var import_express32 = __toESM(require_express2(), 1);
+var import_express34 = __toESM(require_express2(), 1);
 
 // ../../node_modules/.pnpm/helmet@8.2.0/node_modules/helmet/index.mjs
 var helmet_exports = {};
@@ -116293,7 +116293,7 @@ import fs2 from "fs";
 import { fileURLToPath } from "url";
 
 // src/routes/index.ts
-var import_express31 = __toESM(require_express2(), 1);
+var import_express33 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -116313,7 +116313,7 @@ router.get("/healthz", (_req, res) => {
 var health_default = router;
 
 // src/routes/v1/index.ts
-var import_express30 = __toESM(require_express2(), 1);
+var import_express32 = __toESM(require_express2(), 1);
 
 // src/routes/v1/auth.ts
 var import_express2 = __toESM(require_express2(), 1);
@@ -116345,6 +116345,8 @@ var schema_exports = {};
 __export(schema_exports, {
   adminBroadcasts: () => adminBroadcasts,
   admins: () => admins,
+  appLayouts: () => appLayouts,
+  appThemeConfig: () => appThemeConfig,
   buckets: () => buckets,
   cafePageConfig: () => cafePageConfig,
   categories: () => categories,
@@ -116941,6 +116943,27 @@ var cafePageConfig = pgTable30("cafe_page_config", {
   updatedAt: timestamp30("updated_at").notNull().defaultNow()
 });
 
+// ../../lib/db/dist/schema/appThemeConfig.js
+import { pgTable as pgTable31, text as text31, integer as integer14, timestamp as timestamp31, jsonb as jsonb14 } from "drizzle-orm/pg-core";
+var appThemeConfig = pgTable31("app_theme_config", {
+  id: text31("id").primaryKey().$defaultFn(() => "global_theme"),
+  primaryColor: text31("primary_color").notNull().default("#E23744"),
+  secondaryColor: text31("secondary_color").notNull().default("#000000"),
+  borderRadius: integer14("border_radius").notNull().default(12),
+  fontFamily: text31("font_family").notNull().default("Outfit"),
+  customTokens: jsonb14("custom_tokens").$type().notNull().default({}),
+  updatedAt: timestamp31("updated_at").notNull().defaultNow()
+});
+
+// ../../lib/db/dist/schema/appLayouts.js
+import { pgTable as pgTable32, text as text32, timestamp as timestamp32, jsonb as jsonb15 } from "drizzle-orm/pg-core";
+var appLayouts = pgTable32("app_layouts", {
+  id: text32("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  pageName: text32("page_name").notNull().unique(),
+  blocks: jsonb15("blocks").$type().notNull().default([]),
+  updatedAt: timestamp32("updated_at").notNull().defaultNow()
+});
+
 // ../../lib/db/dist/index.js
 var { Pool: Pool2 } = esm_default;
 var connectionString = process.env.DATABASE1_URL ?? process.env.NEON_DATABASE_URL ?? process.env.DATABASE_URL ?? "";
@@ -117113,7 +117136,7 @@ function decodeWords(str) {
       }
     ).replace(/(\?=)?__\x00JOIN\x00__(=\?([^?]+)\?[QqBb]\?)?/g, "").replace(/(=\?[^?]+\?[QqBb]\?[^?]*\?=)\s+(?==\?[^?]+\?[QqBb]\?[^?]*\?=)/g, "$1").replace(
       /=\?([\w_\-*]+)\?([QqBb])\?([^?]*)\?=/g,
-      (m2, charset, encoding, text31) => decodeWord(charset, encoding, text31)
+      (m2, charset, encoding, text33) => decodeWord(charset, encoding, text33)
     );
     if (joinString && result.indexOf("\uFFFD") >= 0) {
       joinString = false;
@@ -121577,7 +121600,7 @@ var Receiving = class {
     });
   }
   async forwardWrapped(email, options) {
-    const { to, from, subject: subject2, text: text31, html } = options;
+    const { to, from, subject: subject2, text: text33, html } = options;
     if (!email.raw?.download_url) return {
       data: null,
       error: {
@@ -121602,7 +121625,7 @@ var Receiving = class {
       from,
       to,
       subject: subject2,
-      text: text31,
+      text: text33,
       html,
       attachments: [{
         filename: "forwarded_message.eml",
@@ -129118,12 +129141,440 @@ router29.post("/", authenticate, A24, async (req, res) => {
 });
 var cafe_config_default = router29;
 
-// src/routes/v1/index.ts
-import { eq as eq32, and as and20, asc as asc8 } from "drizzle-orm";
+// src/routes/v1/themeConfig.ts
+var import_express30 = __toESM(require_express2(), 1);
+import { eq as eq32 } from "drizzle-orm";
 var router30 = (0, import_express30.Router)();
-router30.get("/home-filters", async (_req, res) => {
+var DEFAULT_THEME = {
+  id: "global_theme",
+  primaryColor: "#E23744",
+  secondaryColor: "#000000",
+  borderRadius: 12,
+  fontFamily: "Outfit",
+  customTokens: {}
+};
+router30.get("/", async (_req, res) => {
   try {
-    const list = await db.select().from(categories).where(and20(eq32(categories.isActive, true), eq32(categories.showOnHome, true))).orderBy(asc8(categories.filterOrder));
+    const [themeRecord] = await db.select().from(appThemeConfig).where(eq32(appThemeConfig.id, "global_theme")).limit(1);
+    if (!themeRecord) {
+      res.json({
+        success: true,
+        theme: DEFAULT_THEME
+      });
+      return;
+    }
+    res.json({
+      success: true,
+      theme: {
+        primaryColor: themeRecord.primaryColor || DEFAULT_THEME.primaryColor,
+        secondaryColor: themeRecord.secondaryColor || DEFAULT_THEME.secondaryColor,
+        borderRadius: typeof themeRecord.borderRadius === "number" ? themeRecord.borderRadius : DEFAULT_THEME.borderRadius,
+        fontFamily: themeRecord.fontFamily || DEFAULT_THEME.fontFamily,
+        customTokens: themeRecord.customTokens || DEFAULT_THEME.customTokens,
+        updatedAt: themeRecord.updatedAt
+      }
+    });
+  } catch (err) {
+    logger.error({ err }, "Failed to fetch theme config \u2014 returning default");
+    res.json({
+      success: true,
+      theme: DEFAULT_THEME
+    });
+  }
+});
+router30.put(
+  "/",
+  authenticate,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { primaryColor, secondaryColor, borderRadius, fontFamily, customTokens } = req.body || {};
+      const hexColorRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+      if (primaryColor && !hexColorRegex.test(primaryColor)) {
+        res.status(400).json({ success: false, message: "Invalid primaryColor hex format (e.g., #E23744)" });
+        return;
+      }
+      if (secondaryColor && !hexColorRegex.test(secondaryColor)) {
+        res.status(400).json({ success: false, message: "Invalid secondaryColor hex format (e.g., #000000)" });
+        return;
+      }
+      if (borderRadius !== void 0 && (typeof borderRadius !== "number" || borderRadius < 0 || borderRadius > 50)) {
+        res.status(400).json({ success: false, message: "borderRadius must be a number between 0 and 50" });
+        return;
+      }
+      const updatedValues = {
+        id: "global_theme",
+        primaryColor: primaryColor || DEFAULT_THEME.primaryColor,
+        secondaryColor: secondaryColor || DEFAULT_THEME.secondaryColor,
+        borderRadius: typeof borderRadius === "number" ? borderRadius : DEFAULT_THEME.borderRadius,
+        fontFamily: fontFamily?.trim() || DEFAULT_THEME.fontFamily,
+        customTokens: typeof customTokens === "object" && customTokens !== null ? customTokens : DEFAULT_THEME.customTokens,
+        updatedAt: /* @__PURE__ */ new Date()
+      };
+      await db.insert(appThemeConfig).values(updatedValues).onConflictDoUpdate({
+        target: appThemeConfig.id,
+        set: updatedValues
+      });
+      logger.info({ updatedValues }, "App theme config updated successfully");
+      res.json({
+        success: true,
+        message: "Theme configuration updated successfully",
+        theme: updatedValues
+      });
+    } catch (err) {
+      logger.error({ err }, "Failed to update theme config");
+      res.status(500).json({ success: false, message: "Failed to update theme config", error: String(err) });
+    }
+  }
+);
+var themeConfig_default = router30;
+
+// src/routes/v1/layouts.ts
+var import_express31 = __toESM(require_express2(), 1);
+import { eq as eq33 } from "drizzle-orm";
+var router31 = (0, import_express31.Router)();
+var DEFAULT_HOME_BLOCKS = [
+  {
+    id: "block_hero_1",
+    type: "hero_banner",
+    sortOrder: 1,
+    isActive: true,
+    data: {
+      title: "Fastest 10-Minute Grocery Delivery",
+      subtitle: "Fresh vegetables, dairy & daily essentials delivered to your doorstep",
+      imageUrl: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200&q=80",
+      link: "/shops",
+      buttonText: "Shop Now"
+    }
+  },
+  {
+    id: "block_categories_1",
+    type: "category_grid",
+    sortOrder: 2,
+    isActive: true,
+    data: {
+      title: "Explore Categories",
+      columns: 4
+    }
+  },
+  {
+    id: "block_promo_1",
+    type: "promotional_strip",
+    sortOrder: 3,
+    isActive: true,
+    data: {
+      title: "\u26A1 Monsoon Special Deals",
+      subtitle: "Up to 40% OFF on fresh fruits and snacks",
+      backgroundColor: "#E23744",
+      link: "/categories",
+      buttonText: "Claim Offer"
+    }
+  },
+  {
+    id: "block_products_1",
+    type: "product_carousel",
+    sortOrder: 4,
+    isActive: true,
+    data: {
+      title: "Trending Fast-Fills",
+      categorySlug: "dairy",
+      limit: 10
+    }
+  },
+  {
+    id: "block_spacer_1",
+    type: "spacer",
+    sortOrder: 5,
+    isActive: true,
+    data: {
+      height: 24
+    }
+  }
+];
+var DEFAULT_FESTIVE_BLOCKS = [
+  {
+    id: "block_festive_promo_1",
+    type: "promotional_strip",
+    sortOrder: 1,
+    isActive: true,
+    data: {
+      title: "\u{1F1EE}\u{1F1F3} Freedom & Festive Mahotsav",
+      subtitle: "Flat 50% OFF on Sweets, Dry Fruits & Celebration Packs",
+      backgroundColor: "#FF9933",
+      link: "/categories",
+      buttonText: "Explore Offers"
+    }
+  },
+  {
+    id: "block_festive_hero_1",
+    type: "hero_banner",
+    sortOrder: 2,
+    isActive: true,
+    data: {
+      title: "Festive Season Celebration Deals",
+      subtitle: "Exclusive hampers & gift boxes delivered in 10 minutes",
+      imageUrl: "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=1200&q=80",
+      link: "/shops",
+      buttonText: "Shop Festive"
+    }
+  },
+  {
+    id: "block_festive_products_1",
+    type: "product_carousel",
+    sortOrder: 3,
+    isActive: true,
+    data: {
+      title: "Festive Delights & Sweets",
+      categorySlug: "sweets",
+      limit: 10
+    }
+  },
+  {
+    id: "block_festive_categories_1",
+    type: "category_grid",
+    sortOrder: 4,
+    isActive: true,
+    data: {
+      title: "Festive Collections",
+      columns: 4
+    }
+  },
+  {
+    id: "block_festive_spacer_1",
+    type: "spacer",
+    sortOrder: 5,
+    isActive: true,
+    data: { height: 24 }
+  }
+];
+var DEFAULT_SUPER_STORE_BLOCKS = [
+  {
+    id: "block_super_hero_1",
+    type: "hero_banner",
+    sortOrder: 1,
+    isActive: true,
+    data: {
+      title: "SwiftMart Super Store \u2014 Mega Wholesale Savings",
+      subtitle: "Bulk orders, electronics, home essentials & appliances at direct wholesale prices",
+      imageUrl: "https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=1200&q=80",
+      link: "/shops",
+      buttonText: "Browse Wholesale"
+    }
+  },
+  {
+    id: "block_super_promo_1",
+    type: "promotional_strip",
+    sortOrder: 2,
+    isActive: true,
+    data: {
+      title: "\u{1F6D2} Super Store Mega Savings Pass",
+      subtitle: "Extra 15% Cashback on orders over \u20B9999",
+      backgroundColor: "#2563EB",
+      link: "/categories",
+      buttonText: "Activate Pass"
+    }
+  },
+  {
+    id: "block_super_products_1",
+    type: "product_carousel",
+    sortOrder: 3,
+    isActive: true,
+    data: {
+      title: "Super Store Top Sellers",
+      categorySlug: "electronics",
+      limit: 10
+    }
+  },
+  {
+    id: "block_super_categories_1",
+    type: "category_grid",
+    sortOrder: 4,
+    isActive: true,
+    data: {
+      title: "Super Store Departments",
+      columns: 4
+    }
+  },
+  {
+    id: "block_super_spacer_1",
+    type: "spacer",
+    sortOrder: 5,
+    isActive: true,
+    data: { height: 24 }
+  }
+];
+var DEFAULT_CAFE_BLOCKS = [
+  {
+    id: "block_cafe_hero_1",
+    type: "hero_banner",
+    sortOrder: 1,
+    isActive: true,
+    data: {
+      title: "SwiftMart Cafe & Cloud Kitchen",
+      subtitle: "Hot pizza, burgers, momos & fresh brews delivered hot in 15 minutes",
+      imageUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&q=80",
+      link: "/shops",
+      buttonText: "Order Food"
+    }
+  },
+  {
+    id: "block_cafe_promo_1",
+    type: "promotional_strip",
+    sortOrder: 2,
+    isActive: true,
+    data: {
+      title: "\u{1F355} Hot & Fresh Cafe Deals",
+      subtitle: "Buy 1 Get 1 Free on all Artisan Pizzas & Cold Coffee Shakes",
+      backgroundColor: "#E23744",
+      link: "/categories",
+      buttonText: "Grab BOGO"
+    }
+  },
+  {
+    id: "block_cafe_products_1",
+    type: "product_carousel",
+    sortOrder: 3,
+    isActive: true,
+    data: {
+      title: "Chef's Special Fast-Bites",
+      categorySlug: "fast-food",
+      limit: 10
+    }
+  },
+  {
+    id: "block_cafe_categories_1",
+    type: "category_grid",
+    sortOrder: 4,
+    isActive: true,
+    data: {
+      title: "Cafe Menu Categories",
+      columns: 3
+    }
+  },
+  {
+    id: "block_cafe_spacer_1",
+    type: "spacer",
+    sortOrder: 5,
+    isActive: true,
+    data: { height: 24 }
+  }
+];
+function getDefaultBlocksForPage(pageName) {
+  const p = pageName.toLowerCase();
+  if (p === "home") return DEFAULT_HOME_BLOCKS;
+  if (p === "festive") return DEFAULT_FESTIVE_BLOCKS;
+  if (p === "super_store" || p === "superstore") return DEFAULT_SUPER_STORE_BLOCKS;
+  if (p === "cafe") return DEFAULT_CAFE_BLOCKS;
+  return [
+    {
+      id: `block_default_${p}`,
+      type: "hero_banner",
+      sortOrder: 1,
+      isActive: true,
+      data: {
+        title: `Welcome to ${p.toUpperCase()} Page`,
+        subtitle: "Configured via SwiftMart SDUI Engine",
+        imageUrl: "https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=1200&q=80",
+        link: "/"
+      }
+    },
+    {
+      id: `block_spacer_${p}`,
+      type: "spacer",
+      sortOrder: 2,
+      isActive: true,
+      data: { height: 16 }
+    }
+  ];
+}
+router31.get("/:pageName", async (req, res) => {
+  const rawParam = req.params["pageName"];
+  const pageName = String(Array.isArray(rawParam) ? rawParam[0] : rawParam || "home").toLowerCase();
+  try {
+    const [layout] = await db.select().from(appLayouts).where(eq33(appLayouts.pageName, pageName)).limit(1);
+    if (!layout || !Array.isArray(layout.blocks) || layout.blocks.length === 0) {
+      const defaultBlocks = getDefaultBlocksForPage(pageName);
+      res.json({
+        success: true,
+        pageName,
+        isDefault: true,
+        blocks: defaultBlocks
+      });
+      return;
+    }
+    const activeSortedBlocks = layout.blocks.filter((b) => b.isActive !== false).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    res.json({
+      success: true,
+      pageName,
+      isDefault: false,
+      blocks: activeSortedBlocks,
+      allBlocks: layout.blocks,
+      updatedAt: layout.updatedAt
+    });
+  } catch (err) {
+    logger.error({ err, pageName }, "Failed to fetch layout \u2014 returning fallback");
+    res.json({
+      success: true,
+      pageName,
+      isDefault: true,
+      blocks: getDefaultBlocksForPage(pageName)
+    });
+  }
+});
+router31.put(
+  "/:pageName",
+  authenticate,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    const rawParam = req.params["pageName"];
+    const pageName = String(Array.isArray(rawParam) ? rawParam[0] : rawParam || "home").toLowerCase();
+    const { blocks } = req.body || {};
+    if (!Array.isArray(blocks)) {
+      res.status(400).json({ success: false, message: "blocks must be an array of layout blocks" });
+      return;
+    }
+    try {
+      const sanitizedBlocks = blocks.map((b, idx) => ({
+        id: String(b.id || `block_${Date.now()}_${idx}`),
+        type: b.type || "spacer",
+        sortOrder: typeof b.sortOrder === "number" ? b.sortOrder : idx + 1,
+        isActive: b.isActive !== false,
+        data: typeof b.data === "object" && b.data !== null ? b.data : {}
+      }));
+      const recordValues = {
+        id: crypto.randomUUID(),
+        pageName,
+        blocks: sanitizedBlocks,
+        updatedAt: /* @__PURE__ */ new Date()
+      };
+      await db.insert(appLayouts).values(recordValues).onConflictDoUpdate({
+        target: appLayouts.pageName,
+        set: {
+          blocks: sanitizedBlocks,
+          updatedAt: /* @__PURE__ */ new Date()
+        }
+      });
+      logger.info({ pageName, blockCount: sanitizedBlocks.length }, "Page layout updated successfully");
+      res.json({
+        success: true,
+        message: `Layout for page '${pageName}' updated successfully`,
+        pageName,
+        blocks: sanitizedBlocks
+      });
+    } catch (err) {
+      logger.error({ err, pageName }, "Failed to save page layout");
+      res.status(500).json({ success: false, message: "Failed to save page layout", error: String(err) });
+    }
+  }
+);
+var layouts_default = router31;
+
+// src/routes/v1/index.ts
+import { eq as eq34, and as and20, asc as asc8 } from "drizzle-orm";
+var router32 = (0, import_express32.Router)();
+router32.get("/home-filters", async (_req, res) => {
+  try {
+    const list = await db.select().from(categories).where(and20(eq34(categories.isActive, true), eq34(categories.showOnHome, true))).orderBy(asc8(categories.filterOrder));
     const mapped = miArr(list);
     const grouped = {
       swiftmart: [],
@@ -129143,41 +129594,45 @@ router30.get("/home-filters", async (_req, res) => {
     res.status(500).json({ success: false, message: "Failed to load home filters", error: String(err) });
   }
 });
-router30.use("/auth", auth_default);
-router30.use("/admin", admin_default);
-router30.use("/users", users_default);
-router30.use("/shops", shops_default);
-router30.use("/shop-types", shopTypes_default);
-router30.use("/categories", categories_default);
-router30.use("/products", products_default);
-router30.use("/orders", orders_default);
-router30.use("/coupons", coupons_default);
-router30.use("/commissions", commissions_default);
-router30.use("/delivery", delivery_default);
-router30.use("/payouts", payouts_default);
-router30.use("/reports", reports_default);
-router30.use("/notifications", notifications_default);
-router30.use("/upload", upload_default);
-router30.use("/hero-banners", hero_banners_default);
-router30.use("/payments", payments_default);
-router30.use("/push", push_default);
-router30.use("/fcm", fcm_default);
-router30.use("/support", support_default);
-router30.use("/admin/analytics", analytics_default);
-router30.use("/homepage-sections", homepage_sections_default);
-router30.use("/service-pincodes", servicePincodes_default);
-router30.use("/buckets", buckets_default);
-router30.use("/maintenance-bypass", maintenanceBypass_default);
-router30.use("/manager", manager_default);
-router30.use("/seasonal-campaign", seasonal_campaign_default);
-router30.use("/cafe-config", cafe_config_default);
-var v1_default = router30;
+router32.use("/auth", auth_default);
+router32.use("/admin", admin_default);
+router32.use("/users", users_default);
+router32.use("/shops", shops_default);
+router32.use("/shop-types", shopTypes_default);
+router32.use("/categories", categories_default);
+router32.use("/products", products_default);
+router32.use("/orders", orders_default);
+router32.use("/coupons", coupons_default);
+router32.use("/commissions", commissions_default);
+router32.use("/delivery", delivery_default);
+router32.use("/payouts", payouts_default);
+router32.use("/reports", reports_default);
+router32.use("/notifications", notifications_default);
+router32.use("/upload", upload_default);
+router32.use("/hero-banners", hero_banners_default);
+router32.use("/payments", payments_default);
+router32.use("/push", push_default);
+router32.use("/fcm", fcm_default);
+router32.use("/support", support_default);
+router32.use("/admin/analytics", analytics_default);
+router32.use("/homepage-sections", homepage_sections_default);
+router32.use("/service-pincodes", servicePincodes_default);
+router32.use("/buckets", buckets_default);
+router32.use("/maintenance-bypass", maintenanceBypass_default);
+router32.use("/manager", manager_default);
+router32.use("/seasonal-campaign", seasonal_campaign_default);
+router32.use("/cafe-config", cafe_config_default);
+router32.use("/theme-config", themeConfig_default);
+router32.use("/admin/theme-config", themeConfig_default);
+router32.use("/layout", layouts_default);
+router32.use("/admin/layout", layouts_default);
+var v1_default = router32;
 
 // src/routes/index.ts
-var router31 = (0, import_express31.Router)();
-router31.use(health_default);
-router31.use(v1_default);
-var routes_default = router31;
+var router33 = (0, import_express33.Router)();
+router33.use(health_default);
+router33.use(v1_default);
+var routes_default = router33;
 
 // src/middlewares/maintenanceMode.ts
 var import_jsonwebtoken4 = __toESM(require_jsonwebtoken(), 1);
@@ -129552,7 +130007,7 @@ function maintenanceMode(req, res, next) {
 }
 
 // src/app.ts
-import { eq as eq33 } from "drizzle-orm";
+import { eq as eq35 } from "drizzle-orm";
 var helmet3 = helmet || helmet_exports;
 var compression = compressionModule.default || compressionModule;
 var pinoHttp = pinoHttpModule.default || pinoHttpModule;
@@ -129579,9 +130034,9 @@ async function buildSitemap() {
   const fmt = (d) => d ? new Date(d).toISOString().split("T")[0] : (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const [shopRows, productRows, categoryRows] = await Promise.all([
-    db.select({ id: shops.id, updatedAt: shops.updatedAt }).from(shops).where(eq33(shops.status, "approved")),
-    db.select({ id: products.id, updatedAt: products.updatedAt }).from(products).where(eq33(products.status, "active")),
-    db.select({ slug: categories.slug, updatedAt: categories.updatedAt }).from(categories).where(eq33(categories.isActive, true))
+    db.select({ id: shops.id, updatedAt: shops.updatedAt }).from(shops).where(eq35(shops.status, "approved")),
+    db.select({ id: products.id, updatedAt: products.updatedAt }).from(products).where(eq35(products.status, "active")),
+    db.select({ slug: categories.slug, updatedAt: categories.updatedAt }).from(categories).where(eq35(categories.isActive, true))
   ]);
   const urlTags = [
     ...STATIC_SITEMAP_URLS.map(
@@ -129606,7 +130061,7 @@ async function buildSitemap() {
   sitemapCache = { xml, builtAt: Date.now() };
   return xml;
 }
-var app = (0, import_express32.default)();
+var app = (0, import_express34.default)();
 app.use(compression({ threshold: 1024 }));
 app.use(
   pinoHttp({
@@ -129681,14 +130136,14 @@ app.use((req, res, next) => {
   }
   next();
 });
-app.use(import_express32.default.json({
+app.use(import_express34.default.json({
   verify: (req, _res, buf) => {
     if (req.url?.includes("/payments/webhook")) {
       req.rawBody = buf;
     }
   }
 }));
-app.use(import_express32.default.urlencoded({ extended: true }));
+app.use(import_express34.default.urlencoded({ extended: true }));
 app.get("/health", (_req, res) => {
   res.status(200).json({ ok: true, service: "swiftmart-api" });
 });
@@ -129723,7 +130178,7 @@ app.use("/api", (_req, res, next) => {
   res.setHeader("X-Robots-Tag", "noindex, nofollow");
   next();
 });
-app.use("/api/uploads", import_express32.default.static(path3.join(__dirname2, "..", "uploads")));
+app.use("/api/uploads", import_express34.default.static(path3.join(__dirname2, "..", "uploads")));
 app.use("/api", globalApiLimiter, routes_default);
 if (process.env.NODE_ENV === "production") {
   const frontendDist = path3.join(__dirname2, "..", "..", "swiftmart", "dist", "public");
@@ -129765,7 +130220,7 @@ Sitemap: https://swiftmart.space/sitemap.xml
       res.status(200).setHeader("Content-Type", "application/xml; charset=utf-8").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`);
     }
   });
-  app.use(import_express32.default.static(frontendDist, {
+  app.use(import_express34.default.static(frontendDist, {
     setHeaders(res, filePath) {
       if (filePath.includes(`${path3.sep}assets${path3.sep}`)) {
         res.setHeader("Cache-Control", "public, max-age=31536000, immutable");

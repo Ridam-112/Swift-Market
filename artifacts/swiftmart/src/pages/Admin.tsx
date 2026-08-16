@@ -14,7 +14,7 @@ import {
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
   ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, Coffee, ArrowUpDown, Home, Mail,
   Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin, Truck, Bike,
-  UserCheck, Gift, QrCode, Upload,
+  UserCheck, Gift, QrCode, Upload, Palette, LayoutGrid,
   type LucideIcon,
 } from "lucide-react";
 import { generateShopSticker } from "@/lib/shopSticker";
@@ -133,10 +133,12 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config' | 'theme-config' | 'layout-builder';
 
 import { SEO } from "@/components/SEO";
 import FleetMapTab from "@/components/FleetMapTab";
+import { ThemeConfigTab } from "./admin/ThemeConfigTab";
+import { LayoutBuilderTab } from "./admin/LayoutBuilderTab";
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -230,6 +232,8 @@ export default function Admin() {
               {activeSection === 'managers' && <ManagersTab />}
               {activeSection === 'seasonal-campaign' && <SeasonalCampaignTab />}
               {activeSection === 'cafe-config' && <CafePageConfigTab />}
+              {activeSection === 'theme-config' && <ThemeConfigTab />}
+              {activeSection === 'layout-builder' && <LayoutBuilderTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -282,6 +286,8 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
   { id: 'managers', label: 'Managers', icon: Shield },
   { id: 'seasonal-campaign', label: 'Seasonal Campaign', icon: Flame },
   { id: 'cafe-config', label: 'Cafe Manager', icon: Coffee },
+  { id: 'theme-config', label: 'Theme Config', icon: Palette },
+  { id: 'layout-builder', label: 'Layout Builder', icon: LayoutGrid },
   ];
 
   return (

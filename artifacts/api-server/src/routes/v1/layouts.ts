@@ -1,0 +1,376 @@
+import { Router, type Request, type Response } from "express";
+import { db, appLayouts, type LayoutBlock } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { authenticate, requireRole } from "../../middlewares/auth.js";
+import { logger } from "../../lib/logger.js";
+
+const router = Router();
+
+const DEFAULT_HOME_BLOCKS: LayoutBlock[] = [
+  {
+    id: "block_hero_1",
+    type: "hero_banner",
+    sortOrder: 1,
+    isActive: true,
+    data: {
+      title: "Fastest 10-Minute Grocery Delivery",
+      subtitle: "Fresh vegetables, dairy & daily essentials delivered to your doorstep",
+      imageUrl: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200&q=80",
+      link: "/shops",
+      buttonText: "Shop Now",
+    },
+  },
+  {
+    id: "block_categories_1",
+    type: "category_grid",
+    sortOrder: 2,
+    isActive: true,
+    data: {
+      title: "Explore Categories",
+      columns: 4,
+    },
+  },
+  {
+    id: "block_promo_1",
+    type: "promotional_strip",
+    sortOrder: 3,
+    isActive: true,
+    data: {
+      title: "⚡ Monsoon Special Deals",
+      subtitle: "Up to 40% OFF on fresh fruits and snacks",
+      backgroundColor: "#E23744",
+      link: "/categories",
+      buttonText: "Claim Offer",
+    },
+  },
+  {
+    id: "block_products_1",
+    type: "product_carousel",
+    sortOrder: 4,
+    isActive: true,
+    data: {
+      title: "Trending Fast-Fills",
+      categorySlug: "dairy",
+      limit: 10,
+    },
+  },
+  {
+    id: "block_spacer_1",
+    type: "spacer",
+    sortOrder: 5,
+    isActive: true,
+    data: {
+      height: 24,
+    },
+  },
+];
+
+const DEFAULT_FESTIVE_BLOCKS: LayoutBlock[] = [
+  {
+    id: "block_festive_promo_1",
+    type: "promotional_strip",
+    sortOrder: 1,
+    isActive: true,
+    data: {
+      title: "🇮🇳 Freedom & Festive Mahotsav",
+      subtitle: "Flat 50% OFF on Sweets, Dry Fruits & Celebration Packs",
+      backgroundColor: "#FF9933",
+      link: "/categories",
+      buttonText: "Explore Offers",
+    },
+  },
+  {
+    id: "block_festive_hero_1",
+    type: "hero_banner",
+    sortOrder: 2,
+    isActive: true,
+    data: {
+      title: "Festive Season Celebration Deals",
+      subtitle: "Exclusive hampers & gift boxes delivered in 10 minutes",
+      imageUrl: "https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=1200&q=80",
+      link: "/shops",
+      buttonText: "Shop Festive",
+    },
+  },
+  {
+    id: "block_festive_products_1",
+    type: "product_carousel",
+    sortOrder: 3,
+    isActive: true,
+    data: {
+      title: "Festive Delights & Sweets",
+      categorySlug: "sweets",
+      limit: 10,
+    },
+  },
+  {
+    id: "block_festive_categories_1",
+    type: "category_grid",
+    sortOrder: 4,
+    isActive: true,
+    data: {
+      title: "Festive Collections",
+      columns: 4,
+    },
+  },
+  {
+    id: "block_festive_spacer_1",
+    type: "spacer",
+    sortOrder: 5,
+    isActive: true,
+    data: { height: 24 },
+  },
+];
+
+const DEFAULT_SUPER_STORE_BLOCKS: LayoutBlock[] = [
+  {
+    id: "block_super_hero_1",
+    type: "hero_banner",
+    sortOrder: 1,
+    isActive: true,
+    data: {
+      title: "SwiftMart Super Store — Mega Wholesale Savings",
+      subtitle: "Bulk orders, electronics, home essentials & appliances at direct wholesale prices",
+      imageUrl: "https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=1200&q=80",
+      link: "/shops",
+      buttonText: "Browse Wholesale",
+    },
+  },
+  {
+    id: "block_super_promo_1",
+    type: "promotional_strip",
+    sortOrder: 2,
+    isActive: true,
+    data: {
+      title: "🛒 Super Store Mega Savings Pass",
+      subtitle: "Extra 15% Cashback on orders over ₹999",
+      backgroundColor: "#2563EB",
+      link: "/categories",
+      buttonText: "Activate Pass",
+    },
+  },
+  {
+    id: "block_super_products_1",
+    type: "product_carousel",
+    sortOrder: 3,
+    isActive: true,
+    data: {
+      title: "Super Store Top Sellers",
+      categorySlug: "electronics",
+      limit: 10,
+    },
+  },
+  {
+    id: "block_super_categories_1",
+    type: "category_grid",
+    sortOrder: 4,
+    isActive: true,
+    data: {
+      title: "Super Store Departments",
+      columns: 4,
+    },
+  },
+  {
+    id: "block_super_spacer_1",
+    type: "spacer",
+    sortOrder: 5,
+    isActive: true,
+    data: { height: 24 },
+  },
+];
+
+const DEFAULT_CAFE_BLOCKS: LayoutBlock[] = [
+  {
+    id: "block_cafe_hero_1",
+    type: "hero_banner",
+    sortOrder: 1,
+    isActive: true,
+    data: {
+      title: "SwiftMart Cafe & Cloud Kitchen",
+      subtitle: "Hot pizza, burgers, momos & fresh brews delivered hot in 15 minutes",
+      imageUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&q=80",
+      link: "/shops",
+      buttonText: "Order Food",
+    },
+  },
+  {
+    id: "block_cafe_promo_1",
+    type: "promotional_strip",
+    sortOrder: 2,
+    isActive: true,
+    data: {
+      title: "🍕 Hot & Fresh Cafe Deals",
+      subtitle: "Buy 1 Get 1 Free on all Artisan Pizzas & Cold Coffee Shakes",
+      backgroundColor: "#E23744",
+      link: "/categories",
+      buttonText: "Grab BOGO",
+    },
+  },
+  {
+    id: "block_cafe_products_1",
+    type: "product_carousel",
+    sortOrder: 3,
+    isActive: true,
+    data: {
+      title: "Chef's Special Fast-Bites",
+      categorySlug: "fast-food",
+      limit: 10,
+    },
+  },
+  {
+    id: "block_cafe_categories_1",
+    type: "category_grid",
+    sortOrder: 4,
+    isActive: true,
+    data: {
+      title: "Cafe Menu Categories",
+      columns: 3,
+    },
+  },
+  {
+    id: "block_cafe_spacer_1",
+    type: "spacer",
+    sortOrder: 5,
+    isActive: true,
+    data: { height: 24 },
+  },
+];
+
+// Helper to provide sensible default blocks for known pages
+function getDefaultBlocksForPage(pageName: string): LayoutBlock[] {
+  const p = pageName.toLowerCase();
+  if (p === "home") return DEFAULT_HOME_BLOCKS;
+  if (p === "festive") return DEFAULT_FESTIVE_BLOCKS;
+  if (p === "super_store" || p === "superstore") return DEFAULT_SUPER_STORE_BLOCKS;
+  if (p === "cafe") return DEFAULT_CAFE_BLOCKS;
+
+  return [
+    {
+      id: `block_default_${p}`,
+      type: "hero_banner",
+      sortOrder: 1,
+      isActive: true,
+      data: {
+        title: `Welcome to ${p.toUpperCase()} Page`,
+        subtitle: "Configured via SwiftMart SDUI Engine",
+        imageUrl: "https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=1200&q=80",
+        link: "/",
+      },
+    },
+    {
+      id: `block_spacer_${p}`,
+      type: "spacer",
+      sortOrder: 2,
+      isActive: true,
+      data: { height: 16 },
+    },
+  ];
+}
+
+// ─── GET /api/v1/layout/:pageName ─────────────────────────────────────
+// Public SDUI layout API endpoint — returns sorted active layout blocks
+router.get("/:pageName", async (req: Request, res: Response): Promise<void> => {
+    const rawParam = req.params["pageName"];
+    const pageName = String(Array.isArray(rawParam) ? rawParam[0] : (rawParam || "home")).toLowerCase();
+
+  try {
+    const [layout] = await db
+      .select()
+      .from(appLayouts)
+      .where(eq(appLayouts.pageName, pageName))
+      .limit(1);
+
+    if (!layout || !Array.isArray(layout.blocks) || layout.blocks.length === 0) {
+      const defaultBlocks = getDefaultBlocksForPage(pageName);
+      res.json({
+        success: true,
+        pageName,
+        isDefault: true,
+        blocks: defaultBlocks,
+      });
+      return;
+    }
+
+    // Sort blocks by sortOrder and filter active ones
+    const activeSortedBlocks = layout.blocks
+      .filter((b) => b.isActive !== false)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+    res.json({
+      success: true,
+      pageName,
+      isDefault: false,
+      blocks: activeSortedBlocks,
+      allBlocks: layout.blocks,
+      updatedAt: layout.updatedAt,
+    });
+  } catch (err) {
+    logger.error({ err, pageName }, "Failed to fetch layout — returning fallback");
+    res.json({
+      success: true,
+      pageName,
+      isDefault: true,
+      blocks: getDefaultBlocksForPage(pageName),
+    });
+  }
+});
+
+// ─── PUT /api/v1/layout/:pageName ────────────────────────────────────
+// Admin endpoint to save/upsert SDUI page layout blocks
+router.put(
+  "/:pageName",
+  authenticate,
+  requireRole("admin", "super_admin"),
+  async (req: Request, res: Response): Promise<void> => {
+      const rawParam = req.params["pageName"];
+    const pageName = String(Array.isArray(rawParam) ? rawParam[0] : (rawParam || "home")).toLowerCase();
+    const { blocks } = req.body || {};
+
+    if (!Array.isArray(blocks)) {
+      res.status(400).json({ success: false, message: "blocks must be an array of layout blocks" });
+      return;
+    }
+
+    try {
+      const sanitizedBlocks: LayoutBlock[] = blocks.map((b, idx) => ({
+        id: String(b.id || `block_${Date.now()}_${idx}`),
+        type: b.type || "spacer",
+        sortOrder: typeof b.sortOrder === "number" ? b.sortOrder : idx + 1,
+        isActive: b.isActive !== false,
+        data: typeof b.data === "object" && b.data !== null ? b.data : {},
+      }));
+
+      const recordValues = {
+        id: crypto.randomUUID(),
+        pageName,
+        blocks: sanitizedBlocks,
+        updatedAt: new Date(),
+      };
+
+      await db
+        .insert(appLayouts)
+        .values(recordValues)
+        .onConflictDoUpdate({
+          target: appLayouts.pageName,
+          set: {
+            blocks: sanitizedBlocks,
+            updatedAt: new Date(),
+          },
+        });
+
+      logger.info({ pageName, blockCount: sanitizedBlocks.length }, "Page layout updated successfully");
+
+      res.json({
+        success: true,
+        message: `Layout for page '${pageName}' updated successfully`,
+        pageName,
+        blocks: sanitizedBlocks,
+      });
+    } catch (err) {
+      logger.error({ err, pageName }, "Failed to save page layout");
+      res.status(500).json({ success: false, message: "Failed to save page layout", error: String(err) });
+    }
+  }
+);
+
+export default router;
