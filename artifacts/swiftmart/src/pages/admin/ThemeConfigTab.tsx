@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { Palette, RefreshCw, Save, Check, Sparkles, Sliders, Type, LayoutTemplate } from "lucide-react";
-import { motion } from "framer-motion";
 
 interface ThemeConfig {
   primaryColor: string;
@@ -98,31 +97,32 @@ export function ThemeConfigTab() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         <div>
           <div className="flex items-center gap-2">
             <Palette className="w-6 h-6 text-primary" />
-            <h2 className="text-xl font-bold text-gray-900">Hybrid Design System — Remote Theme Config</h2>
+            <h2 className="text-xl font-extrabold text-gray-900">Hybrid Design System — Remote Theme Config</h2>
           </div>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-600 font-medium mt-1">
             Dynamically adjust branding tokens (Primary Color, Radius, Typography) served live to web & mobile clients.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <Button
-            variant="outline"
+            type="button"
             onClick={fetchThemeConfig}
             disabled={saving}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 border border-gray-300 bg-white text-gray-800 hover:bg-gray-100 font-bold shadow-xs"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-4 h-4 text-gray-700" />
             Reset
           </Button>
           <Button
+            type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 bg-primary text-white hover:opacity-95"
+            className="flex items-center gap-2 bg-primary text-white hover:opacity-95 font-bold shadow-sm"
           >
             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save Changes
@@ -133,28 +133,28 @@ export function ThemeConfigTab() {
       {/* Main Grid: Controls & Live Preview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Controls Section */}
-        <div className="lg:col-span-6 space-y-6 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <h3 className="font-bold text-gray-900 flex items-center gap-2 text-base border-b pb-3">
-            <Sliders className="w-5 h-5 text-gray-700" />
+        <div className="lg:col-span-6 space-y-6 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <h3 className="font-extrabold text-gray-900 flex items-center gap-2 text-base border-b border-gray-200 pb-3">
+            <Sliders className="w-5 h-5 text-gray-800" />
             Design Tokens
           </h3>
 
           {/* Primary Color */}
           <div className="space-y-3">
-            <label className="text-sm font-semibold text-gray-700 block">Primary Brand Color</label>
+            <label className="text-sm font-bold text-gray-900 block">Primary Brand Color</label>
             <div className="flex items-center gap-3">
               <input
                 type="color"
                 value={theme.primaryColor}
                 onChange={(e) => setTheme({ ...theme, primaryColor: e.target.value })}
-                className="w-12 h-10 rounded-lg cursor-pointer border border-gray-200 p-1"
+                className="w-12 h-10 rounded-lg cursor-pointer border border-gray-300 p-1 bg-white"
               />
               <Input
                 type="text"
                 value={theme.primaryColor}
                 onChange={(e) => setTheme({ ...theme, primaryColor: e.target.value })}
                 placeholder="#E23744"
-                className="font-mono text-sm uppercase max-w-[160px]"
+                className="font-mono text-sm font-bold text-gray-900 uppercase max-w-[160px] bg-white border-gray-300"
               />
             </div>
 
@@ -163,13 +163,14 @@ export function ThemeConfigTab() {
               {COLOR_PRESETS.map((preset) => (
                 <button
                   key={preset.name}
+                  type="button"
                   onClick={() => setTheme({ ...theme, primaryColor: preset.color })}
-                  className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border border-gray-200 hover:border-gray-400 transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border border-gray-300 bg-gray-50 text-gray-900 hover:bg-gray-100 hover:border-gray-400 transition-colors shadow-xs"
                 >
-                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: preset.color }} />
-                  {preset.name}
+                  <span className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0" style={{ backgroundColor: preset.color }} />
+                  <span>{preset.name}</span>
                   {theme.primaryColor.toLowerCase() === preset.color.toLowerCase() && (
-                    <Check className="w-3 h-3 text-emerald-600" />
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   )}
                 </button>
               ))}
@@ -177,30 +178,30 @@ export function ThemeConfigTab() {
           </div>
 
           {/* Secondary Color */}
-          <div className="space-y-3 pt-2">
-            <label className="text-sm font-semibold text-gray-700 block">Secondary Accent Color</label>
+          <div className="space-y-3 pt-2 border-t border-gray-100">
+            <label className="text-sm font-bold text-gray-900 block">Secondary Accent Color</label>
             <div className="flex items-center gap-3">
               <input
                 type="color"
                 value={theme.secondaryColor}
                 onChange={(e) => setTheme({ ...theme, secondaryColor: e.target.value })}
-                className="w-12 h-10 rounded-lg cursor-pointer border border-gray-200 p-1"
+                className="w-12 h-10 rounded-lg cursor-pointer border border-gray-300 p-1 bg-white"
               />
               <Input
                 type="text"
                 value={theme.secondaryColor}
                 onChange={(e) => setTheme({ ...theme, secondaryColor: e.target.value })}
                 placeholder="#000000"
-                className="font-mono text-sm uppercase max-w-[160px]"
+                className="font-mono text-sm font-bold text-gray-900 uppercase max-w-[160px] bg-white border-gray-300"
               />
             </div>
           </div>
 
           {/* Border Radius */}
-          <div className="space-y-3 pt-2">
+          <div className="space-y-3 pt-2 border-t border-gray-100">
             <div className="flex justify-between items-center">
-              <label className="text-sm font-semibold text-gray-700">Border Radius</label>
-              <span className="text-xs font-mono font-bold bg-gray-100 px-2 py-0.5 rounded-md text-gray-800">
+              <label className="text-sm font-bold text-gray-900">Border Radius</label>
+              <span className="text-xs font-mono font-bold bg-gray-200 text-gray-900 px-2 py-1 rounded-md">
                 {theme.borderRadius}px
               </span>
             </div>
@@ -211,9 +212,9 @@ export function ThemeConfigTab() {
               step="2"
               value={theme.borderRadius}
               onChange={(e) => setTheme({ ...theme, borderRadius: parseInt(e.target.value, 10) || 0 })}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+              className="w-full h-2.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
             />
-            <div className="flex justify-between text-[11px] text-gray-400 font-mono">
+            <div className="flex justify-between text-[11px] text-gray-600 font-mono font-bold">
               <span>0px (Sharp)</span>
               <span>12px (Rounded)</span>
               <span>24px (Pill)</span>
@@ -221,18 +222,18 @@ export function ThemeConfigTab() {
           </div>
 
           {/* Font Family */}
-          <div className="space-y-3 pt-2">
-            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <Type className="w-4 h-4 text-gray-600" />
+          <div className="space-y-3 pt-2 border-t border-gray-100">
+            <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <Type className="w-4 h-4 text-gray-700" />
               Font Family
             </label>
             <select
               value={theme.fontFamily}
               onChange={(e) => setTheme({ ...theme, fontFamily: e.target.value })}
-              className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm bg-white font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm bg-white text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-xs"
             >
               {FONT_OPTIONS.map((f) => (
-                <option key={f.value} value={f.value}>
+                <option key={f.value} value={f.value} className="text-gray-900 bg-white font-medium">
                   {f.label}
                 </option>
               ))}
@@ -248,7 +249,7 @@ export function ThemeConfigTab() {
                 <LayoutTemplate className="w-5 h-5 text-amber-400" />
                 <h3 className="font-bold text-white text-base">Live Component Preview</h3>
               </div>
-              <Badge variant="outline" className="text-xs border-slate-700 text-slate-300 flex gap-1 items-center">
+              <Badge variant="outline" className="text-xs border-slate-700 text-slate-300 flex gap-1 items-center font-bold">
                 <Sparkles className="w-3 h-3 text-amber-400" /> Real-time
               </Badge>
             </div>

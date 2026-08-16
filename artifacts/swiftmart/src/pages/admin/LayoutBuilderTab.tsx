@@ -223,7 +223,6 @@ export function LayoutBuilderTab() {
       const formData = new FormData();
       formData.append("file", file);
 
-      // Access auth token
       const access = localStorage.getItem("sm_at");
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -251,13 +250,13 @@ export function LayoutBuilderTab() {
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         <div>
           <div className="flex items-center gap-2">
             <LayoutGrid className="w-6 h-6 text-primary" />
-            <h2 className="text-xl font-bold text-gray-900">SDUI Layout Engine — Page Builder</h2>
+            <h2 className="text-xl font-extrabold text-gray-900">SDUI Layout Engine — Page Builder</h2>
           </div>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-600 font-medium mt-1">
             Build, order and arrange dynamic UI blocks served live to mobile & web clients.
           </p>
         </div>
@@ -267,29 +266,39 @@ export function LayoutBuilderTab() {
           <select
             value={selectedPage}
             onChange={(e) => setSelectedPage(e.target.value)}
-            className="h-10 px-3 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="h-10 px-3.5 rounded-xl border border-gray-300 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-xs"
           >
             {PAGE_OPTIONS.map((p) => (
-              <option key={p.value} value={p.value}>
+              <option key={p.value} value={p.value} className="text-gray-900 bg-white font-semibold">
                 {p.label}
               </option>
             ))}
           </select>
 
-          <Button variant="outline" onClick={() => fetchLayout(selectedPage)} disabled={saving}>
-            <RefreshCw className="w-4 h-4 mr-2" /> Reset
+          <Button
+            type="button"
+            onClick={() => fetchLayout(selectedPage)}
+            disabled={saving}
+            className="border border-gray-300 bg-white text-gray-800 hover:bg-gray-100 font-bold shadow-xs flex items-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4 text-gray-700" /> Reset
           </Button>
 
-          <Button onClick={handleSave} disabled={saving} className="bg-primary text-white hover:opacity-95">
-            {saving ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-primary text-white hover:opacity-95 font-bold shadow-sm flex items-center gap-2"
+          >
+            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save Layout
           </Button>
         </div>
       </div>
 
       {/* Add New Block Banner */}
-      <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-        <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+      <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm space-y-3">
+        <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
           <Plus className="w-4 h-4 text-primary" /> Add New SDUI Block
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -298,16 +307,17 @@ export function LayoutBuilderTab() {
             return (
               <button
                 key={meta.type}
+                type="button"
                 onClick={() => handleAddBlock(meta.type)}
-                className="flex flex-col items-start p-3 rounded-xl border border-gray-100 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
+                className="flex flex-col items-start p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group shadow-xs"
               >
-                <div className="p-2 rounded-lg bg-gray-50 group-hover:bg-primary/10 text-gray-700 group-hover:text-primary mb-2 transition-colors">
+                <div className="p-2 rounded-lg bg-white border border-gray-200 group-hover:bg-primary/10 text-gray-800 group-hover:text-primary mb-2 transition-colors">
                   <Icon className="w-4 h-4" />
                 </div>
                 <span className="text-xs font-bold text-gray-900 group-hover:text-primary">
                   {meta.label}
                 </span>
-                <span className="text-[11px] text-gray-400 line-clamp-2 mt-0.5">
+                <span className="text-[11px] font-medium text-gray-600 line-clamp-2 mt-0.5">
                   {meta.description}
                 </span>
               </button>
@@ -321,23 +331,23 @@ export function LayoutBuilderTab() {
         {/* Left Column: Block Sequence & Editor */}
         <div className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-              <Layers className="w-5 h-5 text-gray-700" />
+            <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
+              <Layers className="w-5 h-5 text-gray-800" />
               Page Blocks ({blocks.length})
             </h3>
-            <span className="text-xs text-gray-400 font-medium">Drag or use arrows to reorder</span>
+            <span className="text-xs text-gray-600 font-bold">Use arrows to reorder</span>
           </div>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center min-h-[250px] bg-white rounded-2xl border border-gray-100">
+            <div className="flex flex-col items-center justify-center min-h-[250px] bg-white rounded-2xl border border-gray-200">
               <RefreshCw className="w-8 h-8 text-primary animate-spin mb-2" />
-              <p className="text-sm text-gray-500 font-medium">Loading layout blocks...</p>
+              <p className="text-sm text-gray-600 font-bold">Loading layout blocks...</p>
             </div>
           ) : blocks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center min-h-[250px] bg-white rounded-2xl border border-dashed border-gray-200 p-6 text-center">
-              <LayoutGrid className="w-10 h-10 text-gray-300 mb-3" />
-              <p className="text-sm font-bold text-gray-700">No blocks configured for '{selectedPage}'</p>
-              <p className="text-xs text-gray-400 mt-1 max-w-xs">
+            <div className="flex flex-col items-center justify-center min-h-[250px] bg-white rounded-2xl border border-dashed border-gray-300 p-6 text-center">
+              <LayoutGrid className="w-10 h-10 text-gray-400 mb-3" />
+              <p className="text-sm font-extrabold text-gray-900">No blocks configured for '{selectedPage}'</p>
+              <p className="text-xs text-gray-600 font-medium mt-1 max-w-xs">
                 Click any of the block buttons above to start building the page layout.
               </p>
             </div>
@@ -352,33 +362,33 @@ export function LayoutBuilderTab() {
                   <div
                     key={block.id}
                     className={`bg-white rounded-2xl border transition-all ${
-                      isExpanded ? "border-primary shadow-md" : "border-gray-100 hover:border-gray-200 shadow-sm"
-                    } ${!block.isActive ? "opacity-60 bg-gray-50/80" : ""}`}
+                      isExpanded ? "border-primary shadow-md" : "border-gray-200 hover:border-gray-300 shadow-xs"
+                    } ${!block.isActive ? "opacity-60 bg-gray-50" : ""}`}
                   >
                     {/* Block Header / Action Bar */}
                     <div className="p-4 flex items-center justify-between gap-3 border-b border-gray-100">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <span className="w-6 h-6 rounded-lg bg-gray-100 text-gray-600 font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                        <span className="w-6 h-6 rounded-lg bg-gray-200 text-gray-900 font-mono text-xs font-extrabold flex items-center justify-center shrink-0">
                           {index + 1}
                         </span>
 
-                        <div className="p-2 rounded-lg bg-gray-50 text-gray-700 shrink-0">
+                        <div className="p-2 rounded-lg bg-gray-100 text-gray-900 shrink-0">
                           <BlockIcon className="w-4 h-4" />
                         </div>
 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-gray-900 truncate">
+                            <span className="font-extrabold text-sm text-gray-900 truncate">
                               {block.data?.title || meta?.label || block.type}
                             </span>
                             <Badge
                               variant="outline"
-                              className="text-[10px] uppercase tracking-wider font-mono text-gray-500"
+                              className="text-[10px] font-bold uppercase tracking-wider font-mono text-gray-700 border-gray-300"
                             >
                               {block.type}
                             </Badge>
                           </div>
-                          <p className="text-xs text-gray-400 truncate">
+                          <p className="text-xs text-gray-600 font-medium truncate">
                             {block.data?.subtitle || block.data?.categorySlug || `Sort order: ${index + 1}`}
                           </p>
                         </div>
@@ -386,47 +396,48 @@ export function LayoutBuilderTab() {
 
                       {/* Controls */}
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Up / Down Reorder */}
                         <button
+                          type="button"
                           onClick={() => handleMoveBlock(index, "up")}
                           disabled={index === 0}
-                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 disabled:opacity-30"
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700 disabled:opacity-30"
                           title="Move Up"
                         >
                           <ArrowUp className="w-4 h-4" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleMoveBlock(index, "down")}
                           disabled={index === blocks.length - 1}
-                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 disabled:opacity-30"
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700 disabled:opacity-30"
                           title="Move Down"
                         >
                           <ArrowDown className="w-4 h-4" />
                         </button>
 
-                        {/* Toggle Active */}
                         <button
+                          type="button"
                           onClick={() => handleToggleActive(block.id)}
                           className={`p-1.5 rounded-lg transition-colors ${
-                            block.isActive ? "text-emerald-600 hover:bg-emerald-50" : "text-gray-400 hover:bg-gray-100"
+                            block.isActive ? "text-emerald-700 hover:bg-emerald-50" : "text-gray-500 hover:bg-gray-100"
                           }`}
                           title={block.isActive ? "Deactivate Block" : "Activate Block"}
                         >
                           {block.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                         </button>
 
-                        {/* Expand / Collapse */}
                         <button
+                          type="button"
                           onClick={() => setExpandedBlockId(isExpanded ? null : block.id)}
-                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600"
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700"
                         >
                           {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </button>
 
-                        {/* Delete */}
                         <button
+                          type="button"
                           onClick={() => handleDeleteBlock(block.id)}
-                          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors"
                           title="Remove Block"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -436,44 +447,47 @@ export function LayoutBuilderTab() {
 
                     {/* Block Editor Panel (Expanded) */}
                     {isExpanded && (
-                      <div className="p-4 bg-gray-50/50 space-y-4 rounded-b-2xl border-t border-gray-100">
+                      <div className="p-4 bg-gray-50/70 space-y-4 rounded-b-2xl border-t border-gray-200">
                         {/* HERO BANNER EDIT FIELDS */}
                         {block.type === "hero_banner" && (
                           <div className="space-y-3 text-sm">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div>
-                                <label className="text-xs font-semibold text-gray-700 block mb-1">Banner Title</label>
+                                <label className="text-xs font-bold text-gray-900 block mb-1">Banner Title</label>
                                 <Input
                                   value={block.data?.title || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "title", e.target.value)}
                                   placeholder="e.g. 10-Minute Grocery Delivery"
+                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
                                 />
                               </div>
                               <div>
-                                <label className="text-xs font-semibold text-gray-700 block mb-1">Subtitle</label>
+                                <label className="text-xs font-bold text-gray-900 block mb-1">Subtitle</label>
                                 <Input
                                   value={block.data?.subtitle || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "subtitle", e.target.value)}
                                   placeholder="e.g. Fresh veggies & fruits"
+                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
                                 />
                               </div>
                             </div>
 
                             {/* Image URL & File Upload */}
                             <div>
-                              <label className="text-xs font-semibold text-gray-700 block mb-1">Image URL</label>
+                              <label className="text-xs font-bold text-gray-900 block mb-1">Image URL</label>
                               <div className="flex gap-2">
                                 <Input
                                   value={block.data?.imageUrl || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "imageUrl", e.target.value)}
                                   placeholder="https://..."
+                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
                                 />
                                 <label className="cursor-pointer shrink-0">
-                                  <Button variant="outline" type="button" disabled={uploadingBlockId === block.id} className="pointer-events-none">
+                                  <Button type="button" variant="outline" disabled={uploadingBlockId === block.id} className="pointer-events-none bg-white border-gray-300 text-gray-800 font-bold">
                                     {uploadingBlockId === block.id ? (
-                                      <RefreshCw className="w-4 h-4 animate-spin mr-1" />
+                                      <RefreshCw className="w-4 h-4 animate-spin mr-1 text-gray-700" />
                                     ) : (
-                                      <Upload className="w-4 h-4 mr-1" />
+                                      <Upload className="w-4 h-4 mr-1 text-gray-700" />
                                     )}
                                     Upload
                                   </Button>
@@ -493,19 +507,21 @@ export function LayoutBuilderTab() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div>
-                                <label className="text-xs font-semibold text-gray-700 block mb-1">Action Link</label>
+                                <label className="text-xs font-bold text-gray-900 block mb-1">Action Link</label>
                                 <Input
                                   value={block.data?.link || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "link", e.target.value)}
                                   placeholder="e.g. /shops or /category/dairy"
+                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
                                 />
                               </div>
                               <div>
-                                <label className="text-xs font-semibold text-gray-700 block mb-1">Button Text</label>
+                                <label className="text-xs font-bold text-gray-900 block mb-1">Button Text</label>
                                 <Input
                                   value={block.data?.buttonText || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "buttonText", e.target.value)}
                                   placeholder="e.g. Shop Now"
+                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
                                 />
                               </div>
                             </div>
@@ -517,19 +533,20 @@ export function LayoutBuilderTab() {
                           <div className="space-y-3 text-sm">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div>
-                                <label className="text-xs font-semibold text-gray-700 block mb-1">Section Title</label>
+                                <label className="text-xs font-bold text-gray-900 block mb-1">Section Title</label>
                                 <Input
                                   value={block.data?.title || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "title", e.target.value)}
                                   placeholder="e.g. Top Categories"
+                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
                                 />
                               </div>
                               <div>
-                                <label className="text-xs font-semibold text-gray-700 block mb-1">Columns</label>
+                                <label className="text-xs font-bold text-gray-900 block mb-1">Columns</label>
                                 <select
                                   value={block.data?.columns || 4}
                                   onChange={(e) => handleUpdateBlockData(block.id, "columns", parseInt(e.target.value, 10))}
-                                  className="w-full h-10 px-3 rounded-lg border border-gray-200 bg-white text-sm"
+                                  className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white text-gray-900 font-bold text-sm"
                                 >
                                   <option value={3}>3 Columns</option>
                                   <option value={4}>4 Columns</option>
@@ -545,29 +562,32 @@ export function LayoutBuilderTab() {
                           <div className="space-y-3 text-sm">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                               <div>
-                                <label className="text-xs font-semibold text-gray-700 block mb-1">Section Title</label>
+                                <label className="text-xs font-bold text-gray-900 block mb-1">Section Title</label>
                                 <Input
                                   value={block.data?.title || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "title", e.target.value)}
                                   placeholder="e.g. Trending Products"
+                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
                                 />
                               </div>
                               <div>
-                                <label className="text-xs font-semibold text-gray-700 block mb-1">Category Slug</label>
+                                <label className="text-xs font-bold text-gray-900 block mb-1">Category Slug</label>
                                 <Input
                                   value={block.data?.categorySlug || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "categorySlug", e.target.value)}
                                   placeholder="e.g. dairy or snacks"
+                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
                                 />
                               </div>
                               <div>
-                                <label className="text-xs font-semibold text-gray-700 block mb-1">Product Limit</label>
+                                <label className="text-xs font-bold text-gray-900 block mb-1">Product Limit</label>
                                 <Input
                                   type="number"
                                   min={2}
                                   max={20}
                                   value={block.data?.limit || 10}
                                   onChange={(e) => handleUpdateBlockData(block.id, "limit", parseInt(e.target.value, 10))}
+                                  className="bg-white border-gray-300 text-gray-900 font-bold"
                                 />
                               </div>
                             </div>
@@ -579,55 +599,59 @@ export function LayoutBuilderTab() {
                           <div className="space-y-3 text-sm">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div>
-                                <label className="text-xs font-semibold text-gray-700 block mb-1">Title</label>
+                                <label className="text-xs font-bold text-gray-900 block mb-1">Title</label>
                                 <Input
                                   value={block.data?.title || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "title", e.target.value)}
                                   placeholder="e.g. ⚡ Flash Discount"
+                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
                                 />
                               </div>
                               <div>
-                                <label className="text-xs font-semibold text-gray-700 block mb-1">Subtitle</label>
+                                <label className="text-xs font-bold text-gray-900 block mb-1">Subtitle</label>
                                 <Input
                                   value={block.data?.subtitle || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "subtitle", e.target.value)}
                                   placeholder="e.g. Flat ₹50 off"
+                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
                                 />
                               </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                               <div>
-                                <label className="text-xs font-semibold text-gray-700 block mb-1">Background Color</label>
+                                <label className="text-xs font-bold text-gray-900 block mb-1">Background Color</label>
                                 <div className="flex items-center gap-2">
                                   <input
                                     type="color"
                                     value={block.data?.backgroundColor || "#E23744"}
                                     onChange={(e) => handleUpdateBlockData(block.id, "backgroundColor", e.target.value)}
-                                    className="w-10 h-10 rounded-lg border border-gray-200 p-1 cursor-pointer"
+                                    className="w-10 h-10 rounded-lg border border-gray-300 p-1 cursor-pointer bg-white"
                                   />
                                   <Input
                                     value={block.data?.backgroundColor || "#E23744"}
                                     onChange={(e) => handleUpdateBlockData(block.id, "backgroundColor", e.target.value)}
                                     placeholder="#E23744"
-                                    className="font-mono text-xs uppercase"
+                                    className="font-mono text-xs font-bold uppercase bg-white border-gray-300 text-gray-900"
                                   />
                                 </div>
                               </div>
                               <div>
-                                <label className="text-xs font-semibold text-gray-700 block mb-1">Action Link</label>
+                                <label className="text-xs font-bold text-gray-900 block mb-1">Action Link</label>
                                 <Input
                                   value={block.data?.link || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "link", e.target.value)}
                                   placeholder="e.g. /categories"
+                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
                                 />
                               </div>
                               <div>
-                                <label className="text-xs font-semibold text-gray-700 block mb-1">Button Text</label>
+                                <label className="text-xs font-bold text-gray-900 block mb-1">Button Text</label>
                                 <Input
                                   value={block.data?.buttonText || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "buttonText", e.target.value)}
                                   placeholder="e.g. Claim Now"
+                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
                                 />
                               </div>
                             </div>
@@ -638,8 +662,8 @@ export function LayoutBuilderTab() {
                         {block.type === "spacer" && (
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between items-center">
-                              <label className="text-xs font-semibold text-gray-700">Spacer Height</label>
-                              <span className="font-mono text-xs font-bold text-gray-900 bg-gray-200 px-2 py-0.5 rounded">
+                              <label className="text-xs font-bold text-gray-900">Spacer Height</label>
+                              <span className="font-mono text-xs font-extrabold text-gray-900 bg-gray-200 px-2 py-0.5 rounded">
                                 {block.data?.height || 24}px
                               </span>
                             </div>
@@ -650,7 +674,7 @@ export function LayoutBuilderTab() {
                               step="4"
                               value={block.data?.height || 24}
                               onChange={(e) => handleUpdateBlockData(block.id, "height", parseInt(e.target.value, 10))}
-                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                              className="w-full h-2.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
                             />
                           </div>
                         )}
@@ -670,7 +694,7 @@ export function LayoutBuilderTab() {
               <Sparkles className="w-5 h-5 text-amber-400" />
               <h3 className="font-bold text-white text-base">Live SDUI Render Preview</h3>
             </div>
-            <Badge variant="outline" className="text-[10px] font-mono text-slate-300 border-slate-700">
+            <Badge variant="outline" className="text-[10px] font-bold font-mono text-slate-300 border-slate-700">
               Page: {selectedPage}
             </Badge>
           </div>
