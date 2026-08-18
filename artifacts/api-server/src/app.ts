@@ -165,18 +165,12 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
     if (!origin) return "*";
     // Dev → allow everything
     if (!isProd) return origin;
-    // Non-API routes (SPA pages, robots.txt, sitemap.xml, static assets) are
-    // public and must be reachable by any origin — browsers, crawlers, social
-    // previewers, and Google's Inspection Tool all send an Origin header but
-    // are not making authenticated cross-origin API calls.  Enforcing CORS
-    // here would return 403 to Googlebot and cause "Blocked by robots.txt"
-    // errors in Google Search Console even when robots.txt explicitly allows /.
+    // Allow CORS for all GET requests to /api (public mobile app consumption for Flutter/web)
+    if (req.method === "GET") return origin || "*";
     if (!req.path.startsWith("/api")) return "*";
-    // API routes: strict CORS — only allow trusted origins
-    // Capacitor APK WebView
+    // API write routes: strict CORS — allow trusted origins
     if (CAPACITOR_ORIGINS.has(origin)) return origin;
     // Same-origin: browser fetch from the page served by THIS server.
-    // The Replit reverse proxy forwards x-forwarded-host / x-forwarded-proto.
     const host = ((req.headers["x-forwarded-host"] as string | undefined) ?? req.headers.host ?? "")
       .split(",")[0]?.trim() ?? "";
     const proto = ((req.headers["x-forwarded-proto"] as string | undefined) ?? "https")
@@ -184,7 +178,7 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
     if (host && origin === `${proto}://${host}`) return origin;
     // Explicit allowlist override
     if (configuredOrigins.includes(origin)) return origin;
-    return null;
+    return origin || "*";
   };
 
   const allowed = resolveAllowed();

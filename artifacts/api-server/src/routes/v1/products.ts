@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { db, products, shops, categories, users } from "@workspace/db";
-import { eq, and, ilike, inArray, desc, count, gt, sql, or } from "drizzle-orm";
+import { eq, and, ilike, inArray, desc, count, gt, gte, sql, or } from "drizzle-orm";
 import { authenticate, requireRole, optionalAuth, type AuthRequest } from "../../middlewares/auth.js";
 import { vendorWriteLimiter } from "../../middlewares/rateLimiter.js";
 import { deleteFromImageKit } from "../../lib/imagekit.js";

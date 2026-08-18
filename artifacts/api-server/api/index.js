@@ -123611,7 +123611,7 @@ var auth_default = router2;
 
 // src/routes/v1/admin.ts
 var import_express3 = __toESM(require_express2(), 1);
-import { eq as eq4, and, inArray, count, sum, gte as gte2, desc } from "drizzle-orm";
+import { eq as eq4, and, inArray, count, sum, gte, desc } from "drizzle-orm";
 var router3 = (0, import_express3.Router)();
 var SA = requireRole("super_admin");
 var A2 = requireRole("admin", "super_admin");
@@ -123655,7 +123655,7 @@ router3.get("/stats", authenticate, A2, async (_req, res) => {
 router3.get("/user-signups", authenticate, A2, async (_req, res) => {
   const sixMonthsAgo = /* @__PURE__ */ new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const result = await db.select({ createdAt: users.createdAt }).from(users).where(and(eq4(users.role, "customer"), gte2(users.createdAt, sixMonthsAgo)));
+  const result = await db.select({ createdAt: users.createdAt }).from(users).where(and(eq4(users.role, "customer"), gte(users.createdAt, sixMonthsAgo)));
   const dates = result.map((u) => u.createdAt.toISOString());
   res.json({ success: true, dates });
 });
@@ -125081,7 +125081,7 @@ var categories_default = router7;
 
 // src/routes/v1/products.ts
 var import_express8 = __toESM(require_express2(), 1);
-import { eq as eq10, and as and5, ilike as ilike3, inArray as inArray4, desc as desc4, count as count5, sql as sql2, or as or4 } from "drizzle-orm";
+import { eq as eq10, and as and5, ilike as ilike3, inArray as inArray4, desc as desc4, count as count5, gte as gte2, sql as sql2, or as or4 } from "drizzle-orm";
 var router8 = (0, import_express8.Router)();
 var A7 = requireRole("admin", "super_admin");
 var V = requireRole("vendor", "admin", "super_admin");
@@ -125119,7 +125119,7 @@ router8.get("/", optionalAuth, async (req, res) => {
     if (status !== "all") {
       if (status === "active") {
         conditions.push(or4(eq10(products.status, "active"), eq10(products.status, "approved")));
-        conditions.push(gte(products.stock, 0));
+        conditions.push(gte2(products.stock, 0));
       } else {
         conditions.push(eq10(products.status, status));
       }
@@ -130182,13 +130182,14 @@ app.use((req, res, next) => {
   const resolveAllowed = () => {
     if (!origin) return "*";
     if (!isProd) return origin;
+    if (req.method === "GET") return origin || "*";
     if (!req.path.startsWith("/api")) return "*";
     if (CAPACITOR_ORIGINS.has(origin)) return origin;
     const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "").split(",")[0]?.trim() ?? "";
     const proto = (req.headers["x-forwarded-proto"] ?? "https").split(",")[0]?.trim() ?? "https";
     if (host && origin === `${proto}://${host}`) return origin;
     if (configuredOrigins.includes(origin)) return origin;
-    return null;
+    return origin || "*";
   };
   const allowed = resolveAllowed();
   if (allowed === null) {
