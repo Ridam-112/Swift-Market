@@ -160,13 +160,24 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [fetchShops]);
 
+function normalizeCity(str: string): string {
+  if (!str) return "";
+  return str.toLowerCase().split(/[,(\-\d]/)[0].trim();
+}
+
   // City-based filtering — when the user has picked a delivery address, only show
   // shops that serve that city.  allShops stays full so lookups (getShopById) still work.
-  const selectedCity = (auth?.selectedDeliveryAddress?.city ?? "").trim().toLowerCase();
+  const selectedCityRaw = (auth?.selectedDeliveryAddress?.city ?? "").trim();
+  const normalizedSelectedCity = useMemo(() => normalizeCity(selectedCityRaw), [selectedCityRaw]);
+
   const shops = useMemo(() => {
-    if (!selectedCity) return allShops;
-    return allShops.filter(s => s.city.trim().toLowerCase() === selectedCity);
-  }, [allShops, selectedCity]);
+    if (!normalizedSelectedCity) return allShops;
+    const filtered = allShops.filter(s => {
+      const sc = normalizeCity(s.city);
+      return sc.includes(normalizedSelectedCity) || normalizedSelectedCity.includes(sc);
+    });
+    return filtered.length > 0 ? filtered : allShops;
+  }, [allShops, normalizedSelectedCity]);
 
   const getShopById = (id: string) => allShops.find(s => s.id === id);
 

@@ -51,10 +51,11 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
 
   // status=all skips the status filter entirely (used by admin/vendor product management)
   if (status !== "all") {
-    conditions.push(eq(products.status, status));
-    // For customer-facing active product listings, also exclude zero-stock products
     if (status === "active") {
-      conditions.push(gt(products.stock, 0));
+      conditions.push(or(eq(products.status, "active"), eq(products.status, "approved")));
+      conditions.push(gte(products.stock, 0));
+    } else {
+      conditions.push(eq(products.status, status));
     }
   }
 
@@ -80,7 +81,7 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
       .from(shops)
       .where(and(
         sql`${shops.address}->>'pincode' = ${pincode}`,
-        eq(shops.status, "approved"),
+        or(eq(shops.status, "approved"), eq(shops.status, "active")),
       ));
     if (pincodeShops.length === 0) {
       res.json({ success: true, products: [], total: 0, page: pg, pages: 0 });
@@ -94,7 +95,7 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     } else {
       // Customer-facing: only return products from approved shops
       const [shop] = await db.select({ status: shops.status }).from(shops).where(eq(shops.id, shopId)).limit(1);
-      if (!shop || shop.status !== "approved") {
+      if (!shop || (shop.status !== "approved" && shop.status !== "active")) {
         res.json({ success: true, products: [], total: 0, page: pg, pages: 0 });
         return;
       }
@@ -106,7 +107,7 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     conditions.push(
       inArray(
         products.shopId,
-        db.select({ id: shops.id }).from(shops).where(eq(shops.status, "approved"))
+        db.select({ id: shops.id }).from(shops).where(or(eq(shops.status, "approved"), eq(shops.status, "active")))
       )
     );
   }

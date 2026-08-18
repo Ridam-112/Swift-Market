@@ -181,8 +181,11 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const filteredProducts = useMemo(() => {
     const selectedCity = (auth?.selectedDeliveryAddress?.city ?? "").trim().toLowerCase();
     if (!selectedCity) return products;
-    const visibleShopIds = new Set((shopsContext?.shops || []).map(s => s.id));
-    return products.filter(p => !p.shopId || visibleShopIds.has(p.shopId));
+    const currentShops = shopsContext?.shops || [];
+    if (currentShops.length === 0) return products;
+    const visibleShopIds = new Set(currentShops.map(s => s.id));
+    const filtered = products.filter(p => !p.shopId || visibleShopIds.has(p.shopId));
+    return filtered.length > 0 ? filtered : products;
   }, [products, shopsContext?.shops, auth?.selectedDeliveryAddress?.city]);
 
   return (

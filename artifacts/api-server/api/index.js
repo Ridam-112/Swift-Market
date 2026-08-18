@@ -125286,7 +125286,8 @@ router8.post("/", authenticate, vendorWriteLimiter, async (req, res) => {
       status: body["status"] ? String(body["status"]) : "pending",
       colors: Array.isArray(body["colors"]) ? body["colors"] : void 0,
       sizes: Array.isArray(body["sizes"]) ? body["sizes"] : void 0,
-      colorImages: body["colorImages"] && typeof body["colorImages"] === "object" && !Array.isArray(body["colorImages"]) ? body["colorImages"] : void 0
+      colorImages: body["colorImages"] && typeof body["colorImages"] === "object" && !Array.isArray(body["colorImages"]) ? body["colorImages"] : void 0,
+      fomoTag: body["fomoTag"] ? String(body["fomoTag"]) : void 0
     }).returning();
     void invalidateProductCaches();
     res.status(201).json({ success: true, product: mi(product2) });
@@ -125321,7 +125322,8 @@ router8.post("/", authenticate, vendorWriteLimiter, async (req, res) => {
     status: "pending",
     colors: Array.isArray(safeBody["colors"]) ? safeBody["colors"] : void 0,
     sizes: Array.isArray(safeBody["sizes"]) ? safeBody["sizes"] : void 0,
-    colorImages: safeBody["colorImages"] && typeof safeBody["colorImages"] === "object" && !Array.isArray(safeBody["colorImages"]) ? safeBody["colorImages"] : void 0
+    colorImages: safeBody["colorImages"] && typeof safeBody["colorImages"] === "object" && !Array.isArray(safeBody["colorImages"]) ? safeBody["colorImages"] : void 0,
+    fomoTag: safeBody["fomoTag"] ? String(safeBody["fomoTag"]) : void 0
   }).returning();
   try {
     const adminUsers = await db.select({ id: users.id }).from(users).where(or4(eq10(users.role, "admin"), eq10(users.role, "super_admin")));
@@ -125409,7 +125411,8 @@ router8.patch("/:id", authenticate, V, vendorWriteLimiter, async (req, res) => {
     "images",
     "trending",
     "colors",
-    "sizes"
+    "sizes",
+    "fomoTag"
   ]);
   const ADMIN_EXTRA_FIELDS = /* @__PURE__ */ new Set(["status", "rejectionReason", "shopId"]);
   const updateData = {};
@@ -125557,7 +125560,10 @@ var CreateOrderSchema = external_exports.object({
   deliveryType: external_exports.enum(["instant", "scheduled"]).default("instant"),
   couponCode: external_exports.string().optional(),
   razorpayOrderId: external_exports.string().optional(),
-  notes: external_exports.string().max(500).optional()
+  notes: external_exports.string().max(500).optional(),
+  substitutePreference: external_exports.enum(["call", "best_match", "remove"]).default("best_match"),
+  swiftCoinsEarned: external_exports.number().int().nonnegative().optional(),
+  swiftCoinsRedeemed: external_exports.number().int().nonnegative().optional()
 });
 function getRazorpay() {
   const keyId = process.env["RAZORPAY_KEY_ID"];
@@ -125905,7 +125911,10 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
         address: body["address"] ?? {},
         couponCode: couponCode ?? void 0,
         deliveryOtp,
-        razorpayOrderId: typeof body["razorpayOrderId"] === "string" && body["razorpayOrderId"].trim() ? body["razorpayOrderId"].trim() : void 0
+        razorpayOrderId: typeof body["razorpayOrderId"] === "string" && body["razorpayOrderId"].trim() ? body["razorpayOrderId"].trim() : void 0,
+        substitutePreference: parsed.data.substitutePreference ?? "best_match",
+        swiftCoinsEarned: parsed.data.swiftCoinsEarned ?? 10,
+        swiftCoinsRedeemed: parsed.data.swiftCoinsRedeemed ?? 0
       }).returning();
       if (shopId && vendorPayable > 0 && shop) {
         await tx.insert(payouts).values({
@@ -129282,9 +129291,57 @@ var DEFAULT_HOME_BLOCKS = [
     }
   },
   {
+    id: "block_daily_1",
+    type: "daily_regulars",
+    sortOrder: 5,
+    isActive: true,
+    data: {
+      title: "Your Daily Regulars \u{1F95B}",
+      badgeText: "1-TAP REORDER",
+      items: [
+        { id: "reorder_1", name: "Amul Taaza Toned Milk", price: 54, unit: "1 L", image: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=500" },
+        { id: "reorder_2", name: "Fresh Organic Eggs", price: 42, unit: "Pack of 6", image: "https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?w=500" }
+      ]
+    }
+  },
+  {
+    id: "block_weather_1",
+    type: "weather_cravings",
+    sortOrder: 6,
+    isActive: true,
+    data: {
+      weatherCondition: "rainy",
+      title: "Rainy Day Cravings \u2615",
+      badgeText: "\u{1F327}\uFE0F Rain Special",
+      items: [
+        { id: "rain_1", name: "Tata Tea Gold Masala", price: 140, unit: "250g", image: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500" },
+        { id: "rain_2", name: "Hot Fresh Samosa 2pcs", price: 30, unit: "2 Pcs", image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=500" }
+      ]
+    }
+  },
+  {
+    id: "block_recipe_1",
+    type: "shoppable_recipe",
+    sortOrder: 7,
+    isActive: true,
+    data: {
+      recipeId: "recipe_1",
+      recipeName: "Creamy Butter Paneer Masala \u{1F958}",
+      description: "Rich, creamy North Indian curry made with fresh paneer, butter, tomatoes, and aromatic spices.",
+      prepTime: "20 mins",
+      difficulty: "Easy",
+      servings: 3,
+      imageUrl: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=800",
+      ingredients: [
+        { id: "ing_1", name: "Fresh Dairy Paneer 200g", price: 90, unit: "200g", image: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=500" },
+        { id: "ing_2", name: "Amul Butter 100g", price: 58, unit: "100g", image: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=500" }
+      ]
+    }
+  },
+  {
     id: "block_spacer_1",
     type: "spacer",
-    sortOrder: 5,
+    sortOrder: 8,
     isActive: true,
     data: {
       height: 24
