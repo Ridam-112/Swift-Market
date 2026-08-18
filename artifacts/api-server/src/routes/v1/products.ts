@@ -120,15 +120,28 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     db.select({ total: count() }).from(products).where(where),
   ]);
 
-  // Batch-fetch shop names so every product card can display the seller
-  const shopIds = [...new Set(result.map(p => p.shopId))];
-  const shopRows = shopIds.length > 0
-    ? await db.select({ id: shops.id, shopName: shops.shopName }).from(shops).where(inArray(shops.id, shopIds))
-    : [];
-  const shopMap = Object.fromEntries(shopRows.map(s => [s.id, s.shopName]));
+  // Batch-fetch shop names safely — if shop join fails, fallback to lean plain products
+  let shopMap: Record<string, string> = {};
+  try {
+    const shopIds = [...new Set(result.map(p => p.shopId))];
+    if (shopIds.length > 0) {
+      const shopRows = await db.select({ id: shops.id, shopName: shops.shopName }).from(shops).where(inArray(shops.id, shopIds));
+      shopMap = Object.fromEntries(shopRows.map(s => [s.id, s.shopName]));
+    }
+  } catch (_e) {
+    // Return lean products directly if shop mapping errors out
+  }
+
   const enriched = result.map(p => ({ ...mi(p), shopName: shopMap[p.shopId] ?? "" }));
 
-  const payload = { success: true, products: enriched, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) };
+  const payload = {
+    success: true,
+    count: enriched.length,
+    products: enriched,
+    total: Number(total),
+    page: pg,
+    pages: Math.ceil(Number(total) / lm),
+  };
   if (useCache) {
     void cacheSet(productsCacheKey(query), payload, TTL.PRODUCTS);
   }

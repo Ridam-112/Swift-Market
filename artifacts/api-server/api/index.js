@@ -125170,11 +125170,24 @@ router8.get("/", optionalAuth, async (req, res) => {
       db.select().from(products).where(where).orderBy(desc4(products.createdAt)).offset(skip).limit(lm),
       db.select({ total: count5() }).from(products).where(where)
     ]);
-    const shopIds = [...new Set(result.map((p) => p.shopId))];
-    const shopRows = shopIds.length > 0 ? await db.select({ id: shops.id, shopName: shops.shopName }).from(shops).where(inArray4(shops.id, shopIds)) : [];
-    const shopMap = Object.fromEntries(shopRows.map((s2) => [s2.id, s2.shopName]));
+    let shopMap = {};
+    try {
+      const shopIds = [...new Set(result.map((p) => p.shopId))];
+      if (shopIds.length > 0) {
+        const shopRows = await db.select({ id: shops.id, shopName: shops.shopName }).from(shops).where(inArray4(shops.id, shopIds));
+        shopMap = Object.fromEntries(shopRows.map((s2) => [s2.id, s2.shopName]));
+      }
+    } catch (_e) {
+    }
     const enriched = result.map((p) => ({ ...mi(p), shopName: shopMap[p.shopId] ?? "" }));
-    const payload = { success: true, products: enriched, total: Number(total), page: pg2, pages: Math.ceil(Number(total) / lm) };
+    const payload = {
+      success: true,
+      count: enriched.length,
+      products: enriched,
+      total: Number(total),
+      page: pg2,
+      pages: Math.ceil(Number(total) / lm)
+    };
     if (useCache) {
       void cacheSet(productsCacheKey(query), payload, TTL.PRODUCTS);
     }
