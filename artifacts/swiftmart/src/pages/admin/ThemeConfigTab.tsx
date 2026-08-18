@@ -43,6 +43,7 @@ export function ThemeConfigTab() {
   const [theme, setTheme] = useState<ThemeConfig>(DEFAULT_THEME);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [realProduct, setRealProduct] = useState<any>(null);
 
   const fetchThemeConfig = async () => {
     setLoading(true);
@@ -66,6 +67,13 @@ export function ThemeConfigTab() {
 
   useEffect(() => {
     fetchThemeConfig();
+    api.get<{ success: boolean; products: any[] }>("/products?limit=1")
+      .then((r) => {
+        if (r?.success && Array.isArray(r.products) && r.products.length > 0) {
+          setRealProduct(r.products[0]);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleSave = async () => {
@@ -89,21 +97,25 @@ export function ThemeConfigTab() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[350px] gap-3">
         <RefreshCw className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-sm text-gray-500 font-medium">Loading remote theme configuration...</p>
+        <p className="text-sm text-slate-400 font-medium">Loading remote theme configuration...</p>
       </div>
     );
   }
 
+  const sampleProductName = realProduct?.name || "Fresh Amul Milk (1L)";
+  const sampleProductPrice = realProduct?.discountedPrice || realProduct?.price || 62;
+  const sampleStoreName = realProduct?.shopName || "Balurghat Store";
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+      {/* Header Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/90 p-6 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
         <div>
           <div className="flex items-center gap-2">
             <Palette className="w-6 h-6 text-primary" />
-            <h2 className="text-xl font-extrabold text-gray-900">Hybrid Design System — Remote Theme Config</h2>
+            <h2 className="text-xl font-extrabold text-white">Hybrid Design System — Remote Theme Config</h2>
           </div>
-          <p className="text-sm text-gray-600 font-medium mt-1">
+          <p className="text-sm text-slate-400 font-medium mt-1">
             Dynamically adjust branding tokens (Primary Color, Radius, Typography) served live to web & mobile clients.
           </p>
         </div>
@@ -113,16 +125,16 @@ export function ThemeConfigTab() {
             type="button"
             onClick={fetchThemeConfig}
             disabled={saving}
-            className="flex items-center gap-2 border border-gray-300 bg-white text-gray-800 hover:bg-gray-100 font-bold shadow-xs"
+            className="flex items-center gap-2 border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white font-bold shadow-xs transition-colors"
           >
-            <RefreshCw className="w-4 h-4 text-gray-700" />
+            <RefreshCw className="w-4 h-4 text-slate-300" />
             Reset
           </Button>
           <Button
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 bg-primary text-white hover:opacity-95 font-bold shadow-sm"
+            className="flex items-center gap-2 bg-primary text-white hover:opacity-95 font-bold shadow-md transition-all"
           >
             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save Changes
@@ -133,28 +145,28 @@ export function ThemeConfigTab() {
       {/* Main Grid: Controls & Live Preview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Controls Section */}
-        <div className="lg:col-span-6 space-y-6 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-          <h3 className="font-extrabold text-gray-900 flex items-center gap-2 text-base border-b border-gray-200 pb-3">
-            <Sliders className="w-5 h-5 text-gray-800" />
+        <div className="lg:col-span-6 space-y-6 bg-slate-900/90 p-6 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
+          <h3 className="font-extrabold text-white flex items-center gap-2 text-base border-b border-slate-800 pb-3">
+            <Sliders className="w-5 h-5 text-slate-300" />
             Design Tokens
           </h3>
 
           {/* Primary Color */}
           <div className="space-y-3">
-            <label className="text-sm font-bold text-gray-900 block">Primary Brand Color</label>
+            <label className="text-sm font-bold text-slate-200 block">Primary Brand Color</label>
             <div className="flex items-center gap-3">
               <input
                 type="color"
                 value={theme.primaryColor}
                 onChange={(e) => setTheme({ ...theme, primaryColor: e.target.value })}
-                className="w-12 h-10 rounded-lg cursor-pointer border border-gray-300 p-1 bg-white"
+                className="w-12 h-10 rounded-lg cursor-pointer border border-slate-700 p-1 bg-slate-950"
               />
               <Input
                 type="text"
                 value={theme.primaryColor}
                 onChange={(e) => setTheme({ ...theme, primaryColor: e.target.value })}
                 placeholder="#E23744"
-                className="font-mono text-sm font-bold text-gray-900 uppercase max-w-[160px] bg-white border-gray-300"
+                className="font-mono text-sm font-bold text-white uppercase max-w-[160px] bg-slate-950 border-slate-800 focus:border-primary"
               />
             </div>
 
@@ -165,12 +177,12 @@ export function ThemeConfigTab() {
                   key={preset.name}
                   type="button"
                   onClick={() => setTheme({ ...theme, primaryColor: preset.color })}
-                  className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border border-gray-300 bg-gray-50 text-gray-900 hover:bg-gray-100 hover:border-gray-400 transition-colors shadow-xs"
+                  className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white transition-colors shadow-xs"
                 >
-                  <span className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0" style={{ backgroundColor: preset.color }} />
+                  <span className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0" style={{ backgroundColor: preset.color }} />
                   <span>{preset.name}</span>
                   {theme.primaryColor.toLowerCase() === preset.color.toLowerCase() && (
-                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   )}
                 </button>
               ))}
@@ -178,30 +190,30 @@ export function ThemeConfigTab() {
           </div>
 
           {/* Secondary Color */}
-          <div className="space-y-3 pt-2 border-t border-gray-100">
-            <label className="text-sm font-bold text-gray-900 block">Secondary Accent Color</label>
+          <div className="space-y-3 pt-2 border-t border-slate-800/80">
+            <label className="text-sm font-bold text-slate-200 block">Secondary Accent Color</label>
             <div className="flex items-center gap-3">
               <input
                 type="color"
                 value={theme.secondaryColor}
                 onChange={(e) => setTheme({ ...theme, secondaryColor: e.target.value })}
-                className="w-12 h-10 rounded-lg cursor-pointer border border-gray-300 p-1 bg-white"
+                className="w-12 h-10 rounded-lg cursor-pointer border border-slate-700 p-1 bg-slate-950"
               />
               <Input
                 type="text"
                 value={theme.secondaryColor}
                 onChange={(e) => setTheme({ ...theme, secondaryColor: e.target.value })}
                 placeholder="#000000"
-                className="font-mono text-sm font-bold text-gray-900 uppercase max-w-[160px] bg-white border-gray-300"
+                className="font-mono text-sm font-bold text-white uppercase max-w-[160px] bg-slate-950 border-slate-800 focus:border-primary"
               />
             </div>
           </div>
 
           {/* Border Radius */}
-          <div className="space-y-3 pt-2 border-t border-gray-100">
+          <div className="space-y-3 pt-2 border-t border-slate-800/80">
             <div className="flex justify-between items-center">
-              <label className="text-sm font-bold text-gray-900">Border Radius</label>
-              <span className="text-xs font-mono font-bold bg-gray-200 text-gray-900 px-2 py-1 rounded-md">
+              <label className="text-sm font-bold text-slate-200">Border Radius</label>
+              <span className="text-xs font-mono font-bold bg-slate-800 text-slate-200 border border-slate-700 px-2.5 py-1 rounded-md">
                 {theme.borderRadius}px
               </span>
             </div>
@@ -212,9 +224,9 @@ export function ThemeConfigTab() {
               step="2"
               value={theme.borderRadius}
               onChange={(e) => setTheme({ ...theme, borderRadius: parseInt(e.target.value, 10) || 0 })}
-              className="w-full h-2.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+              className="w-full h-2.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary"
             />
-            <div className="flex justify-between text-[11px] text-gray-600 font-mono font-bold">
+            <div className="flex justify-between text-[11px] text-slate-400 font-mono font-bold">
               <span>0px (Sharp)</span>
               <span>12px (Rounded)</span>
               <span>24px (Pill)</span>
@@ -222,18 +234,18 @@ export function ThemeConfigTab() {
           </div>
 
           {/* Font Family */}
-          <div className="space-y-3 pt-2 border-t border-gray-100">
-            <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
-              <Type className="w-4 h-4 text-gray-700" />
+          <div className="space-y-3 pt-2 border-t border-slate-800/80">
+            <label className="text-sm font-bold text-slate-200 flex items-center gap-2">
+              <Type className="w-4 h-4 text-slate-300" />
               Font Family
             </label>
             <select
               value={theme.fontFamily}
               onChange={(e) => setTheme({ ...theme, fontFamily: e.target.value })}
-              className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm bg-white text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-xs"
+              className="w-full h-10 rounded-lg border border-slate-800 px-3 text-sm bg-slate-950 text-white font-bold focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-xs"
             >
               {FONT_OPTIONS.map((f) => (
-                <option key={f.value} value={f.value} className="text-gray-900 bg-white font-medium">
+                <option key={f.value} value={f.value} className="text-white bg-slate-900 font-medium">
                   {f.label}
                 </option>
               ))}
@@ -242,21 +254,21 @@ export function ThemeConfigTab() {
         </div>
 
         {/* Live Visual Preview Section */}
-        <div className="lg:col-span-6 bg-slate-900 text-white p-6 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-6">
+        <div className="lg:col-span-6 bg-slate-900/90 text-white p-6 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-6 shadow-xl backdrop-blur-md">
           <div>
             <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
               <div className="flex items-center gap-2">
                 <LayoutTemplate className="w-5 h-5 text-amber-400" />
-                <h3 className="font-bold text-white text-base">Live Component Preview</h3>
+                <h3 className="font-bold text-white text-base">Live Component Preview (DB Synced)</h3>
               </div>
               <Badge variant="outline" className="text-xs border-slate-700 text-slate-300 flex gap-1 items-center font-bold">
-                <Sparkles className="w-3 h-3 text-amber-400" /> Real-time
+                <Sparkles className="w-3 h-3 text-amber-400" /> Real DB Sync
               </Badge>
             </div>
 
             {/* Dynamic Card Container */}
             <div
-              className="bg-slate-950 p-5 border border-slate-800 space-y-5 transition-all duration-200 shadow-xl"
+              className="bg-slate-950 p-5 border border-slate-800 space-y-5 transition-all duration-200 shadow-2xl"
               style={{
                 borderRadius: `${theme.borderRadius}px`,
                 fontFamily: theme.fontFamily,
@@ -273,16 +285,16 @@ export function ThemeConfigTab() {
                 >
                   ⚡ 10 MIN DELIVERY
                 </span>
-                <span className="text-xs text-slate-400 font-medium">Balurghat Store</span>
+                <span className="text-xs text-slate-400 font-medium">{sampleStoreName}</span>
               </div>
 
               {/* Sample Title */}
               <div>
-                <h4 className="text-lg font-bold text-white" style={{ fontFamily: theme.fontFamily }}>
-                  SwiftMart Dynamic Button & Card
+                <h4 className="text-lg font-bold text-white line-clamp-1" style={{ fontFamily: theme.fontFamily }}>
+                  {sampleProductName}
                 </h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Visual representation of client UI rendering with active remote tokens.
+                  Visual representation of live client UI rendering with active remote tokens.
                 </p>
               </div>
 
@@ -293,7 +305,7 @@ export function ThemeConfigTab() {
                   className="bg-slate-900 border border-slate-800 px-3 py-2 text-sm text-slate-200 flex items-center justify-between"
                   style={{ borderRadius: `${Math.max(4, theme.borderRadius / 2)}px` }}
                 >
-                  <span>Fresh Amul Milk (1L)...</span>
+                  <span className="truncate">{sampleProductName}...</span>
                   <span className="text-xs text-slate-500">🔍</span>
                 </div>
               </div>
@@ -309,7 +321,7 @@ export function ThemeConfigTab() {
                   }}
                 >
                   <span>Add to Cart</span>
-                  <span className="bg-white/20 px-1.5 py-0.5 text-xs rounded">₹62</span>
+                  <span className="bg-white/20 px-1.5 py-0.5 text-xs rounded">₹{sampleProductPrice}</span>
                 </button>
 
                 <button

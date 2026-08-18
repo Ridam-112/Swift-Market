@@ -89,6 +89,10 @@ export function LayoutBuilderTab() {
   const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
   const [uploadingBlockId, setUploadingBlockId] = useState<string | null>(null);
 
+  // Real Database Data State
+  const [realCategories, setRealCategories] = useState<any[]>([]);
+  const [realProducts, setRealProducts] = useState<any[]>([]);
+
   const fetchLayout = async (page: string) => {
     setLoading(true);
     try {
@@ -115,6 +119,25 @@ export function LayoutBuilderTab() {
     fetchLayout(selectedPage);
   }, [selectedPage]);
 
+  // Sync real database categories & products
+  useEffect(() => {
+    api.get<{ success: boolean; categories: any[] }>("/categories")
+      .then((r) => {
+        if (r?.success && Array.isArray(r.categories)) {
+          setRealCategories(r.categories);
+        }
+      })
+      .catch(() => {});
+
+    api.get<{ success: boolean; products: any[] }>("/products?limit=100")
+      .then((r) => {
+        if (r?.success && Array.isArray(r.products)) {
+          setRealProducts(r.products);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -137,12 +160,13 @@ export function LayoutBuilderTab() {
   };
 
   const handleAddBlock = (type: BlockType) => {
+    const defaultCatSlug = realCategories.length > 0 ? realCategories[0].slug : "dairy";
     const newBlock: LayoutBlock = {
       id: `block_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       type,
       sortOrder: blocks.length + 1,
       isActive: true,
-      data: getDefaultDataForType(type),
+      data: getDefaultDataForType(type, defaultCatSlug),
     };
     const updated = [...blocks, newBlock];
     setBlocks(updated);
@@ -150,7 +174,7 @@ export function LayoutBuilderTab() {
     toast.info(`Added new ${type.replace("_", " ")} block`);
   };
 
-  const getDefaultDataForType = (type: BlockType): Record<string, any> => {
+  const getDefaultDataForType = (type: BlockType, defaultCatSlug: string): Record<string, any> => {
     switch (type) {
       case "hero_banner":
         return {
@@ -164,11 +188,12 @@ export function LayoutBuilderTab() {
         return {
           title: "Browse Categories",
           columns: 4,
+          categoryFilter: "all",
         };
       case "product_carousel":
         return {
           title: "Popular Items",
-          categorySlug: "dairy",
+          categorySlug: defaultCatSlug,
           limit: 10,
         };
       case "promotional_strip":
@@ -250,14 +275,14 @@ export function LayoutBuilderTab() {
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/90 p-6 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
         <div>
           <div className="flex items-center gap-2">
             <LayoutGrid className="w-6 h-6 text-primary" />
-            <h2 className="text-xl font-extrabold text-gray-900">SDUI Layout Engine — Page Builder</h2>
+            <h2 className="text-xl font-extrabold text-white">SDUI Layout Engine — Page Builder</h2>
           </div>
-          <p className="text-sm text-gray-600 font-medium mt-1">
-            Build, order and arrange dynamic UI blocks served live to mobile & web clients.
+          <p className="text-sm text-slate-400 font-medium mt-1">
+            Build, order and arrange dynamic UI blocks synced directly with real database categories & products.
           </p>
         </div>
 
@@ -266,10 +291,10 @@ export function LayoutBuilderTab() {
           <select
             value={selectedPage}
             onChange={(e) => setSelectedPage(e.target.value)}
-            className="h-10 px-3.5 rounded-xl border border-gray-300 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-xs"
+            className="h-10 px-3.5 rounded-xl border border-slate-800 bg-slate-950 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-xs"
           >
             {PAGE_OPTIONS.map((p) => (
-              <option key={p.value} value={p.value} className="text-gray-900 bg-white font-semibold">
+              <option key={p.value} value={p.value} className="text-white bg-slate-900 font-semibold">
                 {p.label}
               </option>
             ))}
@@ -279,16 +304,16 @@ export function LayoutBuilderTab() {
             type="button"
             onClick={() => fetchLayout(selectedPage)}
             disabled={saving}
-            className="border border-gray-300 bg-white text-gray-800 hover:bg-gray-100 font-bold shadow-xs flex items-center gap-2"
+            className="border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white font-bold shadow-xs flex items-center gap-2 transition-colors"
           >
-            <RefreshCw className="w-4 h-4 text-gray-700" /> Reset
+            <RefreshCw className="w-4 h-4 text-slate-300" /> Reset
           </Button>
 
           <Button
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="bg-primary text-white hover:opacity-95 font-bold shadow-sm flex items-center gap-2"
+            className="bg-primary text-white hover:opacity-95 font-bold shadow-md flex items-center gap-2 transition-all"
           >
             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save Layout
@@ -297,8 +322,8 @@ export function LayoutBuilderTab() {
       </div>
 
       {/* Add New Block Banner */}
-      <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm space-y-3">
-        <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+      <div className="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3 backdrop-blur-md">
+        <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
           <Plus className="w-4 h-4 text-primary" /> Add New SDUI Block
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -309,15 +334,15 @@ export function LayoutBuilderTab() {
                 key={meta.type}
                 type="button"
                 onClick={() => handleAddBlock(meta.type)}
-                className="flex flex-col items-start p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group shadow-xs"
+                className="flex flex-col items-start p-3.5 rounded-xl border border-slate-800 bg-slate-950/80 hover:border-primary/50 hover:bg-slate-800 transition-all text-left group shadow-xs"
               >
-                <div className="p-2 rounded-lg bg-white border border-gray-200 group-hover:bg-primary/10 text-gray-800 group-hover:text-primary mb-2 transition-colors">
+                <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 group-hover:bg-primary/20 text-slate-300 group-hover:text-primary mb-2 transition-colors">
                   <Icon className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-bold text-gray-900 group-hover:text-primary">
+                <span className="text-xs font-bold text-white group-hover:text-primary">
                   {meta.label}
                 </span>
-                <span className="text-[11px] font-medium text-gray-600 line-clamp-2 mt-0.5">
+                <span className="text-[11px] font-medium text-slate-400 line-clamp-2 mt-0.5">
                   {meta.description}
                 </span>
               </button>
@@ -331,23 +356,23 @@ export function LayoutBuilderTab() {
         {/* Left Column: Block Sequence & Editor */}
         <div className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
-              <Layers className="w-5 h-5 text-gray-800" />
+            <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+              <Layers className="w-5 h-5 text-slate-300" />
               Page Blocks ({blocks.length})
             </h3>
-            <span className="text-xs text-gray-600 font-bold">Use arrows to reorder</span>
+            <span className="text-xs text-slate-400 font-bold">Use arrows to reorder</span>
           </div>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center min-h-[250px] bg-white rounded-2xl border border-gray-200">
+            <div className="flex flex-col items-center justify-center min-h-[250px] bg-slate-900/90 rounded-2xl border border-slate-800">
               <RefreshCw className="w-8 h-8 text-primary animate-spin mb-2" />
-              <p className="text-sm text-gray-600 font-bold">Loading layout blocks...</p>
+              <p className="text-sm text-slate-300 font-bold">Loading layout blocks...</p>
             </div>
           ) : blocks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center min-h-[250px] bg-white rounded-2xl border border-dashed border-gray-300 p-6 text-center">
-              <LayoutGrid className="w-10 h-10 text-gray-400 mb-3" />
-              <p className="text-sm font-extrabold text-gray-900">No blocks configured for '{selectedPage}'</p>
-              <p className="text-xs text-gray-600 font-medium mt-1 max-w-xs">
+            <div className="flex flex-col items-center justify-center min-h-[250px] bg-slate-900/90 rounded-2xl border border-dashed border-slate-800 p-6 text-center">
+              <LayoutGrid className="w-10 h-10 text-slate-600 mb-3" />
+              <p className="text-sm font-extrabold text-white">No blocks configured for '{selectedPage}'</p>
+              <p className="text-xs text-slate-400 font-medium mt-1 max-w-xs">
                 Click any of the block buttons above to start building the page layout.
               </p>
             </div>
@@ -361,35 +386,35 @@ export function LayoutBuilderTab() {
                 return (
                   <div
                     key={block.id}
-                    className={`bg-white rounded-2xl border transition-all ${
-                      isExpanded ? "border-primary shadow-md" : "border-gray-200 hover:border-gray-300 shadow-xs"
-                    } ${!block.isActive ? "opacity-60 bg-gray-50" : ""}`}
+                    className={`bg-slate-900/90 rounded-2xl border transition-all ${
+                      isExpanded ? "border-primary shadow-lg" : "border-slate-800 hover:border-slate-700 shadow-xs"
+                    } ${!block.isActive ? "opacity-50 bg-slate-950" : ""}`}
                   >
                     {/* Block Header / Action Bar */}
-                    <div className="p-4 flex items-center justify-between gap-3 border-b border-gray-100">
+                    <div className="p-4 flex items-center justify-between gap-3 border-b border-slate-800/80">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <span className="w-6 h-6 rounded-lg bg-gray-200 text-gray-900 font-mono text-xs font-extrabold flex items-center justify-center shrink-0">
+                        <span className="w-6 h-6 rounded-lg bg-slate-800 text-white font-mono text-xs font-extrabold flex items-center justify-center shrink-0 border border-slate-700">
                           {index + 1}
                         </span>
 
-                        <div className="p-2 rounded-lg bg-gray-100 text-gray-900 shrink-0">
+                        <div className="p-2 rounded-lg bg-slate-950 text-slate-200 shrink-0 border border-slate-800">
                           <BlockIcon className="w-4 h-4" />
                         </div>
 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-extrabold text-sm text-gray-900 truncate">
+                            <span className="font-extrabold text-sm text-white truncate">
                               {block.data?.title || meta?.label || block.type}
                             </span>
                             <Badge
                               variant="outline"
-                              className="text-[10px] font-bold uppercase tracking-wider font-mono text-gray-700 border-gray-300"
+                              className="text-[10px] font-bold uppercase tracking-wider font-mono text-slate-300 border-slate-700"
                             >
                               {block.type}
                             </Badge>
                           </div>
-                          <p className="text-xs text-gray-600 font-medium truncate">
-                            {block.data?.subtitle || block.data?.categorySlug || `Sort order: ${index + 1}`}
+                          <p className="text-xs text-slate-400 font-medium truncate">
+                            {block.data?.subtitle || (block.data?.categorySlug ? `Category: ${block.data.categorySlug}` : `Sort order: ${index + 1}`)}
                           </p>
                         </div>
                       </div>
@@ -400,7 +425,7 @@ export function LayoutBuilderTab() {
                           type="button"
                           onClick={() => handleMoveBlock(index, "up")}
                           disabled={index === 0}
-                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700 disabled:opacity-30"
+                          className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 disabled:opacity-30"
                           title="Move Up"
                         >
                           <ArrowUp className="w-4 h-4" />
@@ -409,7 +434,7 @@ export function LayoutBuilderTab() {
                           type="button"
                           onClick={() => handleMoveBlock(index, "down")}
                           disabled={index === blocks.length - 1}
-                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700 disabled:opacity-30"
+                          className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 disabled:opacity-30"
                           title="Move Down"
                         >
                           <ArrowDown className="w-4 h-4" />
@@ -419,7 +444,7 @@ export function LayoutBuilderTab() {
                           type="button"
                           onClick={() => handleToggleActive(block.id)}
                           className={`p-1.5 rounded-lg transition-colors ${
-                            block.isActive ? "text-emerald-700 hover:bg-emerald-50" : "text-gray-500 hover:bg-gray-100"
+                            block.isActive ? "text-emerald-400 hover:bg-emerald-950/40" : "text-slate-500 hover:bg-slate-800"
                           }`}
                           title={block.isActive ? "Deactivate Block" : "Activate Block"}
                         >
@@ -429,7 +454,7 @@ export function LayoutBuilderTab() {
                         <button
                           type="button"
                           onClick={() => setExpandedBlockId(isExpanded ? null : block.id)}
-                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700"
+                          className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300"
                         >
                           {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </button>
@@ -437,7 +462,7 @@ export function LayoutBuilderTab() {
                         <button
                           type="button"
                           onClick={() => handleDeleteBlock(block.id)}
-                          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-red-950/50 text-slate-400 hover:text-red-400 transition-colors"
                           title="Remove Block"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -447,47 +472,47 @@ export function LayoutBuilderTab() {
 
                     {/* Block Editor Panel (Expanded) */}
                     {isExpanded && (
-                      <div className="p-4 bg-gray-50/70 space-y-4 rounded-b-2xl border-t border-gray-200">
+                      <div className="p-4 bg-slate-950/60 space-y-4 rounded-b-2xl border-t border-slate-800">
                         {/* HERO BANNER EDIT FIELDS */}
                         {block.type === "hero_banner" && (
                           <div className="space-y-3 text-sm">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div>
-                                <label className="text-xs font-bold text-gray-900 block mb-1">Banner Title</label>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Banner Title</label>
                                 <Input
                                   value={block.data?.title || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "title", e.target.value)}
                                   placeholder="e.g. 10-Minute Grocery Delivery"
-                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
                                 />
                               </div>
                               <div>
-                                <label className="text-xs font-bold text-gray-900 block mb-1">Subtitle</label>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Subtitle</label>
                                 <Input
                                   value={block.data?.subtitle || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "subtitle", e.target.value)}
                                   placeholder="e.g. Fresh veggies & fruits"
-                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
                                 />
                               </div>
                             </div>
 
                             {/* Image URL & File Upload */}
                             <div>
-                              <label className="text-xs font-bold text-gray-900 block mb-1">Image URL</label>
+                              <label className="text-xs font-bold text-slate-200 block mb-1">Image URL</label>
                               <div className="flex gap-2">
                                 <Input
                                   value={block.data?.imageUrl || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "imageUrl", e.target.value)}
                                   placeholder="https://..."
-                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
                                 />
                                 <label className="cursor-pointer shrink-0">
-                                  <Button type="button" variant="outline" disabled={uploadingBlockId === block.id} className="pointer-events-none bg-white border-gray-300 text-gray-800 font-bold">
+                                  <Button type="button" variant="outline" disabled={uploadingBlockId === block.id} className="pointer-events-none bg-slate-800 border-slate-700 text-white font-bold">
                                     {uploadingBlockId === block.id ? (
-                                      <RefreshCw className="w-4 h-4 animate-spin mr-1 text-gray-700" />
+                                      <RefreshCw className="w-4 h-4 animate-spin mr-1 text-slate-300" />
                                     ) : (
-                                      <Upload className="w-4 h-4 mr-1 text-gray-700" />
+                                      <Upload className="w-4 h-4 mr-1 text-slate-300" />
                                     )}
                                     Upload
                                   </Button>
@@ -507,21 +532,21 @@ export function LayoutBuilderTab() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div>
-                                <label className="text-xs font-bold text-gray-900 block mb-1">Action Link</label>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Action Link</label>
                                 <Input
                                   value={block.data?.link || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "link", e.target.value)}
                                   placeholder="e.g. /shops or /category/dairy"
-                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
                                 />
                               </div>
                               <div>
-                                <label className="text-xs font-bold text-gray-900 block mb-1">Button Text</label>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Button Text</label>
                                 <Input
                                   value={block.data?.buttonText || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "buttonText", e.target.value)}
                                   placeholder="e.g. Shop Now"
-                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
                                 />
                               </div>
                             </div>
@@ -533,20 +558,20 @@ export function LayoutBuilderTab() {
                           <div className="space-y-3 text-sm">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div>
-                                <label className="text-xs font-bold text-gray-900 block mb-1">Section Title</label>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Section Title</label>
                                 <Input
                                   value={block.data?.title || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "title", e.target.value)}
                                   placeholder="e.g. Top Categories"
-                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
                                 />
                               </div>
                               <div>
-                                <label className="text-xs font-bold text-gray-900 block mb-1">Columns</label>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Columns</label>
                                 <select
                                   value={block.data?.columns || 4}
                                   onChange={(e) => handleUpdateBlockData(block.id, "columns", parseInt(e.target.value, 10))}
-                                  className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white text-gray-900 font-bold text-sm"
+                                  className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-950 text-white font-bold text-sm"
                                 >
                                   <option value={3}>3 Columns</option>
                                   <option value={4}>4 Columns</option>
@@ -562,32 +587,49 @@ export function LayoutBuilderTab() {
                           <div className="space-y-3 text-sm">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                               <div>
-                                <label className="text-xs font-bold text-gray-900 block mb-1">Section Title</label>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Section Title</label>
                                 <Input
                                   value={block.data?.title || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "title", e.target.value)}
                                   placeholder="e.g. Trending Products"
-                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
                                 />
                               </div>
                               <div>
-                                <label className="text-xs font-bold text-gray-900 block mb-1">Category Slug</label>
-                                <Input
-                                  value={block.data?.categorySlug || ""}
-                                  onChange={(e) => handleUpdateBlockData(block.id, "categorySlug", e.target.value)}
-                                  placeholder="e.g. dairy or snacks"
-                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
-                                />
+                                <label className="text-xs font-bold text-slate-200 block mb-1">
+                                  Category (Synced from DB)
+                                </label>
+                                {realCategories.length > 0 ? (
+                                  <select
+                                    value={block.data?.categorySlug || ""}
+                                    onChange={(e) => handleUpdateBlockData(block.id, "categorySlug", e.target.value)}
+                                    className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-950 text-white font-bold text-sm"
+                                  >
+                                    <option value="">All Categories</option>
+                                    {realCategories.map((cat) => (
+                                      <option key={cat.id || cat.slug} value={cat.slug}>
+                                        {cat.emoji || "🛍️"} {cat.name} ({cat.slug})
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <Input
+                                    value={block.data?.categorySlug || ""}
+                                    onChange={(e) => handleUpdateBlockData(block.id, "categorySlug", e.target.value)}
+                                    placeholder="e.g. dairy or snacks"
+                                    className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
+                                  />
+                                )}
                               </div>
                               <div>
-                                <label className="text-xs font-bold text-gray-900 block mb-1">Product Limit</label>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Product Limit</label>
                                 <Input
                                   type="number"
                                   min={2}
                                   max={20}
                                   value={block.data?.limit || 10}
                                   onChange={(e) => handleUpdateBlockData(block.id, "limit", parseInt(e.target.value, 10))}
-                                  className="bg-white border-gray-300 text-gray-900 font-bold"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold"
                                 />
                               </div>
                             </div>
@@ -599,59 +641,59 @@ export function LayoutBuilderTab() {
                           <div className="space-y-3 text-sm">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div>
-                                <label className="text-xs font-bold text-gray-900 block mb-1">Title</label>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Title</label>
                                 <Input
                                   value={block.data?.title || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "title", e.target.value)}
                                   placeholder="e.g. ⚡ Flash Discount"
-                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
                                 />
                               </div>
                               <div>
-                                <label className="text-xs font-bold text-gray-900 block mb-1">Subtitle</label>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Subtitle</label>
                                 <Input
                                   value={block.data?.subtitle || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "subtitle", e.target.value)}
                                   placeholder="e.g. Flat ₹50 off"
-                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
                                 />
                               </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                               <div>
-                                <label className="text-xs font-bold text-gray-900 block mb-1">Background Color</label>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Background Color</label>
                                 <div className="flex items-center gap-2">
                                   <input
                                     type="color"
                                     value={block.data?.backgroundColor || "#E23744"}
                                     onChange={(e) => handleUpdateBlockData(block.id, "backgroundColor", e.target.value)}
-                                    className="w-10 h-10 rounded-lg border border-gray-300 p-1 cursor-pointer bg-white"
+                                    className="w-10 h-10 rounded-lg border border-slate-800 p-1 cursor-pointer bg-slate-950"
                                   />
                                   <Input
                                     value={block.data?.backgroundColor || "#E23744"}
                                     onChange={(e) => handleUpdateBlockData(block.id, "backgroundColor", e.target.value)}
                                     placeholder="#E23744"
-                                    className="font-mono text-xs font-bold uppercase bg-white border-gray-300 text-gray-900"
+                                    className="font-mono text-xs font-bold uppercase bg-slate-950 border-slate-800 text-white"
                                   />
                                 </div>
                               </div>
                               <div>
-                                <label className="text-xs font-bold text-gray-900 block mb-1">Action Link</label>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Action Link</label>
                                 <Input
                                   value={block.data?.link || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "link", e.target.value)}
                                   placeholder="e.g. /categories"
-                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
                                 />
                               </div>
                               <div>
-                                <label className="text-xs font-bold text-gray-900 block mb-1">Button Text</label>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Button Text</label>
                                 <Input
                                   value={block.data?.buttonText || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "buttonText", e.target.value)}
                                   placeholder="e.g. Claim Now"
-                                  className="bg-white border-gray-300 text-gray-900 font-bold placeholder:text-gray-400"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
                                 />
                               </div>
                             </div>
@@ -662,8 +704,8 @@ export function LayoutBuilderTab() {
                         {block.type === "spacer" && (
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between items-center">
-                              <label className="text-xs font-bold text-gray-900">Spacer Height</label>
-                              <span className="font-mono text-xs font-extrabold text-gray-900 bg-gray-200 px-2 py-0.5 rounded">
+                              <label className="text-xs font-bold text-slate-200">Spacer Height</label>
+                              <span className="font-mono text-xs font-extrabold text-white bg-slate-800 border border-slate-700 px-2 py-0.5 rounded">
                                 {block.data?.height || 24}px
                               </span>
                             </div>
@@ -674,7 +716,7 @@ export function LayoutBuilderTab() {
                               step="4"
                               value={block.data?.height || 24}
                               onChange={(e) => handleUpdateBlockData(block.id, "height", parseInt(e.target.value, 10))}
-                              className="w-full h-2.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                              className="w-full h-2.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary"
                             />
                           </div>
                         )}
@@ -687,12 +729,12 @@ export function LayoutBuilderTab() {
           )}
         </div>
 
-        {/* Right Column: Live Mobile/Web Render Preview */}
-        <div className="lg:col-span-5 bg-slate-950 text-white p-5 rounded-2xl border border-slate-800 flex flex-col space-y-4">
+        {/* Right Column: Live Mobile/Web Render Preview (Synced with DB) */}
+        <div className="lg:col-span-5 bg-slate-900/90 text-white p-5 rounded-2xl border border-slate-800 flex flex-col space-y-4 shadow-xl backdrop-blur-md">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-400" />
-              <h3 className="font-bold text-white text-base">Live SDUI Render Preview</h3>
+              <h3 className="font-bold text-white text-base">Live SDUI Preview (DB Synced)</h3>
             </div>
             <Badge variant="outline" className="text-[10px] font-bold font-mono text-slate-300 border-slate-700">
               Page: {selectedPage}
@@ -700,7 +742,7 @@ export function LayoutBuilderTab() {
           </div>
 
           {/* Phone Frame Simulator */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-3 space-y-3 overflow-y-auto max-h-[650px] shadow-2xl">
+          <div className="bg-slate-950 border border-slate-800 rounded-3xl p-3 space-y-3 overflow-y-auto max-h-[650px] shadow-2xl">
             {blocks.filter((b) => b.isActive).length === 0 ? (
               <div className="py-16 text-center text-slate-500 text-xs">
                 No active blocks to preview.
@@ -739,24 +781,38 @@ export function LayoutBuilderTab() {
 
                   if (block.type === "category_grid") {
                     const cols = block.data?.columns || 4;
+                    const itemsToRender = realCategories.length > 0
+                      ? realCategories.slice(0, cols * 2)
+                      : [
+                          { name: "Dairy", emoji: "🥛" },
+                          { name: "Fruits", emoji: "🍎" },
+                          { name: "Snacks", emoji: "🍿" },
+                          { name: "Veggies", emoji: "🥦" },
+                        ];
+
                     return (
-                      <div key={block.id} className="bg-slate-850 p-3 rounded-2xl border border-slate-800 space-y-2">
-                        <div className="text-xs font-bold text-white">
-                          {block.data?.title || "Categories"}
+                      <div key={block.id} className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <div className="text-xs font-bold text-white">
+                            {block.data?.title || "Categories"}
+                          </div>
+                          <span className="text-[9px] text-emerald-400 font-bold font-mono">
+                            {realCategories.length} DB Cats
+                          </span>
                         </div>
                         <div
                           className="grid gap-2"
                           style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
                         >
-                          {["Milk", "Fruits", "Snacks", "Veggies", "Bakery", "Drinks"].slice(0, cols * 2).map((cat, i) => (
+                          {itemsToRender.map((cat, i) => (
                             <div
-                              key={i}
-                              className="bg-slate-800/80 p-2 rounded-xl text-center text-[10px] font-medium text-slate-300 border border-slate-700/40"
+                              key={cat.id || i}
+                              className="bg-slate-800/80 p-2 rounded-xl text-center text-[10px] font-medium text-slate-300 border border-slate-700/40 truncate"
                             >
-                              <div className="w-5 h-5 bg-primary/20 rounded-full mx-auto mb-1 flex items-center justify-center text-primary text-[10px]">
-                                🛍️
+                              <div className="w-6 h-6 bg-primary/20 rounded-full mx-auto mb-1 flex items-center justify-center text-primary text-xs">
+                                {cat.emoji || "🛍️"}
                               </div>
-                              {cat}
+                              <span className="truncate block font-bold">{cat.name}</span>
                             </div>
                           ))}
                         </div>
@@ -765,27 +821,54 @@ export function LayoutBuilderTab() {
                   }
 
                   if (block.type === "product_carousel") {
+                    const catSlug = block.data?.categorySlug;
+                    const filteredProducts = catSlug && realProducts.length > 0
+                      ? realProducts.filter((p) => String(p.category || "").toLowerCase() === String(catSlug).toLowerCase())
+                      : realProducts;
+                    const itemsToRender = filteredProducts.length > 0 ? filteredProducts.slice(0, 6) : realProducts.slice(0, 6);
+
                     return (
-                      <div key={block.id} className="bg-slate-850 p-3 rounded-2xl border border-slate-800 space-y-2">
+                      <div key={block.id} className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-xs font-bold text-white">
                             {block.data?.title || "Trending Products"}
                           </span>
-                          <span className="text-[10px] text-primary font-bold">See all</span>
+                          <span className="text-[9px] text-emerald-400 font-bold font-mono">
+                            {itemsToRender.length} DB Items
+                          </span>
                         </div>
                         <div className="flex gap-2 overflow-x-auto pb-1">
-                          {[1, 2, 3].map((item) => (
-                            <div
-                              key={item}
-                              className="min-w-[100px] bg-slate-800 p-2 rounded-xl border border-slate-700/50 space-y-1"
-                            >
-                              <div className="w-full h-12 bg-slate-700/50 rounded-lg flex items-center justify-center text-xs">
-                                📦
-                              </div>
-                              <div className="text-[10px] font-bold text-white truncate">Item {item}</div>
-                              <div className="text-[10px] text-emerald-400 font-bold">₹49</div>
-                            </div>
-                          ))}
+                          {itemsToRender.length === 0 ? (
+                            <div className="text-[10px] text-slate-500 p-2">No items in DB for '{catSlug}'</div>
+                          ) : (
+                            itemsToRender.map((prod) => {
+                              const img = Array.isArray(prod.images) && prod.images.length > 0 ? prod.images[0] : prod.image;
+                              return (
+                                <div
+                                  key={prod.id || prod._id}
+                                  className="min-w-[110px] bg-slate-800 p-2 rounded-xl border border-slate-700/50 space-y-1 shrink-0"
+                                >
+                                  {img ? (
+                                    <img
+                                      src={img}
+                                      alt={prod.name}
+                                      className="w-full h-12 object-cover rounded-lg bg-slate-900"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-12 bg-slate-700/50 rounded-lg flex items-center justify-center text-xs">
+                                      📦
+                                    </div>
+                                  )}
+                                  <div className="text-[10px] font-bold text-white truncate" title={prod.name}>
+                                    {prod.name}
+                                  </div>
+                                  <div className="text-[10px] text-emerald-400 font-bold">
+                                    ₹{prod.discountedPrice || prod.price || 49}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
                         </div>
                       </div>
                     );
