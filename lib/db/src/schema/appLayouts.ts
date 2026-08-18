@@ -5,7 +5,10 @@ export type BlockType =
   | "category_grid"
   | "product_carousel"
   | "promotional_strip"
-  | "spacer";
+  | "spacer"
+  | "daily_regulars"
+  | "weather_cravings"
+  | "shoppable_recipe";
 
 export interface LayoutBlock {
   id: string;

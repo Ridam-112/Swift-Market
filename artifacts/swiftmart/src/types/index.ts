@@ -52,6 +52,7 @@ export interface Product {
   colorImages?: Record<string, string>;
   shopName?: string;
   shopId?: string;
+  fomoTag?: string;
 }
 
 export interface CartItem {

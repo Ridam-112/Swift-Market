@@ -22,6 +22,7 @@ export const products = pgTable("products", {
   colors: jsonb("colors"),
   sizes: jsonb("sizes"),
   colorImages: jsonb("color_images"),
+  fomoTag: text("fomo_tag"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [

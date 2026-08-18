@@ -55,9 +55,57 @@ const DEFAULT_HOME_BLOCKS: LayoutBlock[] = [
     },
   },
   {
+    id: "block_daily_1",
+    type: "daily_regulars",
+    sortOrder: 5,
+    isActive: true,
+    data: {
+      title: "Your Daily Regulars 🥛",
+      badgeText: "1-TAP REORDER",
+      items: [
+        { id: "reorder_1", name: "Amul Taaza Toned Milk", price: 54, unit: "1 L", image: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=500" },
+        { id: "reorder_2", name: "Fresh Organic Eggs", price: 42, unit: "Pack of 6", image: "https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?w=500" },
+      ],
+    },
+  },
+  {
+    id: "block_weather_1",
+    type: "weather_cravings",
+    sortOrder: 6,
+    isActive: true,
+    data: {
+      weatherCondition: "rainy",
+      title: "Rainy Day Cravings ☕",
+      badgeText: "🌧️ Rain Special",
+      items: [
+        { id: "rain_1", name: "Tata Tea Gold Masala", price: 140, unit: "250g", image: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500" },
+        { id: "rain_2", name: "Hot Fresh Samosa 2pcs", price: 30, unit: "2 Pcs", image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=500" },
+      ],
+    },
+  },
+  {
+    id: "block_recipe_1",
+    type: "shoppable_recipe",
+    sortOrder: 7,
+    isActive: true,
+    data: {
+      recipeId: "recipe_1",
+      recipeName: "Creamy Butter Paneer Masala 🥘",
+      description: "Rich, creamy North Indian curry made with fresh paneer, butter, tomatoes, and aromatic spices.",
+      prepTime: "20 mins",
+      difficulty: "Easy",
+      servings: 3,
+      imageUrl: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=800",
+      ingredients: [
+        { id: "ing_1", name: "Fresh Dairy Paneer 200g", price: 90, unit: "200g", image: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=500" },
+        { id: "ing_2", name: "Amul Butter 100g", price: 58, unit: "100g", image: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=500" },
+      ],
+    },
+  },
+  {
     id: "block_spacer_1",
     type: "spacer",
-    sortOrder: 5,
+    sortOrder: 8,
     isActive: true,
     data: {
       height: 24,

@@ -72,6 +72,9 @@ const CreateOrderSchema = z.object({
   couponCode:      z.string().optional(),
   razorpayOrderId: z.string().optional(),
   notes:           z.string().max(500).optional(),
+  substitutePreference: z.enum(["call", "best_match", "remove"]).default("best_match"),
+  swiftCoinsEarned: z.number().int().nonnegative().optional(),
+  swiftCoinsRedeemed: z.number().int().nonnegative().optional(),
 });
 
 function getRazorpay(): Razorpay | null {
@@ -566,6 +569,9 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
         razorpayOrderId: typeof body["razorpayOrderId"] === "string" && body["razorpayOrderId"].trim()
           ? body["razorpayOrderId"].trim()
           : undefined,
+        substitutePreference: parsed.data.substitutePreference ?? "best_match",
+        swiftCoinsEarned: parsed.data.swiftCoinsEarned ?? 10,
+        swiftCoinsRedeemed: parsed.data.swiftCoinsRedeemed ?? 0,
       }).returning();
 
       // 6. Create payout record inside transaction — vendor payout is guaranteed or order rolls back

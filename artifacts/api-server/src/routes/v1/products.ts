@@ -271,6 +271,7 @@ router.post("/", authenticate, vendorWriteLimiter, async (req: AuthRequest, res:
       colors: Array.isArray(body["colors"]) ? body["colors"] : undefined,
       sizes: Array.isArray(body["sizes"]) ? body["sizes"] : undefined,
       colorImages: (body["colorImages"] && typeof body["colorImages"] === "object" && !Array.isArray(body["colorImages"])) ? body["colorImages"] : undefined,
+      fomoTag: body["fomoTag"] ? String(body["fomoTag"]) : undefined,
     }).returning();
     void invalidateProductCaches();
     res.status(201).json({ success: true, product: mi(product!) });
@@ -306,6 +307,7 @@ router.post("/", authenticate, vendorWriteLimiter, async (req: AuthRequest, res:
     colors: Array.isArray(safeBody["colors"]) ? safeBody["colors"] : undefined,
     sizes: Array.isArray(safeBody["sizes"]) ? safeBody["sizes"] : undefined,
     colorImages: (safeBody["colorImages"] && typeof safeBody["colorImages"] === "object" && !Array.isArray(safeBody["colorImages"])) ? safeBody["colorImages"] : undefined,
+    fomoTag: safeBody["fomoTag"] ? String(safeBody["fomoTag"]) : undefined,
   }).returning();
 
   // Notify all admins & super_admins that a new product is pending review
@@ -405,7 +407,7 @@ router.patch("/:id", authenticate, V, vendorWriteLimiter, async (req: AuthReques
   // (e.g. prevents a vendor from overwriting shopId, vendorId, or status directly)
   const VENDOR_ALLOWED_FIELDS = new Set([
     "name", "description", "price", "discountedPrice", "unit",
-    "stock", "category", "images", "trending", "colors", "sizes",
+    "stock", "category", "images", "trending", "colors", "sizes", "fomoTag",
   ]);
   const ADMIN_EXTRA_FIELDS = new Set(["status", "rejectionReason", "shopId"]);
 

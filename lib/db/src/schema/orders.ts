@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, doublePrecision, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, doublePrecision, integer, jsonb, index } from "drizzle-orm/pg-core";
 
 export const orders = pgTable("orders", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -31,6 +31,9 @@ export const orders = pgTable("orders", {
   refundedAt: timestamp("refunded_at"),
   cancelReason: text("cancel_reason"),
   deliveryOtp: text("delivery_otp"),
+  substitutePreference: text("substitute_preference").default("best_match"),
+  swiftCoinsEarned: integer("swift_coins_earned").default(10),
+  swiftCoinsRedeemed: integer("swift_coins_redeemed").default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [

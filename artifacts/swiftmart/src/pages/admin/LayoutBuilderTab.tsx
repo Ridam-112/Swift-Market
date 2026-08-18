@@ -24,6 +24,11 @@ import {
   Grid2X2,
   Tag,
   SlidersHorizontal,
+  Repeat,
+  CloudRain,
+  Utensils,
+  Clock,
+  Flame,
 } from "lucide-react";
 
 export type BlockType =
@@ -31,7 +36,10 @@ export type BlockType =
   | "category_grid"
   | "product_carousel"
   | "promotional_strip"
-  | "spacer";
+  | "spacer"
+  | "daily_regulars"
+  | "weather_cravings"
+  | "shoppable_recipe";
 
 export interface LayoutBlock {
   id: string;
@@ -72,6 +80,24 @@ const BLOCK_TYPES_META: Array<{ type: BlockType; label: string; description: str
     label: "Promotional Strip",
     description: "Highlighted announcement bar with custom background color",
     icon: Tag,
+  },
+  {
+    type: "daily_regulars",
+    label: "Daily Regulars",
+    description: "1-Tap Re-order essentials list (Milk, Eggs, Bread)",
+    icon: Repeat,
+  },
+  {
+    type: "weather_cravings",
+    label: "Weather Cravings",
+    description: "Monsoon & seasonal snack cravings block (Tea, Samosas)",
+    icon: CloudRain,
+  },
+  {
+    type: "shoppable_recipe",
+    label: "Shoppable Recipe",
+    description: "Recipe card allowing 1-tap purchase of all ingredients",
+    icon: Utensils,
   },
   {
     type: "spacer",
@@ -204,6 +230,39 @@ export function LayoutBuilderTab() {
           link: "/categories",
           buttonText: "Order Now",
         };
+      case "daily_regulars":
+        return {
+          title: "Your Daily Regulars 🥛",
+          badgeText: "1-TAP REORDER",
+          items: [
+            { id: "reorder_1", name: "Amul Taaza Toned Milk", price: 54, unit: "1 L", image: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=500" },
+            { id: "reorder_2", name: "Fresh Organic Eggs", price: 42, unit: "Pack of 6", image: "https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?w=500" },
+          ],
+        };
+      case "weather_cravings":
+        return {
+          weatherCondition: "rainy",
+          title: "Rainy Day Cravings ☕",
+          badgeText: "🌧️ Rain Special",
+          items: [
+            { id: "rain_1", name: "Tata Tea Gold Masala", price: 140, unit: "250g", image: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500" },
+            { id: "rain_2", name: "Hot Fresh Samosa 2pcs", price: 30, unit: "2 Pcs", image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=500" },
+          ],
+        };
+      case "shoppable_recipe":
+        return {
+          recipeId: "recipe_1",
+          recipeName: "Creamy Butter Paneer Masala 🥘",
+          description: "Rich, creamy North Indian curry made with fresh paneer, butter, tomatoes, and aromatic spices.",
+          prepTime: "20 mins",
+          difficulty: "Easy",
+          servings: 3,
+          imageUrl: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=800",
+          ingredients: [
+            { id: "ing_1", name: "Fresh Dairy Paneer 200g", price: 90, unit: "200g", image: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=500" },
+            { id: "ing_2", name: "Amul Butter 100g", price: 58, unit: "100g", image: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=500" },
+          ],
+        };
       case "spacer":
         return { height: 24 };
       default:
@@ -242,7 +301,7 @@ export function LayoutBuilderTab() {
     );
   };
 
-  const handleImageFileUpload = async (id: string, file: File) => {
+  const handleImageFileUpload = async (id: string, key: string, file: File) => {
     setUploadingBlockId(id);
     try {
       const formData = new FormData();
@@ -259,7 +318,7 @@ export function LayoutBuilderTab() {
 
       const data = await res.json();
       if (res.ok && data.url) {
-        handleUpdateBlockData(id, "imageUrl", data.url);
+        handleUpdateBlockData(id, key, data.url);
         toast.success("Image uploaded successfully!");
       } else {
         toast.error(data.message || "Failed to upload image");
@@ -326,7 +385,7 @@ export function LayoutBuilderTab() {
         <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
           <Plus className="w-4 h-4 text-primary" /> Add New SDUI Block
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
           {BLOCK_TYPES_META.map((meta) => {
             const Icon = meta.icon;
             return (
@@ -334,7 +393,7 @@ export function LayoutBuilderTab() {
                 key={meta.type}
                 type="button"
                 onClick={() => handleAddBlock(meta.type)}
-                className="flex flex-col items-start p-3.5 rounded-xl border border-slate-800 bg-slate-950/80 hover:border-primary/50 hover:bg-slate-800 transition-all text-left group shadow-xs"
+                className="flex flex-col items-start p-3 rounded-xl border border-slate-800 bg-slate-950/80 hover:border-primary/50 hover:bg-slate-800 transition-all text-left group shadow-xs"
               >
                 <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 group-hover:bg-primary/20 text-slate-300 group-hover:text-primary mb-2 transition-colors">
                   <Icon className="w-4 h-4" />
@@ -404,7 +463,7 @@ export function LayoutBuilderTab() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="font-extrabold text-sm text-white truncate">
-                              {block.data?.title || meta?.label || block.type}
+                              {block.data?.title || block.data?.recipeName || meta?.label || block.type}
                             </span>
                             <Badge
                               variant="outline"
@@ -414,7 +473,7 @@ export function LayoutBuilderTab() {
                             </Badge>
                           </div>
                           <p className="text-xs text-slate-400 font-medium truncate">
-                            {block.data?.subtitle || (block.data?.categorySlug ? `Category: ${block.data.categorySlug}` : `Sort order: ${index + 1}`)}
+                            {block.data?.subtitle || block.data?.badgeText || (block.data?.categorySlug ? `Category: ${block.data.categorySlug}` : `Sort order: ${index + 1}`)}
                           </p>
                         </div>
                       </div>
@@ -522,7 +581,7 @@ export function LayoutBuilderTab() {
                                     className="hidden"
                                     onChange={(e) => {
                                       if (e.target.files?.[0]) {
-                                        handleImageFileUpload(block.id, e.target.files[0]);
+                                        handleImageFileUpload(block.id, "imageUrl", e.target.files[0]);
                                       }
                                     }}
                                   />
@@ -700,6 +759,161 @@ export function LayoutBuilderTab() {
                           </div>
                         )}
 
+                        {/* DAILY REGULARS EDIT FIELDS */}
+                        {block.type === "daily_regulars" && (
+                          <div className="space-y-3 text-sm">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Block Title</label>
+                                <Input
+                                  value={block.data?.title || ""}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "title", e.target.value)}
+                                  placeholder="Your Daily Regulars 🥛"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Badge Text</label>
+                                <Input
+                                  value={block.data?.badgeText || ""}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "badgeText", e.target.value)}
+                                  placeholder="1-TAP REORDER"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* WEATHER CRAVINGS EDIT FIELDS */}
+                        {block.type === "weather_cravings" && (
+                          <div className="space-y-3 text-sm">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Weather Condition</label>
+                                <select
+                                  value={block.data?.weatherCondition || "rainy"}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "weatherCondition", e.target.value)}
+                                  className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-950 text-white font-bold text-sm"
+                                >
+                                  <option value="rainy">🌧️ Rainy Day (Tea, Samosas)</option>
+                                  <option value="clear">☀️ Clear & Sunny (Ice Cream, Shakes)</option>
+                                  <option value="cold">❄️ Cold Weather (Hot Soups, Coffee)</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Block Title</label>
+                                <Input
+                                  value={block.data?.title || ""}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "title", e.target.value)}
+                                  placeholder="Rainy Day Cravings ☕"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Badge Text</label>
+                                <Input
+                                  value={block.data?.badgeText || ""}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "badgeText", e.target.value)}
+                                  placeholder="🌧️ Rain Special"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* SHOPPABLE RECIPE EDIT FIELDS */}
+                        {block.type === "shoppable_recipe" && (
+                          <div className="space-y-3 text-sm">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Recipe Name</label>
+                                <Input
+                                  value={block.data?.recipeName || ""}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "recipeName", e.target.value)}
+                                  placeholder="Creamy Butter Paneer Masala 🥘"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Recipe Cover Image</label>
+                                <div className="flex gap-2">
+                                  <Input
+                                    value={block.data?.imageUrl || ""}
+                                    onChange={(e) => handleUpdateBlockData(block.id, "imageUrl", e.target.value)}
+                                    placeholder="https://..."
+                                    className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
+                                  />
+                                  <label className="cursor-pointer shrink-0">
+                                    <Button type="button" variant="outline" disabled={uploadingBlockId === block.id} className="pointer-events-none bg-slate-800 border-slate-700 text-white font-bold">
+                                      {uploadingBlockId === block.id ? (
+                                        <RefreshCw className="w-4 h-4 animate-spin mr-1 text-slate-300" />
+                                      ) : (
+                                        <Upload className="w-4 h-4 mr-1 text-slate-300" />
+                                      )}
+                                      Upload
+                                    </Button>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        if (e.target.files?.[0]) {
+                                          handleImageFileUpload(block.id, "imageUrl", e.target.files[0]);
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="text-xs font-bold text-slate-200 block mb-1">Description</label>
+                              <Input
+                                value={block.data?.description || ""}
+                                onChange={(e) => handleUpdateBlockData(block.id, "description", e.target.value)}
+                                placeholder="Rich, creamy North Indian curry with fresh paneer & tomatoes..."
+                                className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Prep Time</label>
+                                <Input
+                                  value={block.data?.prepTime || "20 mins"}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "prepTime", e.target.value)}
+                                  placeholder="20 mins"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Difficulty</label>
+                                <select
+                                  value={block.data?.difficulty || "Easy"}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "difficulty", e.target.value)}
+                                  className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-950 text-white font-bold text-sm"
+                                >
+                                  <option value="Easy">Easy</option>
+                                  <option value="Medium">Medium</option>
+                                  <option value="Hard">Hard</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Servings</label>
+                                <Input
+                                  type="number"
+                                  value={block.data?.servings || 3}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "servings", parseInt(e.target.value, 10))}
+                                  className="bg-slate-950 border-slate-800 text-white font-bold"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* SPACER EDIT FIELDS */}
                         {block.type === "spacer" && (
                           <div className="space-y-2 text-sm">
@@ -846,8 +1060,13 @@ export function LayoutBuilderTab() {
                               return (
                                 <div
                                   key={prod.id || prod._id}
-                                  className="min-w-[110px] bg-slate-800 p-2 rounded-xl border border-slate-700/50 space-y-1 shrink-0"
+                                  className="min-w-[110px] bg-slate-800 p-2 rounded-xl border border-slate-700/50 space-y-1 shrink-0 relative"
                                 >
+                                  {prod.fomoTag && (
+                                    <span className="absolute top-1 left-1 bg-red-600 text-white text-[8px] font-extrabold px-1 rounded z-10 shadow">
+                                      {prod.fomoTag}
+                                    </span>
+                                  )}
                                   {img ? (
                                     <img
                                       src={img}
@@ -892,6 +1111,84 @@ export function LayoutBuilderTab() {
                         <span className="bg-white/20 px-2 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap">
                           {block.data?.buttonText || "View"}
                         </span>
+                      </div>
+                    );
+                  }
+
+                  if (block.type === "daily_regulars") {
+                    const items = block.data?.items || [];
+                    return (
+                      <div key={block.id} className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-white">
+                            {block.data?.title || "Your Daily Regulars 🥛"}
+                          </span>
+                          <span className="text-[9px] bg-primary/20 text-primary font-extrabold px-2 py-0.5 rounded-full border border-primary/30">
+                            {block.data?.badgeText || "1-TAP REORDER"}
+                          </span>
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                          {items.map((item: any, idx: number) => (
+                            <div key={item.id || idx} className="min-w-[120px] bg-slate-800 p-2 rounded-xl border border-slate-700/50 space-y-1.5 shrink-0">
+                              <img src={item.image || "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=500"} alt={item.name} className="w-full h-12 object-cover rounded-lg bg-slate-900" />
+                              <div className="text-[10px] font-bold text-white truncate">{item.name}</div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-emerald-400 font-bold">₹{item.price}</span>
+                                <span className="bg-primary text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded">Reorder</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (block.type === "weather_cravings") {
+                    const items = block.data?.items || [];
+                    return (
+                      <div key={block.id} className="bg-slate-900 p-3 rounded-2xl border border-amber-500/30 space-y-2 relative overflow-hidden">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-white flex items-center gap-1">
+                            <CloudRain className="w-3.5 h-3.5 text-sky-400" />
+                            {block.data?.title || "Rainy Day Cravings ☕"}
+                          </span>
+                          <span className="text-[9px] bg-sky-500/20 text-sky-300 font-extrabold px-2 py-0.5 rounded-full border border-sky-500/30">
+                            {block.data?.badgeText || "🌧️ Rain Special"}
+                          </span>
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                          {items.map((item: any, idx: number) => (
+                            <div key={item.id || idx} className="min-w-[120px] bg-slate-800 p-2 rounded-xl border border-slate-700/50 space-y-1 shrink-0">
+                              <img src={item.image || "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500"} alt={item.name} className="w-full h-12 object-cover rounded-lg bg-slate-900" />
+                              <div className="text-[10px] font-bold text-white truncate">{item.name}</div>
+                              <div className="text-[10px] text-amber-400 font-bold">₹{item.price}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (block.type === "shoppable_recipe") {
+                    const recipe = block.data || {};
+                    const ingredients = recipe.ingredients || [];
+                    return (
+                      <div key={block.id} className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2">
+                        <div className="relative h-24 rounded-xl overflow-hidden bg-slate-800 flex items-end p-2 border border-slate-700/50" style={{ backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.85), transparent), url(${recipe.imageUrl || "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=800"})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+                          <div>
+                            <span className="text-[9px] bg-amber-500/80 text-black font-extrabold px-1.5 py-0.5 rounded">SHOPPABLE RECIPE</span>
+                            <div className="text-xs font-bold text-white mt-1 line-clamp-1">{recipe.recipeName || "Butter Paneer Masala"}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium px-1">
+                          <span>⏱️ {recipe.prepTime || "20 mins"}</span>
+                          <span>📊 {recipe.difficulty || "Easy"}</span>
+                          <span>👥 {recipe.servings || 3} Servings</span>
+                        </div>
+                        <button className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] rounded-lg shadow flex items-center justify-center gap-1">
+                          <ShoppingBag className="w-3 h-3" />
+                          <span>Buy All {ingredients.length || 2} Ingredients in 1-Tap</span>
+                        </button>
                       </div>
                     );
                   }
