@@ -35212,8 +35212,8 @@ var require_gte = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.1/node_modules/semver/functions/gte.js"(exports, module) {
     "use strict";
     var compare = require_compare();
-    var gte5 = (a, b, loose) => compare(a, b, loose) >= 0;
-    module.exports = gte5;
+    var gte6 = (a, b, loose) => compare(a, b, loose) >= 0;
+    module.exports = gte6;
   }
 });
 
@@ -35234,7 +35234,7 @@ var require_cmp = __commonJS({
     var eq36 = require_eq();
     var neq = require_neq();
     var gt4 = require_gt();
-    var gte5 = require_gte();
+    var gte6 = require_gte();
     var lt2 = require_lt();
     var lte = require_lte();
     var cmp = (a, op, b, loose) => {
@@ -35264,7 +35264,7 @@ var require_cmp = __commonJS({
         case ">":
           return gt4(a, b, loose);
         case ">=":
-          return gte5(a, b, loose);
+          return gte6(a, b, loose);
         case "<":
           return lt2(a, b, loose);
         case "<=":
@@ -36067,7 +36067,7 @@ var require_outside = __commonJS({
     var gt4 = require_gt();
     var lt2 = require_lt();
     var lte = require_lte();
-    var gte5 = require_gte();
+    var gte6 = require_gte();
     var outside = (version2, range, hilo, options) => {
       version2 = new SemVer(version2, options);
       range = new Range(range, options);
@@ -36082,7 +36082,7 @@ var require_outside = __commonJS({
           break;
         case "<":
           gtfn = lt2;
-          ltefn = gte5;
+          ltefn = gte6;
           ltfn = gt4;
           comp = "<";
           ecomp = "<=";
@@ -36397,7 +36397,7 @@ var require_semver2 = __commonJS({
     var lt2 = require_lt();
     var eq36 = require_eq();
     var neq = require_neq();
-    var gte5 = require_gte();
+    var gte6 = require_gte();
     var lte = require_lte();
     var cmp = require_cmp();
     var coerce2 = require_coerce();
@@ -36436,7 +36436,7 @@ var require_semver2 = __commonJS({
       lt: lt2,
       eq: eq36,
       neq,
-      gte: gte5,
+      gte: gte6,
       lte,
       cmp,
       coerce: coerce2,
@@ -65825,7 +65825,7 @@ var require_lodash8 = __commonJS({
           return value === other || value !== value && other !== other;
         }
         var gt4 = createRelationalOperation(baseGt);
-        var gte5 = createRelationalOperation(function(value, other) {
+        var gte6 = createRelationalOperation(function(value, other) {
           return value >= other;
         });
         var isArguments = baseIsArguments(/* @__PURE__ */ (function() {
@@ -66969,7 +66969,7 @@ var require_lodash8 = __commonJS({
         lodash.forOwnRight = forOwnRight;
         lodash.get = get;
         lodash.gt = gt4;
-        lodash.gte = gte5;
+        lodash.gte = gte6;
         lodash.has = has;
         lodash.hasIn = hasIn;
         lodash.head = head;
@@ -112659,7 +112659,7 @@ var require_bn = __commonJS({
       BN.prototype.gten = function gten(num) {
         return this.cmpn(num) >= 0;
       };
-      BN.prototype.gte = function gte5(num) {
+      BN.prototype.gte = function gte6(num) {
         return this.cmp(num) >= 0;
       };
       BN.prototype.ltn = function ltn(num) {
@@ -123611,7 +123611,7 @@ var auth_default = router2;
 
 // src/routes/v1/admin.ts
 var import_express3 = __toESM(require_express2(), 1);
-import { eq as eq4, and, inArray, count, sum, gte, desc } from "drizzle-orm";
+import { eq as eq4, and, inArray, count, sum, gte as gte2, desc } from "drizzle-orm";
 var router3 = (0, import_express3.Router)();
 var SA = requireRole("super_admin");
 var A2 = requireRole("admin", "super_admin");
@@ -123655,7 +123655,7 @@ router3.get("/stats", authenticate, A2, async (_req, res) => {
 router3.get("/user-signups", authenticate, A2, async (_req, res) => {
   const sixMonthsAgo = /* @__PURE__ */ new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const result = await db.select({ createdAt: users.createdAt }).from(users).where(and(eq4(users.role, "customer"), gte(users.createdAt, sixMonthsAgo)));
+  const result = await db.select({ createdAt: users.createdAt }).from(users).where(and(eq4(users.role, "customer"), gte2(users.createdAt, sixMonthsAgo)));
   const dates = result.map((u) => u.createdAt.toISOString());
   res.json({ success: true, dates });
 });
@@ -125081,7 +125081,7 @@ var categories_default = router7;
 
 // src/routes/v1/products.ts
 var import_express8 = __toESM(require_express2(), 1);
-import { eq as eq10, and as and5, ilike as ilike3, inArray as inArray4, desc as desc4, count as count5, gt, sql as sql2, or as or4 } from "drizzle-orm";
+import { eq as eq10, and as and5, ilike as ilike3, inArray as inArray4, desc as desc4, count as count5, sql as sql2, or as or4 } from "drizzle-orm";
 var router8 = (0, import_express8.Router)();
 var A7 = requireRole("admin", "super_admin");
 var V = requireRole("vendor", "admin", "super_admin");
@@ -125117,9 +125117,11 @@ router8.get("/", optionalAuth, async (req, res) => {
     const pg2 = parseInt(page), lm = parseInt(limit);
     const conditions = [];
     if (status !== "all") {
-      conditions.push(eq10(products.status, status));
       if (status === "active") {
-        conditions.push(gt(products.stock, 0));
+        conditions.push(or4(eq10(products.status, "active"), eq10(products.status, "approved")));
+        conditions.push(gte(products.stock, 0));
+      } else {
+        conditions.push(eq10(products.status, status));
       }
     }
     if (category) conditions.push(eq10(products.category, category));
@@ -125136,7 +125138,7 @@ router8.get("/", optionalAuth, async (req, res) => {
     if (pincode) {
       const pincodeShops = await db.select({ id: shops.id }).from(shops).where(and5(
         sql2`${shops.address}->>'pincode' = ${pincode}`,
-        eq10(shops.status, "approved")
+        or4(eq10(shops.status, "approved"), eq10(shops.status, "active"))
       ));
       if (pincodeShops.length === 0) {
         res.json({ success: true, products: [], total: 0, page: pg2, pages: 0 });
@@ -125148,7 +125150,7 @@ router8.get("/", optionalAuth, async (req, res) => {
         conditions.push(eq10(products.shopId, shopId));
       } else {
         const [shop] = await db.select({ status: shops.status }).from(shops).where(eq10(shops.id, shopId)).limit(1);
-        if (!shop || shop.status !== "approved") {
+        if (!shop || shop.status !== "approved" && shop.status !== "active") {
           res.json({ success: true, products: [], total: 0, page: pg2, pages: 0 });
           return;
         }
@@ -125158,7 +125160,7 @@ router8.get("/", optionalAuth, async (req, res) => {
       conditions.push(
         inArray4(
           products.shopId,
-          db.select({ id: shops.id }).from(shops).where(eq10(shops.status, "approved"))
+          db.select({ id: shops.id }).from(shops).where(or4(eq10(shops.status, "approved"), eq10(shops.status, "active")))
         )
       );
     }
@@ -125467,7 +125469,7 @@ var products_default = router8;
 var import_express9 = __toESM(require_express2(), 1);
 var import_razorpay = __toESM(require_razorpay(), 1);
 init_zod();
-import { eq as eq12, and as and6, ilike as ilike4, or as or5, gte as gte2, ne, desc as desc5, count as count6, sql as sql3, inArray as inArray5 } from "drizzle-orm";
+import { eq as eq12, and as and6, ilike as ilike4, or as or5, gte as gte3, ne, desc as desc5, count as count6, sql as sql3, inArray as inArray5 } from "drizzle-orm";
 
 // src/utils/commission.ts
 import { eq as eq11 } from "drizzle-orm";
@@ -125770,7 +125772,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
       for (const item of items) {
         const [updated] = await tx.update(products).set({ stock: sql3`${products.stock} - ${item.qty}` }).where(and6(
           eq12(products.id, item.productId),
-          gte2(products.stock, item.qty),
+          gte3(products.stock, item.qty),
           ne(products.status, "inactive")
         )).returning({ id: products.id, price: products.price, discountedPrice: products.discountedPrice, stock: products.stock, unit: products.unit });
         if (!updated) {
@@ -128460,7 +128462,7 @@ var maintenanceBypass_default = router26;
 
 // src/routes/v1/manager.ts
 var import_express27 = __toESM(require_express2(), 1);
-import { eq as eq29, and as and19, inArray as inArray13, count as count11, sum as sum4, gte as gte4, desc as desc15 } from "drizzle-orm";
+import { eq as eq29, and as and19, inArray as inArray13, count as count11, sum as sum4, gte as gte5, desc as desc15 } from "drizzle-orm";
 var router27 = (0, import_express27.Router)();
 var requireManager = (req, res, next) => {
   if (!req.user) {
@@ -128566,9 +128568,9 @@ router27.get("/stats", authenticate, requireManager, checkCityAccess, async (req
       [{ activeDelivery }],
       [{ totalCustomers }]
     ] = await Promise.all([
-      db.select({ todayOrders: count11() }).from(orders).where(and19(eq29(orders.cityId, cityId), gte4(orders.createdAt, startOfDay))),
-      db.select({ todayRevenue: sum4(orders.netAmount) }).from(orders).where(and19(eq29(orders.cityId, cityId), eq29(orders.status, "delivered"), gte4(orders.createdAt, startOfDay))),
-      db.select({ monthlyRevenue: sum4(orders.netAmount) }).from(orders).where(and19(eq29(orders.cityId, cityId), eq29(orders.status, "delivered"), gte4(orders.createdAt, new Date((/* @__PURE__ */ new Date()).getFullYear(), (/* @__PURE__ */ new Date()).getMonth(), 1)))),
+      db.select({ todayOrders: count11() }).from(orders).where(and19(eq29(orders.cityId, cityId), gte5(orders.createdAt, startOfDay))),
+      db.select({ todayRevenue: sum4(orders.netAmount) }).from(orders).where(and19(eq29(orders.cityId, cityId), eq29(orders.status, "delivered"), gte5(orders.createdAt, startOfDay))),
+      db.select({ monthlyRevenue: sum4(orders.netAmount) }).from(orders).where(and19(eq29(orders.cityId, cityId), eq29(orders.status, "delivered"), gte5(orders.createdAt, new Date((/* @__PURE__ */ new Date()).getFullYear(), (/* @__PURE__ */ new Date()).getMonth(), 1)))),
       db.select({ pendingOrders: count11() }).from(orders).where(and19(eq29(orders.cityId, cityId), inArray13(orders.status, ["placed", "confirmed", "packed", "out_for_delivery"]))),
       db.select({ completedOrders: count11() }).from(orders).where(and19(eq29(orders.cityId, cityId), eq29(orders.status, "delivered"))),
       db.select({ cancelledOrders: count11() }).from(orders).where(and19(eq29(orders.cityId, cityId), eq29(orders.status, "cancelled"))),

@@ -81,7 +81,40 @@ function validateEnv(): void {
   }
 }
 
+import { sql } from "drizzle-orm";
+import { db } from "@workspace/db";
 import { execSync } from "child_process";
+
+async function autoEnsureDatabaseTablesAndColumns() {
+  try {
+    logger.info("[startup] Auto-verifying production database tables and columns...");
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS app_layouts (
+        id text PRIMARY KEY NOT NULL,
+        page_name text UNIQUE NOT NULL,
+        blocks jsonb NOT NULL DEFAULT '[]'::jsonb,
+        updated_at timestamp DEFAULT now() NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS app_theme_config (
+        id text PRIMARY KEY NOT NULL DEFAULT 'global_theme',
+        primary_color text NOT NULL DEFAULT '#E23744',
+        secondary_color text NOT NULL DEFAULT '#000000',
+        border_radius integer NOT NULL DEFAULT 12,
+        font_family text NOT NULL DEFAULT 'Outfit',
+        custom_tokens jsonb NOT NULL DEFAULT '{}'::jsonb,
+        updated_at timestamp DEFAULT now() NOT NULL
+      );
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS fomo_tag text;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS substitute_preference text DEFAULT 'best_match';
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS swift_coins_earned integer DEFAULT 10;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS swift_coins_redeemed integer DEFAULT 0;
+    `);
+    logger.info("[startup] DB schema auto-verification completed successfully ✅");
+  } catch (err: any) {
+    logger.error({ err: err?.message || err }, "[startup] DB schema auto-verification failed (non-fatal)");
+  }
+}
+
 try {
   logger.info("[startup] Running database migrations push...");
   execSync("pnpm --filter @workspace/db run push", { stdio: "inherit" });
@@ -124,6 +157,7 @@ async function main() {
   // Seeds + shard connectivity check run AFTER server is listening (non-blocking)
   setImmediate(async () => {
     try {
+      await autoEnsureDatabaseTablesAndColumns();
       await seedSuperAdmins();
       await seedShopTypes();
       await seedCategories();
