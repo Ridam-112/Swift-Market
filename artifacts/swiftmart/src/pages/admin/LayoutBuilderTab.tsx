@@ -107,8 +107,26 @@ const BLOCK_TYPES_META: Array<{ type: BlockType; label: string; description: str
   },
 ];
 
-export function LayoutBuilderTab() {
-  const [selectedPage, setSelectedPage] = useState("home");
+interface LayoutBuilderTabProps {
+  initialPage?: string;
+  fixedPage?: string;
+  title?: string;
+  subtitle?: string;
+}
+
+export function LayoutBuilderTab({
+  initialPage = "home",
+  fixedPage,
+  title,
+  subtitle,
+}: LayoutBuilderTabProps = {}) {
+  const [selectedPage, setSelectedPage] = useState(fixedPage || initialPage || "home");
+
+  useEffect(() => {
+    if (fixedPage) {
+      setSelectedPage(fixedPage);
+    }
+  }, [fixedPage]);
   const [blocks, setBlocks] = useState<LayoutBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -338,26 +356,34 @@ export function LayoutBuilderTab() {
         <div>
           <div className="flex items-center gap-2">
             <LayoutGrid className="w-6 h-6 text-primary" />
-            <h2 className="text-xl font-extrabold text-white">SDUI Layout Engine — Page Builder</h2>
+            <h2 className="text-xl font-extrabold text-white">
+              {title || "SDUI Layout Engine — Page Builder"}
+            </h2>
           </div>
           <p className="text-sm text-slate-400 font-medium mt-1">
-            Build, order and arrange dynamic UI blocks synced directly with real database categories & products.
+            {subtitle || "Build, order and arrange dynamic UI blocks synced directly with real database categories & products."}
           </p>
         </div>
 
         {/* Page Selector & Actions */}
         <div className="flex flex-wrap items-center gap-3">
-          <select
-            value={selectedPage}
-            onChange={(e) => setSelectedPage(e.target.value)}
-            className="h-10 px-3.5 rounded-xl border border-slate-800 bg-slate-950 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-xs"
-          >
-            {PAGE_OPTIONS.map((p) => (
-              <option key={p.value} value={p.value} className="text-white bg-slate-900 font-semibold">
-                {p.label}
-              </option>
-            ))}
-          </select>
+          {!fixedPage ? (
+            <select
+              value={selectedPage}
+              onChange={(e) => setSelectedPage(e.target.value)}
+              className="h-10 px-3.5 rounded-xl border border-slate-800 bg-slate-950 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-xs"
+            >
+              {PAGE_OPTIONS.map((p) => (
+                <option key={p.value} value={p.value} className="text-white bg-slate-900 font-semibold">
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <Badge variant="outline" className="px-3.5 py-2 bg-slate-950 text-emerald-400 border-emerald-500/40 text-xs font-mono font-extrabold uppercase">
+              Target Tab: {fixedPage}
+            </Badge>
+          )}
 
           <Button
             type="button"

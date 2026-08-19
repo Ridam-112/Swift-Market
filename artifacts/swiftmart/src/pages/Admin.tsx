@@ -14,7 +14,7 @@ import {
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
   ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, Coffee, ArrowUpDown, Home, Mail,
   Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin, Truck, Bike,
-  UserCheck, Gift, QrCode, Upload, Palette, LayoutGrid,
+  UserCheck, Gift, QrCode, Upload, Palette, LayoutGrid, Smartphone,
   type LucideIcon,
 } from "lucide-react";
 import { generateShopSticker } from "@/lib/shopSticker";
@@ -133,7 +133,7 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config' | 'theme-config' | 'layout-builder';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config' | 'theme-config' | 'app-home-builder' | 'app-superstore-builder' | 'app-cafe-builder';
 
 import { SEO } from "@/components/SEO";
 import FleetMapTab from "@/components/FleetMapTab";
@@ -231,9 +231,28 @@ export default function Admin() {
               {activeSection === 'fleet-map' && <FleetMapTab />}
               {activeSection === 'managers' && <ManagersTab />}
               {activeSection === 'seasonal-campaign' && <SeasonalCampaignTab />}
-              {activeSection === 'cafe-config' && <CafePageConfigTab />}
               {activeSection === 'theme-config' && <ThemeConfigTab />}
-              {activeSection === 'layout-builder' && <LayoutBuilderTab />}
+              {activeSection === 'app-home-builder' && (
+                <LayoutBuilderTab
+                  fixedPage="home"
+                  title="Home Page App — SDUI Decorator"
+                  subtitle="Decorate and arrange home page dynamic banners, category grids, daily regulars, and shoppable recipes for the SwiftMart Mobile App"
+                />
+              )}
+              {activeSection === 'app-superstore-builder' && (
+                <LayoutBuilderTab
+                  fixedPage="super_store"
+                  title="Super Store App — SDUI Decorator"
+                  subtitle="Decorate and arrange super store tab categories, product carousels, and promotional strips for the SwiftMart Mobile App"
+                />
+              )}
+              {activeSection === 'app-cafe-builder' && (
+                <LayoutBuilderTab
+                  fixedPage="cafe"
+                  title="Cafe & Food App — SDUI Decorator"
+                  subtitle="Decorate and arrange cafe & food tab banners, weather cravings, hot deals, and recipe blocks for the SwiftMart Mobile App"
+                />
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -285,9 +304,10 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
   { id: 'fleet-map', label: 'Fleet Map', icon: MapPin },
   { id: 'managers', label: 'Managers', icon: Shield },
   { id: 'seasonal-campaign', label: 'Seasonal Campaign', icon: Flame },
-  { id: 'cafe-config', label: 'Cafe Manager', icon: Coffee },
   { id: 'theme-config', label: 'Theme Config', icon: Palette },
-  { id: 'layout-builder', label: 'Layout Builder', icon: LayoutGrid },
+  { id: 'app-home-builder', label: 'Home Page App', icon: Smartphone },
+  { id: 'app-superstore-builder', label: 'Super Store App', icon: Store },
+  { id: 'app-cafe-builder', label: 'Cafe & Food App', icon: Coffee },
   ];
 
   return (
