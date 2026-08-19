@@ -231,6 +231,7 @@ export default function Admin() {
               {activeSection === 'fleet-map' && <FleetMapTab />}
               {activeSection === 'managers' && <ManagersTab />}
               {activeSection === 'seasonal-campaign' && <SeasonalCampaignTab />}
+              {activeSection === 'cafe-config' && <CafePageConfigTab />}
               {activeSection === 'theme-config' && <ThemeConfigTab />}
               {activeSection === 'app-home-builder' && (
                 <LayoutBuilderTab
@@ -304,6 +305,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
   { id: 'fleet-map', label: 'Fleet Map', icon: MapPin },
   { id: 'managers', label: 'Managers', icon: Shield },
   { id: 'seasonal-campaign', label: 'Seasonal Campaign', icon: Flame },
+  { id: 'cafe-config', label: 'Cafe Manager', icon: Coffee },
   { id: 'theme-config', label: 'Theme Config', icon: Palette },
   { id: 'app-home-builder', label: 'Home Page App', icon: Smartphone },
   { id: 'app-superstore-builder', label: 'Super Store App', icon: Store },

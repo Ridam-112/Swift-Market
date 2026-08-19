@@ -328,19 +328,26 @@ router.get("/:pageName", async (req: Request, res: Response): Promise<void> => {
       .where(eq(appLayouts.pageName, pageName))
       .limit(1);
 
-    if (!layout || !Array.isArray(layout.blocks) || layout.blocks.length === 0) {
+    // No record in DB at all → return hardcoded defaults so there's
+    // something to show on first load before the admin configures anything.
+    if (!layout) {
       const defaultBlocks = getDefaultBlocksForPage(pageName);
       res.json({
         success: true,
         pageName,
         isDefault: true,
         blocks: defaultBlocks,
+        allBlocks: defaultBlocks,
       });
       return;
     }
 
-    // Sort blocks by sortOrder and filter active ones
-    const activeSortedBlocks = layout.blocks
+    // A record exists — always honour what the admin saved, even if it's
+    // an empty array (admin intentionally cleared all blocks).
+    const allBlocks = Array.isArray(layout.blocks) ? layout.blocks : [];
+
+    // Sort blocks by sortOrder and filter active ones for public consumers
+    const activeSortedBlocks = allBlocks
       .filter((b) => b.isActive !== false)
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
@@ -349,7 +356,7 @@ router.get("/:pageName", async (req: Request, res: Response): Promise<void> => {
       pageName,
       isDefault: false,
       blocks: activeSortedBlocks,
-      allBlocks: layout.blocks,
+      allBlocks: allBlocks.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
       updatedAt: layout.updatedAt,
     });
   } catch (err) {

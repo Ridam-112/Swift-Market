@@ -129564,23 +129564,25 @@ router31.get("/:pageName", async (req, res) => {
   const pageName = String(Array.isArray(rawParam) ? rawParam[0] : rawParam || "home").toLowerCase();
   try {
     const [layout] = await db.select().from(appLayouts).where(eq33(appLayouts.pageName, pageName)).limit(1);
-    if (!layout || !Array.isArray(layout.blocks) || layout.blocks.length === 0) {
+    if (!layout) {
       const defaultBlocks = getDefaultBlocksForPage(pageName);
       res.json({
         success: true,
         pageName,
         isDefault: true,
-        blocks: defaultBlocks
+        blocks: defaultBlocks,
+        allBlocks: defaultBlocks
       });
       return;
     }
-    const activeSortedBlocks = layout.blocks.filter((b) => b.isActive !== false).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const allBlocks = Array.isArray(layout.blocks) ? layout.blocks : [];
+    const activeSortedBlocks = allBlocks.filter((b) => b.isActive !== false).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     res.json({
       success: true,
       pageName,
       isDefault: false,
       blocks: activeSortedBlocks,
-      allBlocks: layout.blocks,
+      allBlocks: allBlocks.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
       updatedAt: layout.updatedAt
     });
   } catch (err) {

@@ -186,12 +186,17 @@ export function LayoutBuilderTab({
     setSaving(true);
     try {
       const sanitized = blocks.map((b, idx) => ({ ...b, sortOrder: idx + 1 }));
-      const res = await api.put<{ success: boolean; message?: string }>(`/admin/layout/${selectedPage}`, {
+      const res = await api.put<{ success: boolean; message?: string; blocks?: LayoutBlock[] }>(`/admin/layout/${selectedPage}`, {
         blocks: sanitized,
       });
       if (res.success) {
-        toast.success(res.message || `Layout for '${selectedPage}' saved successfully!`);
-        fetchLayout(selectedPage);
+        toast.success(res.message || `Layout for '${selectedPage}' saved (${sanitized.length} blocks)!`);
+        // Use the server-returned blocks if available, otherwise keep local state.
+        // Do NOT re-fetch from GET — the GET endpoint would return defaults for empty saves.
+        if (res.blocks && Array.isArray(res.blocks)) {
+          const sorted = [...res.blocks].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+          setBlocks(sorted);
+        }
       } else {
         toast.error("Failed to save layout");
       }
@@ -323,10 +328,11 @@ export function LayoutBuilderTab({
     setUploadingBlockId(id);
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("image", file);
 
       const access = localStorage.getItem("sm_at");
-      const res = await fetch("/api/upload", {
+      const baseUrl = api.BASE || "/api";
+      const res = await fetch(`${baseUrl}/upload/banner-image`, {
         method: "POST",
         headers: {
           ...(access ? { Authorization: `Bearer ${access}` } : {}),
@@ -335,8 +341,8 @@ export function LayoutBuilderTab({
       });
 
       const data = await res.json();
-      if (res.ok && data.url) {
-        handleUpdateBlockData(id, key, data.url);
+      if (res.ok && (data.imageUrl || data.url)) {
+        handleUpdateBlockData(id, key, data.imageUrl || data.url);
         toast.success("Image uploaded successfully!");
       } else {
         toast.error(data.message || "Failed to upload image");
