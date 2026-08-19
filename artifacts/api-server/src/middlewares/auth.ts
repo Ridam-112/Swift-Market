@@ -38,10 +38,27 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
     }
 
     req.user = payload;
+    touchPresence(payload.userId);
     next();
   } catch {
     res.status(401).json({ success: false, message: "Invalid or expired token" });
   }
+}
+
+// In-memory cache to throttle presence DB updates (max once every 60s per user)
+const presenceUpdateCache = new Map<string, number>();
+
+function touchPresence(userId: string) {
+  const now = Date.now();
+  const lastUpdate = presenceUpdateCache.get(userId) ?? 0;
+  if (now - lastUpdate < 60_000) return; // throttled
+  presenceUpdateCache.set(userId, now);
+
+  // Non-blocking update
+  db.update(users)
+    .set({ lastSeenAt: new Date(), isOnline: true })
+    .where(eq(users.id, userId))
+    .catch(() => {});
 }
 
 export function requireRole(...roles: JwtPayload["role"][]) {

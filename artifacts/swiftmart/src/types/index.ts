@@ -150,6 +150,9 @@ export interface AdminCustomer {
   email: string;
   hasPassword: boolean;
   joinedAt: string;
+  lastSeenAt?: string;
+  lastLoginSource?: string;
+  isOnline?: boolean;
   totalOrders: number;
   totalSpent: number;
   status: 'active' | 'banned';

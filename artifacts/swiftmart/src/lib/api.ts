@@ -114,6 +114,7 @@ async function request<T>(path: string, options: RequestInit = {}, retry = true)
   const { access } = getTokens();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "X-Client-Source": isCapacitorNative ? "app" : "web",
     ...((options.headers ?? {}) as Record<string, string>),
   };
   if (access) headers["Authorization"] = `Bearer ${access}`;

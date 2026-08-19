@@ -33,9 +33,22 @@ const AUTH_MODE: AuthMode = (process.env["AUTH_MODE"] as AuthMode | undefined) ?
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function getLoginSource(req: Request): string {
+  const src = (req.headers["x-client-source"] as string | undefined)?.toLowerCase();
+  if (src === "app" || src === "mobile" || src === "flutter") return "app";
+  if (src === "web" || src === "website") return "web";
+  const userAgent = req.headers["user-agent"] ?? "";
+  if (/Capacitor|Mobile|Android|iPhone/i.test(userAgent) && !/Chrome|Safari/i.test(userAgent)) return "app";
+  return "web";
+}
+
 function formatUser(u: typeof users.$inferSelect) {
   // Mask legacy fake-phone placeholders (g_<googleId>) — they should never reach the client
   const phone = u.phone?.startsWith("g_") ? "" : (u.phone ?? "");
+  const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+  const isOnline = u.lastSeenAt
+    ? Date.now() - new Date(u.lastSeenAt).getTime() < ONLINE_THRESHOLD_MS
+    : false;
   return {
     id: u.id,
     _id: u.id,
@@ -48,6 +61,9 @@ function formatUser(u: typeof users.$inferSelect) {
     pincode: u.pincode ?? "",
     addresses: (u.addresses as unknown[]) ?? [],
     profilePhoto: u.profilePhoto ?? null,
+    lastSeenAt: u.lastSeenAt ?? null,
+    lastLoginSource: u.lastLoginSource ?? "web",
+    isOnline,
   };
 }
 

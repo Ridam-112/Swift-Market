@@ -66,6 +66,9 @@ interface ApiUser {
   role: string;
   status: string;
   createdAt: string;
+  lastSeenAt?: string;
+  lastLoginSource?: string;
+  isOnline?: boolean;
   addresses?: Array<{ id?: string; label?: string; line1?: string; line2?: string; city?: string; pincode?: string }>;
 }
 
@@ -942,6 +945,19 @@ function UsersTab() {
   );
 }
 
+function formatLastSeen(lastSeenAt?: string, isOnline?: boolean) {
+  if (isOnline) return "Online now";
+  if (!lastSeenAt) return "Never online";
+  const diffMs = Date.now() - new Date(lastSeenAt).getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `Last seen ${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `Last seen ${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `Last seen ${diffDays}d ago`;
+}
+
 function CustomersList() {
   const [customers, setCustomers] = useState<AdminCustomer[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
@@ -971,6 +987,9 @@ function CustomersList() {
             email: u.email ?? "",
             hasPassword: u.hasPassword ?? false,
             joinedAt: u.createdAt,
+            lastSeenAt: u.lastSeenAt,
+            lastLoginSource: u.lastLoginSource ?? "web",
+            isOnline: u.isOnline ?? false,
             totalOrders: customerOrders.length,
             totalSpent,
             status: (u.status === 'banned' ? 'banned' : 'active') as 'active' | 'banned',
@@ -1011,7 +1030,11 @@ function CustomersList() {
       .finally(() => setLoadingCustomers(false));
   };
 
-  useEffect(() => { fetchCustomers(); }, []);
+  useEffect(() => {
+    fetchCustomers();
+    const timer = setInterval(fetchCustomers, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const sendSetupEmail = async (customerId: string, emailOverride?: string) => {
     setSendingSetup(prev => new Set(prev).add(customerId));
@@ -1108,12 +1131,35 @@ function CustomersList() {
                 onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg shrink-0 neu-inset">
-                    {c.name.charAt(0)}
+                  <div className="relative shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg neu-inset">
+                      {c.name.charAt(0)}
+                    </div>
+                    <span
+                      className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-background ${
+                        c.isOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+                      }`}
+                      title={c.isOnline ? "Online now" : "Offline"}
+                    />
                   </div>
                   <div>
-                    <h3 className="font-bold text-foreground">{c.name}</h3>
-                    <p className="text-sm text-muted-foreground font-mono">{c.phone}</p>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-foreground">{c.name}</h3>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+                        c.lastLoginSource === "app"
+                          ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                          : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+                      }`}>
+                        {c.lastLoginSource === "app" ? "📱 Mobile App" : "🌐 Website"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                      <span className="font-mono">{c.phone}</span>
+                      <span>•</span>
+                      <span className={c.isOnline ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}>
+                        {formatLastSeen(c.lastSeenAt, c.isOnline)}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, jsonb, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb, integer, boolean, index } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -21,6 +21,9 @@ export const users = pgTable("users", {
   addresses: jsonb("addresses").notNull().default([]),
   tokenVersion: integer("token_version").notNull().default(1),
   lastLoginAt: timestamp("last_login_at"),
+  lastSeenAt: timestamp("last_seen_at"),
+  lastLoginSource: text("last_login_source").notNull().default("web"),
+  isOnline: boolean("is_online").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 

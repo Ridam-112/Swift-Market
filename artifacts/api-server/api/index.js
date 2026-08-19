@@ -122247,10 +122247,20 @@ async function authenticate(req, res, next) {
       return;
     }
     req.user = payload;
+    touchPresence(payload.userId);
     next();
   } catch {
     res.status(401).json({ success: false, message: "Invalid or expired token" });
   }
+}
+var presenceUpdateCache = /* @__PURE__ */ new Map();
+function touchPresence(userId) {
+  const now = Date.now();
+  const lastUpdate = presenceUpdateCache.get(userId) ?? 0;
+  if (now - lastUpdate < 6e4) return;
+  presenceUpdateCache.set(userId, now);
+  db.update(users).set({ lastSeenAt: /* @__PURE__ */ new Date(), isOnline: true }).where(eq(users.id, userId)).catch(() => {
+  });
 }
 function requireRole(...roles) {
   return (req, res, next) => {
@@ -122487,6 +122497,8 @@ var RESET_TOKEN_EXPIRY_MS = 15 * 60 * 1e3;
 var AUTH_MODE = process.env["AUTH_MODE"] ?? "otp";
 function formatUser(u) {
   const phone = u.phone?.startsWith("g_") ? "" : u.phone ?? "";
+  const ONLINE_THRESHOLD_MS = 5 * 60 * 1e3;
+  const isOnline = u.lastSeenAt ? Date.now() - new Date(u.lastSeenAt).getTime() < ONLINE_THRESHOLD_MS : false;
   return {
     id: u.id,
     _id: u.id,
@@ -122498,7 +122510,10 @@ function formatUser(u) {
     vendorStatus: u.vendorStatus,
     pincode: u.pincode ?? "",
     addresses: u.addresses ?? [],
-    profilePhoto: u.profilePhoto ?? null
+    profilePhoto: u.profilePhoto ?? null,
+    lastSeenAt: u.lastSeenAt ?? null,
+    lastLoginSource: u.lastLoginSource ?? "web",
+    isOnline
   };
 }
 function hashToken(token) {
@@ -123898,7 +123913,15 @@ function hashToken2(token) {
 }
 function safeUser(u) {
   const { passwordHash, passwordResetTokenHash, passwordResetExpires, ...rest } = u;
-  return { ...mi(rest), hasPassword: !!passwordHash };
+  const ONLINE_THRESHOLD_MS = 5 * 60 * 1e3;
+  const isOnline = u.lastSeenAt ? Date.now() - new Date(u.lastSeenAt).getTime() < ONLINE_THRESHOLD_MS : false;
+  return {
+    ...mi(rest),
+    hasPassword: !!passwordHash,
+    isOnline,
+    lastSeenAt: u.lastSeenAt ?? null,
+    lastLoginSource: u.lastLoginSource ?? "web"
+  };
 }
 router4.get("/", authenticate, A3, async (req, res) => {
   const { role, status, search, page = "1", limit = "20" } = req.query;

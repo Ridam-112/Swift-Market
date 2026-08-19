@@ -17,10 +17,20 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-/** Strip sensitive columns and add computed hasPassword field before sending to clients. */
+/** Strip sensitive columns and add computed hasPassword and presence fields before sending to clients. */
 function safeUser(u: typeof users.$inferSelect) {
   const { passwordHash, passwordResetTokenHash, passwordResetExpires, ...rest } = u;
-  return { ...mi(rest as Parameters<typeof mi>[0]), hasPassword: !!passwordHash };
+  const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+  const isOnline = u.lastSeenAt
+    ? Date.now() - new Date(u.lastSeenAt).getTime() < ONLINE_THRESHOLD_MS
+    : false;
+  return {
+    ...mi(rest as Parameters<typeof mi>[0]),
+    hasPassword: !!passwordHash,
+    isOnline,
+    lastSeenAt: u.lastSeenAt ?? null,
+    lastLoginSource: u.lastLoginSource ?? "web",
+  };
 }
 
 // GET /api/users
