@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, doublePrecision, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, doublePrecision, integer, jsonb, index } from "drizzle-orm/pg-core";
 import { users } from "./users.js";
 
 export const deliveryPartners = pgTable("delivery_partners", {
@@ -8,6 +8,13 @@ export const deliveryPartners = pgTable("delivery_partners", {
   userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
   cityId: text("city_id"),
   vehicle: text("vehicle"),
+  applicationStatus: text("application_status").notNull().default("approved"), // "pending" | "approved" | "rejected"
+  fcmToken: text("fcm_token"),
+  panNumber: text("pan_number"),
+  dlNumber: text("dl_number"),
+  rcNumber: text("rc_number"),
+  documents: jsonb("documents").default({}),
+  rejectionReason: text("rejection_reason"),
   isAvailable: boolean("is_available").notNull().default(true),
   status: text("status").notNull().default("active"),
   totalEarnings: doublePrecision("total_earnings").notNull().default(0),

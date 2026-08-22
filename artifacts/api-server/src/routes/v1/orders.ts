@@ -271,7 +271,51 @@ router.get("/:id/delivery-pin", authenticate, validateUuidParams("id"), async (r
   if (req.user!.role === "customer" && order.customerId !== req.user!.userId) {
     res.status(403).json({ success: false, message: "Forbidden" }); return;
   }
-  res.json({ success: true, deliveryPin: order.deliveryOtp, deliveryOtp: order.deliveryOtp });
+  res.json({ success: true, deliveryPin: order.deliveryOtp, deliveryOtp: order.deliveryOtp, pin: order.deliveryOtp });
+});
+
+// POST /api/orders/:id/cancel — customer order cancellation
+router.post("/:id/cancel", authenticate, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const orderId = req.params["id"] as string;
+  const { reason } = req.body as { reason?: string };
+  const userId = req.user!.userId;
+
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
+
+  if (req.user!.role === "customer" && order.customerId !== userId) {
+    res.status(403).json({ success: false, message: "Forbidden" }); return;
+  }
+  if (order.status === "delivered" || order.status === "cancelled" || order.status === "refunded") {
+    res.status(400).json({ success: false, message: `Cannot cancel order in status '${order.status}'` }); return;
+  }
+
+  const [updatedOrder] = await db
+    .update(orders)
+    .set({ status: "cancelled", cancelReason: reason ?? "Cancelled by customer", updatedAt: new Date() })
+    .where(eq(orders.id, orderId))
+    .returning();
+
+  if (Array.isArray(order.items) && order.items.length) {
+    await restoreStock(order.items as OrderItem[]).catch(() => {});
+  }
+
+  // Notify assigned rider if one exists (v2 Contract Section 3.8 & 4.4)
+  if (order.deliveryPartnerId) {
+    try {
+      const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.id, order.deliveryPartnerId)).limit(1);
+      if (partner?.userId) {
+        await createNotificationLimited(partner.userId, {
+          type: "order_cancelled",
+          title: "Order Cancelled 🚫",
+          message: `Order #${orderId.slice(-6).toUpperCase()} has been cancelled by customer.`,
+          data: { orderId },
+        });
+      }
+    } catch { /* ignore */ }
+  }
+
+  res.json({ success: true, message: "Order cancelled successfully", order: mi(updatedOrder!) });
 });
 
 // GET /api/orders/:id/rider-location — customer fetches live rider GPS

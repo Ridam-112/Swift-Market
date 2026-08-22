@@ -125756,7 +125756,45 @@ router9.get("/:id/delivery-pin", authenticate, validateUuidParams("id"), async (
     res.status(403).json({ success: false, message: "Forbidden" });
     return;
   }
-  res.json({ success: true, deliveryPin: order.deliveryOtp, deliveryOtp: order.deliveryOtp });
+  res.json({ success: true, deliveryPin: order.deliveryOtp, deliveryOtp: order.deliveryOtp, pin: order.deliveryOtp });
+});
+router9.post("/:id/cancel", authenticate, validateUuidParams("id"), async (req, res) => {
+  const orderId = req.params["id"];
+  const { reason } = req.body;
+  const userId = req.user.userId;
+  const [order] = await db.select().from(orders).where(eq12(orders.id, orderId)).limit(1);
+  if (!order) {
+    res.status(404).json({ success: false, message: "Order not found" });
+    return;
+  }
+  if (req.user.role === "customer" && order.customerId !== userId) {
+    res.status(403).json({ success: false, message: "Forbidden" });
+    return;
+  }
+  if (order.status === "delivered" || order.status === "cancelled" || order.status === "refunded") {
+    res.status(400).json({ success: false, message: `Cannot cancel order in status '${order.status}'` });
+    return;
+  }
+  const [updatedOrder] = await db.update(orders).set({ status: "cancelled", cancelReason: reason ?? "Cancelled by customer", updatedAt: /* @__PURE__ */ new Date() }).where(eq12(orders.id, orderId)).returning();
+  if (Array.isArray(order.items) && order.items.length) {
+    await restoreStock(order.items).catch(() => {
+    });
+  }
+  if (order.deliveryPartnerId) {
+    try {
+      const [partner] = await db.select().from(deliveryPartners).where(eq12(deliveryPartners.id, order.deliveryPartnerId)).limit(1);
+      if (partner?.userId) {
+        await createNotificationLimited(partner.userId, {
+          type: "order_cancelled",
+          title: "Order Cancelled \u{1F6AB}",
+          message: `Order #${orderId.slice(-6).toUpperCase()} has been cancelled by customer.`,
+          data: { orderId }
+        });
+      }
+    } catch {
+    }
+  }
+  res.json({ success: true, message: "Order cancelled successfully", order: mi(updatedOrder) });
 });
 router9.get("/:id/rider-location", authenticate, validateUuidParams("id"), async (req, res) => {
   const orderId = req.params["id"];
@@ -126960,6 +126998,127 @@ router12.post("/orders/:id/re-broadcast", authenticate, A11, validateUuidParams(
     return;
   }
   res.json({ success: true, message: `Re-broadcast alert triggered for Order #${orderId.slice(-6).toUpperCase()}` });
+});
+router12.post("/me/fcm-token", authenticate, async (req, res) => {
+  const userId = req.user.userId;
+  const { fcmToken } = req.body;
+  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) {
+    res.status(404).json({ success: false, message: "Not a delivery partner" });
+    return;
+  }
+  await db.update(deliveryPartners).set({ fcmToken, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, partner.id));
+  res.json({ success: true, message: "FCM token registered successfully" });
+});
+router12.delete("/me/fcm-token", authenticate, async (req, res) => {
+  const userId = req.user.userId;
+  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) {
+    res.status(404).json({ success: false, message: "Not a delivery partner" });
+    return;
+  }
+  await db.update(deliveryPartners).set({ fcmToken: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, partner.id));
+  res.json({ success: true, message: "FCM token cleared successfully" });
+});
+router12.post("/apply", authenticate, async (req, res) => {
+  const userId = req.user.userId;
+  const body = req.body;
+  const [user] = await db.select().from(users).where(eq15(users.id, userId)).limit(1);
+  if (!user) {
+    res.status(404).json({ success: false, message: "User not found" });
+    return;
+  }
+  let [existing] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  if (existing) {
+    const [updated] = await db.update(deliveryPartners).set({
+      name: body["name"] ? String(body["name"]) : existing.name,
+      vehicle: body["vehicle"] ? String(body["vehicle"]) : existing.vehicle,
+      panNumber: body["panNumber"] ? String(body["panNumber"]) : existing.panNumber,
+      dlNumber: body["dlNumber"] ? String(body["dlNumber"]) : existing.dlNumber,
+      rcNumber: body["rcNumber"] ? String(body["rcNumber"]) : existing.rcNumber,
+      documents: body["documents"] ?? existing.documents,
+      applicationStatus: "pending",
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq15(deliveryPartners.id, existing.id)).returning();
+    res.json({ success: true, partner: mi(updated), applicationStatus: "pending" });
+    return;
+  }
+  const [partner] = await db.insert(deliveryPartners).values({
+    name: String(body["name"] || user.name || "Rider Applicant"),
+    phone: String(body["phone"] || user.phone || ""),
+    userId,
+    cityId: body["cityId"] ? String(body["cityId"]) : user.cityId,
+    vehicle: body["vehicle"] ? String(body["vehicle"]) : "Bike",
+    panNumber: body["panNumber"] ? String(body["panNumber"]) : null,
+    dlNumber: body["dlNumber"] ? String(body["dlNumber"]) : null,
+    rcNumber: body["rcNumber"] ? String(body["rcNumber"]) : null,
+    documents: body["documents"] ?? {},
+    applicationStatus: "pending",
+    status: "inactive",
+    isAvailable: false
+  }).returning();
+  res.status(201).json({ success: true, partner: mi(partner), applicationStatus: "pending" });
+});
+router12.post("/me/orders/:orderId/generate-upi-qr", authenticate, validateUuidParams("orderId"), async (req, res) => {
+  const orderId = req.params["orderId"];
+  const [order] = await db.select().from(orders).where(eq15(orders.id, orderId)).limit(1);
+  if (!order) {
+    res.status(404).json({ success: false, message: "Order not found" });
+    return;
+  }
+  const amount = order.netAmount ?? order.subtotal ?? 0;
+  const upiId = process.env["MERCHANT_UPI_ID"] || "swiftmart@upi";
+  const payeeName = "SwiftMart Delivery";
+  const upiDeeplink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=Order_${orderId.slice(-6)}`;
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiDeeplink)}`;
+  res.json({
+    success: true,
+    qrImageUrl,
+    upiDeeplink,
+    expiresIn: 300
+  });
+});
+router12.get("/me/orders/:orderId/payment-status", authenticate, validateUuidParams("orderId"), async (req, res) => {
+  const orderId = req.params["orderId"];
+  const [order] = await db.select().from(orders).where(eq15(orders.id, orderId)).limit(1);
+  if (!order) {
+    res.status(404).json({ success: false, message: "Order not found" });
+    return;
+  }
+  res.json({ success: true, status: order.paymentStatus === "paid" ? "received" : "pending" });
+});
+router12.get("/admin/applications", authenticate, A11, async (_req, res) => {
+  const pending = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.applicationStatus, "pending")).orderBy(desc7(deliveryPartners.createdAt));
+  res.json({ success: true, applications: miArr(pending) });
+});
+router12.post("/admin/:id/approve", authenticate, A11, validateUuidParams("id"), async (req, res) => {
+  const id = req.params["id"];
+  const [updated] = await db.update(deliveryPartners).set({ applicationStatus: "approved", status: "active", updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, id)).returning();
+  if (!updated) {
+    res.status(404).json({ success: false, message: "Partner not found" });
+    return;
+  }
+  res.json({ success: true, partner: mi(updated), message: "Partner application approved!" });
+});
+router12.post("/admin/:id/reject", authenticate, A11, validateUuidParams("id"), async (req, res) => {
+  const id = req.params["id"];
+  const { reason } = req.body;
+  const [updated] = await db.update(deliveryPartners).set({ applicationStatus: "rejected", status: "inactive", rejectionReason: reason ?? "Application rejected by admin", updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, id)).returning();
+  if (!updated) {
+    res.status(404).json({ success: false, message: "Partner not found" });
+    return;
+  }
+  res.json({ success: true, partner: mi(updated), message: "Partner application rejected." });
+});
+router12.post("/admin/:id/request-reupload", authenticate, A11, validateUuidParams("id"), async (req, res) => {
+  const id = req.params["id"];
+  const { note } = req.body;
+  const [updated] = await db.update(deliveryPartners).set({ applicationStatus: "pending", rejectionReason: note ?? "Please re-upload clear documents", updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, id)).returning();
+  if (!updated) {
+    res.status(404).json({ success: false, message: "Partner not found" });
+    return;
+  }
+  res.json({ success: true, partner: mi(updated), message: "Re-upload request sent." });
 });
 var delivery_default = router12;
 

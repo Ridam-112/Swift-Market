@@ -582,4 +582,132 @@ router.post("/orders/:id/re-broadcast", authenticate, A, validateUuidParams("id"
   res.json({ success: true, message: `Re-broadcast alert triggered for Order #${orderId.slice(-6).toUpperCase()}` });
 });
 
+// ─── FCM Token Registration (v2 Contract Section 3.2) ───────────────────────
+
+router.post("/me/fcm-token", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const { fcmToken } = req.body as { fcmToken: string };
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) { res.status(404).json({ success: false, message: "Not a delivery partner" }); return; }
+  await db.update(deliveryPartners).set({ fcmToken, updatedAt: new Date() }).where(eq(deliveryPartners.id, partner.id));
+  res.json({ success: true, message: "FCM token registered successfully" });
+});
+
+router.delete("/me/fcm-token", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) { res.status(404).json({ success: false, message: "Not a delivery partner" }); return; }
+  await db.update(deliveryPartners).set({ fcmToken: null, updatedAt: new Date() }).where(eq(deliveryPartners.id, partner.id));
+  res.json({ success: true, message: "FCM token cleared successfully" });
+});
+
+// ─── Rider KYC Application & Onboarding (v2 Contract Section 5.1) ───────────
+
+router.post("/apply", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const body = req.body as Record<string, any>;
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user) { res.status(404).json({ success: false, message: "User not found" }); return; }
+
+  let [existing] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (existing) {
+    const [updated] = await db.update(deliveryPartners).set({
+      name: body["name"] ? String(body["name"]) : existing.name,
+      vehicle: body["vehicle"] ? String(body["vehicle"]) : existing.vehicle,
+      panNumber: body["panNumber"] ? String(body["panNumber"]) : existing.panNumber,
+      dlNumber: body["dlNumber"] ? String(body["dlNumber"]) : existing.dlNumber,
+      rcNumber: body["rcNumber"] ? String(body["rcNumber"]) : existing.rcNumber,
+      documents: body["documents"] ?? existing.documents,
+      applicationStatus: "pending",
+      updatedAt: new Date(),
+    }).where(eq(deliveryPartners.id, existing.id)).returning();
+    res.json({ success: true, partner: mi(updated!), applicationStatus: "pending" });
+    return;
+  }
+
+  const [partner] = await db.insert(deliveryPartners).values({
+    name: String(body["name"] || user.name || "Rider Applicant"),
+    phone: String(body["phone"] || user.phone || ""),
+    userId,
+    cityId: body["cityId"] ? String(body["cityId"]) : user.cityId,
+    vehicle: body["vehicle"] ? String(body["vehicle"]) : "Bike",
+    panNumber: body["panNumber"] ? String(body["panNumber"]) : null,
+    dlNumber: body["dlNumber"] ? String(body["dlNumber"]) : null,
+    rcNumber: body["rcNumber"] ? String(body["rcNumber"]) : null,
+    documents: body["documents"] ?? {},
+    applicationStatus: "pending",
+    status: "inactive",
+    isAvailable: false,
+  }).returning();
+
+  res.status(201).json({ success: true, partner: mi(partner!), applicationStatus: "pending" });
+});
+
+// ─── UPI QR Payment Collection (v2 Contract Section 3.6) ───────────────────
+
+router.post("/me/orders/:orderId/generate-upi-qr", authenticate, validateUuidParams("orderId"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const orderId = req.params["orderId"] as string;
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
+
+  const amount = order.netAmount ?? order.subtotal ?? 0;
+  const upiId = process.env["MERCHANT_UPI_ID"] || "swiftmart@upi";
+  const payeeName = "SwiftMart Delivery";
+  const upiDeeplink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=Order_${orderId.slice(-6)}`;
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiDeeplink)}`;
+
+  res.json({
+    success: true,
+    qrImageUrl,
+    upiDeeplink,
+    expiresIn: 300,
+  });
+});
+
+router.get("/me/orders/:orderId/payment-status", authenticate, validateUuidParams("orderId"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const orderId = req.params["orderId"] as string;
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
+  res.json({ success: true, status: order.paymentStatus === "paid" ? "received" : "pending" });
+});
+
+// ─── Admin Applications Review (v2 Contract Section 5.2) ───────────────────
+
+router.get("/admin/applications", authenticate, A, async (_req: AuthRequest, res: Response): Promise<void> => {
+  const pending = await db.select().from(deliveryPartners).where(eq(deliveryPartners.applicationStatus, "pending")).orderBy(desc(deliveryPartners.createdAt));
+  res.json({ success: true, applications: miArr(pending) });
+});
+
+router.post("/admin/:id/approve", authenticate, A, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const id = req.params["id"] as string;
+  const [updated] = await db.update(deliveryPartners)
+    .set({ applicationStatus: "approved", status: "active", updatedAt: new Date() })
+    .where(eq(deliveryPartners.id, id))
+    .returning();
+  if (!updated) { res.status(404).json({ success: false, message: "Partner not found" }); return; }
+  res.json({ success: true, partner: mi(updated), message: "Partner application approved!" });
+});
+
+router.post("/admin/:id/reject", authenticate, A, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const id = req.params["id"] as string;
+  const { reason } = req.body as { reason?: string };
+  const [updated] = await db.update(deliveryPartners)
+    .set({ applicationStatus: "rejected", status: "inactive", rejectionReason: reason ?? "Application rejected by admin", updatedAt: new Date() })
+    .where(eq(deliveryPartners.id, id))
+    .returning();
+  if (!updated) { res.status(404).json({ success: false, message: "Partner not found" }); return; }
+  res.json({ success: true, partner: mi(updated), message: "Partner application rejected." });
+});
+
+router.post("/admin/:id/request-reupload", authenticate, A, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const id = req.params["id"] as string;
+  const { note } = req.body as { note?: string };
+  const [updated] = await db.update(deliveryPartners)
+    .set({ applicationStatus: "pending", rejectionReason: note ?? "Please re-upload clear documents", updatedAt: new Date() })
+    .where(eq(deliveryPartners.id, id))
+    .returning();
+  if (!updated) { res.status(404).json({ success: false, message: "Partner not found" }); return; }
+  res.json({ success: true, partner: mi(updated), message: "Re-upload request sent." });
+});
+
 export default router;

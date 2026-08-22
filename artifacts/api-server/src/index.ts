@@ -111,6 +111,13 @@ async function autoEnsureDatabaseTablesAndColumns() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at timestamp;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_source text DEFAULT 'web';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_online boolean DEFAULT false;
+      ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS application_status text DEFAULT 'approved';
+      ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS fcm_token text;
+      ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS pan_number text;
+      ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS dl_number text;
+      ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS rc_number text;
+      ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS documents jsonb DEFAULT '{}'::jsonb;
+      ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS rejection_reason text;
     `);
     logger.info("[startup] DB schema auto-verification completed successfully ✅");
   } catch (err: any) {
