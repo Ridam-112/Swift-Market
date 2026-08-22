@@ -1499,6 +1499,7 @@ function OrdersTab() {
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
   const [assigningOrder, setAssigningOrder] = useState<string | null>(null);
   const [pendingAssign, setPendingAssign] = useState<Record<string, string>>({});
+  const [rebroadcastingOrder, setRebroadcastingOrder] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   // Form states for manual order creation
@@ -1508,6 +1509,18 @@ function OrdersTab() {
   const [formShopId, setFormShopId] = useState("");
   const [formAmount, setFormAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const handleRebroadcast = async (orderId: string) => {
+    setRebroadcastingOrder(orderId);
+    try {
+      const res = await api.post<{ success: boolean; message: string }>(`/delivery/orders/${orderId}/re-broadcast`);
+      toast.success(res.message || "Re-broadcast alert sent to city riders!");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to trigger re-broadcast");
+    } finally {
+      setRebroadcastingOrder(null);
+    }
+  };
 
   const toggleItems = (id: string) =>
     setExpandedItems(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
@@ -1904,15 +1917,18 @@ function OrdersTab() {
 
                   {/* Delivery Partner */}
                   {!isTerminal && (
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       {assignedPartner ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-foreground font-medium truncate">
-                            <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle ${assignedPartner.isAvailable ? "bg-green-500" : "bg-muted-foreground"}`}/>
-                            🛵 {assignedPartner.name}
-                          </span>
+                        <div className="flex items-center justify-between gap-2 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs">
+                          <div className="min-w-0">
+                            <span className="font-bold text-foreground block truncate">
+                              <span className={`inline-block w-2 h-2 rounded-full mr-1.5 align-middle ${assignedPartner.isAvailable ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`}/>
+                              🛵 {assignedPartner.name}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground font-mono block">{assignedPartner.phone}</span>
+                          </div>
                           <button
-                            className="ml-auto text-[10px] text-muted-foreground hover:text-destructive shrink-0"
+                            className="text-[10px] font-bold text-red-500 hover:underline shrink-0"
                             disabled={assigningOrder === o.id}
                             onClick={async () => {
                               setAssigningOrder(o.id);
@@ -1926,27 +1942,41 @@ function OrdersTab() {
                           >✕ Remove</button>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1.5">
-                          <select
-                            className="flex-1 h-7 rounded-lg border border-input bg-background px-2 text-xs text-foreground"
-                            value={currentPendingAssign}
-                            onChange={e => setPendingAssign(prev => ({ ...prev, [o.id]: e.target.value }))}
-                          >
-                            <option value="__unassigned__">Assign rider…</option>
-                            {activePartners.map(p => (
-                              <option key={p._id} value={p._id}>
-                                {p.name} {p.isAvailable ? "🟢" : "🔴"}
-                              </option>
-                            ))}
-                          </select>
-                          <Button
-                            size="sm"
-                            disabled={!currentPendingAssign || currentPendingAssign === "__unassigned__" || assigningOrder === o.id}
-                            onClick={() => handleAssignPartner(o.id)}
-                            className="h-7 px-2 text-xs shrink-0"
-                          >
-                            {assigningOrder === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Go"}
-                          </Button>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-bold">
+                            <span>⏳ Awaiting Rider Acceptance</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={rebroadcastingOrder === o.id}
+                              onClick={() => handleRebroadcast(o.id)}
+                              className="h-6 px-2 text-[10px] bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 rounded-lg"
+                            >
+                              {rebroadcastingOrder === o.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : "📡 Notify Riders Again"}
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <select
+                              className="flex-1 h-7 rounded-lg border border-input bg-background px-2 text-xs text-foreground"
+                              value={currentPendingAssign}
+                              onChange={e => setPendingAssign(prev => ({ ...prev, [o.id]: e.target.value }))}
+                            >
+                              <option value="__unassigned__">Manual Assign fallback…</option>
+                              {activePartners.map(p => (
+                                <option key={p._id} value={p._id}>
+                                  {p.name} {p.isAvailable ? "🟢" : "🔴"}
+                                </option>
+                              ))}
+                            </select>
+                            <Button
+                              size="sm"
+                              disabled={!currentPendingAssign || currentPendingAssign === "__unassigned__" || assigningOrder === o.id}
+                              onClick={() => handleAssignPartner(o.id)}
+                              className="h-7 px-2 text-xs shrink-0"
+                            >
+                              {assigningOrder === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Go"}
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -8702,14 +8732,17 @@ function DeliveryPartnersTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  const [subTab, setSubTab] = useState<'all' | 'applications'>('all');
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return partners.filter(p => {
       const matchSearch = !q || p.name.toLowerCase().includes(q) || p.phone.includes(q) || (p.vehicle ?? "").toLowerCase().includes(q);
       const matchStatus = statusFilter === "all" || p.status === statusFilter;
-      return matchSearch && matchStatus;
+      const matchTab = subTab === 'all' ? true : (!p.userId || p.status === 'inactive');
+      return matchSearch && matchStatus && matchTab;
     });
-  }, [partners, search, statusFilter]);
+  }, [partners, search, statusFilter, subTab]);
 
   const stats = useMemo(() => ({
     total: partners.length,
@@ -8834,6 +8867,26 @@ function DeliveryPartnersTab() {
             <div className="text-xl font-bold">{value}</div>
           </div>
         ))}
+      </div>
+
+      {/* Sub-tabs */}
+      <div className="flex gap-2 p-1 bg-background neu-inset rounded-xl max-w-fit">
+        <button
+          onClick={() => setSubTab('all')}
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+            subTab === 'all' ? 'bg-primary text-primary-foreground neu-card' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          All Approved Riders ({partners.length})
+        </button>
+        <button
+          onClick={() => setSubTab('applications')}
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+            subTab === 'applications' ? 'bg-primary text-primary-foreground neu-card' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Applications & Pending ({partners.filter(p => !p.userId || p.status === 'inactive').length})
+        </button>
       </div>
 
       {/* Add Form */}

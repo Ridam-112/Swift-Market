@@ -49,6 +49,13 @@ function formatUser(u: typeof users.$inferSelect) {
   const isOnline = u.lastSeenAt
     ? Date.now() - new Date(u.lastSeenAt).getTime() < ONLINE_THRESHOLD_MS
     : false;
+
+  const roles = u.role === "admin" || u.role === "super_admin"
+    ? ["customer", "rider", "admin", "super_admin"]
+    : u.role === "vendor"
+    ? ["customer", "vendor"]
+    : [u.role || "customer"];
+
   return {
     id: u.id,
     _id: u.id,
@@ -56,6 +63,7 @@ function formatUser(u: typeof users.$inferSelect) {
     phone,
     email: u.email ?? "",
     role: u.role,
+    roles,
     status: u.status,
     vendorStatus: u.vendorStatus,
     pincode: u.pincode ?? "",

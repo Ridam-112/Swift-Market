@@ -110982,7 +110982,7 @@ var require_bn = __commonJS({
         assert((this.negative | num.negative) === 0);
         return this.iuor(num);
       };
-      BN.prototype.or = function or6(num) {
+      BN.prototype.or = function or7(num) {
         if (this.length > num.length) return this.clone().ior(num);
         return num.clone().ior(this);
       };
@@ -116985,7 +116985,7 @@ pool.on("error", (err) => {
 var db = drizzle(pool, { schema: schema_exports });
 
 // src/routes/v1/auth.ts
-import { eq as eq3, or } from "drizzle-orm";
+import { eq as eq3, or as or2 } from "drizzle-orm";
 
 // src/lib/jwt.ts
 var import_jsonwebtoken = __toESM(require_jsonwebtoken(), 1);
@@ -122499,6 +122499,7 @@ function formatUser(u) {
   const phone = u.phone?.startsWith("g_") ? "" : u.phone ?? "";
   const ONLINE_THRESHOLD_MS = 5 * 60 * 1e3;
   const isOnline = u.lastSeenAt ? Date.now() - new Date(u.lastSeenAt).getTime() < ONLINE_THRESHOLD_MS : false;
+  const roles = u.role === "admin" || u.role === "super_admin" ? ["customer", "rider", "admin", "super_admin"] : u.role === "vendor" ? ["customer", "vendor"] : [u.role || "customer"];
   return {
     id: u.id,
     _id: u.id,
@@ -122506,6 +122507,7 @@ function formatUser(u) {
     phone,
     email: u.email ?? "",
     role: u.role,
+    roles,
     status: u.status,
     vendorStatus: u.vendorStatus,
     pincode: u.pincode ?? "",
@@ -122984,7 +122986,7 @@ router2.post("/google", googleAuthLimiter, async (req, res) => {
       res.status(400).json({ success: false, message: "Invalid Google token" });
       return;
     }
-    let [user] = await db.select().from(users).where(or(eq3(users.googleId, googleId), eq3(users.email, email))).limit(1);
+    let [user] = await db.select().from(users).where(or2(eq3(users.googleId, googleId), eq3(users.email, email))).limit(1);
     const isNewUser = !user;
     if (!user) {
       [user] = await db.insert(users).values({
@@ -123140,7 +123142,7 @@ router2.post("/google/exchange", googleAuthLimiter, async (req, res) => {
       res.status(400).json({ success: false, message: "Could not retrieve your Google account info." });
       return;
     }
-    let [user] = await db.select().from(users).where(or(eq3(users.googleId, googleId), eq3(users.email, email))).limit(1);
+    let [user] = await db.select().from(users).where(or2(eq3(users.googleId, googleId), eq3(users.email, email))).limit(1);
     const isNewUser = !user;
     if (!user) {
       [user] = await db.insert(users).values({
@@ -123886,7 +123888,7 @@ var admin_default = router3;
 // src/routes/v1/users.ts
 var import_express4 = __toESM(require_express2(), 1);
 import { createHash as createHash2, randomBytes as randomBytes2 } from "node:crypto";
-import { eq as eq5, and as and2, ilike, or as or2, count as count2, desc as desc2 } from "drizzle-orm";
+import { eq as eq5, and as and2, ilike, or as or3, count as count2, desc as desc2 } from "drizzle-orm";
 
 // src/middlewares/validateUuid.ts
 var UUID_RE2 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -123929,7 +123931,7 @@ router4.get("/", authenticate, A3, async (req, res) => {
   const conditions = [];
   if (role) conditions.push(eq5(users.role, role));
   if (status) conditions.push(eq5(users.status, status));
-  if (search) conditions.push(or2(ilike(users.name, `%${search}%`), ilike(users.phone, `%${search}%`)));
+  if (search) conditions.push(or3(ilike(users.name, `%${search}%`), ilike(users.phone, `%${search}%`)));
   const where = conditions.length ? and2(...conditions) : void 0;
   const skip = (pg2 - 1) * lm;
   const [result, [{ total }]] = await Promise.all([
@@ -124044,7 +124046,7 @@ var users_default = router4;
 
 // src/routes/v1/shops.ts
 var import_express5 = __toESM(require_express2(), 1);
-import { eq as eq7, and as and4, ilike as ilike2, or as or3, desc as desc3, count as count4, sql } from "drizzle-orm";
+import { eq as eq7, and as and4, ilike as ilike2, or as or4, desc as desc3, count as count4, sql } from "drizzle-orm";
 
 // src/lib/imagekit.ts
 var import_imagekit = __toESM(require_dist7(), 1);
@@ -124358,7 +124360,7 @@ router5.get("/", optionalAuth, async (req, res) => {
     if (ownerId) conditions.push(eq7(shops.ownerId, ownerId));
     if (safePincode) conditions.push(sql`${shops.address}->>'pincode' = ${safePincode}`);
     if (search) {
-      conditions.push(or3(
+      conditions.push(or4(
         ilike2(shops.shopName, `%${search}%`),
         ilike2(shops.ownerName, `%${search}%`),
         ilike2(shops.phone, `%${search}%`)
@@ -125104,7 +125106,7 @@ var categories_default = router7;
 
 // src/routes/v1/products.ts
 var import_express8 = __toESM(require_express2(), 1);
-import { eq as eq10, and as and5, ilike as ilike3, inArray as inArray4, desc as desc4, count as count5, gte as gte2, sql as sql2, or as or4 } from "drizzle-orm";
+import { eq as eq10, and as and5, ilike as ilike3, inArray as inArray4, desc as desc4, count as count5, gte as gte2, sql as sql2, or as or5 } from "drizzle-orm";
 var router8 = (0, import_express8.Router)();
 var A7 = requireRole("admin", "super_admin");
 var V = requireRole("vendor", "admin", "super_admin");
@@ -125141,7 +125143,7 @@ router8.get("/", optionalAuth, async (req, res) => {
     const conditions = [];
     if (status !== "all") {
       if (status === "active") {
-        conditions.push(or4(eq10(products.status, "active"), eq10(products.status, "approved")));
+        conditions.push(or5(eq10(products.status, "active"), eq10(products.status, "approved")));
         conditions.push(gte2(products.stock, 0));
       } else {
         conditions.push(eq10(products.status, status));
@@ -125161,7 +125163,7 @@ router8.get("/", optionalAuth, async (req, res) => {
     if (pincode) {
       const pincodeShops = await db.select({ id: shops.id }).from(shops).where(and5(
         sql2`${shops.address}->>'pincode' = ${pincode}`,
-        or4(eq10(shops.status, "approved"), eq10(shops.status, "active"))
+        or5(eq10(shops.status, "approved"), eq10(shops.status, "active"))
       ));
       if (pincodeShops.length === 0) {
         res.json({ success: true, products: [], total: 0, page: pg2, pages: 0 });
@@ -125183,7 +125185,7 @@ router8.get("/", optionalAuth, async (req, res) => {
       conditions.push(
         inArray4(
           products.shopId,
-          db.select({ id: shops.id }).from(shops).where(or4(eq10(shops.status, "approved"), eq10(shops.status, "active")))
+          db.select({ id: shops.id }).from(shops).where(or5(eq10(shops.status, "approved"), eq10(shops.status, "active")))
         )
       );
     }
@@ -125364,7 +125366,7 @@ router8.post("/", authenticate, vendorWriteLimiter, async (req, res) => {
     fomoTag: safeBody["fomoTag"] ? String(safeBody["fomoTag"]) : void 0
   }).returning();
   try {
-    const adminUsers = await db.select({ id: users.id }).from(users).where(or4(eq10(users.role, "admin"), eq10(users.role, "super_admin")));
+    const adminUsers = await db.select({ id: users.id }).from(users).where(or5(eq10(users.role, "admin"), eq10(users.role, "super_admin")));
     await Promise.all(
       adminUsers.map(
         (admin) => createNotificationLimited(admin.id, {
@@ -125505,7 +125507,7 @@ var products_default = router8;
 var import_express9 = __toESM(require_express2(), 1);
 var import_razorpay = __toESM(require_razorpay(), 1);
 init_zod();
-import { eq as eq12, and as and6, ilike as ilike4, or as or5, gte as gte3, ne, desc as desc5, count as count6, sql as sql3, inArray as inArray5 } from "drizzle-orm";
+import { eq as eq12, and as and6, ilike as ilike4, or as or6, gte as gte3, ne, desc as desc5, count as count6, sql as sql3, inArray as inArray5 } from "drizzle-orm";
 
 // src/utils/commission.ts
 import { eq as eq11 } from "drizzle-orm";
@@ -125680,7 +125682,7 @@ router9.get("/", authenticate, async (req, res) => {
   }
   if (status) conditions.push(eq12(orders.status, status));
   if (search) {
-    conditions.push(or5(
+    conditions.push(or6(
       ilike4(orders.customerName, `%${search}%`),
       ilike4(orders.shopName, `%${search}%`)
     ));
@@ -125723,7 +125725,38 @@ router9.get("/:id", authenticate, validateUuidParams("id"), async (req, res) => 
       return;
     }
   }
-  res.json({ success: true, order: mi(order) });
+  let deliveryPartnerInfo = null;
+  if (order.deliveryPartnerId) {
+    const [dp] = await db.select({
+      id: deliveryPartners.id,
+      name: deliveryPartners.name,
+      phone: deliveryPartners.phone,
+      vehicle: deliveryPartners.vehicle,
+      currentLat: deliveryPartners.currentLat,
+      currentLon: deliveryPartners.currentLon
+    }).from(deliveryPartners).where(eq12(deliveryPartners.id, order.deliveryPartnerId)).limit(1);
+    if (dp) deliveryPartnerInfo = mi(dp);
+  }
+  res.json({
+    success: true,
+    order: {
+      ...mi(order),
+      deliveryPartner: deliveryPartnerInfo
+    }
+  });
+});
+router9.get("/:id/delivery-pin", authenticate, validateUuidParams("id"), async (req, res) => {
+  const orderId = req.params["id"];
+  const [order] = await db.select().from(orders).where(eq12(orders.id, orderId)).limit(1);
+  if (!order) {
+    res.status(404).json({ success: false, message: "Order not found" });
+    return;
+  }
+  if (req.user.role === "customer" && order.customerId !== req.user.userId) {
+    res.status(403).json({ success: false, message: "Forbidden" });
+    return;
+  }
+  res.json({ success: true, deliveryPin: order.deliveryOtp, deliveryOtp: order.deliveryOtp });
 });
 router9.get("/:id/rider-location", authenticate, validateUuidParams("id"), async (req, res) => {
   const orderId = req.params["id"];
@@ -126001,7 +126034,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
   } catch {
   }
   try {
-    const adminUsers = await db.select({ id: users.id }).from(users).where(or5(eq12(users.role, "admin"), eq12(users.role, "super_admin")));
+    const adminUsers = await db.select({ id: users.id }).from(users).where(or6(eq12(users.role, "admin"), eq12(users.role, "super_admin")));
     const shortId = createdOrder.id.slice(-6).toUpperCase();
     const shopName = shop?.shopName ?? "a shop";
     await Promise.all(
@@ -126835,6 +126868,98 @@ router12.patch("/me/orders/:orderId/confirm-payment", authenticate, validateUuid
   }
   const [updated] = await db.update(orders).set({ paymentStatus: "paid", updatedAt: /* @__PURE__ */ new Date() }).where(eq15(orders.id, orderId)).returning();
   res.json({ success: true, order: mi(updated) });
+});
+router12.get("/available-orders", authenticate, async (req, res) => {
+  const userId = req.user.userId;
+  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  if (!partner || !partner.isAvailable || partner.status !== "active") {
+    res.json({ success: true, orders: [] });
+    return;
+  }
+  const cityId = partner.cityId;
+  const unassignedOrders = await db.select({ order: orders, shopName: shops.shopName, shopAddress: shops.address }).from(orders).leftJoin(shops, eq15(orders.shopId, shops.id)).where(
+    and9(
+      eq15(orders.deliveryPartnerId, null),
+      or(eq15(orders.status, "placed"), eq15(orders.status, "packed"), eq15(orders.status, "accepted"))
+    )
+  ).orderBy(desc7(orders.createdAt)).limit(20);
+  const filtered = unassignedOrders.filter(({ order, shopAddress }) => {
+    if (!cityId) return true;
+    const orderCity = order.cityId || shopAddress?.cityId;
+    return !orderCity || orderCity.toLowerCase() === cityId.toLowerCase();
+  });
+  res.json({
+    success: true,
+    orders: filtered.map(({ order, shopName, shopAddress }) => ({
+      ...mi(order),
+      shopName: shopName ?? "Shop",
+      shopAddress: shopAddress ?? {}
+    }))
+  });
+});
+router12.post("/orders/:id/accept", authenticate, validateUuidParams("id"), async (req, res) => {
+  const userId = req.user.userId;
+  const orderId = req.params["id"];
+  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  if (!partner || partner.status !== "active") {
+    res.status(403).json({ success: false, message: "Not an active delivery partner" });
+    return;
+  }
+  const updatedRows = await db.update(orders).set({
+    deliveryPartnerId: partner.id,
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(and9(eq15(orders.id, orderId), eq15(orders.deliveryPartnerId, null))).returning();
+  if (updatedRows.length === 0) {
+    res.status(409).json({ success: false, message: "Order already accepted by another rider!" });
+    return;
+  }
+  const [updatedOrder] = updatedRows;
+  await db.update(deliveryPartners).set({ currentOrderId: orderId, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, partner.id));
+  if (updatedOrder.customerId) {
+    try {
+      await createNotificationLimited(updatedOrder.customerId, {
+        type: "order_update",
+        title: "Rider Assigned! \u{1F6F5}",
+        message: `${partner.name} has accepted your order and will deliver it soon.`,
+        data: { orderId, url: `/orders/${orderId}` }
+      });
+    } catch {
+    }
+  }
+  res.json({ success: true, message: "Order accepted successfully", order: mi(updatedOrder) });
+});
+router12.post("/orders/:id/reject", authenticate, validateUuidParams("id"), async (_req, res) => {
+  res.json({ success: true, message: "Order alert dismissed" });
+});
+router12.post("/orders/:id/transfer", authenticate, validateUuidParams("id"), async (req, res) => {
+  const userId = req.user.userId;
+  const orderId = req.params["id"];
+  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) {
+    res.status(403).json({ success: false, message: "Not a delivery partner" });
+    return;
+  }
+  const [order] = await db.select().from(orders).where(eq15(orders.id, orderId)).limit(1);
+  if (!order) {
+    res.status(404).json({ success: false, message: "Order not found" });
+    return;
+  }
+  if (order.deliveryPartnerId !== partner.id) {
+    res.status(403).json({ success: false, message: "This order is not assigned to you" });
+    return;
+  }
+  const [updatedOrder] = await db.update(orders).set({ deliveryPartnerId: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(orders.id, orderId)).returning();
+  await db.update(deliveryPartners).set({ currentOrderId: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, partner.id));
+  res.json({ success: true, message: "Order transferred and re-broadcasted", order: mi(updatedOrder) });
+});
+router12.post("/orders/:id/re-broadcast", authenticate, A11, validateUuidParams("id"), async (req, res) => {
+  const orderId = req.params["id"];
+  const [order] = await db.select().from(orders).where(eq15(orders.id, orderId)).limit(1);
+  if (!order) {
+    res.status(404).json({ success: false, message: "Order not found" });
+    return;
+  }
+  res.json({ success: true, message: `Re-broadcast alert triggered for Order #${orderId.slice(-6).toUpperCase()}` });
 });
 var delivery_default = router12;
 

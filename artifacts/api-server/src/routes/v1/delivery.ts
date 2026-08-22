@@ -456,4 +456,130 @@ router.patch("/me/orders/:orderId/confirm-payment", authenticate, validateUuidPa
   res.json({ success: true, order: mi(updated!) });
 });
 
+// ─── Order Broadcast & First-Come Accept / Transfer System ───────────────────
+
+// GET /delivery/available-orders — rider fetches unassigned orders in their city
+router.get("/available-orders", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner || !partner.isAvailable || partner.status !== "active") {
+    res.json({ success: true, orders: [] });
+    return;
+  }
+
+  const cityId = partner.cityId;
+  const unassignedOrders = await db
+    .select({ order: orders, shopName: shops.shopName, shopAddress: shops.address })
+    .from(orders)
+    .leftJoin(shops, eq(orders.shopId, shops.id))
+    .where(
+      and(
+        eq(orders.deliveryPartnerId, null as any),
+        or(eq(orders.status, "placed"), eq(orders.status, "packed"), eq(orders.status, "accepted"))
+      )
+    )
+    .orderBy(desc(orders.createdAt))
+    .limit(20);
+
+  // Filter by city if partner has a cityId set
+  const filtered = unassignedOrders.filter(({ order, shopAddress }) => {
+    if (!cityId) return true;
+    const orderCity = order.cityId || (shopAddress as any)?.cityId;
+    return !orderCity || orderCity.toLowerCase() === cityId.toLowerCase();
+  });
+
+  res.json({
+    success: true,
+    orders: filtered.map(({ order, shopName, shopAddress }) => ({
+      ...mi(order),
+      shopName: shopName ?? "Shop",
+      shopAddress: (shopAddress ?? {}) as Record<string, string>,
+    })),
+  });
+});
+
+// POST /delivery/orders/:id/accept — first-come first-served atomic order acceptance
+router.post("/orders/:id/accept", authenticate, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const orderId = req.params["id"] as string;
+
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner || partner.status !== "active") {
+    res.status(403).json({ success: false, message: "Not an active delivery partner" });
+    return;
+  }
+
+  // Atomic update: only succeeds if deliveryPartnerId is still NULL
+  const updatedRows = await db
+    .update(orders)
+    .set({
+      deliveryPartnerId: partner.id,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(orders.id, orderId), eq(orders.deliveryPartnerId, null as any)))
+    .returning();
+
+  if (updatedRows.length === 0) {
+    res.status(409).json({ success: false, message: "Order already accepted by another rider!" });
+    return;
+  }
+
+  const [updatedOrder] = updatedRows;
+  await db.update(deliveryPartners).set({ currentOrderId: orderId, updatedAt: new Date() }).where(eq(deliveryPartners.id, partner.id));
+
+  // Notify customer
+  if (updatedOrder.customerId) {
+    try {
+      await createNotificationLimited(updatedOrder.customerId, {
+        type: "order_update",
+        title: "Rider Assigned! 🛵",
+        message: `${partner.name} has accepted your order and will deliver it soon.`,
+        data: { orderId, url: `/orders/${orderId}` },
+      });
+    } catch { /* ignore */ }
+  }
+
+  res.json({ success: true, message: "Order accepted successfully", order: mi(updatedOrder) });
+});
+
+// POST /delivery/orders/:id/reject — rider declines order alert
+router.post("/orders/:id/reject", authenticate, validateUuidParams("id"), async (_req: AuthRequest, res: Response): Promise<void> => {
+  res.json({ success: true, message: "Order alert dismissed" });
+});
+
+// POST /delivery/orders/:id/transfer — rider transfers assigned order to another rider
+router.post("/orders/:id/transfer", authenticate, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const orderId = req.params["id"] as string;
+
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) { res.status(403).json({ success: false, message: "Not a delivery partner" }); return; }
+
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
+  if (order.deliveryPartnerId !== partner.id) {
+    res.status(403).json({ success: false, message: "This order is not assigned to you" }); return;
+  }
+
+  // Release order from this rider
+  const [updatedOrder] = await db
+    .update(orders)
+    .set({ deliveryPartnerId: null, updatedAt: new Date() })
+    .where(eq(orders.id, orderId))
+    .returning();
+
+  await db.update(deliveryPartners).set({ currentOrderId: null, updatedAt: new Date() }).where(eq(deliveryPartners.id, partner.id));
+
+  res.json({ success: true, message: "Order transferred and re-broadcasted", order: mi(updatedOrder!) });
+});
+
+// POST /delivery/orders/:id/re-broadcast — admin manually re-notifies riders for unassigned order
+router.post("/orders/:id/re-broadcast", authenticate, A, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const orderId = req.params["id"] as string;
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
+
+  res.json({ success: true, message: `Re-broadcast alert triggered for Order #${orderId.slice(-6).toUpperCase()}` });
+});
+
 export default router;

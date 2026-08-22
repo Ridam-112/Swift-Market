@@ -237,7 +237,41 @@ router.get("/:id", authenticate, validateUuidParams("id"), async (req: AuthReque
     }
   }
 
-  res.json({ success: true, order: mi(order) });
+  let deliveryPartnerInfo: Record<string, any> | null = null;
+  if (order.deliveryPartnerId) {
+    const [dp] = await db
+      .select({
+        id: deliveryPartners.id,
+        name: deliveryPartners.name,
+        phone: deliveryPartners.phone,
+        vehicle: deliveryPartners.vehicle,
+        currentLat: deliveryPartners.currentLat,
+        currentLon: deliveryPartners.currentLon,
+      })
+      .from(deliveryPartners)
+      .where(eq(deliveryPartners.id, order.deliveryPartnerId))
+      .limit(1);
+    if (dp) deliveryPartnerInfo = mi(dp);
+  }
+
+  res.json({
+    success: true,
+    order: {
+      ...mi(order),
+      deliveryPartner: deliveryPartnerInfo,
+    },
+  });
+});
+
+// GET /api/orders/:id/delivery-pin — customer fetches 4-digit PIN
+router.get("/:id/delivery-pin", authenticate, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const orderId = req.params["id"] as string;
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
+  if (req.user!.role === "customer" && order.customerId !== req.user!.userId) {
+    res.status(403).json({ success: false, message: "Forbidden" }); return;
+  }
+  res.json({ success: true, deliveryPin: order.deliveryOtp, deliveryOtp: order.deliveryOtp });
 });
 
 // GET /api/orders/:id/rider-location — customer fetches live rider GPS
