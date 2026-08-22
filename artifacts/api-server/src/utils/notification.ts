@@ -6,7 +6,7 @@ import { logger } from "../lib/logger.js";
 const NOTIFICATION_LIMIT = 10;
 
 export type NotificationPayload = {
-  type: "order_update" | "shop_approval" | "delivery_update" | "coupon" | "promo" | "system";
+  type: "order_update" | "shop_approval" | "delivery_update" | "coupon" | "promo" | "system" | "order_cancelled";
   title: string;
   message: string;
   data?: Record<string, unknown>;
