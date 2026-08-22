@@ -37,11 +37,11 @@ var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
-var __copyProps = (to, from, except, desc16) => {
+var __copyProps = (to, from, except, desc17) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
       if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc16 = __getOwnPropDesc(from, key)) || desc16.enumerable });
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc17 = __getOwnPropDesc(from, key)) || desc17.enumerable });
   }
   return to;
 };
@@ -1363,10 +1363,10 @@ var require_http_errors = __commonJS({
       return ServerError;
     }
     function nameFunc(func, name) {
-      var desc16 = Object.getOwnPropertyDescriptor(func, "name");
-      if (desc16 && desc16.configurable) {
-        desc16.value = name;
-        Object.defineProperty(func, "name", desc16);
+      var desc17 = Object.getOwnPropertyDescriptor(func, "name");
+      if (desc17 && desc17.configurable) {
+        desc17.value = name;
+        Object.defineProperty(func, "name", desc17);
       }
     }
     function populateConstructorExports(exports2, codes, HttpError) {
@@ -16811,14 +16811,14 @@ var require_get = __commonJS({
         throw e2;
       }
     }
-    var desc16 = !!hasProtoAccessor && gOPD && gOPD(
+    var desc17 = !!hasProtoAccessor && gOPD && gOPD(
       Object.prototype,
       /** @type {keyof typeof Object.prototype} */
       "__proto__"
     );
     var $Object = Object;
     var $getPrototypeOf = $Object.getPrototypeOf;
-    module.exports = desc16 && typeof desc16.get === "function" ? callBind([desc16.get]) : typeof $getPrototypeOf === "function" ? (
+    module.exports = desc17 && typeof desc17.get === "function" ? callBind([desc17.get]) : typeof $getPrototypeOf === "function" ? (
       /** @type {import('./get')} */
       function getDunder(value) {
         return $getPrototypeOf(value == null ? value : $Object(value));
@@ -17168,10 +17168,10 @@ var require_get_intrinsic = __commonJS({
             return void undefined2;
           }
           if ($gOPD && i2 + 1 >= parts.length) {
-            var desc16 = $gOPD(value, part);
-            isOwn = !!desc16;
-            if (isOwn && "get" in desc16 && !("originalValue" in desc16.get)) {
-              value = desc16.get;
+            var desc17 = $gOPD(value, part);
+            isOwn = !!desc17;
+            if (isOwn && "get" in desc17 && !("originalValue" in desc17.get)) {
+              value = desc17.get;
             } else {
               value = value[part];
             }
@@ -20559,27 +20559,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router34;
+    module.exports = Router35;
     module.exports.Route = Route;
-    function Router34(options) {
-      if (!(this instanceof Router34)) {
-        return new Router34(options);
+    function Router35(options) {
+      if (!(this instanceof Router35)) {
+        return new Router35(options);
       }
       const opts = options || {};
-      function router34(req, res, next) {
-        router34.handle(req, res, next);
+      function router35(req, res, next) {
+        router35.handle(req, res, next);
       }
-      Object.setPrototypeOf(router34, this);
-      router34.caseSensitive = opts.caseSensitive;
-      router34.mergeParams = opts.mergeParams;
-      router34.params = {};
-      router34.strict = opts.strict;
-      router34.stack = [];
-      return router34;
+      Object.setPrototypeOf(router35, this);
+      router35.caseSensitive = opts.caseSensitive;
+      router35.mergeParams = opts.mergeParams;
+      router35.params = {};
+      router35.strict = opts.strict;
+      router35.stack = [];
+      return router35;
     }
-    Router34.prototype = function() {
+    Router35.prototype = function() {
     };
-    Router34.prototype.param = function param(name, fn) {
+    Router35.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -20599,7 +20599,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router34.prototype.handle = function handle(req, res, callback) {
+    Router35.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20726,7 +20726,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router34.prototype.use = function use(handler2) {
+    Router35.prototype.use = function use(handler2) {
       let offset = 0;
       let path4 = "/";
       if (typeof handler2 !== "function") {
@@ -20759,7 +20759,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router34.prototype.route = function route(path4) {
+    Router35.prototype.route = function route(path4) {
       const route2 = new Route(path4);
       const layer = new Layer(path4, {
         sensitive: this.caseSensitive,
@@ -20774,7 +20774,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router34.prototype[method] = function(path4) {
+      Router35.prototype[method] = function(path4) {
         const route = this.route(path4);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -20957,13 +20957,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router34 = require_router();
+    var Router35 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router34 = null;
+      var router35 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -20972,13 +20972,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router34 === null) {
-            router34 = new Router34({
+          if (router35 === null) {
+            router35 = new Router35({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router34;
+          return router35;
         }
       });
     };
@@ -21049,15 +21049,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router34 = this.router;
+      var router35 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router34.use(path4, fn2);
+          return router35.use(path4, fn2);
         }
         debug(".use app under %s", path4);
         fn2.mountpath = path4;
         fn2.parent = this;
-        router34.use(path4, function mounted_app(req, res, next) {
+        router35.use(path4, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -23584,7 +23584,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router34 = require_router();
+    var Router35 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -23606,8 +23606,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router34.Route;
-    exports.Router = Router34;
+    exports.Route = Router35.Route;
+    exports.Router = Router35;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -35192,8 +35192,8 @@ var require_eq = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.1/node_modules/semver/functions/eq.js"(exports, module) {
     "use strict";
     var compare = require_compare();
-    var eq36 = (a, b, loose) => compare(a, b, loose) === 0;
-    module.exports = eq36;
+    var eq37 = (a, b, loose) => compare(a, b, loose) === 0;
+    module.exports = eq37;
   }
 });
 
@@ -35231,7 +35231,7 @@ var require_lte = __commonJS({
 var require_cmp = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.1/node_modules/semver/functions/cmp.js"(exports, module) {
     "use strict";
-    var eq36 = require_eq();
+    var eq37 = require_eq();
     var neq = require_neq();
     var gt4 = require_gt();
     var gte6 = require_gte();
@@ -35258,7 +35258,7 @@ var require_cmp = __commonJS({
         case "":
         case "=":
         case "==":
-          return eq36(a, b, loose);
+          return eq37(a, b, loose);
         case "!=":
           return neq(a, b, loose);
         case ">":
@@ -36283,15 +36283,15 @@ var require_subset = __commonJS({
           return null;
         }
       }
-      for (const eq36 of eqSet) {
-        if (gt4 && !satisfies(eq36, String(gt4), options)) {
+      for (const eq37 of eqSet) {
+        if (gt4 && !satisfies(eq37, String(gt4), options)) {
           return null;
         }
-        if (lt2 && !satisfies(eq36, String(lt2), options)) {
+        if (lt2 && !satisfies(eq37, String(lt2), options)) {
           return null;
         }
         for (const c of dom) {
-          if (!satisfies(eq36, String(c), options)) {
+          if (!satisfies(eq37, String(c), options)) {
             return false;
           }
         }
@@ -36395,7 +36395,7 @@ var require_semver2 = __commonJS({
     var rsort = require_rsort();
     var gt4 = require_gt();
     var lt2 = require_lt();
-    var eq36 = require_eq();
+    var eq37 = require_eq();
     var neq = require_neq();
     var gte6 = require_gte();
     var lte = require_lte();
@@ -36434,7 +36434,7 @@ var require_semver2 = __commonJS({
       rsort,
       gt: gt4,
       lt: lt2,
-      eq: eq36,
+      eq: eq37,
       neq,
       gte: gte6,
       lte,
@@ -39816,13 +39816,13 @@ var require_helpers = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc16 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc16 || ("get" in desc16 ? !m2.__esModule : desc16.writable || desc16.configurable)) {
-        desc16 = { enumerable: true, get: function() {
+      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
+        desc17 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc16);
+      Object.defineProperty(o, k2, desc17);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -39886,13 +39886,13 @@ var require_dist2 = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc16 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc16 || ("get" in desc16 ? !m2.__esModule : desc16.writable || desc16.configurable)) {
-        desc16 = { enumerable: true, get: function() {
+      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
+        desc17 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc16);
+      Object.defineProperty(o, k2, desc17);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -40138,13 +40138,13 @@ var require_dist3 = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc16 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc16 || ("get" in desc16 ? !m2.__esModule : desc16.writable || desc16.configurable)) {
-        desc16 = { enumerable: true, get: function() {
+      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
+        desc17 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc16);
+      Object.defineProperty(o, k2, desc17);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -47249,13 +47249,13 @@ var require_src3 = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc16 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc16 || ("get" in desc16 ? !m2.__esModule : desc16.writable || desc16.configurable)) {
-        desc16 = { enumerable: true, get: function() {
+      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
+        desc17 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc16);
+      Object.defineProperty(o, k2, desc17);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -49164,13 +49164,13 @@ var require_logging_utils = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc16 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc16 || ("get" in desc16 ? !m2.__esModule : desc16.writable || desc16.configurable)) {
-        desc16 = { enumerable: true, get: function() {
+      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
+        desc17 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc16);
+      Object.defineProperty(o, k2, desc17);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -49453,13 +49453,13 @@ var require_src4 = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc16 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc16 || ("get" in desc16 ? !m2.__esModule : desc16.writable || desc16.configurable)) {
-        desc16 = { enumerable: true, get: function() {
+      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
+        desc17 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc16);
+      Object.defineProperty(o, k2, desc17);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -49478,13 +49478,13 @@ var require_src5 = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc16 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc16 || ("get" in desc16 ? !m2.__esModule : desc16.writable || desc16.configurable)) {
-        desc16 = { enumerable: true, get: function() {
+      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
+        desc17 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc16);
+      Object.defineProperty(o, k2, desc17);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -50015,13 +50015,13 @@ var require_crypto3 = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc16 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc16 || ("get" in desc16 ? !m2.__esModule : desc16.writable || desc16.configurable)) {
-        desc16 = { enumerable: true, get: function() {
+      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
+        desc17 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc16);
+      Object.defineProperty(o, k2, desc17);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -55768,13 +55768,13 @@ var require_src6 = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc16 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc16 || ("get" in desc16 ? !m2.__esModule : desc16.writable || desc16.configurable)) {
-        desc16 = { enumerable: true, get: function() {
+      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
+        desc17 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc16);
+      Object.defineProperty(o, k2, desc17);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -57867,12 +57867,12 @@ var require_result = __commonJS({
         }
         const row = {};
         for (let i2 = 0; i2 < fieldDescriptions.length; i2++) {
-          const desc16 = fieldDescriptions[i2];
-          row[desc16.name] = null;
+          const desc17 = fieldDescriptions[i2];
+          row[desc17.name] = null;
           if (this._types) {
-            this._parsers[i2] = this._types.getTypeParser(desc16.dataTypeID, desc16.format || "text");
+            this._parsers[i2] = this._types.getTypeParser(desc17.dataTypeID, desc17.format || "text");
           } else {
-            this._parsers[i2] = types4.getTypeParser(desc16.dataTypeID, desc16.format || "text");
+            this._parsers[i2] = types4.getTypeParser(desc17.dataTypeID, desc17.format || "text");
           }
         }
         this._prebuiltEmptyResultObject = { ...row };
@@ -62845,20 +62845,20 @@ var require_lodash8 = __commonJS({
           return shuffleSelf(copyArray(array));
         }
         function assignMergeValue(object, key, value) {
-          if (value !== undefined2 && !eq36(object[key], value) || value === undefined2 && !(key in object)) {
+          if (value !== undefined2 && !eq37(object[key], value) || value === undefined2 && !(key in object)) {
             baseAssignValue(object, key, value);
           }
         }
         function assignValue(object, key, value) {
           var objValue = object[key];
-          if (!(hasOwnProperty.call(object, key) && eq36(objValue, value)) || value === undefined2 && !(key in object)) {
+          if (!(hasOwnProperty.call(object, key) && eq37(objValue, value)) || value === undefined2 && !(key in object)) {
             baseAssignValue(object, key, value);
           }
         }
         function assocIndexOf(array, key) {
           var length = array.length;
           while (length--) {
-            if (eq36(array[length][0], key)) {
+            if (eq37(array[length][0], key)) {
               return length;
             }
           }
@@ -63636,7 +63636,7 @@ var require_lodash8 = __commonJS({
           var index12 = -1, length = array.length, resIndex = 0, result2 = [];
           while (++index12 < length) {
             var value = array[index12], computed = iteratee2 ? iteratee2(value) : value;
-            if (!index12 || !eq36(computed, seen)) {
+            if (!index12 || !eq37(computed, seen)) {
               var seen = computed;
               result2[resIndex++] = value === 0 ? 0 : value;
             }
@@ -64332,7 +64332,7 @@ var require_lodash8 = __commonJS({
           return setWrapToString(setter(result2, newData), func, bitmask);
         }
         function customDefaultsAssignIn(objValue, srcValue, key, object) {
-          if (objValue === undefined2 || eq36(objValue, objectProto[key]) && !hasOwnProperty.call(object, key)) {
+          if (objValue === undefined2 || eq37(objValue, objectProto[key]) && !hasOwnProperty.call(object, key)) {
             return srcValue;
           }
           return objValue;
@@ -64407,7 +64407,7 @@ var require_lodash8 = __commonJS({
             case boolTag:
             case dateTag:
             case numberTag:
-              return eq36(+object, +other);
+              return eq37(+object, +other);
             case errorTag:
               return object.name == other.name && object.message == other.message;
             case regexpTag:
@@ -64691,7 +64691,7 @@ var require_lodash8 = __commonJS({
           }
           var type = typeof index12;
           if (type == "number" ? isArrayLike(object) && isIndex(index12, object.length) : type == "string" && index12 in object) {
-            return eq36(object[index12], value);
+            return eq37(object[index12], value);
           }
           return false;
         }
@@ -65174,7 +65174,7 @@ var require_lodash8 = __commonJS({
           var length = array == null ? 0 : array.length;
           if (length) {
             var index12 = baseSortedIndex(array, value);
-            if (index12 < length && eq36(array[index12], value)) {
+            if (index12 < length && eq37(array[index12], value)) {
               return index12;
             }
           }
@@ -65190,7 +65190,7 @@ var require_lodash8 = __commonJS({
           var length = array == null ? 0 : array.length;
           if (length) {
             var index12 = baseSortedIndex(array, value, true) - 1;
-            if (eq36(array[index12], value)) {
+            if (eq37(array[index12], value)) {
               return index12;
             }
           }
@@ -65821,7 +65821,7 @@ var require_lodash8 = __commonJS({
         function conformsTo(object, source) {
           return source == null || baseConformsTo(object, source, keys(source));
         }
-        function eq36(value, other) {
+        function eq37(value, other) {
           return value === other || value !== value && other !== other;
         }
         var gt4 = createRelationalOperation(baseGt);
@@ -66069,7 +66069,7 @@ var require_lodash8 = __commonJS({
             while (++propsIndex < propsLength) {
               var key = props[propsIndex];
               var value = object[key];
-              if (value === undefined2 || eq36(value, objectProto[key]) && !hasOwnProperty.call(object, key)) {
+              if (value === undefined2 || eq37(value, objectProto[key]) && !hasOwnProperty.call(object, key)) {
                 object[key] = source[key];
               }
             }
@@ -66950,7 +66950,7 @@ var require_lodash8 = __commonJS({
         lodash.defaultTo = defaultTo;
         lodash.divide = divide;
         lodash.endsWith = endsWith;
-        lodash.eq = eq36;
+        lodash.eq = eq37;
         lodash.escape = escape2;
         lodash.escapeRegExp = escapeRegExp;
         lodash.every = every;
@@ -80680,9 +80680,9 @@ var require_axios = __commonJS({
           const cookies2 = document.cookie.split(";");
           for (let i2 = 0; i2 < cookies2.length; i2++) {
             const cookie = cookies2[i2].replace(/^\s+/, "");
-            const eq36 = cookie.indexOf("=");
-            if (eq36 !== -1 && cookie.slice(0, eq36) === name) {
-              return decodeURIComponent(cookie.slice(eq36 + 1));
+            const eq37 = cookie.indexOf("=");
+            if (eq37 !== -1 && cookie.slice(0, eq37) === name) {
+              return decodeURIComponent(cookie.slice(eq37 + 1));
             }
           }
           return null;
@@ -81481,8 +81481,8 @@ var require_axios = __commonJS({
     });
     var deprecatedWarnings = {};
     validators$1.transitional = function transitional(validator2, version2, message) {
-      function formatMessage(opt, desc16) {
-        return "[Axios v" + VERSION + "] Transitional option '" + opt + "'" + desc16 + (message ? ". " + message : "");
+      function formatMessage(opt, desc17) {
+        return "[Axios v" + VERSION + "] Transitional option '" + opt + "'" + desc17 + (message ? ". " + message : "");
       }
       return (value, opt, opts) => {
         if (validator2 === false) {
@@ -93582,7 +93582,7 @@ var require_defaults2 = __commonJS({
     function isNil(value) {
       return value == null;
     }
-    function eq36(value, other) {
+    function eq37(value, other) {
       return value === other || Number.isNaN(value) && Number.isNaN(other);
     }
     function isLength(value) {
@@ -93609,7 +93609,7 @@ var require_defaults2 = __commonJS({
         return false;
       }
       if (typeof index12 === "number" && isArrayLike(object) && isIndex(index12) && index12 < object.length || typeof index12 === "string" && index12 in object) {
-        return eq36(object[index12], value);
+        return eq37(object[index12], value);
       }
       return false;
     }
@@ -93628,7 +93628,7 @@ var require_defaults2 = __commonJS({
         const source = sources[i2];
         for (const key in source) {
           const value = object[key];
-          if (value === void 0 || !objectProto.hasOwnProperty.call(object, key) && eq36(value, objectProto[key])) {
+          if (value === void 0 || !objectProto.hasOwnProperty.call(object, key) && eq37(value, objectProto[key])) {
             object[key] = source[key];
           }
         }
@@ -109631,16 +109631,16 @@ var require_typedarray = __commonJS({
     })()) {
       defineProp = Object.defineProperty;
     } else {
-      defineProp = function(o, p, desc16) {
+      defineProp = function(o, p, desc17) {
         if (!o === Object(o)) throw new TypeError("Object.defineProperty called on non-object");
-        if (ECMAScript.HasProperty(desc16, "get") && Object.prototype.__defineGetter__) {
-          Object.prototype.__defineGetter__.call(o, p, desc16.get);
+        if (ECMAScript.HasProperty(desc17, "get") && Object.prototype.__defineGetter__) {
+          Object.prototype.__defineGetter__.call(o, p, desc17.get);
         }
-        if (ECMAScript.HasProperty(desc16, "set") && Object.prototype.__defineSetter__) {
-          Object.prototype.__defineSetter__.call(o, p, desc16.set);
+        if (ECMAScript.HasProperty(desc17, "set") && Object.prototype.__defineSetter__) {
+          Object.prototype.__defineSetter__.call(o, p, desc17.set);
         }
-        if (ECMAScript.HasProperty(desc16, "value")) {
-          o[p] = desc16.value;
+        if (ECMAScript.HasProperty(desc17, "value")) {
+          o[p] = desc17.value;
         }
         return o;
       };
@@ -112432,7 +112432,7 @@ var require_bn = __commonJS({
         } else {
           x2 = x2.clone();
         }
-        var A25 = new BN(1);
+        var A26 = new BN(1);
         var B = new BN(0);
         var C = new BN(0);
         var D = new BN(1);
@@ -112449,11 +112449,11 @@ var require_bn = __commonJS({
           if (i2 > 0) {
             x2.iushrn(i2);
             while (i2-- > 0) {
-              if (A25.isOdd() || B.isOdd()) {
-                A25.iadd(yp);
+              if (A26.isOdd() || B.isOdd()) {
+                A26.iadd(yp);
                 B.isub(xp);
               }
-              A25.iushrn(1);
+              A26.iushrn(1);
               B.iushrn(1);
             }
           }
@@ -112471,11 +112471,11 @@ var require_bn = __commonJS({
           }
           if (x2.cmp(y) >= 0) {
             x2.isub(y);
-            A25.isub(C);
+            A26.isub(C);
             B.isub(D);
           } else {
             y.isub(x2);
-            C.isub(A25);
+            C.isub(A26);
             D.isub(B);
           }
         }
@@ -112677,7 +112677,7 @@ var require_bn = __commonJS({
       BN.prototype.eqn = function eqn(num) {
         return this.cmpn(num) === 0;
       };
-      BN.prototype.eq = function eq36(num) {
+      BN.prototype.eq = function eq37(num) {
         return this.cmp(num) === 0;
       };
       BN.red = function red(num) {
@@ -115715,7 +115715,7 @@ var require_src8 = __commonJS({
 });
 
 // src/app.ts
-var import_express34 = __toESM(require_express2(), 1);
+var import_express35 = __toESM(require_express2(), 1);
 
 // ../../node_modules/.pnpm/helmet@8.2.0/node_modules/helmet/index.mjs
 var helmet_exports = {};
@@ -116293,7 +116293,7 @@ import fs2 from "fs";
 import { fileURLToPath } from "url";
 
 // src/routes/index.ts
-var import_express33 = __toESM(require_express2(), 1);
+var import_express34 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -116313,7 +116313,7 @@ router.get("/healthz", (_req, res) => {
 var health_default = router;
 
 // src/routes/v1/index.ts
-var import_express32 = __toESM(require_express2(), 1);
+var import_express33 = __toESM(require_express2(), 1);
 
 // src/routes/v1/auth.ts
 var import_express2 = __toESM(require_express2(), 1);
@@ -129950,12 +129950,87 @@ router31.put(
 );
 var layouts_default = router31;
 
-// src/routes/v1/index.ts
-import { eq as eq34, and as and20, asc as asc8 } from "drizzle-orm";
+// src/routes/v1/adminRiders.ts
+var import_express32 = __toESM(require_express2(), 1);
+import { eq as eq34, desc as desc16 } from "drizzle-orm";
 var router32 = (0, import_express32.Router)();
-router32.get("/home-filters", async (_req, res) => {
+var A25 = requireRole("admin", "super_admin");
+router32.get("/applications", authenticate, A25, async (req, res) => {
+  const statusParam = req.query["status"] ?? "pending";
+  const rows = await db.select().from(deliveryPartners).where(eq34(deliveryPartners.applicationStatus, statusParam)).orderBy(desc16(deliveryPartners.createdAt));
+  res.json({ success: true, applications: miArr(rows) });
+});
+router32.post("/:id/approve", authenticate, A25, validateUuidParams("id"), async (req, res) => {
+  const id = req.params["id"];
+  const [updated] = await db.update(deliveryPartners).set({
+    applicationStatus: "approved",
+    status: "active",
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq34(deliveryPartners.id, id)).returning();
+  if (!updated) {
+    res.status(404).json({ success: false, message: "Rider partner application not found" });
+    return;
+  }
+  res.json({
+    success: true,
+    message: `Rider '${updated.name}' application approved successfully`,
+    partner: mi(updated)
+  });
+});
+router32.post("/:id/reject", authenticate, A25, validateUuidParams("id"), async (req, res) => {
+  const id = req.params["id"];
+  const { reason } = req.body;
+  const [updated] = await db.update(deliveryPartners).set({
+    applicationStatus: "rejected",
+    status: "inactive",
+    rejectionReason: reason ?? "Application rejected by admin",
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq34(deliveryPartners.id, id)).returning();
+  if (!updated) {
+    res.status(404).json({ success: false, message: "Rider partner application not found" });
+    return;
+  }
+  res.json({
+    success: true,
+    message: `Rider '${updated.name}' application rejected`,
+    partner: mi(updated)
+  });
+});
+var getLiveLocationsHandler = async (_req, res) => {
+  const rows = await db.select({
+    id: deliveryPartners.id,
+    name: deliveryPartners.name,
+    phone: deliveryPartners.phone,
+    vehicle: deliveryPartners.vehicle,
+    status: deliveryPartners.status,
+    isAvailable: deliveryPartners.isAvailable,
+    currentLat: deliveryPartners.currentLat,
+    currentLon: deliveryPartners.currentLon,
+    currentOrderId: deliveryPartners.currentOrderId,
+    locationUpdatedAt: deliveryPartners.locationUpdatedAt
+  }).from(deliveryPartners).orderBy(desc16(deliveryPartners.locationUpdatedAt));
+  res.json({
+    success: true,
+    riders: miArr(rows)
+  });
+};
+router32.get("/live-location", authenticate, A25, getLiveLocationsHandler);
+router32.get("/live-locations", authenticate, A25, getLiveLocationsHandler);
+router32.get("/", authenticate, A25, async (_req, res) => {
+  const rows = await db.select().from(deliveryPartners).orderBy(desc16(deliveryPartners.createdAt));
+  res.json({
+    success: true,
+    riders: miArr(rows)
+  });
+});
+var adminRiders_default = router32;
+
+// src/routes/v1/index.ts
+import { eq as eq35, and as and20, asc as asc8 } from "drizzle-orm";
+var router33 = (0, import_express33.Router)();
+router33.get("/home-filters", async (_req, res) => {
   try {
-    const list = await db.select().from(categories).where(and20(eq34(categories.isActive, true), eq34(categories.showOnHome, true))).orderBy(asc8(categories.filterOrder));
+    const list = await db.select().from(categories).where(and20(eq35(categories.isActive, true), eq35(categories.showOnHome, true))).orderBy(asc8(categories.filterOrder));
     const mapped = miArr(list);
     const grouped = {
       swiftmart: [],
@@ -129975,45 +130050,46 @@ router32.get("/home-filters", async (_req, res) => {
     res.status(500).json({ success: false, message: "Failed to load home filters", error: String(err) });
   }
 });
-router32.use("/auth", auth_default);
-router32.use("/admin", admin_default);
-router32.use("/users", users_default);
-router32.use("/shops", shops_default);
-router32.use("/shop-types", shopTypes_default);
-router32.use("/categories", categories_default);
-router32.use("/products", products_default);
-router32.use("/orders", orders_default);
-router32.use("/coupons", coupons_default);
-router32.use("/commissions", commissions_default);
-router32.use("/delivery", delivery_default);
-router32.use("/payouts", payouts_default);
-router32.use("/reports", reports_default);
-router32.use("/notifications", notifications_default);
-router32.use("/upload", upload_default);
-router32.use("/hero-banners", hero_banners_default);
-router32.use("/payments", payments_default);
-router32.use("/push", push_default);
-router32.use("/fcm", fcm_default);
-router32.use("/support", support_default);
-router32.use("/admin/analytics", analytics_default);
-router32.use("/homepage-sections", homepage_sections_default);
-router32.use("/service-pincodes", servicePincodes_default);
-router32.use("/buckets", buckets_default);
-router32.use("/maintenance-bypass", maintenanceBypass_default);
-router32.use("/manager", manager_default);
-router32.use("/seasonal-campaign", seasonal_campaign_default);
-router32.use("/cafe-config", cafe_config_default);
-router32.use("/theme-config", themeConfig_default);
-router32.use("/admin/theme-config", themeConfig_default);
-router32.use("/layout", layouts_default);
-router32.use("/admin/layout", layouts_default);
-var v1_default = router32;
+router33.use("/auth", auth_default);
+router33.use("/admin", admin_default);
+router33.use("/users", users_default);
+router33.use("/shops", shops_default);
+router33.use("/shop-types", shopTypes_default);
+router33.use("/categories", categories_default);
+router33.use("/products", products_default);
+router33.use("/orders", orders_default);
+router33.use("/coupons", coupons_default);
+router33.use("/commissions", commissions_default);
+router33.use("/delivery", delivery_default);
+router33.use("/payouts", payouts_default);
+router33.use("/reports", reports_default);
+router33.use("/notifications", notifications_default);
+router33.use("/upload", upload_default);
+router33.use("/hero-banners", hero_banners_default);
+router33.use("/payments", payments_default);
+router33.use("/push", push_default);
+router33.use("/fcm", fcm_default);
+router33.use("/support", support_default);
+router33.use("/admin/analytics", analytics_default);
+router33.use("/homepage-sections", homepage_sections_default);
+router33.use("/service-pincodes", servicePincodes_default);
+router33.use("/buckets", buckets_default);
+router33.use("/maintenance-bypass", maintenanceBypass_default);
+router33.use("/manager", manager_default);
+router33.use("/seasonal-campaign", seasonal_campaign_default);
+router33.use("/cafe-config", cafe_config_default);
+router33.use("/theme-config", themeConfig_default);
+router33.use("/admin/theme-config", themeConfig_default);
+router33.use("/layout", layouts_default);
+router33.use("/admin/layout", layouts_default);
+router33.use("/admin/riders", adminRiders_default);
+var v1_default = router33;
 
 // src/routes/index.ts
-var router33 = (0, import_express33.Router)();
-router33.use(health_default);
-router33.use(v1_default);
-var routes_default = router33;
+var router34 = (0, import_express34.Router)();
+router34.use(health_default);
+router34.use(v1_default);
+var routes_default = router34;
 
 // src/middlewares/maintenanceMode.ts
 var import_jsonwebtoken4 = __toESM(require_jsonwebtoken(), 1);
@@ -130388,7 +130464,7 @@ function maintenanceMode(req, res, next) {
 }
 
 // src/app.ts
-import { eq as eq35 } from "drizzle-orm";
+import { eq as eq36 } from "drizzle-orm";
 var helmet3 = helmet || helmet_exports;
 var compression = compressionModule.default || compressionModule;
 var pinoHttp = pinoHttpModule.default || pinoHttpModule;
@@ -130415,9 +130491,9 @@ async function buildSitemap() {
   const fmt = (d) => d ? new Date(d).toISOString().split("T")[0] : (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const [shopRows, productRows, categoryRows] = await Promise.all([
-    db.select({ id: shops.id, updatedAt: shops.updatedAt }).from(shops).where(eq35(shops.status, "approved")),
-    db.select({ id: products.id, updatedAt: products.updatedAt }).from(products).where(eq35(products.status, "active")),
-    db.select({ slug: categories.slug, updatedAt: categories.updatedAt }).from(categories).where(eq35(categories.isActive, true))
+    db.select({ id: shops.id, updatedAt: shops.updatedAt }).from(shops).where(eq36(shops.status, "approved")),
+    db.select({ id: products.id, updatedAt: products.updatedAt }).from(products).where(eq36(products.status, "active")),
+    db.select({ slug: categories.slug, updatedAt: categories.updatedAt }).from(categories).where(eq36(categories.isActive, true))
   ]);
   const urlTags = [
     ...STATIC_SITEMAP_URLS.map(
@@ -130442,7 +130518,7 @@ async function buildSitemap() {
   sitemapCache = { xml, builtAt: Date.now() };
   return xml;
 }
-var app = (0, import_express34.default)();
+var app = (0, import_express35.default)();
 app.use(compression({ threshold: 1024 }));
 app.use(
   pinoHttp({
@@ -130518,14 +130594,14 @@ app.use((req, res, next) => {
   }
   next();
 });
-app.use(import_express34.default.json({
+app.use(import_express35.default.json({
   verify: (req, _res, buf) => {
     if (req.url?.includes("/payments/webhook")) {
       req.rawBody = buf;
     }
   }
 }));
-app.use(import_express34.default.urlencoded({ extended: true }));
+app.use(import_express35.default.urlencoded({ extended: true }));
 app.get("/health", (_req, res) => {
   res.status(200).json({ ok: true, service: "swiftmart-api" });
 });
@@ -130560,7 +130636,7 @@ app.use("/api", (_req, res, next) => {
   res.setHeader("X-Robots-Tag", "noindex, nofollow");
   next();
 });
-app.use("/api/uploads", import_express34.default.static(path3.join(__dirname2, "..", "uploads")));
+app.use("/api/uploads", import_express35.default.static(path3.join(__dirname2, "..", "uploads")));
 app.use("/api", globalApiLimiter, routes_default);
 if (process.env.NODE_ENV === "production") {
   const frontendDist = path3.join(__dirname2, "..", "..", "swiftmart", "dist", "public");
@@ -130602,7 +130678,7 @@ Sitemap: https://swiftmart.space/sitemap.xml
       res.status(200).setHeader("Content-Type", "application/xml; charset=utf-8").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`);
     }
   });
-  app.use(import_express34.default.static(frontendDist, {
+  app.use(import_express35.default.static(frontendDist, {
     setHeaders(res, filePath) {
       if (filePath.includes(`${path3.sep}assets${path3.sep}`)) {
         res.setHeader("Cache-Control", "public, max-age=31536000, immutable");

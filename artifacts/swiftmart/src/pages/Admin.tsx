@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
   ChevronDown, ChevronUp, Award, Building2, CreditCard, User, AlertCircle,
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
   ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, Coffee, ArrowUpDown, Home, Mail,
-  Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin, Truck, Bike,
+  Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin, Truck, Bike, List, Phone,
   UserCheck, Gift, QrCode, Upload, Palette, LayoutGrid, Smartphone,
   type LucideIcon,
 } from "lucide-react";
@@ -96,6 +96,18 @@ interface ApiOrder {
   paymentStatus?: string;
   deliveryType?: string;
   deliveryPartnerId?: string;
+  riderName?: string;
+  riderPhone?: string;
+  riderPhotoUrl?: string;
+  deliveryPartner?: {
+    id?: string;
+    name?: string;
+    phone?: string;
+    photoUrl?: string;
+    vehicle?: string;
+    currentLat?: number;
+    currentLon?: number;
+  };
   createdAt: string;
   updatedAt?: string;
   address?: { label?: string; line1?: string; city?: string; pincode?: string };
@@ -136,7 +148,7 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config' | 'theme-config' | 'app-home-builder' | 'app-superstore-builder' | 'app-cafe-builder';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config' | 'theme-config' | 'app-home-builder' | 'app-superstore-builder' | 'app-cafe-builder' | 'riders';
 
 import { SEO } from "@/components/SEO";
 import FleetMapTab from "@/components/FleetMapTab";
@@ -230,7 +242,8 @@ export default function Admin() {
               {activeSection === 'home-sections' && <HomepageSectionsTab />}
               {activeSection === 'buckets' && <BucketsTab />}
               {activeSection === 'service-areas' && <ServiceAreasTab />}
-              {activeSection === 'delivery-partners' && <DeliveryPartnersTab />}
+              {activeSection === 'delivery-partners' && <RidersSectionTab />}
+              {activeSection === 'riders' && <RidersSectionTab />}
               {activeSection === 'fleet-map' && <FleetMapTab />}
               {activeSection === 'managers' && <ManagersTab />}
               {activeSection === 'seasonal-campaign' && <SeasonalCampaignTab />}
@@ -269,6 +282,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
   const [, navigate] = useLocation();
   const [pendingRequests, setPendingRequests] = useState(0);
   const [pendingOrders, setPendingOrders] = useState(0);
+  const [pendingRiders, setPendingRiders] = useState(0);
   const { reports, user } = useAuth();
   const openReports = reports.filter(r => r.status === 'open').length;
 
@@ -279,6 +293,9 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
         setPendingOrders(d.stats.pendingOrders);
       })
       .catch(() => {});
+    api.get<{ success: boolean; applications: any[] }>('/admin/riders/applications?status=pending')
+      .then(d => setPendingRiders((d.applications ?? []).length))
+      .catch(() => {});
   }, []);
 
   const navItems: { id: AdminSection; label: string; icon: LucideIcon; badge?: number }[] = [
@@ -287,6 +304,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'shops', label: 'Shops', icon: Store },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'orders', label: 'Orders', icon: ShoppingBag, badge: pendingOrders },
+    { id: 'riders', label: 'Riders', icon: Truck, badge: pendingRiders },
     { id: 'reports', label: 'Reports', icon: Flag, badge: openReports },
     { id: 'analytics', label: 'Analytics', icon: BarChart2 },
     { id: 'transactions', label: 'Transactions', icon: CreditCard },
@@ -304,7 +322,6 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
   { id: 'home-sections', label: 'Home Sections', icon: Layers },
   { id: 'buckets', label: 'Bucket Packages', icon: Gift },
   { id: 'service-areas', label: 'Service Areas', icon: MapPin },
-  { id: 'delivery-partners', label: 'Delivery Partners', icon: Truck },
   { id: 'fleet-map', label: 'Fleet Map', icon: MapPin },
   { id: 'managers', label: 'Managers', icon: Shield },
   { id: 'seasonal-campaign', label: 'Seasonal Campaign', icon: Flame },
@@ -1522,6 +1539,15 @@ function OrdersTab() {
     }
   };
 
+  const formatAgo = (iso?: string | null) => {
+    if (!iso) return "recently";
+    const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (diff < 15) return "Just now";
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    return `${Math.floor(diff / 3600)}h ago`;
+  };
+
   const toggleItems = (id: string) =>
     setExpandedItems(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
@@ -1915,66 +1941,66 @@ function OrdersTab() {
                     <p className="text-xl font-bold text-foreground">{formatINR(o.total)}</p>
                   </div>
 
-                  {/* Delivery Partner */}
+                  {/* Delivery Partner Read-Only Card (v2 Contract) */}
                   {!isTerminal && (
                     <div className="space-y-2">
-                      {assignedPartner ? (
-                        <div className="flex items-center justify-between gap-2 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs">
-                          <div className="min-w-0">
-                            <span className="font-bold text-foreground block truncate">
-                              <span className={`inline-block w-2 h-2 rounded-full mr-1.5 align-middle ${assignedPartner.isAvailable ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`}/>
-                              🛵 {assignedPartner.name}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground font-mono block">{assignedPartner.phone}</span>
+                      {(o.riderName || o.deliveryPartner) ? (
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {(o.riderPhotoUrl || o.deliveryPartner?.photoUrl) ? (
+                                <img
+                                  src={o.riderPhotoUrl || o.deliveryPartner?.photoUrl}
+                                  alt={o.riderName || o.deliveryPartner?.name}
+                                  className="w-9 h-9 rounded-full object-cover border border-emerald-500/30 shrink-0"
+                                />
+                              ) : (
+                                <div className="w-9 h-9 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold flex items-center justify-center text-xs border border-emerald-500/30 shrink-0">
+                                  {(o.riderName || o.deliveryPartner?.name || "R").slice(0, 1).toUpperCase()}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <span className="font-bold text-xs text-foreground block truncate">
+                                  🛵 {o.riderName || o.deliveryPartner?.name}
+                                </span>
+                                <a
+                                  href={`tel:${o.riderPhone || o.deliveryPartner?.phone}`}
+                                  className="text-[11px] font-mono text-primary hover:underline flex items-center gap-1"
+                                >
+                                  <Phone className="w-3 h-3 inline text-primary shrink-0" />
+                                  {o.riderPhone || o.deliveryPartner?.phone}
+                                </a>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] font-bold uppercase border-emerald-500/40 text-emerald-700 dark:text-emerald-300 shrink-0">
+                              {o.status === "out_for_delivery" ? "Out for Delivery" : o.status === "delivered" ? "Delivered" : "Assigned"}
+                            </Badge>
                           </div>
-                          <button
-                            className="text-[10px] font-bold text-red-500 hover:underline shrink-0"
-                            disabled={assigningOrder === o.id}
-                            onClick={async () => {
-                              setAssigningOrder(o.id);
-                              try {
-                                await api.patch(`/orders/${o.id}/assign-partner`, { deliveryPartnerId: null });
-                                setPartnerMap(prev => ({ ...prev, [o.id]: null }));
-                                toast.success("Partner unassigned");
-                              } catch { toast.error("Failed"); }
-                              finally { setAssigningOrder(null); }
-                            }}
-                          >✕ Remove</button>
+
+                          <div className="text-[10px] text-muted-foreground font-mono flex items-center justify-between border-t border-emerald-500/10 pt-1.5">
+                            <span>Accepted {formatAgo(o.updatedAt || o.placedAt)}</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">🟢 Active</span>
+                          </div>
                         </div>
                       ) : (
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-bold">
-                            <span>⏳ Awaiting Rider Acceptance</span>
+                        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            {(Date.now() - new Date(o.placedAt).getTime() > 60000) ? (
+                              <span className="text-xs font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                                ⚠️ No rider accepted yet
+                              </span>
+                            ) : (
+                              <span className="text-xs font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                                ⏳ Awaiting Rider
+                              </span>
+                            )}
                             <Button
                               size="sm"
-                              variant="outline"
                               disabled={rebroadcastingOrder === o.id}
                               onClick={() => handleRebroadcast(o.id)}
-                              className="h-6 px-2 text-[10px] bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 rounded-lg"
+                              className="h-7 px-2.5 text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-sm shrink-0"
                             >
-                              {rebroadcastingOrder === o.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : "📡 Notify Riders Again"}
-                            </Button>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <select
-                              className="flex-1 h-7 rounded-lg border border-input bg-background px-2 text-xs text-foreground"
-                              value={currentPendingAssign}
-                              onChange={e => setPendingAssign(prev => ({ ...prev, [o.id]: e.target.value }))}
-                            >
-                              <option value="__unassigned__">Manual Assign fallback…</option>
-                              {activePartners.map(p => (
-                                <option key={p._id} value={p._id}>
-                                  {p.name} {p.isAvailable ? "🟢" : "🔴"}
-                                </option>
-                              ))}
-                            </select>
-                            <Button
-                              size="sm"
-                              disabled={!currentPendingAssign || currentPendingAssign === "__unassigned__" || assigningOrder === o.id}
-                              onClick={() => handleAssignPartner(o.id)}
-                              className="h-7 px-2 text-xs shrink-0"
-                            >
-                              {assigningOrder === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Go"}
+                              {rebroadcastingOrder === o.id ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : "📡 Notify Riders Again"}
                             </Button>
                           </div>
                         </div>
@@ -8702,6 +8728,484 @@ interface DeliveryPartnerRow {
 const VEHICLE_OPTIONS = ["Bike", "Bicycle", "Scooter", "E-Bike", "On Foot"];
 const STATUS_OPTIONS = ["active", "inactive", "suspended"];
 
+interface RiderApplication {
+  _id: string;
+  name: string;
+  phone: string;
+  cityId?: string;
+  vehicle?: string;
+  panNumber?: string;
+  dlNumber?: string;
+  rcNumber?: string;
+  documents?: {
+    panPhoto?: string;
+    dlFront?: string;
+    dlBack?: string;
+    rcPhoto?: string;
+    insurancePhoto?: string;
+    [key: string]: string | undefined;
+  };
+  applicationStatus: string;
+  status: string;
+  createdAt: string;
+}
+
+interface RiderItem {
+  _id: string;
+  id?: string;
+  name: string;
+  phone: string;
+  photoUrl?: string;
+  vehicle?: string;
+  status: string;
+  isAvailable: boolean;
+  currentLat?: number | null;
+  currentLon?: number | null;
+  currentOrderId?: string | null;
+  locationUpdatedAt?: string | null;
+  rating?: number;
+  createdAt?: string;
+}
+
+function AllRidersTabContent() {
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [riders, setRiders] = useState<RiderItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchRiders = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
+    try {
+      const res = await api.get<{ success: boolean; riders: RiderItem[] }>('/admin/riders?city=balurghat');
+      if (res.success && Array.isArray(res.riders)) {
+        setRiders(res.riders);
+      }
+    } catch {
+      // silent catch on auto-refresh to prevent UI error toasts on transient network glitch
+    } finally {
+      if (!isSilent) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRiders(false);
+    intervalRef.current = setInterval(() => {
+      fetchRiders(true);
+    }, 15000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [fetchRiders]);
+
+  const filteredRiders = useMemo(() => {
+    const q = search.toLowerCase();
+    return riders.filter(r =>
+      !q || r.name.toLowerCase().includes(q) || r.phone.includes(q) || (r.vehicle ?? "").toLowerCase().includes(q)
+    );
+  }, [riders, search]);
+
+  const formatAgo = (iso?: string | null) => {
+    if (!iso) return "Never";
+    const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (diff < 15) return "Just now";
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    return `${Math.floor(diff / 3600)}h ago`;
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header controls: Search & View Mode Toggle */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-3 rounded-2xl neu-card">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search riders by name, phone or vehicle..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9 h-9 text-xs rounded-xl"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-muted-foreground font-mono hidden md:inline">
+            Auto-refresh 15s 🟢
+          </span>
+          <div className="flex p-1 bg-muted/60 rounded-xl">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                viewMode === 'list' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <List className="w-3.5 h-3.5" /> List View
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                viewMode === 'map' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <MapPin className="w-3.5 h-3.5" /> Map View
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {viewMode === 'map' ? (
+        <FleetMapTab />
+      ) : loading ? (
+        <div className="space-y-3">{[1, 2, 3, 4].map(i => <div key={i} className="h-16 bg-muted/60 rounded-2xl animate-pulse" />)}</div>
+      ) : filteredRiders.length === 0 ? (
+        <div className="text-center p-12 bg-card rounded-3xl neu-inset text-muted-foreground">
+          <Truck className="w-12 h-12 mx-auto mb-3 opacity-20" />
+          <p className="font-semibold text-foreground">No Approved Riders Found</p>
+          <p className="text-xs mt-1">Approved delivery partners for Balurghat city will appear here.</p>
+        </div>
+      ) : (
+        <div className="bg-card rounded-3xl neu-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-muted/50 text-xs uppercase text-muted-foreground border-b border-border/40 font-semibold">
+                <tr>
+                  <th className="px-5 py-3.5">Rider Profile</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5">Current Order</th>
+                  <th className="px-5 py-3.5">Vehicle</th>
+                  <th className="px-5 py-3.5">Rating</th>
+                  <th className="px-5 py-3.5 text-right">Last Location Update</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {filteredRiders.map(r => {
+                  const isOnDelivery = Boolean(r.currentOrderId);
+                  const isOnline = r.isAvailable && r.status === 'active';
+                  return (
+                    <tr key={r._id || r.id} className="hover:bg-muted/20 transition-colors">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          {r.photoUrl ? (
+                            <img src={r.photoUrl} alt={r.name} className="w-9 h-9 rounded-full object-cover border" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm border border-primary/20">
+                              {r.name.slice(0, 1).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-bold text-foreground">{r.name}</div>
+                            <div className="text-xs font-mono text-muted-foreground">{r.phone}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        {isOnDelivery ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> On Delivery
+                          </span>
+                        ) : isOnline ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" /> Online
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-muted text-muted-foreground">
+                            <span className="w-2 h-2 rounded-full bg-gray-400" /> Offline
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4">
+                        {r.currentOrderId ? (
+                          <Badge variant="secondary" className="font-mono text-xs text-primary bg-primary/10">
+                            #ORD_{r.currentOrderId.slice(-6).toUpperCase()}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground opacity-50">-</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4">
+                        <Badge variant="outline" className="capitalize text-xs font-medium">
+                          {r.vehicle || 'Bike'}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-4 font-bold text-amber-500 flex items-center gap-1">
+                        ★ {r.rating ?? 4.8}
+                      </td>
+                      <td className="px-5 py-4 text-right text-xs font-mono text-muted-foreground">
+                        {formatAgo(r.locationUpdatedAt)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RidersSectionTab() {
+  const [subTab, setSubTab] = useState<'applications' | 'all'>('applications');
+  const [applications, setApplications] = useState<RiderApplication[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedDocs, setSelectedDocs] = useState<RiderApplication | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const fetchApplications = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get<{ success: boolean; applications: RiderApplication[] }>('/admin/riders/applications?status=pending');
+      setApplications(res.applications ?? []);
+    } catch {
+      toast.error("Failed to load rider applications");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchApplications();
+  }, [fetchApplications]);
+
+  const handleApprove = async (id: string) => {
+    setActionLoading(id);
+    try {
+      await api.post(`/admin/riders/${id}/approve`);
+      toast.success("Rider application approved!");
+      fetchApplications();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to approve rider");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectingId) return;
+    if (!rejectReason.trim()) {
+      toast.error("Please enter a reason for rejection");
+      return;
+    }
+    setActionLoading(rejectingId);
+    try {
+      await api.post(`/admin/riders/${rejectingId}/reject`, { reason: rejectReason.trim() });
+      toast.success("Rider application rejected.");
+      setRejectingId(null);
+      setRejectReason("");
+      fetchApplications();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to reject rider");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Truck className="w-6 h-6 text-primary" /> Rider Management
+          </h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Review pending applications & manage delivery partners</p>
+        </div>
+      </div>
+
+      {/* Sub Tabs */}
+      <div className="flex gap-2 p-1 bg-background neu-inset rounded-xl max-w-fit">
+        <button
+          onClick={() => setSubTab('applications')}
+          className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
+            subTab === 'applications' ? 'bg-primary text-primary-foreground neu-card' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Applications ({applications.length})
+        </button>
+        <button
+          onClick={() => setSubTab('all')}
+          className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
+            subTab === 'all' ? 'bg-primary text-primary-foreground neu-card' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          All Riders
+        </button>
+      </div>
+
+      {subTab === 'applications' ? (
+        <div className="space-y-4">
+          {loading ? (
+            <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 bg-muted rounded-2xl animate-pulse" />)}</div>
+          ) : applications.length === 0 ? (
+            <div className="text-center p-12 bg-card rounded-3xl neu-inset text-muted-foreground">
+              <Truck className="w-12 h-12 mx-auto mb-3 opacity-20" />
+              <p className="font-semibold text-foreground">No Pending Applications</p>
+              <p className="text-xs mt-1">New rider signups from the mobile app will appear here for review.</p>
+            </div>
+          ) : (
+            <div className="bg-card rounded-3xl neu-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-muted/50 text-xs uppercase text-muted-foreground border-b border-border/40 font-semibold">
+                    <tr>
+                      <th className="px-5 py-3.5">Name</th>
+                      <th className="px-5 py-3.5">Phone</th>
+                      <th className="px-5 py-3.5">City</th>
+                      <th className="px-5 py-3.5">Vehicle Type</th>
+                      <th className="px-5 py-3.5">Submitted Date</th>
+                      <th className="px-5 py-3.5">Documents</th>
+                      <th className="px-5 py-3.5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {applications.map(app => (
+                      <tr key={app._id} className="hover:bg-muted/20 transition-colors">
+                        <td className="px-5 py-4 font-bold text-foreground">{app.name}</td>
+                        <td className="px-5 py-4 font-mono text-muted-foreground">{app.phone}</td>
+                        <td className="px-5 py-4 capitalize">{app.cityId || 'Balurghat'}</td>
+                        <td className="px-5 py-4">
+                          <Badge variant="outline" className="capitalize">{app.vehicle || 'Bike'}</Badge>
+                        </td>
+                        <td className="px-5 py-4 text-xs text-muted-foreground">
+                          {new Date(app.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                        </td>
+                        <td className="px-5 py-4">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setSelectedDocs(app)}
+                            className="h-8 text-xs gap-1 rounded-xl neu-card"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-primary" /> View Documents
+                          </Button>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              size="sm"
+                              disabled={actionLoading === app._id}
+                              onClick={() => handleApprove(app._id)}
+                              className="h-8 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold"
+                            >
+                              {actionLoading === app._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Approve"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              disabled={actionLoading === app._id}
+                              onClick={() => { setRejectingId(app._id); setRejectReason(""); }}
+                              className="h-8 px-3 text-xs rounded-xl font-bold"
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <AllRidersTabContent />
+      )}
+
+      {/* View Documents Modal */}
+      {selectedDocs && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card rounded-3xl neu-card max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto border border-border">
+            <div className="flex items-center justify-between border-b border-border/40 pb-3">
+              <div>
+                <h3 className="font-bold text-lg text-foreground">KYC Documents — {selectedDocs.name}</h3>
+                <p className="text-xs text-muted-foreground font-mono">{selectedDocs.phone}</p>
+              </div>
+              <button onClick={() => setSelectedDocs(null)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-muted-foreground uppercase">PAN Card ({selectedDocs.panNumber || 'N/A'})</p>
+                {selectedDocs.documents?.panPhoto ? (
+                  <img src={selectedDocs.documents.panPhoto} alt="PAN" className="w-full h-40 object-cover rounded-2xl border" />
+                ) : (
+                  <div className="w-full h-40 bg-muted/40 rounded-2xl flex items-center justify-center text-xs text-muted-foreground">No PAN Photo uploaded</div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-muted-foreground uppercase">RC Photo ({selectedDocs.rcNumber || 'N/A'})</p>
+                {selectedDocs.documents?.rcPhoto ? (
+                  <img src={selectedDocs.documents.rcPhoto} alt="RC" className="w-full h-40 object-cover rounded-2xl border" />
+                ) : (
+                  <div className="w-full h-40 bg-muted/40 rounded-2xl flex items-center justify-center text-xs text-muted-foreground">No RC Photo uploaded</div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-muted-foreground uppercase">DL Front ({selectedDocs.dlNumber || 'N/A'})</p>
+                {selectedDocs.documents?.dlFront ? (
+                  <img src={selectedDocs.documents.dlFront} alt="DL Front" className="w-full h-40 object-cover rounded-2xl border" />
+                ) : (
+                  <div className="w-full h-40 bg-muted/40 rounded-2xl flex items-center justify-center text-xs text-muted-foreground">No DL Front uploaded</div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-muted-foreground uppercase">DL Back</p>
+                {selectedDocs.documents?.dlBack ? (
+                  <img src={selectedDocs.documents.dlBack} alt="DL Back" className="w-full h-40 object-cover rounded-2xl border" />
+                ) : (
+                  <div className="w-full h-40 bg-muted/40 rounded-2xl flex items-center justify-center text-xs text-muted-foreground">No DL Back uploaded</div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setSelectedDocs(null)} className="rounded-xl">Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Reason Modal */}
+      {rejectingId && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card rounded-3xl neu-card max-w-md w-full p-6 space-y-4 border border-border">
+            <h3 className="font-bold text-lg text-foreground">Reject Rider Application</h3>
+            <p className="text-xs text-muted-foreground">Please specify the reason for rejection (e.g., blurry DL photo, invalid PAN).</p>
+
+            <textarea
+              rows={3}
+              placeholder="Enter rejection reason..."
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+              className="w-full p-3 rounded-2xl bg-background neu-inset border border-input text-sm text-foreground focus:outline-none"
+            />
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setRejectingId(null)} className="rounded-xl">Cancel</Button>
+              <Button
+                variant="destructive"
+                disabled={actionLoading === rejectingId}
+                onClick={handleReject}
+                className="rounded-xl"
+              >
+                {actionLoading === rejectingId ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null} Confirm Reject
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const EMPTY_DP_FORM = { name: "", phone: "", vehicle: "Bike" };
 
 function DeliveryPartnersTab() {
@@ -8898,18 +9402,18 @@ function DeliveryPartnersTab() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Full Name *</label>
-                <Input placeholder="e.g. Rahul Das" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                <Input placeholder="e.g. Rahul Das" value={form.name} onChange={e => setForm((f: typeof EMPTY_DP_FORM) => ({ ...f, name: e.target.value }))} />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Phone (10 digits) *</label>
-                <Input placeholder="9876543210" maxLength={10} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))} />
+                <Input placeholder="9876543210" maxLength={10} value={form.phone} onChange={e => setForm((f: typeof EMPTY_DP_FORM) => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))} />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Vehicle</label>
                 <select
                   className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
                   value={form.vehicle}
-                  onChange={e => setForm(f => ({ ...f, vehicle: e.target.value }))}
+                  onChange={e => setForm((f: typeof EMPTY_DP_FORM) => ({ ...f, vehicle: e.target.value }))}
                 >
                   {VEHICLE_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>

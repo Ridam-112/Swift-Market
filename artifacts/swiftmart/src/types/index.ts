@@ -194,6 +194,19 @@ export interface PlatformOrder {
   updatedAt: string;
   refundedAt?: string;
   address?: { label?: string; line1?: string; city?: string; pincode?: string };
+  deliveryPartnerId?: string;
+  riderName?: string;
+  riderPhone?: string;
+  riderPhotoUrl?: string;
+  deliveryPartner?: {
+    id?: string;
+    name?: string;
+    phone?: string;
+    photoUrl?: string;
+    vehicle?: string;
+    currentLat?: number;
+    currentLon?: number;
+  };
 }
 
 export interface Report {
