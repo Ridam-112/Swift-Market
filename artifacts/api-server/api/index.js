@@ -125715,29 +125715,32 @@ router9.get("/", authenticate, async (req, res) => {
   }
   const where = conditions.length ? and6(...conditions) : void 0;
   const skip = (pg2 - 1) * lm;
-  const [result, [{ total }]] = await Promise.all([
-    db.select({
-      order: orders,
-      riderName: deliveryPartners.name,
-      riderPhone: deliveryPartners.phone,
-      riderPhotoUrl: deliveryPartners.photoUrl,
-      riderVehicle: deliveryPartners.vehicle
-    }).from(orders).leftJoin(deliveryPartners, eq12(orders.deliveryPartnerId, deliveryPartners.id)).where(where).orderBy(desc5(orders.createdAt)).offset(skip).limit(lm),
+  const [orderRows, [{ total }]] = await Promise.all([
+    db.select().from(orders).where(where).orderBy(desc5(orders.createdAt)).offset(skip).limit(lm),
     db.select({ total: count6() }).from(orders).where(where)
   ]);
-  const mappedOrders = result.map(({ order, riderName, riderPhone, riderPhotoUrl, riderVehicle }) => ({
-    ...mi(order),
-    riderName: riderName ?? void 0,
-    riderPhone: riderPhone ?? void 0,
-    riderPhotoUrl: riderPhotoUrl ?? void 0,
-    deliveryPartner: riderName ? {
-      id: order.deliveryPartnerId ?? void 0,
-      name: riderName,
-      phone: riderPhone,
-      photoUrl: riderPhotoUrl,
-      vehicle: riderVehicle
-    } : void 0
-  }));
+  const partnerIds = Array.from(new Set(orderRows.map((o) => o.deliveryPartnerId).filter(Boolean)));
+  const partnerMap = /* @__PURE__ */ new Map();
+  if (partnerIds.length > 0) {
+    const partnersList = await db.select().from(deliveryPartners).where(inArray5(deliveryPartners.id, partnerIds));
+    partnersList.forEach((p) => partnerMap.set(p.id, p));
+  }
+  const mappedOrders = orderRows.map((order) => {
+    const partner = order.deliveryPartnerId ? partnerMap.get(order.deliveryPartnerId) : null;
+    return {
+      ...mi(order),
+      riderName: partner?.name ?? void 0,
+      riderPhone: partner?.phone ?? void 0,
+      riderPhotoUrl: partner?.photoUrl ?? void 0,
+      deliveryPartner: partner ? {
+        id: partner.id,
+        name: partner.name,
+        phone: partner.phone,
+        photoUrl: partner.photoUrl,
+        vehicle: partner.vehicle
+      } : void 0
+    };
+  });
   res.json({ success: true, orders: mappedOrders, total: Number(total), page: pg2, pages: Math.ceil(Number(total) / lm) });
 });
 router9.get("/:id", authenticate, validateUuidParams("id"), async (req, res) => {

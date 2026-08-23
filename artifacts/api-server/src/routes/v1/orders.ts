@@ -198,37 +198,34 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<v
   const where = conditions.length ? and(...conditions) : undefined;
   const skip = (pg - 1) * lm;
 
-  const [result, [{ total }]] = await Promise.all([
-    db
-      .select({
-        order: orders,
-        riderName: deliveryPartners.name,
-        riderPhone: deliveryPartners.phone,
-        riderPhotoUrl: deliveryPartners.photoUrl,
-        riderVehicle: deliveryPartners.vehicle,
-      })
-      .from(orders)
-      .leftJoin(deliveryPartners, eq(orders.deliveryPartnerId, deliveryPartners.id))
-      .where(where)
-      .orderBy(desc(orders.createdAt))
-      .offset(skip)
-      .limit(lm),
+  const [orderRows, [{ total }]] = await Promise.all([
+    db.select().from(orders).where(where).orderBy(desc(orders.createdAt)).offset(skip).limit(lm),
     db.select({ total: count() }).from(orders).where(where),
   ]);
 
-  const mappedOrders = result.map(({ order, riderName, riderPhone, riderPhotoUrl, riderVehicle }) => ({
-    ...mi(order),
-    riderName: riderName ?? undefined,
-    riderPhone: riderPhone ?? undefined,
-    riderPhotoUrl: riderPhotoUrl ?? undefined,
-    deliveryPartner: riderName ? {
-      id: order.deliveryPartnerId ?? undefined,
-      name: riderName,
-      phone: riderPhone,
-      photoUrl: riderPhotoUrl,
-      vehicle: riderVehicle,
-    } : undefined,
-  }));
+  const partnerIds = Array.from(new Set(orderRows.map(o => o.deliveryPartnerId).filter(Boolean))) as string[];
+  const partnerMap = new Map<string, typeof deliveryPartners.$inferSelect>();
+  if (partnerIds.length > 0) {
+    const partnersList = await db.select().from(deliveryPartners).where(inArray(deliveryPartners.id, partnerIds));
+    partnersList.forEach(p => partnerMap.set(p.id, p));
+  }
+
+  const mappedOrders = orderRows.map(order => {
+    const partner = order.deliveryPartnerId ? partnerMap.get(order.deliveryPartnerId) : null;
+    return {
+      ...mi(order),
+      riderName: partner?.name ?? undefined,
+      riderPhone: partner?.phone ?? undefined,
+      riderPhotoUrl: partner?.photoUrl ?? undefined,
+      deliveryPartner: partner ? {
+        id: partner.id,
+        name: partner.name,
+        phone: partner.phone,
+        photoUrl: partner.photoUrl,
+        vehicle: partner.vehicle,
+      } : undefined,
+    };
+  });
 
   res.json({ success: true, orders: mappedOrders, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
 });
