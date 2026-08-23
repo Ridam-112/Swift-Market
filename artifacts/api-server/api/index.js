@@ -122499,8 +122499,7 @@ function formatUser(u) {
   const phone = u.phone?.startsWith("g_") ? "" : u.phone ?? "";
   const ONLINE_THRESHOLD_MS = 5 * 60 * 1e3;
   const isOnline = u.lastSeenAt ? Date.now() - new Date(u.lastSeenAt).getTime() < ONLINE_THRESHOLD_MS : false;
-  const dbRoles = Array.isArray(u.roles) ? u.roles : [];
-  const roles = u.role === "admin" || u.role === "super_admin" ? ["customer", "rider", "admin", "super_admin"] : dbRoles.length > 0 ? dbRoles.includes("rider") || u.role === "rider" ? Array.from(/* @__PURE__ */ new Set([...dbRoles, "rider"])) : dbRoles : u.role === "rider" ? ["customer", "rider"] : u.role === "vendor" ? ["customer", "vendor"] : [u.role || "customer"];
+  const roles = u.role === "admin" || u.role === "super_admin" ? ["customer", "rider", "admin", "super_admin"] : u.role === "rider" ? ["customer", "rider"] : u.role === "vendor" ? ["customer", "vendor"] : [u.role || "customer"];
   return {
     id: u.id,
     _id: u.id,
@@ -130014,11 +130013,8 @@ router32.post("/:id/approve", authenticate, A25, validateUuidParams("id"), async
   if (targetUserId) {
     const [userRow] = await db.select().from(users).where(eq34(users.id, targetUserId)).limit(1);
     if (userRow) {
-      const existingRoles = Array.isArray(userRow.roles) ? userRow.roles : ["customer"];
-      const newRoles = existingRoles.includes("rider") ? existingRoles : [...existingRoles, "rider"];
       await db.update(users).set({
         role: "rider",
-        roles: newRoles,
         updatedAt: /* @__PURE__ */ new Date()
       }).where(eq34(users.id, targetUserId));
     }

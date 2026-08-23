@@ -57,11 +57,8 @@ router.post("/:id/approve", authenticate, A, validateUuidParams("id"), async (re
   if (targetUserId) {
     const [userRow] = await db.select().from(users).where(eq(users.id, targetUserId)).limit(1);
     if (userRow) {
-      const existingRoles = Array.isArray(userRow.roles) ? (userRow.roles as string[]) : ["customer"];
-      const newRoles = existingRoles.includes("rider") ? existingRoles : [...existingRoles, "rider"];
       await db.update(users).set({
         role: "rider",
-        roles: newRoles,
         updatedAt: new Date(),
       }).where(eq(users.id, targetUserId));
     }
