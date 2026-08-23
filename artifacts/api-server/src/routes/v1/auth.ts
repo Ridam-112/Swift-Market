@@ -42,6 +42,15 @@ function getLoginSource(req: Request): string {
   return "web";
 }
 
+function isSuperAdminUser(u: typeof users.$inferSelect): boolean {
+  if (u.email && isSuperAdminEmail(u.email)) return true;
+  if (u.phone) {
+    const digits = u.phone.replace(/\D/g, "").slice(-10);
+    if (digits === "6296118949" || digits === "7602584238") return true;
+  }
+  return u.role === "admin" || u.role === "super_admin";
+}
+
 function formatUser(u: typeof users.$inferSelect) {
   // Mask legacy fake-phone placeholders (g_<googleId>) — they should never reach the client
   const phone = u.phone?.startsWith("g_") ? "" : (u.phone ?? "");
@@ -50,7 +59,15 @@ function formatUser(u: typeof users.$inferSelect) {
     ? Date.now() - new Date(u.lastSeenAt).getTime() < ONLINE_THRESHOLD_MS
     : false;
 
-  const roles = u.role === "admin" || u.role === "super_admin"
+  const superAdmin = isSuperAdminUser(u);
+  const effectiveRole = superAdmin ? "super_admin" : u.role;
+
+  // Auto-promote in DB if user matches super admin email/phone but DB role was customer
+  if (superAdmin && u.role !== "super_admin") {
+    db.update(users).set({ role: "super_admin", updatedAt: new Date() }).where(eq(users.id, u.id)).catch(() => {});
+  }
+
+  const roles = superAdmin
     ? ["customer", "rider", "admin", "super_admin"]
     : u.role === "rider"
     ? ["customer", "rider"]
@@ -64,7 +81,7 @@ function formatUser(u: typeof users.$inferSelect) {
     name: u.name,
     phone,
     email: u.email ?? "",
-    role: u.role,
+    role: effectiveRole,
     roles,
     status: u.status,
     vendorStatus: u.vendorStatus,
@@ -82,10 +99,11 @@ function hashToken(token: string): string {
 }
 
 function issueTokens(u: typeof users.$inferSelect) {
+  const superAdmin = isSuperAdminUser(u);
   const payload = {
     userId: u.id,
     phone: u.phone ?? "",
-    role: u.role as "customer" | "vendor" | "admin" | "super_admin" | "city_manager",
+    role: (superAdmin ? "super_admin" : u.role) as "customer" | "vendor" | "admin" | "super_admin" | "city_manager",
     tokenVersion: u.tokenVersion ?? 1,
   };
   return {

