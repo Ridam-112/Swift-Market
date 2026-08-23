@@ -1893,6 +1893,11 @@ function OrdersTab() {
                   ? <span className="text-xs text-violet-600 dark:text-violet-400 font-medium">🕐 Scheduled</span>
                   : <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">⚡ Instant</span>
                 }
+                {o.deliveryOtp && (
+                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 text-xs font-mono font-bold">
+                    🔑 OTP: {o.deliveryOtp}
+                  </Badge>
+                )}
                 <span className="ml-auto text-xs text-muted-foreground">{new Date(o.placedAt).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}</span>
               </div>
 

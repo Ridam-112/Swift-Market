@@ -314,13 +314,17 @@ router.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("ord
   const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
   if (!partner) { res.status(403).json({ success: false, message: "Not a delivery partner" }); return; }
 
-  const allowed = ["out_for_delivery"];
-  if (!allowed.includes(status)) {
+  const rawStatus = String(status ?? "").toLowerCase();
+  const targetStatus = ["out_for_delivery", "picked_up", "picked", "on_the_way", "pickup", "in_transit"].includes(rawStatus)
+    ? "out_for_delivery"
+    : rawStatus;
+
+  if (targetStatus !== "out_for_delivery") {
     res.status(400).json({
       success: false,
       message: status === "delivered"
         ? "To mark an order as delivered, enter the customer's delivery OTP."
-        : "Delivery partners can only set out_for_delivery via this endpoint.",
+        : "Delivery partners can set out_for_delivery via this endpoint.",
     });
     return;
   }
@@ -334,14 +338,14 @@ router.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("ord
 
   const isCod = (order.paymentMethod ?? "COD").toUpperCase() === "COD";
 
-  if (status === "delivered") {
+  if (targetStatus === "delivered") {
     await db.update(deliveryPartners).set({
       ordersDelivered: partner.ordersDelivered + 1,
       totalEarnings: partner.totalEarnings + (order.deliveryCharge ?? 0),
       currentOrderId: null,
       updatedAt: new Date(),
     }).where(eq(deliveryPartners.id, partner.id));
-  } else if (status === "out_for_delivery") {
+  } else if (targetStatus === "out_for_delivery") {
     await db.update(deliveryPartners).set({
       currentOrderId: order.id,
       updatedAt: new Date(),
@@ -349,10 +353,10 @@ router.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("ord
   }
 
   // For COD orders marked delivered with cash confirmed, mark payment as paid
-  const paymentStatusUpdate = (status === "delivered" && isCod && confirmCash) ? { paymentStatus: "paid" } : {};
+  const paymentStatusUpdate = (targetStatus === "delivered" && isCod && confirmCash) ? { paymentStatus: "paid" } : {};
 
   const [updated] = await db.update(orders)
-    .set({ status, ...paymentStatusUpdate, updatedAt: new Date() })
+    .set({ status: targetStatus, ...paymentStatusUpdate, updatedAt: new Date() })
     .where(eq(orders.id, orderId))
     .returning();
 
@@ -361,7 +365,7 @@ router.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("ord
     out_for_delivery: { title: "Your order is on the way! 🚚", body: `Order #${orderId.slice(-6).toUpperCase()} has been picked up and is out for delivery.` },
     delivered: { title: "Order Delivered! ✅", body: `Order #${orderId.slice(-6).toUpperCase()} has been delivered. Enjoy!` },
   };
-  const msg = STATUS_MESSAGES[status];
+  const msg = STATUS_MESSAGES[targetStatus];
   if (msg && order.customerId) {
     try {
       await createNotificationLimited(order.customerId, {
