@@ -127028,10 +127028,21 @@ router12.post("/apply", authenticate, async (req, res) => {
     res.status(404).json({ success: false, message: "User not found" });
     return;
   }
-  let [existing] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  const applicantPhone = String(body["phone"] || user.phone || "").trim();
+  let existing = null;
+  if (userId) {
+    const [byUser] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+    existing = byUser;
+  }
+  if (!existing && applicantPhone) {
+    const [byPhone] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.phone, applicantPhone)).limit(1);
+    existing = byPhone;
+  }
   if (existing) {
     const [updated] = await db.update(deliveryPartners).set({
       name: body["name"] ? String(body["name"]) : existing.name,
+      phone: applicantPhone || existing.phone,
+      userId: userId || existing.userId,
       vehicle: body["vehicle"] ? String(body["vehicle"]) : existing.vehicle,
       panNumber: body["panNumber"] ? String(body["panNumber"]) : existing.panNumber,
       dlNumber: body["dlNumber"] ? String(body["dlNumber"]) : existing.dlNumber,
@@ -127045,7 +127056,7 @@ router12.post("/apply", authenticate, async (req, res) => {
   }
   const [partner] = await db.insert(deliveryPartners).values({
     name: String(body["name"] || user.name || "Rider Applicant"),
-    phone: String(body["phone"] || user.phone || ""),
+    phone: applicantPhone || "0000000000",
     userId,
     cityId: body["cityId"] ? String(body["cityId"]) : user.cityId,
     vehicle: body["vehicle"] ? String(body["vehicle"]) : "Bike",
