@@ -116374,13 +116374,13 @@ __export(schema_exports, {
   shops: () => shops,
   shopsMapping: () => shopsMapping,
   supportTickets: () => supportTickets,
-  users: () => users2,
+  users: () => users,
   usersMapping: () => usersMapping
 });
 
 // ../../lib/db/dist/schema/users.js
 import { pgTable, text, timestamp, jsonb, integer, index } from "drizzle-orm/pg-core";
-var users2 = pgTable("users", {
+var users = pgTable("users", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull().default("User"),
   // phone is now nullable — email-first auth; new users complete phone in /complete-profile
@@ -116482,7 +116482,7 @@ var shops = pgTable6("shops", {
   shopName: text6("shop_name").notNull(),
   ownerName: text6("owner_name").notNull().default(""),
   phone: text6("phone").notNull(),
-  ownerId: text6("owner_id").notNull().references(() => users2.id, { onDelete: "restrict" }),
+  ownerId: text6("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   address: jsonb4("address").notNull().default({}),
   cityId: text6("city_id"),
   shopType: text6("shop_type"),
@@ -116692,7 +116692,7 @@ var reports = pgTable13("reports", {
 import { pgTable as pgTable14, text as text14, timestamp as timestamp14, boolean as boolean8, jsonb as jsonb8, index as index7 } from "drizzle-orm/pg-core";
 var notifications = pgTable14("notifications", {
   id: text14("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text14("user_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
+  userId: text14("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   type: text14("type").notNull().default("system"),
   title: text14("title").notNull(),
   message: text14("message").notNull(),
@@ -116739,7 +116739,7 @@ var deliveryPartners = pgTable17("delivery_partners", {
   id: text17("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text17("name").notNull(),
   phone: text17("phone").notNull().unique(),
-  userId: text17("user_id").references(() => users2.id, { onDelete: "set null" }),
+  userId: text17("user_id").references(() => users.id, { onDelete: "set null" }),
   cityId: text17("city_id"),
   vehicle: text17("vehicle"),
   isAvailable: boolean10("is_available").notNull().default(true),
@@ -116798,7 +116798,7 @@ var supportTickets = pgTable19("support_tickets", {
 import { pgTable as pgTable20, text as text20, timestamp as timestamp20, boolean as boolean11, index as index9 } from "drizzle-orm/pg-core";
 var fcmTokens = pgTable20("fcm_tokens", {
   id: text20("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text20("user_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
+  userId: text20("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   token: text20("token").notNull().unique(),
   platform: text20("platform").notNull().default("web"),
   role: text20("role").notNull().default("customer"),
@@ -122233,7 +122233,7 @@ async function authenticate(req, res, next) {
   const token = authHeader.slice(7);
   try {
     const payload = verifyAccessToken(token);
-    const [user] = await db.select({ tokenVersion: users2.tokenVersion, status: users2.status }).from(users2).where(eq(users2.id, payload.userId)).limit(1);
+    const [user] = await db.select({ tokenVersion: users.tokenVersion, status: users.status }).from(users).where(eq(users.id, payload.userId)).limit(1);
     if (!user) {
       res.status(401).json({ success: false, message: "User not found" });
       return;
@@ -122259,7 +122259,7 @@ function touchPresence(userId) {
   const lastUpdate = presenceUpdateCache.get(userId) ?? 0;
   if (now - lastUpdate < 6e4) return;
   presenceUpdateCache.set(userId, now);
-  db.update(users2).set({ lastSeenAt: /* @__PURE__ */ new Date(), isOnline: true }).where(eq(users2.id, userId)).catch(() => {
+  db.update(users).set({ lastSeenAt: /* @__PURE__ */ new Date(), isOnline: true }).where(eq(users.id, userId)).catch(() => {
   });
 }
 function requireRole(...roles) {
@@ -122585,7 +122585,7 @@ router2.post("/check-phone", loginLimiter, async (req, res) => {
     return;
   }
   try {
-    const [user] = await db.select({ id: users2.id, passwordHash: users2.passwordHash, status: users2.status }).from(users2).where(eq3(users2.phone, phone)).limit(1);
+    const [user] = await db.select({ id: users.id, passwordHash: users.passwordHash, status: users.status }).from(users).where(eq3(users.phone, phone)).limit(1);
     if (!user) {
       req.log.info({ phone }, "check-phone: number not registered");
       res.json({ success: true, exists: false, hasPassword: false });
@@ -122614,7 +122614,7 @@ router2.post("/set-password", loginLimiter, async (req, res) => {
     return;
   }
   try {
-    const [user] = await db.select().from(users2).where(eq3(users2.phone, phone)).limit(1);
+    const [user] = await db.select().from(users).where(eq3(users.phone, phone)).limit(1);
     if (!user) {
       res.status(404).json({ success: false, message: "No account found for this mobile number" });
       return;
@@ -122630,14 +122630,14 @@ router2.post("/set-password", loginLimiter, async (req, res) => {
     }
     req.log.info({ phone, userId: user.id, passwordHashBefore: null }, "set-password: no password exists \u2014 creating");
     const passwordHash = await import_bcryptjs.default.hash(password, BCRYPT_ROUNDS);
-    const [updated] = await db.update(users2).set({
+    const [updated] = await db.update(users).set({
       passwordHash,
       authProvider: "password",
       // Clear any stale reset tokens (e.g. from a previous forgot-password attempt)
       passwordResetTokenHash: null,
       passwordResetExpires: null,
       lastLoginAt: /* @__PURE__ */ new Date()
-    }).where(eq3(users2.id, user.id)).returning();
+    }).where(eq3(users.id, user.id)).returning();
     if (!updated || !updated.passwordHash) {
       req.log.error({ phone, userId: user.id }, "set-password: DB update returned no row \u2014 password not saved");
       res.status(500).json({ success: false, message: "Failed to save password. Please try again." });
@@ -122669,13 +122669,13 @@ router2.post("/signup", signupLimiter, async (req, res) => {
   }
   const { name, phone, password } = parsed.data;
   try {
-    const [existing] = await db.select({ id: users2.id }).from(users2).where(eq3(users2.phone, phone)).limit(1);
+    const [existing] = await db.select({ id: users.id }).from(users).where(eq3(users.phone, phone)).limit(1);
     if (existing) {
       res.status(409).json({ success: false, message: "An account with this mobile number already exists" });
       return;
     }
     const passwordHash = await import_bcryptjs.default.hash(password, BCRYPT_ROUNDS);
-    const [user] = await db.insert(users2).values({
+    const [user] = await db.insert(users).values({
       name: name.trim(),
       phone,
       passwordHash,
@@ -122683,8 +122683,8 @@ router2.post("/signup", signupLimiter, async (req, res) => {
       role: "customer",
       status: "active"
     }).returning();
-    await db.update(users2).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users2.id, user.id));
-    const [updated] = await db.select().from(users2).where(eq3(users2.id, user.id)).limit(1);
+    await db.update(users).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq3(users.id, user.id)).limit(1);
     req.log.info({ phone }, "New user signed up");
     res.status(201).json({
       success: true,
@@ -122708,7 +122708,7 @@ router2.post("/login", loginLimiter, async (req, res) => {
     return;
   }
   try {
-    const [user] = await db.select().from(users2).where(eq3(users2.phone, phone)).limit(1);
+    const [user] = await db.select().from(users).where(eq3(users.phone, phone)).limit(1);
     if (!user) {
       res.status(401).json({ success: false, message: "Invalid mobile number or password" });
       return;
@@ -122730,8 +122730,8 @@ router2.post("/login", loginLimiter, async (req, res) => {
       res.status(401).json({ success: false, message: "Invalid mobile number or password" });
       return;
     }
-    await db.update(users2).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users2.id, user.id));
-    const [updated] = await db.select().from(users2).where(eq3(users2.id, user.id)).limit(1);
+    await db.update(users).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq3(users.id, user.id)).limit(1);
     req.log.info({ phone, role: user.role }, "User logged in");
     res.json({
       success: true,
@@ -122751,17 +122751,17 @@ router2.post("/forgot-password", resetPasswordLimiter, async (req, res) => {
     return;
   }
   try {
-    const [user] = await db.select().from(users2).where(eq3(users2.phone, phone)).limit(1);
+    const [user] = await db.select().from(users).where(eq3(users.phone, phone)).limit(1);
     if (user && user.status !== "banned") {
       const smsResult = await sendPasswordResetOtp(phone);
       const expires = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
       if (smsResult.success && smsResult.sessionId) {
-        await db.update(users2).set({ passwordResetTokenHash: `2fa:${smsResult.sessionId}`, passwordResetExpires: expires }).where(eq3(users2.id, user.id));
+        await db.update(users).set({ passwordResetTokenHash: `2fa:${smsResult.sessionId}`, passwordResetExpires: expires }).where(eq3(users.id, user.id));
         req.log.info({ phone, mode: OTP_MODE }, "Password reset OTP sent");
       } else {
         const { randomBytes: randomBytes3 } = await import("node:crypto");
         const token = randomBytes3(32).toString("hex");
-        await db.update(users2).set({ passwordResetTokenHash: hashToken(token), passwordResetExpires: expires }).where(eq3(users2.id, user.id));
+        await db.update(users).set({ passwordResetTokenHash: hashToken(token), passwordResetExpires: expires }).where(eq3(users.id, user.id));
         req.log.warn({ phone, err: smsResult.error }, "SMS failed \u2014 falling back to console token");
         if (process.env["NODE_ENV"] !== "production") {
           req.log.info({ phone, expires: expires.toISOString() }, "DEV: password reset token generated (not shown in production)");
@@ -122789,7 +122789,7 @@ router2.post("/reset-password", async (req, res) => {
     return;
   }
   try {
-    const [user] = await db.select().from(users2).where(eq3(users2.phone, phone)).limit(1);
+    const [user] = await db.select().from(users).where(eq3(users.phone, phone)).limit(1);
     if (!user || !user.passwordResetTokenHash || !user.passwordResetExpires) {
       res.status(400).json({ success: false, message: "Invalid or expired code. Request a new one." });
       return;
@@ -122818,15 +122818,15 @@ router2.post("/reset-password", async (req, res) => {
       return;
     }
     const passwordHash = await import_bcryptjs.default.hash(newPassword, BCRYPT_ROUNDS);
-    await db.update(users2).set({
+    await db.update(users).set({
       passwordHash,
       authProvider: "password",
       passwordResetTokenHash: null,
       passwordResetExpires: null,
       tokenVersion: (user.tokenVersion ?? 1) + 1,
       lastLoginAt: /* @__PURE__ */ new Date()
-    }).where(eq3(users2.id, user.id));
-    const [updated] = await db.select().from(users2).where(eq3(users2.id, user.id)).limit(1);
+    }).where(eq3(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq3(users.id, user.id)).limit(1);
     req.log.info({ phone }, "Password reset successful");
     res.json({ success: true, isNewUser: false, ...issueTokens(updated), user: formatUser(updated) });
   } catch (err) {
@@ -122842,7 +122842,7 @@ router2.post("/check-email", loginLimiter, async (req, res) => {
     return;
   }
   try {
-    const [user] = await db.select({ id: users2.id }).from(users2).where(eq3(users2.email, normalized)).limit(1);
+    const [user] = await db.select({ id: users.id }).from(users).where(eq3(users.email, normalized)).limit(1);
     res.json({ success: true, exists: !!user });
   } catch (err) {
     req.log.error({ err }, "check-email failed");
@@ -122862,13 +122862,13 @@ router2.post("/email-signup", signupLimiter, async (req, res) => {
   }
   const { name, email, password } = parsed.data;
   try {
-    const [existing] = await db.select({ id: users2.id }).from(users2).where(eq3(users2.email, email)).limit(1);
+    const [existing] = await db.select({ id: users.id }).from(users).where(eq3(users.email, email)).limit(1);
     if (existing) {
       res.status(409).json({ success: false, message: "An account with this email already exists. Please sign in." });
       return;
     }
     const passwordHash = await import_bcryptjs.default.hash(password, BCRYPT_ROUNDS);
-    const [user] = await db.insert(users2).values({
+    const [user] = await db.insert(users).values({
       name: name.trim(),
       email,
       passwordHash,
@@ -122876,8 +122876,8 @@ router2.post("/email-signup", signupLimiter, async (req, res) => {
       role: "customer",
       status: "active"
     }).returning();
-    await db.update(users2).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users2.id, user.id));
-    const [updated] = await db.select().from(users2).where(eq3(users2.id, user.id)).limit(1);
+    await db.update(users).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq3(users.id, user.id)).limit(1);
     req.log.info({ email }, "New user signed up via email");
     res.status(201).json({
       success: true,
@@ -122904,7 +122904,7 @@ router2.post("/email-login", loginLimiter, async (req, res) => {
     return;
   }
   try {
-    const [user] = await db.select().from(users2).where(eq3(users2.email, normalized)).limit(1);
+    const [user] = await db.select().from(users).where(eq3(users.email, normalized)).limit(1);
     if (!user) {
       res.status(401).json({ success: false, message: "Invalid email or password" });
       return;
@@ -122922,8 +122922,8 @@ router2.post("/email-login", loginLimiter, async (req, res) => {
       res.status(401).json({ success: false, message: "Invalid email or password" });
       return;
     }
-    await db.update(users2).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users2.id, user.id));
-    const [updated] = await db.select().from(users2).where(eq3(users2.id, user.id)).limit(1);
+    await db.update(users).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq3(users.id, user.id)).limit(1);
     const needsProfile = !updated.phone || updated.phone.startsWith("g_");
     req.log.info({ email: normalized, role: user.role }, "User logged in via email");
     res.json({
@@ -122986,10 +122986,10 @@ router2.post("/google", googleAuthLimiter, async (req, res) => {
       res.status(400).json({ success: false, message: "Invalid Google token" });
       return;
     }
-    let [user] = await db.select().from(users2).where(or2(eq3(users2.googleId, googleId), eq3(users2.email, email))).limit(1);
+    let [user] = await db.select().from(users).where(or2(eq3(users.googleId, googleId), eq3(users.email, email))).limit(1);
     const isNewUser = !user;
     if (!user) {
-      [user] = await db.insert(users2).values({
+      [user] = await db.insert(users).values({
         name: name ?? "User",
         email,
         googleId,
@@ -123000,14 +123000,14 @@ router2.post("/google", googleAuthLimiter, async (req, res) => {
         profilePhoto: profilePhoto ?? null
       }).returning();
     } else {
-      await db.update(users2).set({
+      await db.update(users).set({
         googleId: user.googleId ?? googleId,
         profilePhoto: user.profilePhoto ?? profilePhoto ?? null,
         authProvider: user.authProvider === "otp" ? "google" : user.authProvider
-      }).where(eq3(users2.id, user.id));
+      }).where(eq3(users.id, user.id));
     }
-    await db.update(users2).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users2.id, user.id));
-    const [updated] = await db.select().from(users2).where(eq3(users2.id, user.id)).limit(1);
+    await db.update(users).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq3(users.id, user.id)).limit(1);
     const needsProfile = isNewUser || !updated.phone || updated.phone.startsWith("g_");
     res.json({ success: true, isNewUser, needsProfile, ...issueTokens(updated), user: formatUser(updated) });
   } catch (err) {
@@ -123142,10 +123142,10 @@ router2.post("/google/exchange", googleAuthLimiter, async (req, res) => {
       res.status(400).json({ success: false, message: "Could not retrieve your Google account info." });
       return;
     }
-    let [user] = await db.select().from(users2).where(or2(eq3(users2.googleId, googleId), eq3(users2.email, email))).limit(1);
+    let [user] = await db.select().from(users).where(or2(eq3(users.googleId, googleId), eq3(users.email, email))).limit(1);
     const isNewUser = !user;
     if (!user) {
-      [user] = await db.insert(users2).values({
+      [user] = await db.insert(users).values({
         name: name ?? "User",
         email,
         googleId,
@@ -123156,14 +123156,14 @@ router2.post("/google/exchange", googleAuthLimiter, async (req, res) => {
         profilePhoto: profilePhoto ?? null
       }).returning();
     } else {
-      await db.update(users2).set({
+      await db.update(users).set({
         googleId: user.googleId ?? googleId,
         profilePhoto: user.profilePhoto ?? profilePhoto ?? null,
         authProvider: user.authProvider === "otp" ? "google" : user.authProvider
-      }).where(eq3(users2.id, user.id));
+      }).where(eq3(users.id, user.id));
     }
-    await db.update(users2).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users2.id, user.id));
-    const [updated] = await db.select().from(users2).where(eq3(users2.id, user.id)).limit(1);
+    await db.update(users).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq3(users.id, user.id)).limit(1);
     const needsProfile = isNewUser || !updated.phone || updated.phone.startsWith("g_");
     req.log.info({ email, isNewUser, needsProfile }, "Google OAuth exchange successful");
     res.json({ success: true, isNewUser, needsProfile, ...issueTokens(updated), user: formatUser(updated) });
@@ -123180,7 +123180,7 @@ router2.post("/refresh", tokenRefreshLimiter, async (req, res) => {
   }
   try {
     const payload = verifyRefreshToken(refreshToken2);
-    const [user] = await db.select().from(users2).where(eq3(users2.id, payload.userId)).limit(1);
+    const [user] = await db.select().from(users).where(eq3(users.id, payload.userId)).limit(1);
     if (!user || user.status !== "active") {
       res.status(401).json({ success: false, message: "User not found or banned" });
       return;
@@ -123197,7 +123197,7 @@ router2.post("/refresh", tokenRefreshLimiter, async (req, res) => {
 });
 router2.get("/me", authenticate, async (req, res) => {
   try {
-    const [user] = await db.select().from(users2).where(eq3(users2.id, req.user.userId)).limit(1);
+    const [user] = await db.select().from(users).where(eq3(users.id, req.user.userId)).limit(1);
     if (!user) {
       res.status(404).json({ success: false, message: "User not found" });
       return;
@@ -123237,7 +123237,7 @@ router2.get("/me", authenticate, async (req, res) => {
 router2.post("/logout", authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
-    await db.update(users2).set({ tokenVersion: (req.user.tokenVersion ?? 1) + 1 }).where(eq3(users2.id, userId));
+    await db.update(users).set({ tokenVersion: (req.user.tokenVersion ?? 1) + 1 }).where(eq3(users.id, userId));
     req.log.info({ userId }, "User logged out \u2014 tokens revoked");
     res.json({ success: true, message: "Logged out successfully" });
   } catch (err) {
@@ -123259,14 +123259,14 @@ router2.post("/email-signup", signupLimiter, async (req, res) => {
   const { name, password } = parsed.data;
   const normalizedEmail = parsed.data.email.toLowerCase().trim();
   try {
-    const [existing] = await db.select({ id: users2.id }).from(users2).where(eq3(users2.email, normalizedEmail)).limit(1);
+    const [existing] = await db.select({ id: users.id }).from(users).where(eq3(users.email, normalizedEmail)).limit(1);
     if (existing) {
       res.status(409).json({ success: false, message: "An account with this email already exists. Please sign in." });
       return;
     }
     const passwordHash = await import_bcryptjs.default.hash(password, BCRYPT_ROUNDS);
     const inferredRole = isSuperAdminEmail(normalizedEmail) ? "super_admin" : "customer";
-    const [user] = await db.insert(users2).values({
+    const [user] = await db.insert(users).values({
       name: name.trim(),
       email: normalizedEmail,
       passwordHash,
@@ -123277,8 +123277,8 @@ router2.post("/email-signup", signupLimiter, async (req, res) => {
     if (inferredRole === "super_admin") {
       req.log.info({ email: normalizedEmail }, "New user signed up and granted super_admin via SUPER_ADMIN_EMAILS");
     }
-    await db.update(users2).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users2.id, user.id));
-    const [updated] = await db.select().from(users2).where(eq3(users2.id, user.id)).limit(1);
+    await db.update(users).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq3(users.id, user.id)).limit(1);
     req.log.info({ email: normalizedEmail, role: inferredRole }, "New user signed up via email");
     res.status(201).json({
       success: true,
@@ -123304,7 +123304,7 @@ router2.post("/email-login", loginLimiter, async (req, res) => {
   }
   const normalizedEmail = email.toLowerCase().trim();
   try {
-    const [user] = await db.select().from(users2).where(eq3(users2.email, normalizedEmail)).limit(1);
+    const [user] = await db.select().from(users).where(eq3(users.email, normalizedEmail)).limit(1);
     if (!user) {
       res.status(401).json({ success: false, message: "Invalid email or password" });
       return;
@@ -123323,11 +123323,11 @@ router2.post("/email-login", loginLimiter, async (req, res) => {
       return;
     }
     if (isSuperAdminEmail(normalizedEmail) && user.role !== "super_admin") {
-      await db.update(users2).set({ role: "super_admin" }).where(eq3(users2.id, user.id));
+      await db.update(users).set({ role: "super_admin" }).where(eq3(users.id, user.id));
       req.log.info({ email: normalizedEmail }, "Promoted email user to super_admin via SUPER_ADMIN_EMAILS on login");
     }
-    await db.update(users2).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users2.id, user.id));
-    const [updated] = await db.select().from(users2).where(eq3(users2.id, user.id)).limit(1);
+    await db.update(users).set({ lastLoginAt: /* @__PURE__ */ new Date() }).where(eq3(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq3(users.id, user.id)).limit(1);
     req.log.info({ email: normalizedEmail, role: updated.role }, "User signed in via email");
     res.json({
       success: true,
@@ -123349,11 +123349,11 @@ router2.post("/email-forgot-password", resetPasswordLimiter, async (req, res) =>
   }
   const normalizedEmail = email.toLowerCase().trim();
   try {
-    const [user] = await db.select().from(users2).where(eq3(users2.email, normalizedEmail)).limit(1);
+    const [user] = await db.select().from(users).where(eq3(users.email, normalizedEmail)).limit(1);
     if (user && user.status !== "banned") {
       const token = randomBytes(32).toString("hex");
       const expires = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
-      await db.update(users2).set({ passwordResetTokenHash: hashToken(token), passwordResetExpires: expires }).where(eq3(users2.id, user.id));
+      await db.update(users).set({ passwordResetTokenHash: hashToken(token), passwordResetExpires: expires }).where(eq3(users.id, user.id));
       const proto = "https";
       const host = process.env["REPLIT_DEV_DOMAIN"] ?? process.env["APP_DOMAIN"] ?? "swiftmart.space";
       const resetUrl = `${proto}://${host}/auth?step=reset&token=${token}`;
@@ -123386,7 +123386,7 @@ router2.post("/email-reset-password", async (req, res) => {
   }
   try {
     const tokenHash = hashToken(token.trim());
-    const [user] = await db.select().from(users2).where(eq3(users2.passwordResetTokenHash, tokenHash)).limit(1);
+    const [user] = await db.select().from(users).where(eq3(users.passwordResetTokenHash, tokenHash)).limit(1);
     if (!user || !user.passwordResetExpires) {
       res.status(400).json({ success: false, message: "Invalid or expired reset token." });
       return;
@@ -123396,15 +123396,15 @@ router2.post("/email-reset-password", async (req, res) => {
       return;
     }
     const passwordHash = await import_bcryptjs.default.hash(newPassword, BCRYPT_ROUNDS);
-    await db.update(users2).set({
+    await db.update(users).set({
       passwordHash,
       authProvider: "email",
       passwordResetTokenHash: null,
       passwordResetExpires: null,
       tokenVersion: (user.tokenVersion ?? 1) + 1,
       lastLoginAt: /* @__PURE__ */ new Date()
-    }).where(eq3(users2.id, user.id));
-    const [updated] = await db.select().from(users2).where(eq3(users2.id, user.id)).limit(1);
+    }).where(eq3(users.id, user.id));
+    const [updated] = await db.select().from(users).where(eq3(users.id, user.id)).limit(1);
     req.log.info({ userId: user.id }, "Email password reset successful");
     res.json({ success: true, isNewUser: false, ...issueTokens(updated), user: formatUser(updated) });
   } catch (err) {
@@ -123419,7 +123419,7 @@ router2.post("/check-email", loginLimiter, async (req, res) => {
     return;
   }
   try {
-    const [existing] = await db.select({ id: users2.id }).from(users2).where(eq3(users2.email, email.toLowerCase().trim())).limit(1);
+    const [existing] = await db.select({ id: users.id }).from(users).where(eq3(users.email, email.toLowerCase().trim())).limit(1);
     res.json({ success: true, exists: Boolean(existing) });
   } catch (err) {
     req.log.error({ err }, "check-email DB error");
@@ -123458,10 +123458,10 @@ router2.post("/neon-bridge", loginLimiter, async (req, res) => {
   const { email, name: authName, image, id: authUserId } = authUser;
   const normalizedEmail = email.toLowerCase().trim();
   try {
-    let [user] = await db.select().from(users2).where(eq3(users2.email, normalizedEmail)).limit(1);
+    let [user] = await db.select().from(users).where(eq3(users.email, normalizedEmail)).limit(1);
     if (!user) {
       const newId = crypto.randomUUID();
-      const rows = await db.insert(users2).values({
+      const rows = await db.insert(users).values({
         id: newId,
         email: normalizedEmail,
         name: authName?.trim() || "User",
@@ -123479,8 +123479,8 @@ router2.post("/neon-bridge", loginLimiter, async (req, res) => {
       const updates = { lastLoginAt: /* @__PURE__ */ new Date() };
       if (!user.authUserId) updates["authUserId"] = authUserId;
       if (image && !user.profilePhoto) updates["profilePhoto"] = image;
-      await db.update(users2).set(updates).where(eq3(users2.id, user.id));
-      const rows = await db.select().from(users2).where(eq3(users2.id, user.id)).limit(1);
+      await db.update(users).set(updates).where(eq3(users.id, user.id));
+      const rows = await db.select().from(users).where(eq3(users.id, user.id)).limit(1);
       user = rows[0];
     }
     if (!user) {
@@ -123512,13 +123512,13 @@ router2.post("/complete-profile", authenticate, async (req, res) => {
     return;
   }
   try {
-    const [existing] = await db.select().from(users2).where(eq3(users2.id, userId)).limit(1);
+    const [existing] = await db.select().from(users).where(eq3(users.id, userId)).limit(1);
     if (!existing) {
       res.status(404).json({ success: false, message: "User not found" });
       return;
     }
     if (phone) {
-      const [taken] = await db.select().from(users2).where(eq3(users2.phone, phone)).limit(1);
+      const [taken] = await db.select().from(users).where(eq3(users.phone, phone)).limit(1);
       if (taken && taken.id !== userId) {
         const mergeUpdates = { updatedAt: /* @__PURE__ */ new Date() };
         if (!taken.email && existing.email) mergeUpdates["email"] = existing.email;
@@ -123529,9 +123529,9 @@ router2.post("/complete-profile", authenticate, async (req, res) => {
           const takenAddresses = taken.addresses ?? [];
           mergeUpdates["addresses"] = [...takenAddresses, { id: crypto.randomUUID(), ...address }];
         }
-        await db.update(users2).set(mergeUpdates).where(eq3(users2.id, taken.id));
-        await db.delete(users2).where(eq3(users2.id, userId));
-        const [merged] = await db.select().from(users2).where(eq3(users2.id, taken.id)).limit(1);
+        await db.update(users).set(mergeUpdates).where(eq3(users.id, taken.id));
+        await db.delete(users).where(eq3(users.id, userId));
+        const [merged] = await db.select().from(users).where(eq3(users.id, taken.id)).limit(1);
         req.log.info({ userId: taken.id, mergedFrom: userId }, "Accounts merged via phone number");
         res.json({ success: true, merged: true, ...issueTokens(merged), user: formatUser(merged) });
         return;
@@ -123546,8 +123546,8 @@ router2.post("/complete-profile", authenticate, async (req, res) => {
     };
     if (phone) updates["phone"] = phone;
     if (pincode) updates["pincode"] = pincode;
-    await db.update(users2).set(updates).where(eq3(users2.id, userId));
-    const [updated] = await db.select().from(users2).where(eq3(users2.id, userId)).limit(1);
+    await db.update(users).set(updates).where(eq3(users.id, userId));
+    const [updated] = await db.select().from(users).where(eq3(users.id, userId)).limit(1);
     res.json({ success: true, user: formatUser(updated) });
   } catch (err) {
     req.log.error({ err, userId }, "complete-profile error");
@@ -123593,7 +123593,7 @@ router2.post("/truecaller", truecallerAuthLimiter, async (req, res) => {
   const name = [firstName, lastName].filter(Boolean).join(" ").trim() || "User";
   const email = profile.onlineIdentities?.email;
   try {
-    let [user] = await db.select().from(users2).where(eq3(users2.phone, phone)).limit(1);
+    let [user] = await db.select().from(users).where(eq3(users.phone, phone)).limit(1);
     const isNewUser = !user;
     if (!user) {
       const insertValues = {
@@ -123604,13 +123604,13 @@ router2.post("/truecaller", truecallerAuthLimiter, async (req, res) => {
         authProvider: "truecaller"
       };
       if (email) insertValues.email = email;
-      [user] = await db.insert(users2).values(insertValues).returning();
+      [user] = await db.insert(users).values(insertValues).returning();
     } else {
       const updates = { lastLoginAt: /* @__PURE__ */ new Date() };
       if (email && !user.email) updates.email = email;
-      await db.update(users2).set(updates).where(eq3(users2.id, user.id));
+      await db.update(users).set(updates).where(eq3(users.id, user.id));
     }
-    const [updated] = await db.select().from(users2).where(eq3(users2.id, user.id)).limit(1);
+    const [updated] = await db.select().from(users).where(eq3(users.id, user.id)).limit(1);
     req.log.info({ userId: updated.id, isNewUser }, "Truecaller login success");
     res.json({ success: true, isNewUser, needsProfile: isNewUser, ...issueTokens(updated), user: formatUser(updated) });
   } catch (err) {
@@ -123644,7 +123644,7 @@ router3.get("/stats", authenticate, A2, async (_req, res) => {
     [{ pendingPayouts }],
     revenueResult
   ] = await Promise.all([
-    db.select({ totalUsers: count() }).from(users2).where(eq4(users2.role, "customer")),
+    db.select({ totalUsers: count() }).from(users).where(eq4(users.role, "customer")),
     db.select({ totalShops: count() }).from(shops).where(eq4(shops.status, "approved")),
     db.select({ pendingShops: count() }).from(shops).where(eq4(shops.status, "pending")),
     db.select({ totalOrders: count() }).from(orders).where(eq4(orders.status, "delivered")),
@@ -123672,7 +123672,7 @@ router3.get("/stats", authenticate, A2, async (_req, res) => {
 router3.get("/user-signups", authenticate, A2, async (_req, res) => {
   const sixMonthsAgo = /* @__PURE__ */ new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const result = await db.select({ createdAt: users2.createdAt }).from(users2).where(and(eq4(users2.role, "customer"), gte(users2.createdAt, sixMonthsAgo)));
+  const result = await db.select({ createdAt: users.createdAt }).from(users).where(and(eq4(users.role, "customer"), gte(users.createdAt, sixMonthsAgo)));
   const dates = result.map((u) => u.createdAt.toISOString());
   res.json({ success: true, dates });
 });
@@ -123701,7 +123701,7 @@ router3.post("/admins", authenticate, SA, async (req, res) => {
     return;
   }
   const [admin] = await db.insert(admins).values({ phone, name, role, status: "active", addedBy: req.user.userId }).returning();
-  await db.update(users2).set({ role }).where(eq4(users2.phone, phone));
+  await db.update(users).set({ role }).where(eq4(users.phone, phone));
   res.status(201).json({ success: true, admin: mi(admin) });
 });
 router3.patch("/admins/:id", authenticate, SA, async (req, res) => {
@@ -123788,7 +123788,7 @@ router3.delete("/cities/:id", authenticate, SA, async (req, res) => {
 });
 router3.get("/managers", authenticate, SA, async (_req, res) => {
   try {
-    const list = await db.select().from(users2).where(eq4(users2.role, "city_manager")).orderBy(users2.name);
+    const list = await db.select().from(users).where(eq4(users.role, "city_manager")).orderBy(users.name);
     const enriched = await Promise.all(list.map(async (m2) => {
       const assigned = await db.select({
         cityId: managerCities.cityId,
@@ -123811,15 +123811,15 @@ router3.post("/managers", authenticate, SA, async (req, res) => {
     return;
   }
   try {
-    const [existing] = await db.select().from(users2).where(eq4(users2.phone, phone)).limit(1);
+    const [existing] = await db.select().from(users).where(eq4(users.phone, phone)).limit(1);
     let managerId;
     if (existing) {
       if (existing.role !== "super_admin") {
-        await db.update(users2).set({ role: "city_manager", updatedAt: /* @__PURE__ */ new Date() }).where(eq4(users2.id, existing.id));
+        await db.update(users).set({ role: "city_manager", updatedAt: /* @__PURE__ */ new Date() }).where(eq4(users.id, existing.id));
       }
       managerId = existing.id;
     } else {
-      const [newUser] = await db.insert(users2).values({
+      const [newUser] = await db.insert(users).values({
         name,
         phone,
         email: email || void 0,
@@ -123843,7 +123843,7 @@ router3.patch("/managers/:id", authenticate, SA, async (req, res) => {
   const managerId = req.params["id"];
   try {
     if (status) {
-      await db.update(users2).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq4(users2.id, managerId));
+      await db.update(users).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq4(users.id, managerId));
     }
     if (cityIds !== void 0) {
       await db.delete(managerCities).where(eq4(managerCities.managerId, managerId));
@@ -123861,13 +123861,13 @@ router3.patch("/managers/:id", authenticate, SA, async (req, res) => {
 router3.delete("/managers/:id", authenticate, SA, async (req, res) => {
   const managerId = req.params["id"];
   try {
-    const [mgr] = await db.select().from(users2).where(eq4(users2.id, managerId)).limit(1);
+    const [mgr] = await db.select().from(users).where(eq4(users.id, managerId)).limit(1);
     if (!mgr) {
       res.status(404).json({ success: false, message: "Manager not found" });
       return;
     }
     if (mgr.role !== "super_admin") {
-      await db.update(users2).set({ role: "customer", updatedAt: /* @__PURE__ */ new Date() }).where(eq4(users2.id, managerId));
+      await db.update(users).set({ role: "customer", updatedAt: /* @__PURE__ */ new Date() }).where(eq4(users.id, managerId));
     }
     await db.delete(managerCities).where(eq4(managerCities.managerId, managerId));
     res.json({ success: true, message: mgr.role === "super_admin" ? "City assignments removed (super admin role preserved)" : "Manager removed successfully" });
@@ -123929,19 +123929,19 @@ router4.get("/", authenticate, A3, async (req, res) => {
   const { role, status, search, page = "1", limit = "20" } = req.query;
   const pg2 = parseInt(page), lm = parseInt(limit);
   const conditions = [];
-  if (role) conditions.push(eq5(users2.role, role));
-  if (status) conditions.push(eq5(users2.status, status));
-  if (search) conditions.push(or3(ilike(users2.name, `%${search}%`), ilike(users2.phone, `%${search}%`)));
+  if (role) conditions.push(eq5(users.role, role));
+  if (status) conditions.push(eq5(users.status, status));
+  if (search) conditions.push(or3(ilike(users.name, `%${search}%`), ilike(users.phone, `%${search}%`)));
   const where = conditions.length ? and2(...conditions) : void 0;
   const skip = (pg2 - 1) * lm;
   const [result, [{ total }]] = await Promise.all([
-    db.select().from(users2).where(where).orderBy(desc2(users2.createdAt)).offset(skip).limit(lm),
-    db.select({ total: count2() }).from(users2).where(where)
+    db.select().from(users).where(where).orderBy(desc2(users.createdAt)).offset(skip).limit(lm),
+    db.select({ total: count2() }).from(users).where(where)
   ]);
   res.json({ success: true, users: result.map(safeUser), total: Number(total), page: pg2, pages: Math.ceil(Number(total) / lm) });
 });
 router4.patch("/:id/ban", authenticate, A3, async (req, res) => {
-  const [user] = await db.update(users2).set({ status: "banned" }).where(eq5(users2.id, req.params["id"])).returning();
+  const [user] = await db.update(users).set({ status: "banned" }).where(eq5(users.id, req.params["id"])).returning();
   if (!user) {
     res.status(404).json({ success: false, message: "User not found" });
     return;
@@ -123949,7 +123949,7 @@ router4.patch("/:id/ban", authenticate, A3, async (req, res) => {
   res.json({ success: true, user: safeUser(user) });
 });
 router4.patch("/:id/unban", authenticate, A3, async (req, res) => {
-  const [user] = await db.update(users2).set({ status: "active" }).where(eq5(users2.id, req.params["id"])).returning();
+  const [user] = await db.update(users).set({ status: "active" }).where(eq5(users.id, req.params["id"])).returning();
   if (!user) {
     res.status(404).json({ success: false, message: "User not found" });
     return;
@@ -123959,7 +123959,7 @@ router4.patch("/:id/unban", authenticate, A3, async (req, res) => {
 router4.post("/:id/send-setup-email", authenticate, A3, validateUuidParams("id"), async (req, res) => {
   const userId = req.params["id"];
   const { email: providedEmail } = req.body;
-  const [user] = await db.select().from(users2).where(eq5(users2.id, userId)).limit(1);
+  const [user] = await db.select().from(users).where(eq5(users.id, userId)).limit(1);
   if (!user) {
     res.status(404).json({ success: false, message: "User not found" });
     return;
@@ -123971,12 +123971,12 @@ router4.post("/:id/send-setup-email", authenticate, A3, validateUuidParams("id")
       res.status(400).json({ success: false, message: "Invalid email address" });
       return;
     }
-    const [taken] = await db.select({ id: users2.id }).from(users2).where(eq5(users2.email, normalized)).limit(1);
+    const [taken] = await db.select({ id: users.id }).from(users).where(eq5(users.email, normalized)).limit(1);
     if (taken && taken.id !== userId) {
       res.status(409).json({ success: false, message: "This email is already used by another account" });
       return;
     }
-    await db.update(users2).set({ email: normalized }).where(eq5(users2.id, userId));
+    await db.update(users).set({ email: normalized }).where(eq5(users.id, userId));
     targetEmail = normalized;
   }
   if (!targetEmail) {
@@ -123989,7 +123989,7 @@ router4.post("/:id/send-setup-email", authenticate, A3, validateUuidParams("id")
   }
   const token = randomBytes2(32).toString("hex");
   const expires = new Date(Date.now() + SETUP_TOKEN_EXPIRY_MS);
-  await db.update(users2).set({ passwordResetTokenHash: hashToken2(token), passwordResetExpires: expires }).where(eq5(users2.id, userId));
+  await db.update(users).set({ passwordResetTokenHash: hashToken2(token), passwordResetExpires: expires }).where(eq5(users.id, userId));
   const host = process.env["REPLIT_DEV_DOMAIN"] ?? process.env["APP_DOMAIN"] ?? "swiftmart.space";
   const setupUrl = `https://${host}/auth?step=reset&token=${token}`;
   await sendAccountSetupEmail({ to: targetEmail, name: user.name, setupUrl, expiresHours: 24 });
@@ -123997,7 +123997,7 @@ router4.post("/:id/send-setup-email", authenticate, A3, validateUuidParams("id")
   res.json({ success: true, message: `Setup email sent to ${targetEmail}`, email: targetEmail });
 });
 router4.get("/me/profile", authenticate, async (req, res) => {
-  const [user] = await db.select().from(users2).where(eq5(users2.id, req.user.userId)).limit(1);
+  const [user] = await db.select().from(users).where(eq5(users.id, req.user.userId)).limit(1);
   if (!user) {
     res.status(404).json({ success: false, message: "Not found" });
     return;
@@ -124031,7 +124031,7 @@ router4.patch("/me/profile", authenticate, async (req, res) => {
     return;
   }
   try {
-    const [user] = await db.update(users2).set(update).where(eq5(users2.id, req.user.userId)).returning();
+    const [user] = await db.update(users).set(update).where(eq5(users.id, req.user.userId)).returning();
     if (!user) {
       res.status(404).json({ success: false, message: "User not found" });
       return;
@@ -124395,15 +124395,15 @@ router5.get("/:id/details", authenticate, A4, async (req, res) => {
     db.select().from(products).where(eq7(products.shopId, shop.id)),
     db.select().from(orders).where(eq7(orders.shopId, shop.id)).orderBy(desc3(orders.createdAt)).limit(50),
     db.select({
-      id: users2.id,
-      name: users2.name,
-      phone: users2.phone,
-      email: users2.email,
-      role: users2.role,
-      vendorStatus: users2.vendorStatus,
-      status: users2.status,
-      createdAt: users2.createdAt
-    }).from(users2).where(eq7(users2.id, shop.ownerId)).limit(1)
+      id: users.id,
+      name: users.name,
+      phone: users.phone,
+      email: users.email,
+      role: users.role,
+      vendorStatus: users.vendorStatus,
+      status: users.status,
+      createdAt: users.createdAt
+    }).from(users).where(eq7(users.id, shop.ownerId)).limit(1)
   ]);
   const revenue = shopOrders.reduce((sum5, o) => sum5 + (o.netAmount ?? o.subtotal ?? 0), 0);
   const owner = ownerArr[0] ? { ...ownerArr[0], _id: ownerArr[0].id } : null;
@@ -124436,9 +124436,9 @@ router5.post("/admin-create", authenticate, A4, async (req, res) => {
     return;
   }
   const { shop, owner } = await db.transaction(async (tx) => {
-    let [owner2] = await tx.select().from(users2).where(eq7(users2.phone, phone)).limit(1);
+    let [owner2] = await tx.select().from(users).where(eq7(users.phone, phone)).limit(1);
     if (!owner2) {
-      [owner2] = await tx.insert(users2).values({
+      [owner2] = await tx.insert(users).values({
         name: String(body["ownerName"] ?? body["shopName"] ?? "Vendor"),
         phone,
         email: body["ownerEmail"] ? String(body["ownerEmail"]) : void 0,
@@ -124449,7 +124449,7 @@ router5.post("/admin-create", authenticate, A4, async (req, res) => {
     } else {
       const updates = { vendorStatus: "approved" };
       if (!ADMIN_ROLES.has(owner2.role)) updates["role"] = "vendor";
-      [owner2] = await tx.update(users2).set(updates).where(eq7(users2.id, owner2.id)).returning();
+      [owner2] = await tx.update(users).set(updates).where(eq7(users.id, owner2.id)).returning();
     }
     const [shop2] = await tx.insert(shops).values({
       shopName: String(body["shopName"]),
@@ -124540,7 +124540,7 @@ router5.post("/", authenticate, async (req, res) => {
         verificationStatus: "pending",
         status: "pending"
       }).returning();
-      await tx.update(users2).set({ vendorStatus: "pending" }).where(eq7(users2.id, req.user.userId));
+      await tx.update(users).set({ vendorStatus: "pending" }).where(eq7(users.id, req.user.userId));
       return shop2;
     });
     res.status(201).json({ success: true, shop: mi(shop) });
@@ -124716,11 +124716,11 @@ router5.post("/:id/approve", authenticate, A4, async (req, res) => {
   const shop = await db.transaction(async (tx) => {
     const [shop2] = await tx.update(shops).set({ status: "approved", isOpen: true, ...certUpdate }).where(eq7(shops.id, shopId)).returning();
     if (!shop2) return null;
-    const [owner] = await tx.select({ id: users2.id, role: users2.role }).from(users2).where(eq7(users2.id, shop2.ownerId)).limit(1);
+    const [owner] = await tx.select({ id: users.id, role: users.role }).from(users).where(eq7(users.id, shop2.ownerId)).limit(1);
     if (owner) {
       const updates = { vendorStatus: "approved" };
       if (!ADMIN_ROLES.has(owner.role)) updates["role"] = "vendor";
-      await tx.update(users2).set(updates).where(eq7(users2.id, owner.id));
+      await tx.update(users).set(updates).where(eq7(users.id, owner.id));
     }
     return shop2;
   });
@@ -124735,7 +124735,7 @@ router5.post("/:id/reject", authenticate, A4, async (req, res) => {
   const shop = await db.transaction(async (tx) => {
     const [shop2] = await tx.update(shops).set({ status: "rejected", rejectionReason: reason ?? null }).where(eq7(shops.id, req.params["id"])).returning();
     if (!shop2) return null;
-    await tx.update(users2).set({ vendorStatus: "rejected" }).where(eq7(users2.id, shop2.ownerId));
+    await tx.update(users).set({ vendorStatus: "rejected" }).where(eq7(users.id, shop2.ownerId));
     return shop2;
   });
   if (!shop) {
@@ -124748,10 +124748,10 @@ router5.post("/:id/ban", authenticate, A4, async (req, res) => {
   const shop = await db.transaction(async (tx) => {
     const [shop2] = await tx.update(shops).set({ status: "banned", isOpen: false }).where(eq7(shops.id, req.params["id"])).returning();
     if (!shop2) return null;
-    const [owner] = await tx.select({ role: users2.role }).from(users2).where(eq7(users2.id, shop2.ownerId)).limit(1);
+    const [owner] = await tx.select({ role: users.role }).from(users).where(eq7(users.id, shop2.ownerId)).limit(1);
     const updates = { vendorStatus: "rejected" };
     if (owner && !ADMIN_ROLES.has(owner.role)) updates["role"] = "customer";
-    await tx.update(users2).set(updates).where(eq7(users2.id, shop2.ownerId));
+    await tx.update(users).set(updates).where(eq7(users.id, shop2.ownerId));
     return shop2;
   });
   if (!shop) {
@@ -124769,10 +124769,10 @@ router5.post("/:id/unban", authenticate, A4, async (req, res) => {
   const shop = await db.transaction(async (tx) => {
     const [shop2] = await tx.update(shops).set({ status: "approved", isOpen: true }).where(eq7(shops.id, req.params["id"])).returning();
     if (!shop2) return null;
-    const [owner] = await tx.select({ role: users2.role }).from(users2).where(eq7(users2.id, shop2.ownerId)).limit(1);
+    const [owner] = await tx.select({ role: users.role }).from(users).where(eq7(users.id, shop2.ownerId)).limit(1);
     const updates = { vendorStatus: "approved" };
     if (owner && !ADMIN_ROLES.has(owner.role)) updates["role"] = "vendor";
-    await tx.update(users2).set(updates).where(eq7(users2.id, shop2.ownerId));
+    await tx.update(users).set(updates).where(eq7(users.id, shop2.ownerId));
     return shop2;
   });
   if (!shop) {
@@ -124806,9 +124806,9 @@ router5.patch("/:id/owner", authenticate, A4, async (req, res) => {
     return;
   }
   const { newOwner, updatedShop } = await db.transaction(async (tx) => {
-    let [newOwner2] = await tx.select().from(users2).where(eq7(users2.phone, phone)).limit(1);
+    let [newOwner2] = await tx.select().from(users).where(eq7(users.phone, phone)).limit(1);
     if (!newOwner2) {
-      [newOwner2] = await tx.insert(users2).values({
+      [newOwner2] = await tx.insert(users).values({
         name: ownerName ?? "Vendor",
         phone,
         role: "vendor",
@@ -124818,7 +124818,7 @@ router5.patch("/:id/owner", authenticate, A4, async (req, res) => {
     } else {
       const updates = { vendorStatus: "approved" };
       if (!ADMIN_ROLES.has(newOwner2.role)) updates["role"] = "vendor";
-      [newOwner2] = await tx.update(users2).set(updates).where(eq7(users2.id, newOwner2.id)).returning();
+      [newOwner2] = await tx.update(users).set(updates).where(eq7(users.id, newOwner2.id)).returning();
     }
     const [updatedShop2] = await tx.update(shops).set({
       ownerId: newOwner2.id,
@@ -124843,15 +124843,15 @@ router5.patch("/:id/link-owner", authenticate, A4, async (req, res) => {
   const result = await db.transaction(async (tx) => {
     let targetUser;
     if (email) {
-      const [byEmail] = await tx.select().from(users2).where(eq7(users2.email, email)).limit(1);
+      const [byEmail] = await tx.select().from(users).where(eq7(users.email, email)).limit(1);
       if (byEmail) targetUser = byEmail;
     }
     if (!targetUser && phone) {
-      const [byPhone] = await tx.select().from(users2).where(eq7(users2.phone, phone)).limit(1);
+      const [byPhone] = await tx.select().from(users).where(eq7(users.phone, phone)).limit(1);
       if (byPhone) targetUser = byPhone;
     }
     if (!targetUser) {
-      const [currentOwner] = await tx.select().from(users2).where(eq7(users2.id, shop.ownerId)).limit(1);
+      const [currentOwner] = await tx.select().from(users).where(eq7(users.id, shop.ownerId)).limit(1);
       targetUser = currentOwner;
     }
     if (!targetUser) return null;
@@ -124859,7 +124859,7 @@ router5.patch("/:id/link-owner", authenticate, A4, async (req, res) => {
     if (!ADMIN_ROLES.has(targetUser.role)) updates["role"] = "vendor";
     if (phone && phone !== targetUser.phone) updates["phone"] = phone;
     if (email && email !== targetUser.email) updates["email"] = email;
-    const [updatedUser] = await tx.update(users2).set(updates).where(eq7(users2.id, targetUser.id)).returning();
+    const [updatedUser] = await tx.update(users).set(updates).where(eq7(users.id, targetUser.id)).returning();
     const shopUpdates = { ownerId: targetUser.id };
     if (phone) shopUpdates["phone"] = phone;
     const [updatedShop] = await tx.update(shops).set(shopUpdates).where(eq7(shops.id, shop.id)).returning();
@@ -124880,11 +124880,11 @@ router5.delete("/:id", authenticate, A4, async (req, res) => {
   const shopProducts = await db.select({ images: products.images }).from(products).where(eq7(products.shopId, shop.id));
   const allImages = shopProducts.flatMap((p) => p.images ?? []);
   await db.transaction(async (tx) => {
-    const [owner] = await tx.select({ role: users2.role }).from(users2).where(eq7(users2.id, shop.ownerId)).limit(1);
+    const [owner] = await tx.select({ role: users.role }).from(users).where(eq7(users.id, shop.ownerId)).limit(1);
     const roleUpdate = owner && ADMIN_ROLES.has(owner.role) ? { vendorStatus: "none" } : { vendorStatus: "none", role: "customer" };
     await Promise.all([
       tx.delete(products).where(eq7(products.shopId, shop.id)),
-      tx.update(users2).set(roleUpdate).where(eq7(users2.id, shop.ownerId))
+      tx.update(users).set(roleUpdate).where(eq7(users.id, shop.ownerId))
     ]);
     await tx.delete(shops).where(eq7(shops.id, shop.id));
   });
@@ -125289,7 +125289,7 @@ router8.post("/", authenticate, vendorWriteLimiter, async (req, res) => {
   if (!VENDOR_ROLES.has(req.user.role)) {
     const [ownedShop] = await db.select({ id: shops.id }).from(shops).where(and5(eq10(shops.ownerId, req.user.userId), eq10(shops.status, "approved"))).limit(1);
     if (ownedShop) {
-      await db.update(users2).set({ role: "vendor", vendorStatus: "approved" }).where(eq10(users2.id, req.user.userId));
+      await db.update(users).set({ role: "vendor", vendorStatus: "approved" }).where(eq10(users.id, req.user.userId));
       req.user.role = "vendor";
     } else {
       res.status(403).json({ success: false, message: "Forbidden: insufficient role" });
@@ -125366,7 +125366,7 @@ router8.post("/", authenticate, vendorWriteLimiter, async (req, res) => {
     fomoTag: safeBody["fomoTag"] ? String(safeBody["fomoTag"]) : void 0
   }).returning();
   try {
-    const adminUsers = await db.select({ id: users2.id }).from(users2).where(or5(eq10(users2.role, "admin"), eq10(users2.role, "super_admin")));
+    const adminUsers = await db.select({ id: users.id }).from(users).where(or5(eq10(users.role, "admin"), eq10(users.role, "super_admin")));
     await Promise.all(
       adminUsers.map(
         (admin) => createNotificationLimited(admin.id, {
@@ -126059,7 +126059,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
   });
   try {
     if (shop?.ownerId) {
-      const [vendor] = await db.select({ id: users2.id }).from(users2).where(eq12(users2.id, shop.ownerId)).limit(1);
+      const [vendor] = await db.select({ id: users.id }).from(users).where(eq12(users.id, shop.ownerId)).limit(1);
       if (vendor) {
         await createNotificationLimited(vendor.id, {
           type: "order_update",
@@ -126072,7 +126072,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
   } catch {
   }
   try {
-    const adminUsers = await db.select({ id: users2.id }).from(users2).where(or6(eq12(users2.role, "admin"), eq12(users2.role, "super_admin")));
+    const adminUsers = await db.select({ id: users.id }).from(users).where(or6(eq12(users.role, "admin"), eq12(users.role, "super_admin")));
     const shortId = createdOrder.id.slice(-6).toUpperCase();
     const shopName = shop?.shopName ?? "a shop";
     await Promise.all(
@@ -126272,11 +126272,11 @@ router9.post("/admin", authenticate, requireRole("admin", "super_admin"), async 
     }
     const newOrder = await db.transaction(async (tx) => {
       let customerId;
-      const [existingUser] = await tx.select().from(users2).where(eq12(users2.phone, customerPhone)).limit(1);
+      const [existingUser] = await tx.select().from(users).where(eq12(users.phone, customerPhone)).limit(1);
       if (existingUser) {
         customerId = existingUser.id;
       } else {
-        const [newUser] = await tx.insert(users2).values({
+        const [newUser] = await tx.insert(users).values({
           name: customerName,
           phone: customerPhone,
           role: "customer",
@@ -126553,7 +126553,7 @@ router12.post("/", authenticate, A11, async (req, res) => {
   const phone = String(body["phone"] ?? "");
   let resolvedUserId = body["userId"] ? String(body["userId"]) : void 0;
   if (!resolvedUserId && phone) {
-    const [linked] = await db.select({ id: users2.id }).from(users2).where(eq15(users2.phone, phone)).limit(1);
+    const [linked] = await db.select({ id: users.id }).from(users).where(eq15(users.phone, phone)).limit(1);
     if (linked) resolvedUserId = linked.id;
   }
   const [partner] = await db.insert(deliveryPartners).values({
@@ -126593,7 +126593,7 @@ router12.post("/:id/link-user", authenticate, A11, validateUuidParams("id"), asy
     res.status(404).json({ success: false, message: "Partner not found" });
     return;
   }
-  const [userRow] = await db.select({ id: users2.id }).from(users2).where(eq15(users2.phone, p.phone)).limit(1);
+  const [userRow] = await db.select({ id: users.id }).from(users).where(eq15(users.phone, p.phone)).limit(1);
   if (!userRow) {
     res.status(404).json({ success: false, message: `No user account found with phone ${p.phone}. Ask the partner to sign up first.` });
     return;
@@ -126715,7 +126715,7 @@ router12.get("/me", authenticate, async (req, res) => {
   const userId = req.user.userId;
   let [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
   if (!partner) {
-    const [userRow] = await db.select({ phone: users2.phone }).from(users2).where(eq15(users2.id, userId)).limit(1);
+    const [userRow] = await db.select({ phone: users.phone }).from(users).where(eq15(users.id, userId)).limit(1);
     if (userRow?.phone) {
       [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.phone, userRow.phone)).limit(1);
       if (partner && !partner.userId) {
@@ -127026,18 +127026,18 @@ router12.post("/apply", optionalAuth, async (req, res) => {
   let userId = req.user?.userId || null;
   let user = null;
   if (userId) {
-    const [u] = await db.select().from(users2).where(eq15(users2.id, userId)).limit(1);
+    const [u] = await db.select().from(users).where(eq15(users.id, userId)).limit(1);
     user = u ?? null;
   }
   if (!user && applicantPhone) {
-    const [u] = await db.select().from(users2).where(eq15(users2.phone, applicantPhone)).limit(1);
+    const [u] = await db.select().from(users).where(eq15(users.phone, applicantPhone)).limit(1);
     user = u ?? null;
     if (user) {
       userId = user.id;
     }
   }
   if (!user && applicantPhone) {
-    const [newUser] = await db.insert(users2).values({
+    const [newUser] = await db.insert(users).values({
       name: String(body["name"] || "Rider Applicant"),
       phone: applicantPhone,
       role: "rider",
@@ -127280,13 +127280,13 @@ router15.post("/broadcast", authenticate, A14, async (req, res) => {
     }
     recipientIds = [targetUserId];
   } else if (targetAudience === "customers") {
-    const rows = await db.select({ id: users2.id }).from(users2).where(eq18(users2.role, "customer"));
+    const rows = await db.select({ id: users.id }).from(users).where(eq18(users.role, "customer"));
     recipientIds = rows.map((r2) => r2.id);
   } else if (targetAudience === "vendors") {
-    const rows = await db.select({ id: users2.id }).from(users2).where(eq18(users2.role, "vendor"));
+    const rows = await db.select({ id: users.id }).from(users).where(eq18(users.role, "vendor"));
     recipientIds = rows.map((r2) => r2.id);
   } else {
-    const rows = await db.select({ id: users2.id }).from(users2);
+    const rows = await db.select({ id: users.id }).from(users);
     recipientIds = rows.map((r2) => r2.id);
   }
   const payload = { type: "system", title, message };
@@ -127332,20 +127332,20 @@ router15.post("/send-custom", authenticate, A14, async (req, res) => {
       res.status(400).json({ success: false, message: "targetUserId is required for target='specific'" });
       return;
     }
-    const [userExists] = await db.select({ id: users2.id }).from(users2).where(eq18(users2.id, targetUserId)).limit(1);
+    const [userExists] = await db.select({ id: users.id }).from(users).where(eq18(users.id, targetUserId)).limit(1);
     if (!userExists) {
       res.status(400).json({ success: false, message: "Specified user ID does not exist" });
       return;
     }
     recipientIds = [targetUserId];
   } else if (target === "customers") {
-    const rows = await db.select({ id: users2.id }).from(users2).where(eq18(users2.role, "customer"));
+    const rows = await db.select({ id: users.id }).from(users).where(eq18(users.role, "customer"));
     recipientIds = rows.map((r2) => r2.id);
   } else if (target === "vendors") {
-    const rows = await db.select({ id: users2.id }).from(users2).where(eq18(users2.role, "vendor"));
+    const rows = await db.select({ id: users.id }).from(users).where(eq18(users.role, "vendor"));
     recipientIds = rows.map((r2) => r2.id);
   } else {
-    const allUsers = await db.select({ id: users2.id }).from(users2);
+    const allUsers = await db.select({ id: users.id }).from(users);
     recipientIds = allUsers.map((u) => u.id);
   }
   if (recipientIds.length === 0) {
@@ -128025,10 +128025,10 @@ router19.get("/diagnostics", authenticate, A16, async (_req, res) => {
     subsByRoleRows,
     lastBroadcastRows
   ] = await Promise.all([
-    db.select({ totalUsers: count9() }).from(users2),
+    db.select({ totalUsers: count9() }).from(users),
     db.select({ totalSubs: count9() }).from(pushSubscriptions),
     // Subscriptions per role — join push_subscriptions → users
-    db.select({ role: users2.role, cnt: count9() }).from(pushSubscriptions).innerJoin(users2, eq22(pushSubscriptions.userId, users2.id)).groupBy(users2.role),
+    db.select({ role: users.role, cnt: count9() }).from(pushSubscriptions).innerJoin(users, eq22(pushSubscriptions.userId, users.id)).groupBy(users.role),
     // Last broadcast
     db.select().from(adminBroadcasts).orderBy(desc11(adminBroadcasts.createdAt)).limit(1)
   ]);
@@ -128244,7 +128244,7 @@ router20.get("/diagnostics", authenticate, A17, async (_req, res) => {
       tokensByPlatformRows,
       lastBroadcastRows
     ] = await Promise.all([
-      db.select({ totalUsers: count10() }).from(users2),
+      db.select({ totalUsers: count10() }).from(users),
       db.select({ activeTokens: count10() }).from(fcmTokens).where(eq23(fcmTokens.isActive, true)),
       db.select({ role: fcmTokens.role, cnt: count10() }).from(fcmTokens).where(eq23(fcmTokens.isActive, true)).groupBy(fcmTokens.role),
       db.select({ platform: fcmTokens.platform, cnt: count10() }).from(fcmTokens).where(eq23(fcmTokens.isActive, true)).groupBy(fcmTokens.platform),
@@ -128926,7 +128926,7 @@ router27.get("/stats", authenticate, requireManager, checkCityAccess, async (req
       db.select({ cancelledOrders: count11() }).from(orders).where(and19(eq29(orders.cityId, cityId), eq29(orders.status, "cancelled"))),
       db.select({ activeShops: count11() }).from(shops).where(and19(eq29(shops.cityId, cityId), eq29(shops.status, "approved"))),
       db.select({ activeDelivery: count11() }).from(deliveryPartners).where(and19(eq29(deliveryPartners.cityId, cityId), eq29(deliveryPartners.status, "active"))),
-      db.select({ totalCustomers: count11() }).from(users2).where(and19(eq29(users2.cityId, cityId), eq29(users2.role, "customer")))
+      db.select({ totalCustomers: count11() }).from(users).where(and19(eq29(users.cityId, cityId), eq29(users.role, "customer")))
     ]);
     res.json({
       success: true,
@@ -129055,7 +129055,7 @@ router27.patch("/shops/:id/status", authenticate, requireManager, async (req, re
 router27.get("/customers", authenticate, requireManager, checkCityAccess, async (req, res) => {
   const cityId = String(req.query["cityId"]);
   try {
-    const list = await db.select().from(users2).where(and19(eq29(users2.cityId, cityId), eq29(users2.role, "customer"))).orderBy(users2.name);
+    const list = await db.select().from(users).where(and19(eq29(users.cityId, cityId), eq29(users.role, "customer"))).orderBy(users.name);
     res.json({ success: true, customers: miArr(list) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -129064,14 +129064,14 @@ router27.get("/customers", authenticate, requireManager, checkCityAccess, async 
 router27.patch("/customers/:id/status", authenticate, requireManager, async (req, res) => {
   const { status } = req.body;
   try {
-    const [user] = await db.select().from(users2).where(eq29(users2.id, req.params["id"])).limit(1);
+    const [user] = await db.select().from(users).where(eq29(users.id, req.params["id"])).limit(1);
     if (!user) {
       res.status(404).json({ success: false, message: "User not found" });
       return;
     }
     const hasAccess = await checkRecordCityAccess(req, res, user.cityId);
     if (!hasAccess) return;
-    await db.update(users2).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq29(users2.id, user.id));
+    await db.update(users).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq29(users.id, user.id));
     await logAction(req.user.userId, req.user.phone, user.cityId, status === "suspended" ? "Blocked Customer" : "Unblocked Customer", `User ${user.name || user.phone} set to ${status}`);
     res.json({ success: true, message: "Customer status updated" });
   } catch (err) {
@@ -129190,7 +129190,7 @@ router27.post("/notifications", authenticate, requireManager, checkCityAccess, a
   const { title, message } = req.body;
   const cityId = String(req.query["cityId"]);
   try {
-    const targetUsers = await db.select({ id: users2.id }).from(users2).where(and19(eq29(users2.cityId, cityId), eq29(users2.role, "customer")));
+    const targetUsers = await db.select({ id: users.id }).from(users).where(and19(eq29(users.cityId, cityId), eq29(users.role, "customer")));
     const userIds = targetUsers.map((u) => u.id);
     if (userIds.length > 0) {
       await Promise.all(userIds.map((id) => createNotificationLimited(id, {

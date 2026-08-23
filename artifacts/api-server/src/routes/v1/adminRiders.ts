@@ -1,5 +1,5 @@
 import { Router, type Response } from "express";
-import { db, deliveryPartners } from "@workspace/db";
+import { db, deliveryPartners, users } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { validateUuidParams } from "../../middlewares/validateUuid.js";
