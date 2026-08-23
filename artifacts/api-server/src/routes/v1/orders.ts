@@ -199,11 +199,38 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<v
   const skip = (pg - 1) * lm;
 
   const [result, [{ total }]] = await Promise.all([
-    db.select().from(orders).where(where).orderBy(desc(orders.createdAt)).offset(skip).limit(lm),
+    db
+      .select({
+        order: orders,
+        riderName: deliveryPartners.name,
+        riderPhone: deliveryPartners.phone,
+        riderPhotoUrl: deliveryPartners.photoUrl,
+        riderVehicle: deliveryPartners.vehicle,
+      })
+      .from(orders)
+      .leftJoin(deliveryPartners, eq(orders.deliveryPartnerId, deliveryPartners.id))
+      .where(where)
+      .orderBy(desc(orders.createdAt))
+      .offset(skip)
+      .limit(lm),
     db.select({ total: count() }).from(orders).where(where),
   ]);
 
-  res.json({ success: true, orders: miArr(result), total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
+  const mappedOrders = result.map(({ order, riderName, riderPhone, riderPhotoUrl, riderVehicle }) => ({
+    ...mi(order),
+    riderName: riderName ?? undefined,
+    riderPhone: riderPhone ?? undefined,
+    riderPhotoUrl: riderPhotoUrl ?? undefined,
+    deliveryPartner: riderName ? {
+      id: order.deliveryPartnerId ?? undefined,
+      name: riderName,
+      phone: riderPhone,
+      photoUrl: riderPhotoUrl,
+      vehicle: riderVehicle,
+    } : undefined,
+  }));
+
+  res.json({ success: true, orders: mappedOrders, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
 });
 
 // GET /api/orders/:id

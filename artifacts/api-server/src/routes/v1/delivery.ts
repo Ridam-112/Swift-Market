@@ -390,8 +390,8 @@ router.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams("
   if (order.deliveryPartnerId !== partner.id) {
     res.status(403).json({ success: false, message: "This order is not assigned to you" }); return;
   }
-  if (order.status !== "out_for_delivery") {
-    res.status(400).json({ success: false, message: "Order is not out for delivery" }); return;
+  if (order.status === "delivered" || order.status === "cancelled" || order.status === "refunded") {
+    res.status(400).json({ success: false, message: `Order is already ${order.status.replace(/_/g, " ")}` }); return;
   }
   if (!order.deliveryOtp || order.deliveryOtp !== String(otp ?? "").trim()) {
     res.status(400).json({ success: false, message: "Incorrect OTP. Please ask the customer for the correct code." }); return;

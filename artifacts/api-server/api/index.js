@@ -125716,10 +125716,29 @@ router9.get("/", authenticate, async (req, res) => {
   const where = conditions.length ? and6(...conditions) : void 0;
   const skip = (pg2 - 1) * lm;
   const [result, [{ total }]] = await Promise.all([
-    db.select().from(orders).where(where).orderBy(desc5(orders.createdAt)).offset(skip).limit(lm),
+    db.select({
+      order: orders,
+      riderName: deliveryPartners.name,
+      riderPhone: deliveryPartners.phone,
+      riderPhotoUrl: deliveryPartners.photoUrl,
+      riderVehicle: deliveryPartners.vehicle
+    }).from(orders).leftJoin(deliveryPartners, eq12(orders.deliveryPartnerId, deliveryPartners.id)).where(where).orderBy(desc5(orders.createdAt)).offset(skip).limit(lm),
     db.select({ total: count6() }).from(orders).where(where)
   ]);
-  res.json({ success: true, orders: miArr(result), total: Number(total), page: pg2, pages: Math.ceil(Number(total) / lm) });
+  const mappedOrders = result.map(({ order, riderName, riderPhone, riderPhotoUrl, riderVehicle }) => ({
+    ...mi(order),
+    riderName: riderName ?? void 0,
+    riderPhone: riderPhone ?? void 0,
+    riderPhotoUrl: riderPhotoUrl ?? void 0,
+    deliveryPartner: riderName ? {
+      id: order.deliveryPartnerId ?? void 0,
+      name: riderName,
+      phone: riderPhone,
+      photoUrl: riderPhotoUrl,
+      vehicle: riderVehicle
+    } : void 0
+  }));
+  res.json({ success: true, orders: mappedOrders, total: Number(total), page: pg2, pages: Math.ceil(Number(total) / lm) });
 });
 router9.get("/:id", authenticate, validateUuidParams("id"), async (req, res) => {
   const [order] = await db.select().from(orders).where(eq12(orders.id, req.params["id"])).limit(1);
@@ -126877,8 +126896,8 @@ router12.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams
     res.status(403).json({ success: false, message: "This order is not assigned to you" });
     return;
   }
-  if (order.status !== "out_for_delivery") {
-    res.status(400).json({ success: false, message: "Order is not out for delivery" });
+  if (order.status === "delivered" || order.status === "cancelled" || order.status === "refunded") {
+    res.status(400).json({ success: false, message: `Order is already ${order.status.replace(/_/g, " ")}` });
     return;
   }
   if (!order.deliveryOtp || order.deliveryOtp !== String(otp ?? "").trim()) {
