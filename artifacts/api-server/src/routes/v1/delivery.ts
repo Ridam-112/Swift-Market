@@ -1,7 +1,7 @@
 import { Router, type Response } from "express";
 import { db, deliveryPartners, deliveryChargeRules, deliverySettings, orders, users, shops } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
-import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
+import { authenticate, optionalAuth, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { validateUuidParams } from "../../middlewares/validateUuid.js";
 import { mi, miArr } from "../../utils/mapId.js";
 import { createNotificationLimited } from "../../utils/notification.js";
@@ -603,13 +603,37 @@ router.delete("/me/fcm-token", authenticate, async (req: AuthRequest, res: Respo
 
 // ─── Rider KYC Application & Onboarding (v2 Contract Section 5.1) ───────────
 
-router.post("/apply", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const userId = req.user!.userId;
+router.post("/apply", optionalAuth, async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body as Record<string, any>;
-  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!user) { res.status(404).json({ success: false, message: "User not found" }); return; }
+  const applicantPhone = String(body["phone"] || body["userPhone"] || "").trim();
+  let userId = req.user?.userId || null;
+  let user = null;
 
-  const applicantPhone = String(body["phone"] || user.phone || "").trim();
+  if (userId) {
+    const [u] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    user = u ?? null;
+  }
+
+  if (!user && applicantPhone) {
+    const [u] = await db.select().from(users).where(eq(users.phone, applicantPhone)).limit(1);
+    user = u ?? null;
+    if (user) {
+      userId = user.id;
+    }
+  }
+
+  if (!user && applicantPhone) {
+    const [newUser] = await db.insert(users).values({
+      name: String(body["name"] || "Rider Applicant"),
+      phone: applicantPhone,
+      role: "rider",
+      roles: ["customer", "rider"],
+      status: "active",
+      cityId: body["cityId"] ? String(body["cityId"]) : "balurghat",
+    }).returning();
+    user = newUser ?? null;
+    if (newUser) userId = newUser.id;
+  }
 
   let existing = null;
   if (userId) {
@@ -639,10 +663,10 @@ router.post("/apply", authenticate, async (req: AuthRequest, res: Response): Pro
   }
 
   const [partner] = await db.insert(deliveryPartners).values({
-    name: String(body["name"] || user.name || "Rider Applicant"),
+    name: String(body["name"] || user?.name || "Rider Applicant"),
     phone: applicantPhone || "0000000000",
     userId,
-    cityId: body["cityId"] ? String(body["cityId"]) : user.cityId,
+    cityId: body["cityId"] ? String(body["cityId"]) : (user?.cityId || "balurghat"),
     vehicle: body["vehicle"] ? String(body["vehicle"]) : "Bike",
     panNumber: body["panNumber"] ? String(body["panNumber"]) : null,
     dlNumber: body["dlNumber"] ? String(body["dlNumber"]) : null,

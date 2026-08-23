@@ -127020,15 +127020,34 @@ router12.delete("/me/fcm-token", authenticate, async (req, res) => {
   await db.update(deliveryPartners).set({ fcmToken: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, partner.id));
   res.json({ success: true, message: "FCM token cleared successfully" });
 });
-router12.post("/apply", authenticate, async (req, res) => {
-  const userId = req.user.userId;
+router12.post("/apply", optionalAuth, async (req, res) => {
   const body = req.body;
-  const [user] = await db.select().from(users).where(eq15(users.id, userId)).limit(1);
-  if (!user) {
-    res.status(404).json({ success: false, message: "User not found" });
-    return;
+  const applicantPhone = String(body["phone"] || body["userPhone"] || "").trim();
+  let userId = req.user?.userId || null;
+  let user = null;
+  if (userId) {
+    const [u] = await db.select().from(users).where(eq15(users.id, userId)).limit(1);
+    user = u ?? null;
   }
-  const applicantPhone = String(body["phone"] || user.phone || "").trim();
+  if (!user && applicantPhone) {
+    const [u] = await db.select().from(users).where(eq15(users.phone, applicantPhone)).limit(1);
+    user = u ?? null;
+    if (user) {
+      userId = user.id;
+    }
+  }
+  if (!user && applicantPhone) {
+    const [newUser] = await db.insert(users).values({
+      name: String(body["name"] || "Rider Applicant"),
+      phone: applicantPhone,
+      role: "rider",
+      roles: ["customer", "rider"],
+      status: "active",
+      cityId: body["cityId"] ? String(body["cityId"]) : "balurghat"
+    }).returning();
+    user = newUser ?? null;
+    if (newUser) userId = newUser.id;
+  }
   let existing = null;
   if (userId) {
     const [byUser] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
@@ -127055,10 +127074,10 @@ router12.post("/apply", authenticate, async (req, res) => {
     return;
   }
   const [partner] = await db.insert(deliveryPartners).values({
-    name: String(body["name"] || user.name || "Rider Applicant"),
+    name: String(body["name"] || user?.name || "Rider Applicant"),
     phone: applicantPhone || "0000000000",
     userId,
-    cityId: body["cityId"] ? String(body["cityId"]) : user.cityId,
+    cityId: body["cityId"] ? String(body["cityId"]) : user?.cityId || "balurghat",
     vehicle: body["vehicle"] ? String(body["vehicle"]) : "Bike",
     panNumber: body["panNumber"] ? String(body["panNumber"]) : null,
     dlNumber: body["dlNumber"] ? String(body["dlNumber"]) : null,
