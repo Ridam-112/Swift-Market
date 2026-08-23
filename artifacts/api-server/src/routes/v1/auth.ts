@@ -50,8 +50,13 @@ function formatUser(u: typeof users.$inferSelect) {
     ? Date.now() - new Date(u.lastSeenAt).getTime() < ONLINE_THRESHOLD_MS
     : false;
 
+  const dbRoles = Array.isArray(u.roles) ? (u.roles as string[]) : [];
   const roles = u.role === "admin" || u.role === "super_admin"
     ? ["customer", "rider", "admin", "super_admin"]
+    : dbRoles.length > 0
+    ? (dbRoles.includes("rider") || u.role === "rider" ? Array.from(new Set([...dbRoles, "rider"])) : dbRoles)
+    : u.role === "rider"
+    ? ["customer", "rider"]
     : u.role === "vendor"
     ? ["customer", "vendor"]
     : [u.role || "customer"];
