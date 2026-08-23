@@ -125974,9 +125974,9 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
         }
       }
       const subtotal = +reducedProducts.reduce((sum5, r2) => sum5 + r2.dbPrice * r2.qty, 0).toFixed(2);
-      if (subtotal < 50) {
+      if (subtotal <= 0) {
         throw Object.assign(
-          new Error(`Minimum order amount is \u20B950. Your cart total is \u20B9${subtotal}.`),
+          new Error(`Order subtotal cannot be zero. Your cart total is \u20B9${subtotal}.`),
           { statusCode: 400 }
         );
       }

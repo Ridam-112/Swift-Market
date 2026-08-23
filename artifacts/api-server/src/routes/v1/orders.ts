@@ -533,11 +533,10 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
 
       // 2. Recalculate subtotal from real DB prices (client value is ignored)
       const subtotal = +reducedProducts.reduce((sum, r) => sum + r.dbPrice * r.qty, 0).toFixed(2);
-      // Minimum is enforced per-order. For multi-shop splits the frontend has already validated
-      // the total cart; we only reject here if individual items literally total zero (fraud guard).
-      if (subtotal < 50) {
+      // Enforce subtotal > 0 per-order. Multi-vendor cart totals are validated on checkout.
+      if (subtotal <= 0) {
         throw Object.assign(
-          new Error(`Minimum order amount is ₹50. Your cart total is ₹${subtotal}.`),
+          new Error(`Order subtotal cannot be zero. Your cart total is ₹${subtotal}.`),
           { statusCode: 400 },
         );
       }
