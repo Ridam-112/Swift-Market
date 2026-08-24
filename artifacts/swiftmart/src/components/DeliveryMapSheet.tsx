@@ -380,10 +380,9 @@ export default function DeliveryMapSheet({ isOpen, onClose, order, onPickedUp, o
                   attributionControl={false}
                 >
                   <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                    subdomains="abcd"
-                    maxZoom={20}
-                    attribution='© <a href="https://openstreetmap.org">OpenStreetMap</a> © <a href="https://carto.com">CARTO</a>'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    subdomains="abc"
+                    maxZoom={19}
                   />
 
                   {routePath && routePath.length > 0 && (

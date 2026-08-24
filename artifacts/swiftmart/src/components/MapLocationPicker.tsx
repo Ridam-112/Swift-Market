@@ -279,9 +279,9 @@ export function MapLocationPicker({
                 attributionControl={false}
               >
                 <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                  subdomains="abcd"
-                  maxZoom={20}
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  subdomains="abc"
+                  maxZoom={19}
                 />
                 <Marker
                   position={position}
