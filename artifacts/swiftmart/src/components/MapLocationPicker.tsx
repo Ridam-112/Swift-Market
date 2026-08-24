@@ -295,26 +295,20 @@ export function MapLocationPicker({
                 zoomControl={false}
                 attributionControl={false}
               >
-                {/* Dynamic Tile Layer Selector - 100% reliable coverage across India */}
+                {/* Google Maps Style Tile Layers */}
                 {mapMode === "3d_buildings" && (
                   <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    subdomains="abc"
-                    maxZoom={19}
+                    url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+                    subdomains={["mt0", "mt1", "mt2", "mt3"]}
+                    maxZoom={20}
                   />
                 )}
                 {mapMode === "satellite" && (
-                  <>
-                    <TileLayer
-                      url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                      maxZoom={18}
-                    />
-                    <TileLayer
-                      url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png"
-                      subdomains="abcd"
-                      maxZoom={18}
-                    />
-                  </>
+                  <TileLayer
+                    url="https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}"
+                    subdomains={["mt0", "mt1", "mt2", "mt3"]}
+                    maxZoom={20}
+                  />
                 )}
                 {mapMode === "osm" && (
                   <TileLayer

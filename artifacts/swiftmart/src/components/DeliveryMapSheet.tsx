@@ -380,9 +380,9 @@ export default function DeliveryMapSheet({ isOpen, onClose, order, onPickedUp, o
                   attributionControl={false}
                 >
                   <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    subdomains="abc"
-                    maxZoom={19}
+                    url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+                    subdomains={["mt0", "mt1", "mt2", "mt3"]}
+                    maxZoom={20}
                   />
 
                   {routePath && routePath.length > 0 && (
