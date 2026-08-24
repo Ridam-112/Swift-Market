@@ -116985,7 +116985,7 @@ pool.on("error", (err) => {
 var db = drizzle(pool, { schema: schema_exports });
 
 // src/routes/v1/auth.ts
-import { eq as eq3, or as or2 } from "drizzle-orm";
+import { eq as eq3, or } from "drizzle-orm";
 
 // src/lib/jwt.ts
 var import_jsonwebtoken = __toESM(require_jsonwebtoken(), 1);
@@ -123012,7 +123012,7 @@ router2.post("/google", googleAuthLimiter, async (req, res) => {
       res.status(400).json({ success: false, message: "Invalid Google token" });
       return;
     }
-    let [user] = await db.select().from(users).where(or2(eq3(users.googleId, googleId), eq3(users.email, email))).limit(1);
+    let [user] = await db.select().from(users).where(or(eq3(users.googleId, googleId), eq3(users.email, email))).limit(1);
     const isNewUser = !user;
     if (!user) {
       [user] = await db.insert(users).values({
@@ -123168,7 +123168,7 @@ router2.post("/google/exchange", googleAuthLimiter, async (req, res) => {
       res.status(400).json({ success: false, message: "Could not retrieve your Google account info." });
       return;
     }
-    let [user] = await db.select().from(users).where(or2(eq3(users.googleId, googleId), eq3(users.email, email))).limit(1);
+    let [user] = await db.select().from(users).where(or(eq3(users.googleId, googleId), eq3(users.email, email))).limit(1);
     const isNewUser = !user;
     if (!user) {
       [user] = await db.insert(users).values({
@@ -123914,7 +123914,7 @@ var admin_default = router3;
 // src/routes/v1/users.ts
 var import_express4 = __toESM(require_express2(), 1);
 import { createHash as createHash2, randomBytes as randomBytes2 } from "node:crypto";
-import { eq as eq5, and as and2, ilike, or as or3, count as count2, desc as desc2 } from "drizzle-orm";
+import { eq as eq5, and as and2, ilike, or as or2, count as count2, desc as desc2 } from "drizzle-orm";
 
 // src/middlewares/validateUuid.ts
 var UUID_RE2 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -123957,7 +123957,7 @@ router4.get("/", authenticate, A3, async (req, res) => {
   const conditions = [];
   if (role) conditions.push(eq5(users.role, role));
   if (status) conditions.push(eq5(users.status, status));
-  if (search) conditions.push(or3(ilike(users.name, `%${search}%`), ilike(users.phone, `%${search}%`)));
+  if (search) conditions.push(or2(ilike(users.name, `%${search}%`), ilike(users.phone, `%${search}%`)));
   const where = conditions.length ? and2(...conditions) : void 0;
   const skip = (pg2 - 1) * lm;
   const [result, [{ total }]] = await Promise.all([
@@ -124072,7 +124072,7 @@ var users_default = router4;
 
 // src/routes/v1/shops.ts
 var import_express5 = __toESM(require_express2(), 1);
-import { eq as eq7, and as and4, ilike as ilike2, or as or4, desc as desc3, count as count4, sql } from "drizzle-orm";
+import { eq as eq7, and as and4, ilike as ilike2, or as or3, desc as desc3, count as count4, sql } from "drizzle-orm";
 
 // src/lib/imagekit.ts
 var import_imagekit = __toESM(require_dist7(), 1);
@@ -124386,7 +124386,7 @@ router5.get("/", optionalAuth, async (req, res) => {
     if (ownerId) conditions.push(eq7(shops.ownerId, ownerId));
     if (safePincode) conditions.push(sql`${shops.address}->>'pincode' = ${safePincode}`);
     if (search) {
-      conditions.push(or4(
+      conditions.push(or3(
         ilike2(shops.shopName, `%${search}%`),
         ilike2(shops.ownerName, `%${search}%`),
         ilike2(shops.phone, `%${search}%`)
@@ -125132,7 +125132,7 @@ var categories_default = router7;
 
 // src/routes/v1/products.ts
 var import_express8 = __toESM(require_express2(), 1);
-import { eq as eq10, and as and5, ilike as ilike3, inArray as inArray4, desc as desc4, count as count5, gte as gte2, sql as sql2, or as or5 } from "drizzle-orm";
+import { eq as eq10, and as and5, ilike as ilike3, inArray as inArray4, desc as desc4, count as count5, gte as gte2, sql as sql2, or as or4 } from "drizzle-orm";
 var router8 = (0, import_express8.Router)();
 var A7 = requireRole("admin", "super_admin");
 var V = requireRole("vendor", "admin", "super_admin");
@@ -125169,7 +125169,7 @@ router8.get("/", optionalAuth, async (req, res) => {
     const conditions = [];
     if (status !== "all") {
       if (status === "active") {
-        conditions.push(or5(eq10(products.status, "active"), eq10(products.status, "approved")));
+        conditions.push(or4(eq10(products.status, "active"), eq10(products.status, "approved")));
         conditions.push(gte2(products.stock, 0));
       } else {
         conditions.push(eq10(products.status, status));
@@ -125189,7 +125189,7 @@ router8.get("/", optionalAuth, async (req, res) => {
     if (pincode) {
       const pincodeShops = await db.select({ id: shops.id }).from(shops).where(and5(
         sql2`${shops.address}->>'pincode' = ${pincode}`,
-        or5(eq10(shops.status, "approved"), eq10(shops.status, "active"))
+        or4(eq10(shops.status, "approved"), eq10(shops.status, "active"))
       ));
       if (pincodeShops.length === 0) {
         res.json({ success: true, products: [], total: 0, page: pg2, pages: 0 });
@@ -125211,7 +125211,7 @@ router8.get("/", optionalAuth, async (req, res) => {
       conditions.push(
         inArray4(
           products.shopId,
-          db.select({ id: shops.id }).from(shops).where(or5(eq10(shops.status, "approved"), eq10(shops.status, "active")))
+          db.select({ id: shops.id }).from(shops).where(or4(eq10(shops.status, "approved"), eq10(shops.status, "active")))
         )
       );
     }
@@ -125392,7 +125392,7 @@ router8.post("/", authenticate, vendorWriteLimiter, async (req, res) => {
     fomoTag: safeBody["fomoTag"] ? String(safeBody["fomoTag"]) : void 0
   }).returning();
   try {
-    const adminUsers = await db.select({ id: users.id }).from(users).where(or5(eq10(users.role, "admin"), eq10(users.role, "super_admin")));
+    const adminUsers = await db.select({ id: users.id }).from(users).where(or4(eq10(users.role, "admin"), eq10(users.role, "super_admin")));
     await Promise.all(
       adminUsers.map(
         (admin) => createNotificationLimited(admin.id, {
@@ -125533,7 +125533,7 @@ var products_default = router8;
 var import_express9 = __toESM(require_express2(), 1);
 var import_razorpay = __toESM(require_razorpay(), 1);
 init_zod();
-import { eq as eq12, and as and6, ilike as ilike4, or as or6, gte as gte3, ne, desc as desc5, count as count6, sql as sql3, inArray as inArray5 } from "drizzle-orm";
+import { eq as eq12, and as and6, ilike as ilike4, or as or5, gte as gte3, ne, desc as desc5, count as count6, sql as sql3, inArray as inArray5 } from "drizzle-orm";
 
 // src/utils/commission.ts
 import { eq as eq11 } from "drizzle-orm";
@@ -125708,7 +125708,7 @@ router9.get("/", authenticate, async (req, res) => {
   }
   if (status) conditions.push(eq12(orders.status, status));
   if (search) {
-    conditions.push(or6(
+    conditions.push(or5(
       ilike4(orders.customerName, `%${search}%`),
       ilike4(orders.shopName, `%${search}%`)
     ));
@@ -126121,7 +126121,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
   } catch {
   }
   try {
-    const adminUsers = await db.select({ id: users.id }).from(users).where(or6(eq12(users.role, "admin"), eq12(users.role, "super_admin")));
+    const adminUsers = await db.select({ id: users.id }).from(users).where(or5(eq12(users.role, "admin"), eq12(users.role, "super_admin")));
     const shortId = createdOrder.id.slice(-6).toUpperCase();
     const shopName = shop?.shopName ?? "a shop";
     await Promise.all(
@@ -126590,7 +126590,7 @@ var commissions_default = router11;
 
 // src/routes/v1/delivery.ts
 var import_express12 = __toESM(require_express2(), 1);
-import { eq as eq15, desc as desc7, and as and9 } from "drizzle-orm";
+import { eq as eq15, desc as desc7, and as and9, or as or6 } from "drizzle-orm";
 var router12 = (0, import_express12.Router)();
 var A11 = requireRole("admin", "super_admin");
 router12.get("/", authenticate, A11, async (_req, res) => {
@@ -126968,7 +126968,7 @@ router12.get("/available-orders", authenticate, async (req, res) => {
   const unassignedOrders = await db.select({ order: orders, shopName: shops.shopName, shopAddress: shops.address }).from(orders).leftJoin(shops, eq15(orders.shopId, shops.id)).where(
     and9(
       eq15(orders.deliveryPartnerId, null),
-      or(eq15(orders.status, "placed"), eq15(orders.status, "packed"), eq15(orders.status, "accepted"))
+      or6(eq15(orders.status, "placed"), eq15(orders.status, "packed"), eq15(orders.status, "accepted"))
     )
   ).orderBy(desc7(orders.createdAt)).limit(20);
   const filtered = unassignedOrders.filter(({ order, shopAddress }) => {
@@ -127091,7 +127091,6 @@ router12.post("/apply", optionalAuth, async (req, res) => {
       name: String(body["name"] || "Rider Applicant"),
       phone: applicantPhone,
       role: "rider",
-      roles: ["customer", "rider"],
       status: "active",
       cityId: body["cityId"] ? String(body["cityId"]) : "balurghat"
     }).returning();

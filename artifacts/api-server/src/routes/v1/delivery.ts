@@ -1,6 +1,6 @@
 import { Router, type Response } from "express";
 import { db, deliveryPartners, deliveryChargeRules, deliverySettings, orders, users, shops } from "@workspace/db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, or } from "drizzle-orm";
 import { authenticate, optionalAuth, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { validateUuidParams } from "../../middlewares/validateUuid.js";
 import { mi, miArr } from "../../utils/mapId.js";
@@ -338,14 +338,14 @@ router.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("ord
 
   const isCod = (order.paymentMethod ?? "COD").toUpperCase() === "COD";
 
-  if (targetStatus === "delivered") {
+  if ((targetStatus as string) === "delivered") {
     await db.update(deliveryPartners).set({
       ordersDelivered: partner.ordersDelivered + 1,
       totalEarnings: partner.totalEarnings + (order.deliveryCharge ?? 0),
       currentOrderId: null,
       updatedAt: new Date(),
     }).where(eq(deliveryPartners.id, partner.id));
-  } else if (targetStatus === "out_for_delivery") {
+  } else if ((targetStatus as string) === "out_for_delivery") {
     await db.update(deliveryPartners).set({
       currentOrderId: order.id,
       updatedAt: new Date(),
@@ -353,7 +353,7 @@ router.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("ord
   }
 
   // For COD orders marked delivered with cash confirmed, mark payment as paid
-  const paymentStatusUpdate = (targetStatus === "delivered" && isCod && confirmCash) ? { paymentStatus: "paid" } : {};
+  const paymentStatusUpdate = ((targetStatus as string) === "delivered" && isCod && confirmCash) ? { paymentStatus: "paid" } : {};
 
   const [updated] = await db.update(orders)
     .set({ status: targetStatus, ...paymentStatusUpdate, updatedAt: new Date() })
@@ -631,7 +631,6 @@ router.post("/apply", optionalAuth, async (req: AuthRequest, res: Response): Pro
       name: String(body["name"] || "Rider Applicant"),
       phone: applicantPhone,
       role: "rider",
-      roles: ["customer", "rider"],
       status: "active",
       cityId: body["cityId"] ? String(body["cityId"]) : "balurghat",
     }).returning();
