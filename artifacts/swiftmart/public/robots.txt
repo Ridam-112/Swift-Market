@@ -1,5 +1,34 @@
-# SwiftMart Open Crawl Directive
 User-agent: *
 Allow: /
+Allow: /shops
+Allow: /shop/
+Allow: /products
+Allow: /product/
+Allow: /grocery
+Allow: /categories
+Allow: /search
+Allow: /contact-support
+Allow: /privacy
+Allow: /terms
+Allow: /refund-cancellation
+
+# Confidential & Private routes (blocked from search engines)
+Disallow: /cart
+Disallow: /checkout
+Disallow: /order/
+Disallow: /orders
+Disallow: /profile
+Disallow: /notifications
+Disallow: /auth
+Disallow: /google-callback
+Disallow: /complete-profile
+Disallow: /admin
+Disallow: /manager-panel
+Disallow: /delivery-dashboard
+Disallow: /delivery/
+Disallow: /vendor/
+Disallow: /vendor-register
+Disallow: /vendor-status
+Disallow: /delete-account
 
 Sitemap: https://swiftmart.space/sitemap.xml

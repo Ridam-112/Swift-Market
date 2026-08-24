@@ -103,9 +103,11 @@ function isPrivateRoute(path: string): boolean {
 }
 
 export function RobotsManager() {
+  const [location] = useLocation();
+  const robots = isPrivateRoute(location) ? "noindex,nofollow" : "index,follow";
   return (
     <Helmet>
-      <meta name="robots" content="index,follow" />
+      <meta name="robots" content={robots} />
     </Helmet>
   );
 }
