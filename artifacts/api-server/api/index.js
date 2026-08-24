@@ -125727,16 +125727,17 @@ router9.get("/", authenticate, async (req, res) => {
   }
   const mappedOrders = orderRows.map((order) => {
     const partner = order.deliveryPartnerId ? partnerMap.get(order.deliveryPartnerId) : null;
+    const partnerObj = partner;
     return {
       ...mi(order),
       riderName: partner?.name ?? void 0,
       riderPhone: partner?.phone ?? void 0,
-      riderPhotoUrl: partner?.photoUrl ?? void 0,
+      riderPhotoUrl: partnerObj?.photoUrl ?? void 0,
       deliveryPartner: partner ? {
         id: partner.id,
         name: partner.name,
         phone: partner.phone,
-        photoUrl: partner.photoUrl,
+        photoUrl: partnerObj?.photoUrl ?? null,
         vehicle: partner.vehicle
       } : void 0
     };

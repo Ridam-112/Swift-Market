@@ -212,16 +212,17 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<v
 
   const mappedOrders = orderRows.map(order => {
     const partner = order.deliveryPartnerId ? partnerMap.get(order.deliveryPartnerId) : null;
+    const partnerObj = partner as (typeof deliveryPartners.$inferSelect & { photoUrl?: string }) | null;
     return {
       ...mi(order),
       riderName: partner?.name ?? undefined,
       riderPhone: partner?.phone ?? undefined,
-      riderPhotoUrl: partner?.photoUrl ?? undefined,
+      riderPhotoUrl: partnerObj?.photoUrl ?? undefined,
       deliveryPartner: partner ? {
         id: partner.id,
         name: partner.name,
         phone: partner.phone,
-        photoUrl: partner.photoUrl,
+        photoUrl: partnerObj?.photoUrl ?? null,
         vehicle: partner.vehicle,
       } : undefined,
     };
