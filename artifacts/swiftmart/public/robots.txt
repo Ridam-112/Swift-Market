@@ -1,3 +1,4 @@
+# SwiftMart Open Crawl Directive
 User-agent: *
 Allow: /
 
