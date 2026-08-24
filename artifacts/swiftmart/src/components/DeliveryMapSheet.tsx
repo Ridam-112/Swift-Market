@@ -13,7 +13,7 @@ import { formatINR } from "@/lib/currency";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
-type AddressObj = { line1?: string; line2?: string; city?: string; pincode?: string };
+type AddressObj = { line1?: string; line2?: string; city?: string; pincode?: string; lat?: number; lng?: number };
 
 const geoCache = new Map<string, [number, number]>();
 
@@ -194,7 +194,13 @@ export default function DeliveryMapSheet({ isOpen, onClose, order, onPickedUp, o
     setGeocoding(true);
     lastRouteRiderRef.current = null;
 
-    const dest = await geocodeAddress(targetAddress);
+    let dest: [number, number] | null = null;
+    if (typeof targetAddress.lat === "number" && typeof targetAddress.lng === "number" && !isNaN(targetAddress.lat) && !isNaN(targetAddress.lng)) {
+      dest = [targetAddress.lat, targetAddress.lng];
+    } else {
+      dest = await geocodeAddress(targetAddress);
+    }
+
     setGeocoding(false);
     if (!dest) { setGeoError(true); return; }
     setDestPos(dest);

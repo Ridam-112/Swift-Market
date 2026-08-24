@@ -71,6 +71,8 @@ export interface Address {
   line2?: string;
   city: string;
   pincode: string;
+  lat?: number;
+  lng?: number;
 }
 
 export interface Order {

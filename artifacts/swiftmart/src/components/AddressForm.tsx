@@ -3,8 +3,9 @@ import { Address } from "@/types";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle, MapPin } from "lucide-react";
 import { isServicePincode, getServiceAreaName } from "@/lib/serviceArea";
+import { MapLocationPicker, type MapLocationResult } from "./MapLocationPicker";
 
 interface AddressFormProps {
   onSubmit: (address: Address) => void;
@@ -18,10 +19,22 @@ export function AddressForm({ onSubmit, onCancel, initialValues }: AddressFormPr
   const [line2, setLine2] = useState(initialValues?.line2 ?? "");
   const [city, setCity] = useState(initialValues?.city ?? "");
   const [pincode, setPincode] = useState(initialValues?.pincode ?? "");
+  const [lat, setLat] = useState<number | undefined>(initialValues?.lat);
+  const [lng, setLng] = useState<number | undefined>(initialValues?.lng);
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   const pincodeValid = pincode.length === 6 && isServicePincode(pincode);
   const pincodeOutOfArea = pincode.length === 6 && !isServicePincode(pincode);
   const areaName = getServiceAreaName(pincode);
+
+  const handleMapConfirm = (loc: MapLocationResult) => {
+    setLat(loc.lat);
+    setLng(loc.lng);
+    if (loc.line1) setLine1(loc.line1);
+    if (loc.line2) setLine2(loc.line2);
+    if (loc.city) setCity(loc.city);
+    if (loc.pincode && loc.pincode.length === 6) setPincode(loc.pincode);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,11 +48,38 @@ export function AddressForm({ onSubmit, onCancel, initialValues }: AddressFormPr
       line2,
       city,
       pincode,
+      lat,
+      lng,
     });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 bg-card p-4 rounded-2xl neu-card">
+    <>
+      <form onSubmit={handleSubmit} className="space-y-4 bg-card p-4 rounded-2xl neu-card">
+        {/* Map Location Picker Trigger */}
+        <div className="bg-gradient-to-r from-amber-500/10 via-red-500/10 to-amber-500/10 p-3 rounded-2xl border border-amber-500/20 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-red-500" /> House Map Pin
+            </span>
+            {lat && lng ? (
+              <span className="text-[10px] bg-green-500/20 text-green-700 dark:text-green-300 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Pin Set ({lat.toFixed(3)}, {lng.toFixed(3)})
+              </span>
+            ) : (
+              <span className="text-[10px] text-muted-foreground">Optional, helps rider navigate</span>
+            )}
+          </div>
+
+          <Button
+            type="button"
+            onClick={() => setShowMapPicker(true)}
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-amber-500 hover:from-red-600 hover:to-amber-600 text-white rounded-xl py-2.5 text-xs font-bold shadow-md transition-all active:scale-[0.98]"
+          >
+            <MapPin className="w-4 h-4" />
+            {lat && lng ? "📍 Change House Location Pin on Map" : "📍 Select House Location on Map"}
+          </Button>
+        </div>
       <div className="flex gap-2 mb-4">
         {(['Home', 'Work', 'Other'] as const).map(l => (
           <button
@@ -135,5 +175,14 @@ export function AddressForm({ onSubmit, onCancel, initialValues }: AddressFormPr
         </Button>
       </div>
     </form>
+
+    <MapLocationPicker
+      isOpen={showMapPicker}
+      onClose={() => setShowMapPicker(false)}
+      onConfirm={handleMapConfirm}
+      initialLat={lat}
+      initialLng={lng}
+    />
+  </>
   );
 }
