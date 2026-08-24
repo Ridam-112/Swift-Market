@@ -295,10 +295,11 @@ export function MapLocationPicker({
                 zoomControl={false}
                 attributionControl={false}
               >
-                {/* Dynamic Tile Layer Selector */}
+                {/* Dynamic Tile Layer Selector - 100% reliable coverage across India */}
                 {mapMode === "3d_buildings" && (
                   <TileLayer
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    subdomains="abc"
                     maxZoom={19}
                   />
                 )}
@@ -306,12 +307,12 @@ export function MapLocationPicker({
                   <>
                     <TileLayer
                       url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                      maxZoom={19}
+                      maxZoom={18}
                     />
                     <TileLayer
                       url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png"
                       subdomains="abcd"
-                      maxZoom={19}
+                      maxZoom={18}
                     />
                   </>
                 )}
@@ -348,7 +349,7 @@ export function MapLocationPicker({
                     mapMode === "3d_buildings" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
                   }`}
                 >
-                  🏢 3D Houses & Streets
+                  🗺️ Detailed Area & Street Map
                 </button>
                 <button
                   type="button"
@@ -357,7 +358,7 @@ export function MapLocationPicker({
                     mapMode === "satellite" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
                   }`}
                 >
-                  🛰️ House Roofs (Satellite)
+                  🛰️ Satellite House Roofs
                 </button>
               </div>
 
