@@ -1,17 +1,17 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { MapPin, Navigation, Search, Loader2, Check, X, Building, Compass } from "lucide-react";
+import { MapPin, Navigation, Search, Loader2, Check, X, Building, Compass, Layers } from "lucide-react";
 import { toast } from "sonner";
 
 // Default coordinates: Balurghat City Center
 const BALURGHAT_CENTER: [number, number] = [25.2217, 88.7698];
 
-// Custom Pin Icon for House Selection
+// Custom House Marker Icon
 const HOUSE_PIN_ICON = new L.DivIcon({
   html: `
     <div style="position:relative;width:44px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
@@ -44,24 +44,28 @@ interface MapLocationPickerProps {
   initialLng?: number;
 }
 
-// Helper component to center map smoothly
-function MapController({ center }: { center: [number, number] }) {
+type MapMode = "3d_buildings" | "satellite" | "osm";
+
+// Helper component that ONLY flies when flyTarget is explicitly set (e.g. Locate Me or Search)
+function MapFlyController({ target }: { target: [number, number] | null }) {
   const map = useMap();
   useEffect(() => {
-    map.flyTo(center, 17, { animate: true, duration: 1.2 });
-  }, [center, map]);
+    if (target) {
+      map.flyTo(target, 18, { animate: true, duration: 1.2 });
+    }
+  }, [target, map]);
   return null;
 }
 
-// Map events handler to sync position on map move/drag
+// Map events handler to sync position on map move/drag without auto-reset
 function MapEventsHandler({ onMoveEnd }: { onMoveEnd: (pos: [number, number]) => void }) {
-  const map = useMapEvents({
-    dragend: () => {
-      const c = map.getCenter();
+  useMapEvents({
+    dragend: (e) => {
+      const c = e.target.getCenter();
       onMoveEnd([c.lat, c.lng]);
     },
-    zoomend: () => {
-      const c = map.getCenter();
+    zoomend: (e) => {
+      const c = e.target.getCenter();
       onMoveEnd([c.lat, c.lng]);
     },
   });
@@ -78,6 +82,15 @@ export function MapLocationPicker({
   const [position, setPosition] = useState<[number, number]>(
     initialLat && initialLng ? [initialLat, initialLng] : BALURGHAT_CENTER
   );
+
+  // flyTarget is ONLY set when user explicitly clicks Locate Me or Searches a location
+  // This prevents the map from auto-jumping back while the user is dragging!
+  const [flyTarget, setFlyTarget] = useState<[number, number] | null>(
+    initialLat && initialLng ? [initialLat, initialLng] : null
+  );
+
+  const [mapMode, setMapMode] = useState<MapMode>("3d_buildings");
+
   const [addressDetails, setAddressDetails] = useState<{
     line1: string;
     line2: string;
@@ -120,13 +133,13 @@ export function MapLocationPicker({
         });
       }
     } catch {
-      // Fallback
+      // Ignore network hiccup
     } finally {
       setGeocoding(false);
     }
   }, []);
 
-  // Update position and reverse geocode
+  // Update position and reverse geocode without triggering flyTo reset
   const handlePositionChange = useCallback(
     (newPos: [number, number]) => {
       setPosition(newPos);
@@ -146,13 +159,15 @@ export function MapLocationPicker({
       (pos) => {
         setLocating(false);
         const userPos: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-        handlePositionChange(userPos);
-        toast.success("Located your current position 🎯");
+        setPosition(userPos);
+        setFlyTarget(userPos); // Programmatically fly to user position
+        reverseGeocode(userPos[0], userPos[1]);
+        toast.success("Located your position 🎯");
       },
       (err) => {
         setLocating(false);
         if (err.code === err.PERMISSION_DENIED) {
-          toast.error("Location permission denied. Please select manually on map.");
+          toast.error("Location permission denied. Please drag pin manually.");
         } else {
           toast.error("Could not fetch GPS location");
         }
@@ -175,7 +190,9 @@ export function MapLocationPicker({
       const data = await res.json();
       if (data && data[0]) {
         const foundPos: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-        handlePositionChange(foundPos);
+        setPosition(foundPos);
+        setFlyTarget(foundPos); // Fly to searched position
+        reverseGeocode(foundPos[0], foundPos[1]);
         setSearchQuery("");
       } else {
         toast.error("Location not found. Try dragging the map pin.");
@@ -187,7 +204,7 @@ export function MapLocationPicker({
     }
   };
 
-  // Trigger initial reverse geocode when modal opens
+  // Trigger initial location check when modal opens
   useEffect(() => {
     if (isOpen) {
       if (!initialLat || !initialLng) {
@@ -240,7 +257,7 @@ export function MapLocationPicker({
                 </div>
                 <div>
                   <h3 className="font-bold text-sm">Select House Location</h3>
-                  <p className="text-xs text-muted-foreground">Drag pin to your exact building or house</p>
+                  <p className="text-xs text-muted-foreground">Drag pin directly over your house / building</p>
                 </div>
               </div>
               <button
@@ -273,16 +290,39 @@ export function MapLocationPicker({
             <div className="relative flex-1 w-full bg-muted/20">
               <MapContainer
                 center={position}
-                zoom={17}
+                zoom={18}
                 style={{ width: "100%", height: "100%" }}
                 zoomControl={false}
                 attributionControl={false}
               >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  subdomains="abc"
-                  maxZoom={19}
-                />
+                {/* Dynamic Tile Layer Selector */}
+                {mapMode === "3d_buildings" && (
+                  <TileLayer
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+                    maxZoom={19}
+                  />
+                )}
+                {mapMode === "satellite" && (
+                  <>
+                    <TileLayer
+                      url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                      maxZoom={19}
+                    />
+                    <TileLayer
+                      url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png"
+                      subdomains="abcd"
+                      maxZoom={19}
+                    />
+                  </>
+                )}
+                {mapMode === "osm" && (
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    subdomains="abc"
+                    maxZoom={19}
+                  />
+                )}
+
                 <Marker
                   position={position}
                   icon={HOUSE_PIN_ICON}
@@ -295,9 +335,31 @@ export function MapLocationPicker({
                     },
                   }}
                 />
-                <MapController center={position} />
+                <MapFlyController target={flyTarget} />
                 <MapEventsHandler onMoveEnd={handlePositionChange} />
               </MapContainer>
+
+              {/* Map Layer Mode Switcher Pill */}
+              <div className="absolute top-4 left-4 z-[400] bg-card/95 backdrop-blur-md border border-border shadow-lg rounded-xl p-1 flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setMapMode("3d_buildings")}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors ${
+                    mapMode === "3d_buildings" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  🏢 3D Houses & Streets
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMapMode("satellite")}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors ${
+                    mapMode === "satellite" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  🛰️ House Roofs (Satellite)
+                </button>
+              </div>
 
               {/* Locate Me GPS floating button */}
               <button
@@ -311,7 +373,7 @@ export function MapLocationPicker({
                 ) : (
                   <Navigation className="w-4 h-4 text-primary" />
                 )}
-                <span>{locating ? "Locating GPS..." : "Locate Me"}</span>
+                <span>{locating ? "Locating..." : "Locate Me"}</span>
               </button>
 
               {/* Instructional Banner floating at bottom of map */}
