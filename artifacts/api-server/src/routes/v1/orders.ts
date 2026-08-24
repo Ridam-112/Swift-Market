@@ -65,9 +65,12 @@ const CreateOrderSchema = z.object({
   address: z.object({
     label:   z.string().default(""),
     line1:   z.string().min(1),
+    line2:   z.string().optional(),
     city:    z.string().min(1),
     pincode: z.string().min(4).max(10),
-  }),
+    lat:     z.number().optional(),
+    lng:     z.number().optional(),
+  }).passthrough(),
   deliveryType:    z.enum(['instant', 'scheduled']).default('instant'),
   couponCode:      z.string().optional(),
   razorpayOrderId: z.string().optional(),

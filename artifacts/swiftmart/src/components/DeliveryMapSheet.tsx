@@ -81,17 +81,18 @@ async function geocodeAddress(addr: AddressObj): Promise<[number, number] | null
   return null;
 }
 
-async function fetchRoute(from: [number, number], to: [number, number]): Promise<{ path: [number, number][]; distanceKm: number } | null> {
+async function fetchRoute(from: [number, number], to: [number, number]): Promise<{ path: [number, number][]; distanceKm: number; durationMin: number } | null> {
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
     const res = await fetch(url);
     const data = await res.json() as {
-      routes?: { geometry: { coordinates: [number, number][] }; distance: number }[];
+      routes?: { geometry: { coordinates: [number, number][] }; distance: number; duration: number }[];
     };
     if (data.routes?.[0]) {
       const coords = data.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon] as [number, number]);
       const distanceKm = +(data.routes[0].distance / 1000).toFixed(1);
-      return { path: coords, distanceKm };
+      const durationMin = Math.max(1, Math.round(data.routes[0].duration / 60));
+      return { path: coords, distanceKm, durationMin };
     }
   } catch { /* ignore */ }
   return null;
@@ -151,6 +152,7 @@ export default function DeliveryMapSheet({ isOpen, onClose, order, onPickedUp, o
   const [destPos, setDestPos]           = useState<[number, number] | null>(null);
   const [routePath, setRoutePath]       = useState<[number, number][] | null>(null);
   const [distanceKm, setDistanceKm]     = useState<number | null>(null);
+  const [durationMin, setDurationMin]   = useState<number | null>(null);
   const [geocoding, setGeocoding]       = useState(false);
   const [geoError, setGeoError]         = useState(false);
 
@@ -183,6 +185,7 @@ export default function DeliveryMapSheet({ isOpen, onClose, order, onPickedUp, o
       lastRouteRiderRef.current = rider;
       setRoutePath(route.path);
       setDistanceKm(route.distanceKm);
+      setDurationMin(route.durationMin);
     }
   }, []);
 
@@ -191,6 +194,7 @@ export default function DeliveryMapSheet({ isOpen, onClose, order, onPickedUp, o
     setDestPos(null);
     setRoutePath(null);
     setDistanceKm(null);
+    setDurationMin(null);
     setGeocoding(true);
     lastRouteRiderRef.current = null;
 
@@ -337,9 +341,15 @@ export default function DeliveryMapSheet({ isOpen, onClose, order, onPickedUp, o
                   {isPickup ? `Pick up · ${order.shopName}` : `Deliver to ${order.customerName}`}
                 </p>
                 {distanceKm !== null && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Navigation2 className="w-3 h-3" />
-                    {distanceKm} km away
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
+                    <Navigation2 className="w-3.5 h-3.5 text-primary" />
+                    <span>{distanceKm} km</span>
+                    {durationMin !== null && (
+                      <>
+                        <span>•</span>
+                        <span className="text-foreground font-bold">~{durationMin} mins drive</span>
+                      </>
+                    )}
                   </p>
                 )}
               </div>

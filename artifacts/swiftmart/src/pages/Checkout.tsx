@@ -253,8 +253,11 @@ export default function Checkout() {
       address: {
         label: address!.label,
         line1: address!.line1,
+        line2: address!.line2 ?? "",
         city: address!.city,
         pincode: address!.pincode,
+        lat: address!.lat,
+        lng: address!.lng,
       },
     });
   };

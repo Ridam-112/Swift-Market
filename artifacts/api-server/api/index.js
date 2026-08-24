@@ -125620,9 +125620,12 @@ var CreateOrderSchema = external_exports.object({
   address: external_exports.object({
     label: external_exports.string().default(""),
     line1: external_exports.string().min(1),
+    line2: external_exports.string().optional(),
     city: external_exports.string().min(1),
-    pincode: external_exports.string().min(4).max(10)
-  }),
+    pincode: external_exports.string().min(4).max(10),
+    lat: external_exports.number().optional(),
+    lng: external_exports.number().optional()
+  }).passthrough(),
   deliveryType: external_exports.enum(["instant", "scheduled"]).default("instant"),
   couponCode: external_exports.string().optional(),
   razorpayOrderId: external_exports.string().optional(),
