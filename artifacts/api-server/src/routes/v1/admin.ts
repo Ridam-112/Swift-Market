@@ -1,3 +1,4 @@
+// SwiftMart Vercel API Server Route Handlers
 import { Router, type Response } from "express";
 import { db, admins, users, shops, orders, deliveryPartners, payouts, cities, managerCities, managerActivityLogs, servicePincodes } from "@workspace/db";
 import { eq, and, inArray, count, sum, gte, desc } from "drizzle-orm";
