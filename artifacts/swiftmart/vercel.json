@@ -1,20 +1,16 @@
 {
-  "trailingSlash": false,
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "https://swift-market-api-server-6w3x.vercel.app/api/$1"
+      "source": "/api",
+      "destination": "https://swift-market-api-server-6w3x.vercel.app/api"
     },
     {
-      "src": "/api",
-      "dest": "https://swift-market-api-server-6w3x.vercel.app/api"
+      "source": "/api/:path*",
+      "destination": "https://swift-market-api-server-6w3x.vercel.app/api/:path*"
     },
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/:path*",
+      "destination": "/index.html"
     }
   ]
 }
