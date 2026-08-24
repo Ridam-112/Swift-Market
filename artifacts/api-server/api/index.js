@@ -124042,8 +124042,10 @@ router4.patch("/me/profile", authenticate, async (req, res) => {
       line1: z.string().min(1).max(200),
       line2: z.string().max(200).optional(),
       city: z.string().min(1).max(100),
-      pincode: z.string().regex(/^\d{6}$/)
-    })).max(10, "Maximum 10 addresses").optional()
+      pincode: z.string().regex(/^\d{6}$/),
+      lat: z.number().optional(),
+      lng: z.number().optional()
+    }).passthrough()).max(10, "Maximum 10 addresses").optional()
   }).strict();
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {

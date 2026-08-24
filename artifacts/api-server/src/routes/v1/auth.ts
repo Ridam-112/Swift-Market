@@ -1248,7 +1248,7 @@ router.post("/complete-profile", authenticate, async (req: AuthRequest, res: Res
     name?: string;
     phone?: string;
     pincode?: string;
-    address?: { label: string; line1: string; line2?: string; city: string; pincode: string };
+    address?: { label: string; line1: string; line2?: string; city: string; pincode: string; lat?: number; lng?: number };
   };
 
   if (!name?.trim()) {

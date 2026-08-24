@@ -136,7 +136,9 @@ router.patch("/me/profile", authenticate, async (req: AuthRequest, res: Response
       line2:   z.string().max(200).optional(),
       city:    z.string().min(1).max(100),
       pincode: z.string().regex(/^\d{6}$/),
-    })).max(10, "Maximum 10 addresses").optional(),
+      lat:     z.number().optional(),
+      lng:     z.number().optional(),
+    }).passthrough()).max(10, "Maximum 10 addresses").optional(),
   }).strict();
 
   const parsed = schema.safeParse(req.body);

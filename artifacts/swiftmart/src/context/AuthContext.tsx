@@ -71,6 +71,8 @@ interface ApiAddress {
   line2?: string;
   city: string;
   pincode: string;
+  lat?: number;
+  lng?: number;
 }
 
 interface ApiUser {
@@ -132,6 +134,8 @@ function normalizeAddress(addr: ApiAddress): Address {
     line2: addr.line2,
     city: addr.city,
     pincode: addr.pincode,
+    lat: addr.lat,
+    lng: addr.lng,
   };
 }
 
