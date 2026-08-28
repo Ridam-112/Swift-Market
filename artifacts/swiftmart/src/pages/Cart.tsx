@@ -43,6 +43,9 @@ export default function Cart() {
     );
   }
 
+  const uniqueShopCount = new Set(items.map(i => i.product.vendorId)).size || 1;
+  const estimatedDeliveryFee = 25 * uniqueShopCount;
+
   return (
     <div className="w-full max-w-5xl mx-auto pb-24 pt-4 px-4 space-y-6">
       <SEO noIndex />
@@ -77,7 +80,12 @@ export default function Cart() {
         </div>
         
         <div className="w-full min-w-0 space-y-6">
-          <CartSummary subtotal={subtotal} />
+          <CartSummary
+            subtotal={subtotal}
+            deliveryFee={estimatedDeliveryFee}
+            deliveryType="instant"
+            shopCount={uniqueShopCount}
+          />
           
           {shopClosed ? (
             <Button disabled className="w-full rounded-full h-12 text-base font-bold shadow-none opacity-50 cursor-not-allowed">

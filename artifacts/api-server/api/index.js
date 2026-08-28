@@ -125628,7 +125628,7 @@ var CreateOrderSchema = external_exports.object({
     lat: external_exports.number().optional(),
     lng: external_exports.number().optional()
   }).passthrough(),
-  deliveryType: external_exports.enum(["instant", "scheduled"]).default("instant"),
+  deliveryType: external_exports.enum(["instant", "standard", "saver", "scheduled"]).default("instant"),
   couponCode: external_exports.string().optional(),
   razorpayOrderId: external_exports.string().optional(),
   notes: external_exports.string().max(500).optional(),
@@ -126068,7 +126068,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
         commissionAmount,
         vendorPayable,
         platformRevenue: +(commissionAmount + packagingFee).toFixed(2),
-        deliveryType: body["deliveryType"] === "scheduled" ? "scheduled" : "instant",
+        deliveryType: parsed.data.deliveryType || "instant",
         paymentMethod,
         paymentStatus: "pending",
         address: body["address"] ?? {},

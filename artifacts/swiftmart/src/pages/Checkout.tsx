@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { isServicePincode } from "@/lib/serviceArea";
+import { formatINR } from "@/lib/currency";
 import {
   getCustomerCoords,
   computeSingleShopEta,
@@ -246,7 +247,7 @@ export default function Checkout() {
       }),
       subtotal: shopSubtotal,
       deliveryCharge: shopDeliveryCharge,
-      deliveryType: deliverySlot === 'instant' ? 'instant' : 'scheduled',
+      deliveryType: deliverySlot,
       couponDiscount: shopCouponDiscount,
       ...(shopCouponCode ? { couponCode: shopCouponCode } : {}),
       paymentMethod,
@@ -711,8 +712,8 @@ export default function Checkout() {
               </>
             ) : (
               isMultiShop
-                ? `Place ${uniqueShopIds.length} Orders`
-                : 'Place Order'
+                ? `Place ${uniqueShopIds.length} Orders · ${formatINR(Math.max(0, totalAmount))}`
+                : `Place Order · ${formatINR(Math.max(0, totalAmount))}`
             )}
           </Button>
 

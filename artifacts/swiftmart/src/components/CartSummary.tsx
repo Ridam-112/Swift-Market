@@ -35,19 +35,21 @@ export function CartSummary({
         <span className="font-medium text-foreground">{formatINR(subtotal)}</span>
       </div>
 
-      {deliveryFee > 0 && (
-        <div className="flex justify-between text-muted-foreground">
-          <div>
-            <span>{deliveryLabel}</span>
-            {shopCount > 1 && (
-              <p className="text-[10px] mt-0.5 text-muted-foreground">
-                ₹{perShopFee} × {shopCount} shops
-              </p>
-            )}
-          </div>
-          <span className="font-medium text-foreground">{formatINR(deliveryFee)}</span>
+      <div className="flex justify-between text-muted-foreground">
+        <div>
+          <span>{deliveryLabel}</span>
+          {shopCount > 1 && deliveryFee > 0 && (
+            <p className="text-[10px] mt-0.5 text-muted-foreground">
+              ₹{perShopFee} × {shopCount} shops
+            </p>
+          )}
         </div>
-      )}
+        {deliveryFee > 0 ? (
+          <span className="font-medium text-foreground">{formatINR(deliveryFee)}</span>
+        ) : (
+          <span className="font-bold text-green-600 dark:text-green-400">FREE</span>
+        )}
+      </div>
 
       {packagingFee > 0 && (
         <div className="flex justify-between text-muted-foreground">
