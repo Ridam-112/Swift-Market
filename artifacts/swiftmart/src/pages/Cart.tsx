@@ -10,7 +10,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { AddonSuggestions } from "@/components/AddonSuggestions";
 import { cartKey } from "@/context/CartContext";
 
-const MINIMUM_ORDER_AMOUNT = 99;
+const MINIMUM_ORDER_AMOUNT = 40;
 
 import { SEO } from "@/components/SEO";
 
