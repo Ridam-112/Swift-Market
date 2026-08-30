@@ -9866,6 +9866,14 @@ interface CampaignConfig {
     backgroundColor: string;
     textColor: string;
     accentColor: string;
+    searchPlaceholders?: string[];
+    badgeTitle?: string;
+    badgeSubtitle?: string;
+    badgeEmoji?: string;
+    badgeBgColor?: string;
+    badgeTextColor?: string;
+    tabSubtitle?: string;
+    tabEmoji?: string;
   };
   layoutBlocks: LayoutBlock[];
 }
@@ -10167,6 +10175,210 @@ function SeasonalCampaignTab() {
               className="w-full rounded-xl bg-primary text-primary-foreground font-bold mt-2 shadow-none"
             >
               {saving ? "Saving configs..." : "Save Basic Settings"}
+            </Button>
+          </div>
+
+          {/* Search Bar Side Pill & Tab Badge Settings */}
+          <div className="bg-card rounded-3xl border border-border/40 p-6 space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 pb-2 border-b border-border/30">
+              <span className="text-base">🔍</span>
+              <div>
+                <h3 className="font-bold text-base text-foreground leading-tight">Search Bar Pill & Badge</h3>
+                <p className="text-[11px] text-muted-foreground">Synchronized with Flutter Mobile App & Web search bar</p>
+              </div>
+            </div>
+
+            {/* Live Interactive Preview Box */}
+            <div className="bg-background/80 rounded-2xl p-3 border border-border/60 space-y-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                <span>Live Search Bar Preview</span>
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-primary/5 text-primary border-primary/20">
+                  App & Web Sync
+                </Badge>
+              </div>
+
+              {/* Mock Search Bar with Side Pill */}
+              <div className="bg-card rounded-2xl p-2 border border-border flex items-center justify-between gap-2 shadow-sm">
+                <div className="flex items-center gap-2 text-muted-foreground text-xs pl-1">
+                  <Search className="w-3.5 h-3.5" />
+                  <span className="truncate max-w-[120px] sm:max-w-[150px] text-muted-foreground/70">
+                    {Array.isArray(config.theme.searchPlaceholders) && config.theme.searchPlaceholders.length > 0
+                      ? config.theme.searchPlaceholders[0]
+                      : "Search groceries..."}
+                  </span>
+                </div>
+
+                {/* The Pill */}
+                <div
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl font-bold text-xs shrink-0 shadow-sm border transition-all"
+                  style={{
+                    backgroundColor: config.theme.badgeBgColor || "#FFF0F2",
+                    color: config.theme.badgeTextColor || "#881337",
+                    borderColor: (config.theme.badgeTextColor || "#881337") + "30",
+                  }}
+                >
+                  <span>{config.theme.badgeEmoji || "🎀"}</span>
+                  <div className="flex flex-col text-left leading-none">
+                    <span className="text-[10px] font-extrabold">{config.theme.badgeTitle || "Rakhi"}</span>
+                    <span className="text-[8px] opacity-80">{config.theme.badgeSubtitle || "Special"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mock Top Tab Pill */}
+              <div className="flex items-center gap-2 pt-1 border-t border-border/40 text-xs text-muted-foreground">
+                <span className="text-[10px]">Top Tab:</span>
+                <div
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm"
+                  style={{
+                    backgroundColor: config.theme.backgroundColor || "#8B0000",
+                    color: config.theme.textColor || "#FFFFFF",
+                    borderColor: config.theme.accentColor || "#FFD700",
+                  }}
+                >
+                  <span>{config.theme.tabEmoji || "✨"}</span>
+                  <span>{config.tabName || "Festive Store"}</span>
+                  {config.theme.tabSubtitle && (
+                    <span className="text-[9px] opacity-75 font-normal">({config.theme.tabSubtitle})</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Side Pill Inputs */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-muted-foreground">Pill Title</label>
+                <Input
+                  value={config.theme.badgeTitle ?? "Rakhi"}
+                  onChange={e => setConfig({
+                    ...config,
+                    theme: { ...config.theme, badgeTitle: e.target.value }
+                  })}
+                  placeholder="e.g. Rakhi / Protein"
+                  className="h-9 neu-inset border-none bg-background text-xs font-bold"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-muted-foreground">Pill Subtitle</label>
+                <Input
+                  value={config.theme.badgeSubtitle ?? "Special"}
+                  onChange={e => setConfig({
+                    ...config,
+                    theme: { ...config.theme, badgeSubtitle: e.target.value }
+                  })}
+                  placeholder="e.g. Special / Fest"
+                  className="h-9 neu-inset border-none bg-background text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-muted-foreground">Emoji</label>
+                <Input
+                  value={config.theme.badgeEmoji ?? "🎀"}
+                  onChange={e => setConfig({
+                    ...config,
+                    theme: { ...config.theme, badgeEmoji: e.target.value }
+                  })}
+                  placeholder="e.g. 🎀"
+                  className="h-9 neu-inset border-none bg-background text-xs text-center text-base"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-muted-foreground block">Pill Bg</label>
+                <div className="flex gap-1.5 items-center">
+                  <input
+                    type="color"
+                    value={config.theme.badgeBgColor || "#FFF0F2"}
+                    onChange={e => setConfig({
+                      ...config,
+                      theme: { ...config.theme, badgeBgColor: e.target.value }
+                    })}
+                    className="w-7 h-7 rounded-lg border-none bg-transparent cursor-pointer"
+                  />
+                  <span className="text-[10px] font-mono text-muted-foreground uppercase">{config.theme.badgeBgColor || "#FFF0F2"}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-muted-foreground block">Pill Text</label>
+                <div className="flex gap-1.5 items-center">
+                  <input
+                    type="color"
+                    value={config.theme.badgeTextColor || "#881337"}
+                    onChange={e => setConfig({
+                      ...config,
+                      theme: { ...config.theme, badgeTextColor: e.target.value }
+                    })}
+                    className="w-7 h-7 rounded-lg border-none bg-transparent cursor-pointer"
+                  />
+                  <span className="text-[10px] font-mono text-muted-foreground uppercase">{config.theme.badgeTextColor || "#881337"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Tab Subtitle & Emoji */}
+            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/30">
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-muted-foreground">Tab Subtitle</label>
+                <Input
+                  value={config.theme.tabSubtitle ?? "Store"}
+                  onChange={e => setConfig({
+                    ...config,
+                    theme: { ...config.theme, tabSubtitle: e.target.value }
+                  })}
+                  placeholder="e.g. Store / Dhamaka"
+                  className="h-9 neu-inset border-none bg-background text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-muted-foreground">Tab Emoji</label>
+                <Input
+                  value={config.theme.tabEmoji ?? "✨"}
+                  onChange={e => setConfig({
+                    ...config,
+                    theme: { ...config.theme, tabEmoji: e.target.value }
+                  })}
+                  placeholder="e.g. ✨ / 🪔"
+                  className="h-9 neu-inset border-none bg-background text-xs text-center text-base"
+                />
+              </div>
+            </div>
+
+            {/* Search Placeholders */}
+            <div className="space-y-1 pt-2 border-t border-border/30">
+              <label className="text-[11px] font-semibold text-muted-foreground">
+                Search Placeholders (comma-separated)
+              </label>
+              <Input
+                value={
+                  Array.isArray(config.theme.searchPlaceholders)
+                    ? config.theme.searchPlaceholders.join(", ")
+                    : (config.theme.searchPlaceholders ?? "Search 'Rakhi Gifts' 🎀, Search 'Sweets for Bhaiya' 🍬")
+                }
+                onChange={e => {
+                  const arr = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
+                  setConfig({
+                    ...config,
+                    theme: { ...config.theme, searchPlaceholders: arr }
+                  });
+                }}
+                placeholder="Search 'Rakhi Gifts' 🎀, Search 'Sweets' 🍬"
+                className="h-9 neu-inset border-none bg-background text-xs"
+              />
+            </div>
+
+            <Button
+              onClick={() => handleSave(config)}
+              disabled={saving}
+              className="w-full rounded-xl bg-primary text-primary-foreground font-bold mt-2 shadow-none"
+            >
+              {saving ? "Saving settings..." : "Save Badge & Pill Settings"}
             </Button>
           </div>
         </div>

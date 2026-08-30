@@ -20,6 +20,28 @@ export function Header() {
   const [isLocationOpen, setIsLocationOpen] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [campaign, setCampaign] = useState<{
+    isActive: boolean;
+    tabName: string;
+    theme: {
+      badgeTitle?: string;
+      badgeSubtitle?: string;
+      badgeEmoji?: string;
+      badgeBgColor?: string;
+      badgeTextColor?: string;
+      searchPlaceholders?: string[];
+    };
+  } | null>(null);
+
+  useEffect(() => {
+    api.get<{ success: boolean; campaign: any }>("/seasonal-campaign")
+      .then(res => {
+        if (res.success && res.campaign?.isActive) {
+          setCampaign(res.campaign);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -95,18 +117,40 @@ export function Header() {
               <Link href="/shops" className="flex items-center gap-1.5 font-medium hover:text-primary transition-colors text-foreground shrink-0 text-sm">
                 <Store className="w-4 h-4" /> Shops
               </Link>
-              <div className="relative flex-1">
+              <div className="relative flex-1 flex items-center">
                 <button onClick={handleSearchClick} aria-label="Search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   <Search className="w-4 h-4" aria-hidden="true" />
                 </button>
                 <Input
-                  className="w-full pl-9 bg-background/50 neu-inset border-none h-9 rounded-full focus-visible:ring-1 focus-visible:ring-primary/50 text-foreground text-sm"
-                  placeholder="Search groceries, vegetables..."
+                  className={cn(
+                    "w-full pl-9 bg-background/50 neu-inset border-none h-9 rounded-full focus-visible:ring-1 focus-visible:ring-primary/50 text-foreground text-sm transition-all",
+                    campaign?.isActive && "pr-28"
+                  )}
+                  placeholder={
+                    campaign?.theme?.searchPlaceholders?.[0] || "Search groceries, vegetables..."
+                  }
                   aria-label="Search groceries and products"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleSearch}
                 />
+                {campaign?.isActive && (
+                  <Link
+                    href="/festive"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-xs shadow-sm border transition-transform hover:scale-105"
+                    style={{
+                      backgroundColor: campaign.theme?.badgeBgColor || "#FFF0F2",
+                      color: campaign.theme?.badgeTextColor || "#881337",
+                      borderColor: (campaign.theme?.badgeTextColor || "#881337") + "30",
+                    }}
+                  >
+                    <span className="text-xs">{campaign.theme?.badgeEmoji || "🎀"}</span>
+                    <div className="flex flex-col text-left leading-none">
+                      <span className="text-[10px] font-extrabold">{campaign.theme?.badgeTitle || "Rakhi"}</span>
+                      <span className="text-[8px] opacity-80">{campaign.theme?.badgeSubtitle || "Special"}</span>
+                    </div>
+                  </Link>
+                )}
               </div>
             </div>
           )}

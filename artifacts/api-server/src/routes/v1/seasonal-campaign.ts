@@ -107,12 +107,30 @@ router.get("/", async (_req, res): Promise<void> => {
       return block;
     });
 
+    const safeTheme = {
+      backgroundColor: campaign.theme?.backgroundColor || "#FFF8F0",
+      textColor: campaign.theme?.textColor || "#8A252C",
+      accentColor: campaign.theme?.accentColor || "#F3A738",
+      searchPlaceholders: Array.isArray(campaign.theme?.searchPlaceholders)
+        ? campaign.theme.searchPlaceholders
+        : ["Search 'Rakhi Gifts' 🎀", "Search 'Sweets for Bhaiya' 🍬"],
+      badgeTitle: campaign.theme?.badgeTitle || "Rakhi",
+      badgeSubtitle: campaign.theme?.badgeSubtitle || "Special",
+      badgeEmoji: campaign.theme?.badgeEmoji || "🎀",
+      badgeBgColor: campaign.theme?.badgeBgColor || "#FFF0F2",
+      badgeTextColor: campaign.theme?.badgeTextColor || "#881337",
+      tabSubtitle: campaign.theme?.tabSubtitle || "Store",
+      tabEmoji: campaign.theme?.tabEmoji || "✨",
+      ...(campaign.theme || {}),
+    };
+
     res.json({
       success: true,
       campaign: {
         ...campaign,
-        layoutBlocks: resolvedBlocks
-      }
+        theme: safeTheme,
+        layoutBlocks: resolvedBlocks,
+      },
     });
   } catch (err) {
     res.status(500).json({ success: false, message: "Failed to load seasonal campaign", error: String(err) });

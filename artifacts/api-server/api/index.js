@@ -129341,10 +129341,25 @@ router28.get("/", async (_req, res) => {
       }
       return block;
     });
+    const safeTheme = {
+      backgroundColor: campaign.theme?.backgroundColor || "#FFF8F0",
+      textColor: campaign.theme?.textColor || "#8A252C",
+      accentColor: campaign.theme?.accentColor || "#F3A738",
+      searchPlaceholders: Array.isArray(campaign.theme?.searchPlaceholders) ? campaign.theme.searchPlaceholders : ["Search 'Rakhi Gifts' \u{1F380}", "Search 'Sweets for Bhaiya' \u{1F36C}"],
+      badgeTitle: campaign.theme?.badgeTitle || "Rakhi",
+      badgeSubtitle: campaign.theme?.badgeSubtitle || "Special",
+      badgeEmoji: campaign.theme?.badgeEmoji || "\u{1F380}",
+      badgeBgColor: campaign.theme?.badgeBgColor || "#FFF0F2",
+      badgeTextColor: campaign.theme?.badgeTextColor || "#881337",
+      tabSubtitle: campaign.theme?.tabSubtitle || "Store",
+      tabEmoji: campaign.theme?.tabEmoji || "\u2728",
+      ...campaign.theme || {}
+    };
     res.json({
       success: true,
       campaign: {
         ...campaign,
+        theme: safeTheme,
         layoutBlocks: resolvedBlocks
       }
     });
