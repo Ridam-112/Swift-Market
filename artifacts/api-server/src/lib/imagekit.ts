@@ -6,6 +6,8 @@ const publicKey  = process.env.IMAGEKIT_PUBLIC_KEY;
 const privateKey = process.env.IMAGEKIT_PRIVATE_KEY;
 const urlEndpoint = process.env.IMAGEKIT_URL_ENDPOINT;
 
+export { publicKey as IMAGEKIT_PUBLIC_KEY, urlEndpoint as IMAGEKIT_URL_ENDPOINT };
+
 let _ik: ImageKit | null = null;
 function getIK(): ImageKit {
   if (!publicKey || !privateKey || !urlEndpoint) {
@@ -17,6 +19,15 @@ function getIK(): ImageKit {
     _ik = new ImageKit({ publicKey, privateKey, urlEndpoint });
   }
   return _ik;
+}
+
+/**
+ * Generate authentication parameters for client-side ImageKit uploads.
+ * The client sends these along with the file directly to ImageKit's upload API.
+ */
+export function getImageKitAuthParams() {
+  const ik = getIK();
+  return ik.getAuthenticationParameters();
 }
 
 // Derive the trusted ImageKit hostname for safe deletion checks

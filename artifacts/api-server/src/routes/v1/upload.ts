@@ -2,10 +2,26 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import multer from "multer";
 import path from "path";
 import { authenticate } from "../../middlewares/auth.js";
-import { uploadToImageKit } from "../../lib/imagekit.js";
+import { uploadToImageKit, getImageKitAuthParams, IMAGEKIT_PUBLIC_KEY, IMAGEKIT_URL_ENDPOINT } from "../../lib/imagekit.js";
 
 
 const router = Router();
+
+// Client-side ImageKit auth endpoint — returns signed auth params
+// so the browser can upload directly to ImageKit (no Vercel 4.5MB limit)
+router.get("/imagekit-auth", authenticate, (_req: Request, res: Response) => {
+  try {
+    const authParams = getImageKitAuthParams();
+    res.json({
+      ...authParams,
+      publicKey: IMAGEKIT_PUBLIC_KEY,
+      urlEndpoint: IMAGEKIT_URL_ENDPOINT,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "ImageKit auth failed";
+    res.status(500).json({ success: false, message: msg });
+  }
+});
 
 // Validate both file extension AND MIME type to prevent bypass via renamed files
 const ALLOWED_IMAGE_EXTS  = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"]);

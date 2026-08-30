@@ -351,34 +351,53 @@ export function LayoutBuilderTab({
   const handleImageFileUpload = async (id: string, key: string, file: File) => {
     setUploadingBlockId(id);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("image", file);
-      formData.append("video", file);
-      formData.append("media", file);
-
+      // Step 1: Get ImageKit auth params from our server
       const tokens = api.getTokens();
       const access = tokens.access || localStorage.getItem("sm_at");
       const baseUrl = api.BASE || "/api";
-      const res = await fetch(`${baseUrl}/upload/banner-media`, {
-        method: "POST",
+
+      const authRes = await fetch(`${baseUrl}/upload/imagekit-auth`, {
         headers: {
           ...(access ? { Authorization: `Bearer ${access}` } : {}),
         },
+      });
+      if (!authRes.ok) {
+        const errData = await authRes.json().catch(() => ({}));
+        throw new Error((errData as any)?.message || "Failed to get upload auth");
+      }
+      const authData = await authRes.json() as {
+        token: string;
+        expire: number;
+        signature: string;
+        publicKey: string;
+        urlEndpoint: string;
+      };
+
+      // Step 2: Upload directly to ImageKit from browser (no Vercel size limit)
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("fileName", file.name || "banner-media");
+      formData.append("folder", "/swiftmart/banners");
+      formData.append("publicKey", authData.publicKey);
+      formData.append("signature", authData.signature);
+      formData.append("expire", String(authData.expire));
+      formData.append("token", authData.token);
+
+      const uploadRes = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
+        method: "POST",
         body: formData,
       });
+      const uploadData = await uploadRes.json() as { url?: string; error?: { message?: string } };
 
-      const data = await res.json();
-      const mediaUrl = data.videoUrl || data.imageUrl || data.url || data.fileUrl;
-      if (res.ok && mediaUrl) {
-        handleUpdateBlockData(id, key, mediaUrl);
-        toast.success("Media file uploaded successfully!");
+      if (uploadRes.ok && uploadData.url) {
+        handleUpdateBlockData(id, key, uploadData.url);
+        toast.success("✅ Media uploaded successfully!");
       } else {
-        toast.error(data.message || "Failed to upload file");
+        throw new Error(uploadData.error?.message || "ImageKit upload failed");
       }
     } catch (err) {
       console.error("Media upload failed:", err);
-      toast.error("Failed to upload media file");
+      toast.error(err instanceof Error ? err.message : "Failed to upload media file");
     } finally {
       setUploadingBlockId(null);
     }
