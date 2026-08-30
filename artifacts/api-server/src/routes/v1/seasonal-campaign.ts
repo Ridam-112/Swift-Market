@@ -107,21 +107,22 @@ router.get("/", async (_req, res): Promise<void> => {
       return block;
     });
 
+    const rawTheme = ((campaign as any).theme as Record<string, any>) || {};
     const safeTheme = {
-      backgroundColor: campaign.theme?.backgroundColor || "#FFF8F0",
-      textColor: campaign.theme?.textColor || "#8A252C",
-      accentColor: campaign.theme?.accentColor || "#F3A738",
-      searchPlaceholders: Array.isArray(campaign.theme?.searchPlaceholders)
-        ? campaign.theme.searchPlaceholders
+      backgroundColor: rawTheme.backgroundColor || "#FFF8F0",
+      textColor: rawTheme.textColor || "#8A252C",
+      accentColor: rawTheme.accentColor || "#F3A738",
+      searchPlaceholders: Array.isArray(rawTheme.searchPlaceholders)
+        ? rawTheme.searchPlaceholders
         : ["Search 'Rakhi Gifts' 🎀", "Search 'Sweets for Bhaiya' 🍬"],
-      badgeTitle: campaign.theme?.badgeTitle || "Rakhi",
-      badgeSubtitle: campaign.theme?.badgeSubtitle || "Special",
-      badgeEmoji: campaign.theme?.badgeEmoji || "🎀",
-      badgeBgColor: campaign.theme?.badgeBgColor || "#FFF0F2",
-      badgeTextColor: campaign.theme?.badgeTextColor || "#881337",
-      tabSubtitle: campaign.theme?.tabSubtitle || "Store",
-      tabEmoji: campaign.theme?.tabEmoji || "✨",
-      ...(campaign.theme || {}),
+      badgeTitle: rawTheme.badgeTitle || "Rakhi",
+      badgeSubtitle: rawTheme.badgeSubtitle || "Special",
+      badgeEmoji: rawTheme.badgeEmoji || "🎀",
+      badgeBgColor: rawTheme.badgeBgColor || "#FFF0F2",
+      badgeTextColor: rawTheme.badgeTextColor || "#881337",
+      tabSubtitle: rawTheme.tabSubtitle || "Store",
+      tabEmoji: rawTheme.tabEmoji || "✨",
+      ...rawTheme,
     };
 
     res.json({

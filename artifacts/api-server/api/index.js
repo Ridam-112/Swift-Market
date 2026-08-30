@@ -129341,19 +129341,20 @@ router28.get("/", async (_req, res) => {
       }
       return block;
     });
+    const rawTheme = campaign.theme || {};
     const safeTheme = {
-      backgroundColor: campaign.theme?.backgroundColor || "#FFF8F0",
-      textColor: campaign.theme?.textColor || "#8A252C",
-      accentColor: campaign.theme?.accentColor || "#F3A738",
-      searchPlaceholders: Array.isArray(campaign.theme?.searchPlaceholders) ? campaign.theme.searchPlaceholders : ["Search 'Rakhi Gifts' \u{1F380}", "Search 'Sweets for Bhaiya' \u{1F36C}"],
-      badgeTitle: campaign.theme?.badgeTitle || "Rakhi",
-      badgeSubtitle: campaign.theme?.badgeSubtitle || "Special",
-      badgeEmoji: campaign.theme?.badgeEmoji || "\u{1F380}",
-      badgeBgColor: campaign.theme?.badgeBgColor || "#FFF0F2",
-      badgeTextColor: campaign.theme?.badgeTextColor || "#881337",
-      tabSubtitle: campaign.theme?.tabSubtitle || "Store",
-      tabEmoji: campaign.theme?.tabEmoji || "\u2728",
-      ...campaign.theme || {}
+      backgroundColor: rawTheme.backgroundColor || "#FFF8F0",
+      textColor: rawTheme.textColor || "#8A252C",
+      accentColor: rawTheme.accentColor || "#F3A738",
+      searchPlaceholders: Array.isArray(rawTheme.searchPlaceholders) ? rawTheme.searchPlaceholders : ["Search 'Rakhi Gifts' \u{1F380}", "Search 'Sweets for Bhaiya' \u{1F36C}"],
+      badgeTitle: rawTheme.badgeTitle || "Rakhi",
+      badgeSubtitle: rawTheme.badgeSubtitle || "Special",
+      badgeEmoji: rawTheme.badgeEmoji || "\u{1F380}",
+      badgeBgColor: rawTheme.badgeBgColor || "#FFF0F2",
+      badgeTextColor: rawTheme.badgeTextColor || "#881337",
+      tabSubtitle: rawTheme.tabSubtitle || "Store",
+      tabEmoji: rawTheme.tabEmoji || "\u2728",
+      ...rawTheme
     };
     res.json({
       success: true,
