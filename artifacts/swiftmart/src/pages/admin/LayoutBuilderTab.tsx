@@ -662,32 +662,41 @@ export function LayoutBuilderTab({
                                     placeholder="https://.../video.mp4"
                                     className="bg-slate-950 border-slate-800 text-white font-mono text-xs placeholder:text-slate-500 focus:border-primary flex-1"
                                   />
-                                  <label className="cursor-pointer shrink-0">
-                                    <Button type="button" variant="outline" disabled={uploadingBlockId === block.id} className="pointer-events-none bg-slate-800 border-slate-700 text-white font-bold text-xs">
-                                      {uploadingBlockId === block.id ? (
-                                        <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1 text-slate-300" />
-                                      ) : (
-                                        <Upload className="w-3.5 h-3.5 mr-1 text-slate-300" />
-                                      )}
-                                      Upload Video
-                                    </Button>
-                                    <input
-                                      type="file"
-                                      accept="video/mp4,video/webm,video/quicktime,image/gif"
-                                      className="hidden"
-                                      onChange={(e) => {
-                                        if (e.target.files?.[0]) {
-                                          handleImageFileUpload(block.id, "videoUrl", e.target.files[0]);
-                                        }
-                                      }}
-                                    />
-                                  </label>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={uploadingBlockId === block.id}
+                                    className="bg-slate-800 border-slate-700 text-white font-bold text-xs shrink-0"
+                                    onClick={() => {
+                                      const inp = document.getElementById(`upload-video-${block.id}`) as HTMLInputElement;
+                                      inp?.click();
+                                    }}
+                                  >
+                                    {uploadingBlockId === block.id ? (
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1 text-slate-300" />
+                                    ) : (
+                                      <Upload className="w-3.5 h-3.5 mr-1 text-slate-300" />
+                                    )}
+                                    Upload Video
+                                  </Button>
+                                  <input
+                                    id={`upload-video-${block.id}`}
+                                    type="file"
+                                    accept="video/mp4,video/webm,video/quicktime,image/gif,.gif,.mp4,.webm,.mov,.json,.lottie"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      if (e.target.files?.[0]) {
+                                        handleImageFileUpload(block.id, "videoUrl", e.target.files[0]);
+                                      }
+                                      e.target.value = "";
+                                    }}
+                                  />
                                 </div>
                               </div>
                             ) : (
                               <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-slate-200 block">
-                                  {block.data?.mediaType === "gif" ? "GIF Animation URL" : "Image URL"}
+                                  {block.data?.mediaType === "gif" ? "GIF Animation URL" : block.data?.mediaType === "lottie" ? "Lottie JSON URL" : "Image URL"}
                                 </label>
                                 <div className="flex gap-2">
                                   <Input
@@ -696,26 +705,35 @@ export function LayoutBuilderTab({
                                     placeholder="https://images.unsplash.com/..."
                                     className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary flex-1"
                                   />
-                                  <label className="cursor-pointer shrink-0">
-                                    <Button type="button" variant="outline" disabled={uploadingBlockId === block.id} className="pointer-events-none bg-slate-800 border-slate-700 text-white font-bold text-xs">
-                                      {uploadingBlockId === block.id ? (
-                                        <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1 text-slate-300" />
-                                      ) : (
-                                        <Upload className="w-3.5 h-3.5 mr-1 text-slate-300" />
-                                      )}
-                                      Upload
-                                    </Button>
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      className="hidden"
-                                      onChange={(e) => {
-                                        if (e.target.files?.[0]) {
-                                          handleImageFileUpload(block.id, "imageUrl", e.target.files[0]);
-                                        }
-                                      }}
-                                    />
-                                  </label>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={uploadingBlockId === block.id}
+                                    className="bg-slate-800 border-slate-700 text-white font-bold text-xs shrink-0"
+                                    onClick={() => {
+                                      const inp = document.getElementById(`upload-image-${block.id}`) as HTMLInputElement;
+                                      inp?.click();
+                                    }}
+                                  >
+                                    {uploadingBlockId === block.id ? (
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1 text-slate-300" />
+                                    ) : (
+                                      <Upload className="w-3.5 h-3.5 mr-1 text-slate-300" />
+                                    )}
+                                    Upload {block.data?.mediaType === "gif" ? "GIF" : block.data?.mediaType === "lottie" ? "Lottie" : "Image"}
+                                  </Button>
+                                  <input
+                                    id={`upload-image-${block.id}`}
+                                    type="file"
+                                    accept="image/*,image/gif,.gif,.png,.jpg,.jpeg,.webp,.svg,.json,.lottie,video/mp4,video/webm,.mp4,.webm"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      if (e.target.files?.[0]) {
+                                        handleImageFileUpload(block.id, "imageUrl", e.target.files[0]);
+                                      }
+                                      e.target.value = "";
+                                    }}
+                                  />
                                 </div>
                               </div>
                             )}
@@ -1360,26 +1378,35 @@ export function LayoutBuilderTab({
                                     placeholder="https://..."
                                     className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
                                   />
-                                  <label className="cursor-pointer shrink-0">
-                                    <Button type="button" variant="outline" disabled={uploadingBlockId === block.id} className="pointer-events-none bg-slate-800 border-slate-700 text-white font-bold">
-                                      {uploadingBlockId === block.id ? (
-                                        <RefreshCw className="w-4 h-4 animate-spin mr-1 text-slate-300" />
-                                      ) : (
-                                        <Upload className="w-4 h-4 mr-1 text-slate-300" />
-                                      )}
-                                      Upload
-                                    </Button>
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      className="hidden"
-                                      onChange={(e) => {
-                                        if (e.target.files?.[0]) {
-                                          handleImageFileUpload(block.id, "imageUrl", e.target.files[0]);
-                                        }
-                                      }}
-                                    />
-                                  </label>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={uploadingBlockId === block.id}
+                                    className="bg-slate-800 border-slate-700 text-white font-bold shrink-0"
+                                    onClick={() => {
+                                      const inp = document.getElementById(`upload-recipe-${block.id}`) as HTMLInputElement;
+                                      inp?.click();
+                                    }}
+                                  >
+                                    {uploadingBlockId === block.id ? (
+                                      <RefreshCw className="w-4 h-4 animate-spin mr-1 text-slate-300" />
+                                    ) : (
+                                      <Upload className="w-4 h-4 mr-1 text-slate-300" />
+                                    )}
+                                    Upload
+                                  </Button>
+                                  <input
+                                    id={`upload-recipe-${block.id}`}
+                                    type="file"
+                                    accept="image/*,.gif,.png,.jpg,.jpeg,.webp,.svg"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      if (e.target.files?.[0]) {
+                                        handleImageFileUpload(block.id, "imageUrl", e.target.files[0]);
+                                      }
+                                      e.target.value = "";
+                                    }}
+                                  />
                                 </div>
                               </div>
                             </div>
