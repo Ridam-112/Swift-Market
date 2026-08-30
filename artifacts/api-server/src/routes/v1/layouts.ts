@@ -319,7 +319,7 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
   const explicitIds = new Set<string>();
 
   for (const block of blocks) {
-    if ((block.type === "product_carousel" || block.type === "product_slider") && block.data) {
+    if (((block.type as string) === "product_carousel" || (block.type as string) === "product_slider") && block.data) {
       if (Array.isArray(block.data.productIds) && block.data.productIds.length > 0) {
         block.data.productIds.forEach((id: string) => {
           if (id && typeof id === "string") explicitIds.add(id.trim());
@@ -351,7 +351,7 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
           unit: p.unit,
           category: p.category,
           shopId: p.shopId,
-          fomoTag: p.fomoTag,
+          fomoTag: (p as any).fomoTag,
           stockStatus: isAvailable ? "in_stock" : "out_of_stock",
         });
       }
@@ -362,7 +362,7 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
 
   return await Promise.all(
     blocks.map(async (block) => {
-      if ((block.type === "product_carousel" || block.type === "product_slider") && block.data) {
+      if (((block.type as string) === "product_carousel" || (block.type as string) === "product_slider") && block.data) {
         // Case 1: Curated explicit product IDs selected by admin
         if (Array.isArray(block.data.productIds) && block.data.productIds.length > 0) {
           const resolved = block.data.productIds
@@ -402,7 +402,7 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
                 unit: p.unit,
                 category: p.category,
                 shopId: p.shopId,
-                fomoTag: p.fomoTag,
+                fomoTag: (p as any).fomoTag,
                 stockStatus: isAvailable ? "in_stock" : "out_of_stock",
               };
             });
@@ -443,7 +443,7 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
                 unit: p.unit,
                 category: p.category,
                 shopId: p.shopId,
-                fomoTag: p.fomoTag,
+                fomoTag: (p as any).fomoTag,
                 stockStatus: isAvailable ? "in_stock" : "out_of_stock",
               };
             });

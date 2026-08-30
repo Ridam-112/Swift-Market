@@ -116379,7 +116379,7 @@ __export(schema_exports, {
 });
 
 // ../../lib/db/dist/schema/users.js
-import { pgTable, text, timestamp, jsonb, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb, integer, boolean, index } from "drizzle-orm/pg-core";
 var users = pgTable("users", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull().default("User"),
@@ -116397,6 +116397,9 @@ var users = pgTable("users", {
   addresses: jsonb("addresses").notNull().default([]),
   tokenVersion: integer("token_version").notNull().default(1),
   lastLoginAt: timestamp("last_login_at"),
+  lastSeenAt: timestamp("last_seen_at"),
+  lastLoginSource: text("last_login_source").notNull().default("web"),
+  isOnline: boolean("is_online").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   // Local password hash — only used for legacy phone-password users (nullable)
@@ -116442,32 +116445,32 @@ var adminBroadcasts = pgTable3("admin_broadcasts", {
 });
 
 // ../../lib/db/dist/schema/shopTypes.js
-import { pgTable as pgTable4, text as text4, timestamp as timestamp4, boolean, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable as pgTable4, text as text4, timestamp as timestamp4, boolean as boolean2, doublePrecision } from "drizzle-orm/pg-core";
 var shopTypes = pgTable4("shop_types", {
   id: text4("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text4("name").notNull().unique(),
   slug: text4("slug").notNull().unique(),
-  isActive: boolean("is_active").notNull().default(true),
+  isActive: boolean2("is_active").notNull().default(true),
   commissionRate: doublePrecision("commission_rate").default(5),
   createdAt: timestamp4("created_at").notNull().defaultNow(),
   updatedAt: timestamp4("updated_at").notNull().defaultNow()
 });
 
 // ../../lib/db/dist/schema/categories.js
-import { pgTable as pgTable5, text as text5, timestamp as timestamp5, boolean as boolean2, doublePrecision as doublePrecision2, integer as integer3, jsonb as jsonb3 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable5, text as text5, timestamp as timestamp5, boolean as boolean3, doublePrecision as doublePrecision2, integer as integer3, jsonb as jsonb3 } from "drizzle-orm/pg-core";
 var categories = pgTable5("categories", {
   id: text5("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text5("name").notNull().unique(),
   slug: text5("slug").notNull().unique(),
   shopTypes: jsonb3("shop_types").notNull().default([]),
-  isActive: boolean2("is_active").notNull().default(true),
+  isActive: boolean3("is_active").notNull().default(true),
   commissionRate: doublePrecision2("commission_rate"),
   packagingCharge: integer3("packaging_charge"),
   emoji: text5("emoji"),
   color: text5("color"),
   parentTab: text5("parent_tab"),
   group: text5("group"),
-  showOnHome: boolean2("show_on_home").notNull().default(false),
+  showOnHome: boolean3("show_on_home").notNull().default(false),
   homeTab: text5("home_tab"),
   filterOrder: integer3("filter_order").notNull().default(0),
   subcategories: jsonb3("subcategories").notNull().default([]),
@@ -116476,7 +116479,7 @@ var categories = pgTable5("categories", {
 });
 
 // ../../lib/db/dist/schema/shops.js
-import { pgTable as pgTable6, text as text6, timestamp as timestamp6, boolean as boolean3, doublePrecision as doublePrecision3, integer as integer4, jsonb as jsonb4, index as index2 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable6, text as text6, timestamp as timestamp6, boolean as boolean4, doublePrecision as doublePrecision3, integer as integer4, jsonb as jsonb4, index as index2 } from "drizzle-orm/pg-core";
 var shops = pgTable6("shops", {
   id: text6("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   shopName: text6("shop_name").notNull(),
@@ -116494,12 +116497,12 @@ var shops = pgTable6("shops", {
   timings: jsonb4("timings").default({}),
   commissionRate: doublePrecision3("commission_rate").default(5),
   status: text6("status").notNull().default("pending"),
-  isOpen: boolean3("is_open").notNull().default(false),
+  isOpen: boolean4("is_open").notNull().default(false),
   rating: doublePrecision3("rating").default(0),
   totalOrders: integer4("total_orders").default(0),
   totalRevenue: doublePrecision3("total_revenue").default(0),
   packagingCharge: integer4("packaging_charge"),
-  gstEnabled: boolean3("gst_enabled").notNull().default(false),
+  gstEnabled: boolean4("gst_enabled").notNull().default(false),
   gstRate: doublePrecision3("gst_rate"),
   panNumber: text6("pan_number"),
   gstNumber: text6("gst_number"),
@@ -116524,7 +116527,7 @@ var shops = pgTable6("shops", {
 ]);
 
 // ../../lib/db/dist/schema/products.js
-import { pgTable as pgTable7, text as text7, timestamp as timestamp7, boolean as boolean4, doublePrecision as doublePrecision4, integer as integer5, jsonb as jsonb5, index as index3 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable7, text as text7, timestamp as timestamp7, boolean as boolean5, doublePrecision as doublePrecision4, integer as integer5, jsonb as jsonb5, index as index3 } from "drizzle-orm/pg-core";
 var products = pgTable7("products", {
   id: text7("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text7("name").notNull(),
@@ -116542,10 +116545,11 @@ var products = pgTable7("products", {
   commissionRate: doublePrecision4("commission_rate"),
   status: text7("status").notNull().default("pending"),
   rejectionReason: text7("rejection_reason"),
-  trending: boolean4("trending").default(false),
+  trending: boolean5("trending").default(false),
   colors: jsonb5("colors"),
   sizes: jsonb5("sizes"),
   colorImages: jsonb5("color_images"),
+  fomoTag: text7("fomo_tag"),
   createdAt: timestamp7("created_at").notNull().defaultNow(),
   updatedAt: timestamp7("updated_at").notNull().defaultNow()
 }, (t2) => [
@@ -116556,7 +116560,7 @@ var products = pgTable7("products", {
 ]);
 
 // ../../lib/db/dist/schema/orders.js
-import { pgTable as pgTable8, text as text8, timestamp as timestamp8, doublePrecision as doublePrecision5, jsonb as jsonb6, index as index4 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable8, text as text8, timestamp as timestamp8, doublePrecision as doublePrecision5, integer as integer6, jsonb as jsonb6, index as index4 } from "drizzle-orm/pg-core";
 var orders = pgTable8("orders", {
   id: text8("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   customerId: text8("customer_id").notNull(),
@@ -116588,6 +116592,9 @@ var orders = pgTable8("orders", {
   refundedAt: timestamp8("refunded_at"),
   cancelReason: text8("cancel_reason"),
   deliveryOtp: text8("delivery_otp"),
+  substitutePreference: text8("substitute_preference").default("best_match"),
+  swiftCoinsEarned: integer6("swift_coins_earned").default(10),
+  swiftCoinsRedeemed: integer6("swift_coins_redeemed").default(0),
   createdAt: timestamp8("created_at").notNull().defaultNow(),
   updatedAt: timestamp8("updated_at").notNull().defaultNow()
 }, (t2) => [
@@ -116599,14 +116606,14 @@ var orders = pgTable8("orders", {
 ]);
 
 // ../../lib/db/dist/schema/otpSessions.js
-import { pgTable as pgTable9, text as text9, timestamp as timestamp9, boolean as boolean5, integer as integer6, index as index5 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable9, text as text9, timestamp as timestamp9, boolean as boolean6, integer as integer7, index as index5 } from "drizzle-orm/pg-core";
 var otpSessions = pgTable9("otp_sessions", {
   id: text9("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   phone: text9("phone").notNull(),
   otp: text9("otp").notNull(),
   expiresAt: timestamp9("expires_at").notNull(),
-  verified: boolean5("verified").notNull().default(false),
-  attempts: integer6("attempts").notNull().default(0),
+  verified: boolean6("verified").notNull().default(false),
+  attempts: integer7("attempts").notNull().default(0),
   createdAt: timestamp9("created_at").notNull().defaultNow()
 }, (t2) => [
   index5("otp_sessions_phone_idx").on(t2.phone),
@@ -116637,7 +116644,7 @@ var payouts = pgTable10("payouts", {
 ]);
 
 // ../../lib/db/dist/schema/coupons.js
-import { pgTable as pgTable11, text as text11, timestamp as timestamp11, boolean as boolean6, doublePrecision as doublePrecision7, integer as integer7 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable11, text as text11, timestamp as timestamp11, boolean as boolean7, doublePrecision as doublePrecision7, integer as integer8 } from "drizzle-orm/pg-core";
 var coupons = pgTable11("coupons", {
   id: text11("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   code: text11("code").notNull().unique(),
@@ -116647,10 +116654,10 @@ var coupons = pgTable11("coupons", {
   minimumOrder: doublePrecision7("minimum_order").notNull().default(0),
   maximumDiscount: doublePrecision7("maximum_discount"),
   expiryDate: timestamp11("expiry_date").notNull(),
-  usageLimit: integer7("usage_limit").notNull().default(0),
-  perUserLimit: integer7("per_user_limit").notNull().default(0),
-  usedCount: integer7("used_count").notNull().default(0),
-  isActive: boolean6("is_active").notNull().default(true),
+  usageLimit: integer8("usage_limit").notNull().default(0),
+  perUserLimit: integer8("per_user_limit").notNull().default(0),
+  usedCount: integer8("used_count").notNull().default(0),
+  isActive: boolean7("is_active").notNull().default(true),
   appliesTo: text11("applies_to").notNull().default("all"),
   targetId: text11("target_id"),
   createdAt: timestamp11("created_at").notNull().defaultNow(),
@@ -116658,7 +116665,7 @@ var coupons = pgTable11("coupons", {
 });
 
 // ../../lib/db/dist/schema/commissionRules.js
-import { pgTable as pgTable12, text as text12, timestamp as timestamp12, boolean as boolean7, doublePrecision as doublePrecision8 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable12, text as text12, timestamp as timestamp12, boolean as boolean8, doublePrecision as doublePrecision8 } from "drizzle-orm/pg-core";
 var commissionRules = pgTable12("commission_rules", {
   id: text12("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   level: text12("level").notNull(),
@@ -116666,7 +116673,7 @@ var commissionRules = pgTable12("commission_rules", {
   targetId: text12("target_id"),
   targetName: text12("target_name"),
   rate: doublePrecision8("rate").notNull().default(5),
-  isActive: boolean7("is_active").notNull().default(true),
+  isActive: boolean8("is_active").notNull().default(true),
   createdAt: timestamp12("created_at").notNull().defaultNow(),
   updatedAt: timestamp12("updated_at").notNull().defaultNow()
 });
@@ -116689,14 +116696,14 @@ var reports = pgTable13("reports", {
 });
 
 // ../../lib/db/dist/schema/notifications.js
-import { pgTable as pgTable14, text as text14, timestamp as timestamp14, boolean as boolean8, jsonb as jsonb8, index as index7 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable14, text as text14, timestamp as timestamp14, boolean as boolean9, jsonb as jsonb8, index as index7 } from "drizzle-orm/pg-core";
 var notifications = pgTable14("notifications", {
   id: text14("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text14("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   type: text14("type").notNull().default("system"),
   title: text14("title").notNull(),
   message: text14("message").notNull(),
-  isRead: boolean8("is_read").notNull().default(false),
+  isRead: boolean9("is_read").notNull().default(false),
   data: jsonb8("data").default({}),
   createdAt: timestamp14("created_at").notNull().defaultNow()
 }, (t2) => [
@@ -116715,7 +116722,7 @@ var pushSubscriptions = pgTable15("push_subscriptions", {
 });
 
 // ../../lib/db/dist/schema/heroBanners.js
-import { pgTable as pgTable16, text as text16, timestamp as timestamp16, boolean as boolean9, integer as integer8 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable16, text as text16, timestamp as timestamp16, boolean as boolean10, integer as integer9 } from "drizzle-orm/pg-core";
 var heroBanners = pgTable16("hero_banners", {
   id: text16("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   imageUrl: text16("image_url").notNull(),
@@ -116725,16 +116732,16 @@ var heroBanners = pgTable16("hero_banners", {
   redirectType: text16("redirect_type"),
   redirectValue: text16("redirect_value"),
   accentColor: text16("accent_color"),
-  isActive: boolean9("is_active").notNull().default(true),
-  displayOrder: integer8("display_order").notNull().default(0),
-  views: integer8("views").notNull().default(0),
-  clicks: integer8("clicks").notNull().default(0),
+  isActive: boolean10("is_active").notNull().default(true),
+  displayOrder: integer9("display_order").notNull().default(0),
+  views: integer9("views").notNull().default(0),
+  clicks: integer9("clicks").notNull().default(0),
   createdAt: timestamp16("created_at").notNull().defaultNow(),
   updatedAt: timestamp16("updated_at").notNull().defaultNow()
 });
 
 // ../../lib/db/dist/schema/deliveryPartners.js
-import { pgTable as pgTable17, text as text17, timestamp as timestamp17, boolean as boolean10, doublePrecision as doublePrecision9, integer as integer9, index as index8 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable17, text as text17, timestamp as timestamp17, boolean as boolean11, doublePrecision as doublePrecision9, integer as integer10, jsonb as jsonb10, index as index8 } from "drizzle-orm/pg-core";
 var deliveryPartners = pgTable17("delivery_partners", {
   id: text17("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text17("name").notNull(),
@@ -116742,10 +116749,18 @@ var deliveryPartners = pgTable17("delivery_partners", {
   userId: text17("user_id").references(() => users.id, { onDelete: "set null" }),
   cityId: text17("city_id"),
   vehicle: text17("vehicle"),
-  isAvailable: boolean10("is_available").notNull().default(true),
+  applicationStatus: text17("application_status").notNull().default("approved"),
+  // "pending" | "approved" | "rejected"
+  fcmToken: text17("fcm_token"),
+  panNumber: text17("pan_number"),
+  dlNumber: text17("dl_number"),
+  rcNumber: text17("rc_number"),
+  documents: jsonb10("documents").default({}),
+  rejectionReason: text17("rejection_reason"),
+  isAvailable: boolean11("is_available").notNull().default(true),
   status: text17("status").notNull().default("active"),
   totalEarnings: doublePrecision9("total_earnings").notNull().default(0),
-  ordersDelivered: integer9("orders_delivered").notNull().default(0),
+  ordersDelivered: integer10("orders_delivered").notNull().default(0),
   currentOrderId: text17("current_order_id"),
   currentLat: doublePrecision9("current_lat"),
   currentLon: doublePrecision9("current_lon"),
@@ -116795,7 +116810,7 @@ var supportTickets = pgTable19("support_tickets", {
 });
 
 // ../../lib/db/dist/schema/fcmTokens.js
-import { pgTable as pgTable20, text as text20, timestamp as timestamp20, boolean as boolean11, index as index9 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable20, text as text20, timestamp as timestamp20, boolean as boolean12, index as index9 } from "drizzle-orm/pg-core";
 var fcmTokens = pgTable20("fcm_tokens", {
   id: text20("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text20("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -116803,7 +116818,7 @@ var fcmTokens = pgTable20("fcm_tokens", {
   platform: text20("platform").notNull().default("web"),
   role: text20("role").notNull().default("customer"),
   userAgent: text20("user_agent"),
-  isActive: boolean11("is_active").notNull().default(true),
+  isActive: boolean12("is_active").notNull().default(true),
   lastSeenAt: timestamp20("last_seen_at").notNull().defaultNow(),
   createdAt: timestamp20("created_at").notNull().defaultNow(),
   updatedAt: timestamp20("updated_at").notNull().defaultNow()
@@ -116813,54 +116828,54 @@ var fcmTokens = pgTable20("fcm_tokens", {
 ]);
 
 // ../../lib/db/dist/schema/homepageSections.js
-import { pgTable as pgTable21, text as text21, timestamp as timestamp21, boolean as boolean12, integer as integer10, jsonb as jsonb10 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable21, text as text21, timestamp as timestamp21, boolean as boolean13, integer as integer11, jsonb as jsonb11 } from "drizzle-orm/pg-core";
 var homepageSections = pgTable21("homepage_sections", {
   id: text21("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   title: text21("title").notNull(),
   type: text21("type").notNull().default("trending"),
-  enabled: boolean12("enabled").notNull().default(true),
-  sortOrder: integer10("sort_order").notNull().default(0),
-  config: jsonb10("config").notNull().default({}),
+  enabled: boolean13("enabled").notNull().default(true),
+  sortOrder: integer11("sort_order").notNull().default(0),
+  config: jsonb11("config").notNull().default({}),
   createdAt: timestamp21("created_at").notNull().defaultNow(),
   updatedAt: timestamp21("updated_at").notNull().defaultNow()
 });
 
 // ../../lib/db/dist/schema/servicePincodes.js
-import { pgTable as pgTable22, text as text22, timestamp as timestamp22, boolean as boolean13 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable22, text as text22, timestamp as timestamp22, boolean as boolean14 } from "drizzle-orm/pg-core";
 var servicePincodes = pgTable22("service_pincodes", {
   pincode: text22("pincode").primaryKey(),
   area: text22("area").notNull(),
   state: text22("state").notNull().default("West Bengal"),
-  isActive: boolean13("is_active").notNull().default(true),
+  isActive: boolean14("is_active").notNull().default(true),
   createdAt: timestamp22("created_at").notNull().defaultNow(),
   updatedAt: timestamp22("updated_at").notNull().defaultNow()
 });
 
 // ../../lib/db/dist/schema/buckets.js
-import { pgTable as pgTable23, text as text23, timestamp as timestamp23, boolean as boolean14, integer as integer11, jsonb as jsonb11 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable23, text as text23, timestamp as timestamp23, boolean as boolean15, integer as integer12, jsonb as jsonb12 } from "drizzle-orm/pg-core";
 var buckets = pgTable23("buckets", {
   id: text23("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   title: text23("title").notNull(),
   subtitle: text23("subtitle").notNull().default(""),
   badgeText: text23("badge_text").notNull().default("\u{1F525} Hot Pick"),
   accentColor: text23("accent_color").notNull().default("#FF6B35"),
-  productIds: jsonb11("product_ids").notNull().default([]),
-  comboPrice: integer11("combo_price"),
-  showOnHomepage: boolean14("show_on_homepage").notNull().default(true),
-  showAsAddon: boolean14("show_as_addon").notNull().default(true),
-  isActive: boolean14("is_active").notNull().default(true),
-  maxQtyPerCart: integer11("max_qty_per_cart"),
-  sortOrder: integer11("sort_order").notNull().default(0),
+  productIds: jsonb12("product_ids").notNull().default([]),
+  comboPrice: integer12("combo_price"),
+  showOnHomepage: boolean15("show_on_homepage").notNull().default(true),
+  showAsAddon: boolean15("show_as_addon").notNull().default(true),
+  isActive: boolean15("is_active").notNull().default(true),
+  maxQtyPerCart: integer12("max_qty_per_cart"),
+  sortOrder: integer12("sort_order").notNull().default(0),
   createdAt: timestamp23("created_at").notNull().defaultNow(),
   updatedAt: timestamp23("updated_at").notNull().defaultNow()
 });
 
 // ../../lib/db/dist/schema/usersMapping.js
-import { pgTable as pgTable24, text as text24, integer as integer12, timestamp as timestamp24, index as index10, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable as pgTable24, text as text24, integer as integer13, timestamp as timestamp24, index as index10, uniqueIndex } from "drizzle-orm/pg-core";
 var usersMapping = pgTable24("users_mapping", {
   id: text24("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text24("user_id").notNull(),
-  databaseNo: integer12("database_no").notNull(),
+  databaseNo: integer13("database_no").notNull(),
   // 2 | 3 | 4 | 5
   createdAt: timestamp24("created_at").notNull().defaultNow()
 }, (t2) => [
@@ -116869,11 +116884,11 @@ var usersMapping = pgTable24("users_mapping", {
 ]);
 
 // ../../lib/db/dist/schema/shopsMapping.js
-import { pgTable as pgTable25, text as text25, integer as integer13, timestamp as timestamp25, index as index11, uniqueIndex as uniqueIndex2 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable25, text as text25, integer as integer14, timestamp as timestamp25, index as index11, uniqueIndex as uniqueIndex2 } from "drizzle-orm/pg-core";
 var shopsMapping = pgTable25("shops_mapping", {
   id: text25("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   shopId: text25("shop_id").notNull(),
-  databaseNo: integer13("database_no").notNull(),
+  databaseNo: integer14("database_no").notNull(),
   // 2 | 3 | 4 | 5
   createdAt: timestamp25("created_at").notNull().defaultNow()
 }, (t2) => [
@@ -116882,12 +116897,12 @@ var shopsMapping = pgTable25("shops_mapping", {
 ]);
 
 // ../../lib/db/dist/schema/cities.js
-import { pgTable as pgTable26, text as text26, timestamp as timestamp26, boolean as boolean15 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable26, text as text26, timestamp as timestamp26, boolean as boolean16 } from "drizzle-orm/pg-core";
 var cities = pgTable26("cities", {
   id: text26("id").primaryKey(),
   // slug like 'balurghat', 'malda'
   name: text26("name").notNull().unique(),
-  isActive: boolean15("is_active").notNull().default(true),
+  isActive: boolean16("is_active").notNull().default(true),
   createdAt: timestamp26("created_at").notNull().defaultNow(),
   updatedAt: timestamp26("updated_at").notNull().defaultNow()
 });
@@ -116915,52 +116930,52 @@ var managerActivityLogs = pgTable28("manager_activity_logs", {
 });
 
 // ../../lib/db/dist/schema/seasonalCampaign.js
-import { pgTable as pgTable29, text as text29, timestamp as timestamp29, boolean as boolean16, jsonb as jsonb12 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable29, text as text29, timestamp as timestamp29, boolean as boolean17, jsonb as jsonb13 } from "drizzle-orm/pg-core";
 var seasonalCampaign = pgTable29("seasonal_campaign", {
   id: text29("id").primaryKey().$defaultFn(() => "default_campaign"),
-  isActive: boolean16("is_active").notNull().default(false),
-  tabName: text29("tab_name").notNull().default("Festive Store"),
-  theme: jsonb12("theme").notNull().default({
-    backgroundColor: "#FFF8F0",
-    textColor: "#8A252C",
-    accentColor: "#F3A738"
-  }),
-  layoutBlocks: jsonb12("layout_blocks").notNull().default([]),
-  updatedAt: timestamp29("updated_at").notNull().defaultNow()
-});
-
-// ../../lib/db/dist/schema/cafePageConfig.js
-import { pgTable as pgTable30, text as text30, timestamp as timestamp30, boolean as boolean17, jsonb as jsonb13 } from "drizzle-orm/pg-core";
-var cafePageConfig = pgTable30("cafe_page_config", {
-  id: text30("id").primaryKey().$defaultFn(() => "default_cafe_page"),
   isActive: boolean17("is_active").notNull().default(false),
+  tabName: text29("tab_name").notNull().default("Festive Store"),
   theme: jsonb13("theme").notNull().default({
     backgroundColor: "#FFF8F0",
     textColor: "#8A252C",
     accentColor: "#F3A738"
   }),
   layoutBlocks: jsonb13("layout_blocks").notNull().default([]),
+  updatedAt: timestamp29("updated_at").notNull().defaultNow()
+});
+
+// ../../lib/db/dist/schema/cafePageConfig.js
+import { pgTable as pgTable30, text as text30, timestamp as timestamp30, boolean as boolean18, jsonb as jsonb14 } from "drizzle-orm/pg-core";
+var cafePageConfig = pgTable30("cafe_page_config", {
+  id: text30("id").primaryKey().$defaultFn(() => "default_cafe_page"),
+  isActive: boolean18("is_active").notNull().default(false),
+  theme: jsonb14("theme").notNull().default({
+    backgroundColor: "#FFF8F0",
+    textColor: "#8A252C",
+    accentColor: "#F3A738"
+  }),
+  layoutBlocks: jsonb14("layout_blocks").notNull().default([]),
   updatedAt: timestamp30("updated_at").notNull().defaultNow()
 });
 
 // ../../lib/db/dist/schema/appThemeConfig.js
-import { pgTable as pgTable31, text as text31, integer as integer14, timestamp as timestamp31, jsonb as jsonb14 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable31, text as text31, integer as integer15, timestamp as timestamp31, jsonb as jsonb15 } from "drizzle-orm/pg-core";
 var appThemeConfig = pgTable31("app_theme_config", {
   id: text31("id").primaryKey().$defaultFn(() => "global_theme"),
   primaryColor: text31("primary_color").notNull().default("#E23744"),
   secondaryColor: text31("secondary_color").notNull().default("#000000"),
-  borderRadius: integer14("border_radius").notNull().default(12),
+  borderRadius: integer15("border_radius").notNull().default(12),
   fontFamily: text31("font_family").notNull().default("Outfit"),
-  customTokens: jsonb14("custom_tokens").$type().notNull().default({}),
+  customTokens: jsonb15("custom_tokens").$type().notNull().default({}),
   updatedAt: timestamp31("updated_at").notNull().defaultNow()
 });
 
 // ../../lib/db/dist/schema/appLayouts.js
-import { pgTable as pgTable32, text as text32, timestamp as timestamp32, jsonb as jsonb15 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable32, text as text32, timestamp as timestamp32, jsonb as jsonb16 } from "drizzle-orm/pg-core";
 var appLayouts = pgTable32("app_layouts", {
   id: text32("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   pageName: text32("page_name").notNull().unique(),
-  blocks: jsonb15("blocks").$type().notNull().default([]),
+  blocks: jsonb16("blocks").$type().notNull().default([]),
   updatedAt: timestamp32("updated_at").notNull().defaultNow()
 });
 
