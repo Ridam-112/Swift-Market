@@ -29,6 +29,12 @@ import {
   Utensils,
   Clock,
   Flame,
+  Search,
+  Check,
+  Store,
+  X,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 
 export type BlockType =
@@ -136,6 +142,12 @@ export function LayoutBuilderTab({
   // Real Database Data State
   const [realCategories, setRealCategories] = useState<any[]>([]);
   const [realProducts, setRealProducts] = useState<any[]>([]);
+  const [realShops, setRealShops] = useState<any[]>([]);
+
+  // Product Carousel Curation Search & Filter State (keyed by blockId)
+  const [productSearch, setProductSearch] = useState<Record<string, string>>({});
+  const [productFilterShop, setProductFilterShop] = useState<Record<string, string>>({});
+  const [productFilterCategory, setProductFilterCategory] = useState<Record<string, string>>({});
 
   const fetchLayout = async (page: string) => {
     setLoading(true);
@@ -163,7 +175,7 @@ export function LayoutBuilderTab({
     fetchLayout(selectedPage);
   }, [selectedPage]);
 
-  // Sync real database categories & products
+  // Sync real database categories, products & shops
   useEffect(() => {
     api.get<{ success: boolean; categories: any[] }>("/categories")
       .then((r) => {
@@ -173,10 +185,18 @@ export function LayoutBuilderTab({
       })
       .catch(() => {});
 
-    api.get<{ success: boolean; products: any[] }>("/products?limit=100")
+    api.get<{ success: boolean; products: any[] }>("/products?limit=250")
       .then((r) => {
         if (r?.success && Array.isArray(r.products)) {
           setRealProducts(r.products);
+        }
+      })
+      .catch(() => {});
+
+    api.get<{ success: boolean; shops: any[] }>("/shops?status=approved&limit=200")
+      .then((r) => {
+        if (r?.success && Array.isArray(r.shops)) {
+          setRealShops(r.shops);
         }
       })
       .catch(() => {});
@@ -241,8 +261,12 @@ export function LayoutBuilderTab({
         };
       case "product_carousel":
         return {
-          title: "Popular Items",
+          title: "Trending Products",
+          sourceType: "category", // "category" | "shop" | "custom"
           categorySlug: defaultCatSlug,
+          shopId: "",
+          shopName: "",
+          productIds: [],
           limit: 10,
         };
       case "promotional_strip":
@@ -328,11 +352,15 @@ export function LayoutBuilderTab({
     setUploadingBlockId(id);
     try {
       const formData = new FormData();
+      formData.append("file", file);
       formData.append("image", file);
+      formData.append("video", file);
+      formData.append("media", file);
 
-      const access = localStorage.getItem("sm_at");
+      const tokens = api.getTokens();
+      const access = tokens.access || localStorage.getItem("sm_at");
       const baseUrl = api.BASE || "/api";
-      const res = await fetch(`${baseUrl}/upload/banner-image`, {
+      const res = await fetch(`${baseUrl}/upload/banner-media`, {
         method: "POST",
         headers: {
           ...(access ? { Authorization: `Bearer ${access}` } : {}),
@@ -341,15 +369,16 @@ export function LayoutBuilderTab({
       });
 
       const data = await res.json();
-      if (res.ok && (data.imageUrl || data.url)) {
-        handleUpdateBlockData(id, key, data.imageUrl || data.url);
-        toast.success("Image uploaded successfully!");
+      const mediaUrl = data.videoUrl || data.imageUrl || data.url || data.fileUrl;
+      if (res.ok && mediaUrl) {
+        handleUpdateBlockData(id, key, mediaUrl);
+        toast.success("Media file uploaded successfully!");
       } else {
-        toast.error(data.message || "Failed to upload image");
+        toast.error(data.message || "Failed to upload file");
       }
     } catch (err) {
-      console.error("Image upload failed:", err);
-      toast.error("Failed to upload image");
+      console.error("Media upload failed:", err);
+      toast.error("Failed to upload media file");
     } finally {
       setUploadingBlockId(null);
     }
@@ -830,25 +859,111 @@ export function LayoutBuilderTab({
                         )}
 
                         {/* PRODUCT CAROUSEL EDIT FIELDS */}
-                        {block.type === "product_carousel" && (
-                          <div className="space-y-3 text-sm">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                              <div>
-                                <label className="text-xs font-bold text-slate-200 block mb-1">Section Title</label>
-                                <Input
-                                  value={block.data?.title || ""}
-                                  onChange={(e) => handleUpdateBlockData(block.id, "title", e.target.value)}
-                                  placeholder="e.g. Trending Products"
-                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
-                                />
+                        {block.type === "product_carousel" && (() => {
+                          const currentSource = block.data?.sourceType || "category";
+                          const currentProductIds: string[] = Array.isArray(block.data?.productIds) ? block.data.productIds : [];
+                          const currentShopId = block.data?.shopId || "";
+                          const currentCategory = block.data?.categorySlug || "";
+
+                          const query = (productSearch[block.id] || "").toLowerCase().trim();
+                          const filterShop = productFilterShop[block.id] || "";
+                          const filterCat = productFilterCategory[block.id] || "";
+
+                          // Filter products available to pick
+                          const availableProducts = realProducts.filter((p) => {
+                            const nameMatches = !query || String(p.name || "").toLowerCase().includes(query);
+                            const shopMatches = !filterShop || String(p.shopId || "") === filterShop;
+                            const catMatches = !filterCat || String(p.category || "").toLowerCase() === filterCat.toLowerCase();
+                            return nameMatches && shopMatches && catMatches;
+                          });
+
+                          const selectedProductsList = currentProductIds
+                            .map((id) => realProducts.find((p) => String(p.id || p._id) === String(id)))
+                            .filter(Boolean);
+
+                          const handleToggleProduct = (prodId: string) => {
+                            const idStr = String(prodId);
+                            const nextIds = currentProductIds.includes(idStr)
+                              ? currentProductIds.filter((id) => id !== idStr)
+                              : [...currentProductIds, idStr];
+                            handleUpdateBlockData(block.id, "productIds", nextIds);
+                          };
+
+                          const handleMoveProductOrder = (index: number, dir: "left" | "right") => {
+                            const target = dir === "left" ? index - 1 : index + 1;
+                            if (target < 0 || target >= currentProductIds.length) return;
+                            const next = [...currentProductIds];
+                            const temp = next[index];
+                            next[index] = next[target];
+                            next[target] = temp;
+                            handleUpdateBlockData(block.id, "productIds", next);
+                          };
+
+                          return (
+                            <div className="space-y-4 text-sm">
+                              {/* Source Mode Toggle */}
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-200 block">Product Source Mode</label>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                  {[
+                                    { id: "category", label: "📦 By Category", desc: "Filter by product category" },
+                                    { id: "shop", label: "🏢 By Specific Shop (Dokan)", desc: "Exclusively from a seller shop" },
+                                    { id: "custom", label: "⭐ Curated Product Picker", desc: "Hand-pick exact products" },
+                                  ].map((m) => {
+                                    const isSel = currentSource === m.id;
+                                    return (
+                                      <button
+                                        key={m.id}
+                                        type="button"
+                                        onClick={() => handleUpdateBlockData(block.id, "sourceType", m.id)}
+                                        className={`p-2.5 rounded-xl text-left border transition-all ${
+                                          isSel
+                                            ? "bg-primary text-white border-primary shadow-xs font-bold"
+                                            : "bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-850 hover:border-slate-700"
+                                        }`}
+                                      >
+                                        <div className="text-xs font-bold">{m.label}</div>
+                                        <div className="text-[10px] opacity-80 truncate mt-0.5">{m.desc}</div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                               </div>
-                              <div>
-                                <label className="text-xs font-bold text-slate-200 block mb-1">
-                                  Category (Synced from DB)
-                                </label>
-                                {realCategories.length > 0 ? (
+
+                              {/* Title & Limit */}
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="md:col-span-2">
+                                  <label className="text-xs font-bold text-slate-200 block mb-1">Section Title</label>
+                                  <Input
+                                    value={block.data?.title || ""}
+                                    onChange={(e) => handleUpdateBlockData(block.id, "title", e.target.value)}
+                                    placeholder="e.g. Trending Products / Best Deals"
+                                    className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs font-bold text-slate-200 block mb-1">Product Limit</label>
                                   <select
-                                    value={block.data?.categorySlug || ""}
+                                    value={block.data?.limit || 10}
+                                    onChange={(e) => handleUpdateBlockData(block.id, "limit", parseInt(e.target.value, 10))}
+                                    className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-950 text-white font-bold text-xs"
+                                  >
+                                    <option value={4}>4 Products</option>
+                                    <option value={6}>6 Products</option>
+                                    <option value={8}>8 Products</option>
+                                    <option value={10}>10 Products</option>
+                                    <option value={15}>15 Products</option>
+                                    <option value={20}>20 Products</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Mode A: By Category */}
+                              {currentSource === "category" && (
+                                <div className="space-y-1.5 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+                                  <label className="text-xs font-bold text-slate-200 block">Select Category</label>
+                                  <select
+                                    value={currentCategory}
                                     onChange={(e) => handleUpdateBlockData(block.id, "categorySlug", e.target.value)}
                                     className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-950 text-white font-bold text-sm"
                                   >
@@ -859,30 +974,242 @@ export function LayoutBuilderTab({
                                       </option>
                                     ))}
                                   </select>
-                                ) : (
-                                  <Input
-                                    value={block.data?.categorySlug || ""}
-                                    onChange={(e) => handleUpdateBlockData(block.id, "categorySlug", e.target.value)}
-                                    placeholder="e.g. dairy or snacks"
-                                    className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
-                                  />
-                                )}
-                              </div>
-                              <div>
-                                <label className="text-xs font-bold text-slate-200 block mb-1">Product Limit</label>
-                                <Input
-                                  type="number"
-                                  min={2}
-                                  max={20}
-                                  value={block.data?.limit || 10}
-                                  onChange={(e) => handleUpdateBlockData(block.id, "limit", parseInt(e.target.value, 10))}
-                                  className="bg-slate-950 border-slate-800 text-white font-bold"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                                  <p className="text-[11px] text-slate-400 mt-1">
+                                    Shows trending in-stock products matching the selected category.
+                                  </p>
+                                </div>
+                              )}
 
+                              {/* Mode B: By Specific Shop (Dokan) */}
+                              {currentSource === "shop" && (
+                                <div className="space-y-2 bg-slate-900/60 p-3.5 rounded-xl border border-amber-500/30">
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                                      <Store className="w-4 h-4" /> Select Vendor Shop (Dokan)
+                                    </label>
+                                    <span className="text-[10px] text-slate-400">{realShops.length} Approved Shops</span>
+                                  </div>
+                                  <select
+                                    value={currentShopId}
+                                    onChange={(e) => {
+                                      const sId = e.target.value;
+                                      const shopObj = realShops.find((s) => s.id === sId || s._id === sId);
+                                      handleUpdateBlockData(block.id, "shopId", sId);
+                                      handleUpdateBlockData(block.id, "shopName", shopObj?.name || "");
+                                    }}
+                                    className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-950 text-white font-bold text-sm"
+                                  >
+                                    <option value="">-- Choose a Seller Shop --</option>
+                                    {realShops.map((shop) => (
+                                      <option key={shop.id || shop._id} value={shop.id || shop._id}>
+                                        🏪 {shop.name} {shop.address?.city ? `(${shop.address.city})` : ""}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {currentShopId ? (
+                                    <div className="flex items-center gap-2 text-xs text-emerald-400 font-bold mt-1 bg-emerald-950/30 px-2.5 py-1.5 rounded-lg border border-emerald-800/40">
+                                      <Check className="w-3.5 h-3.5" />
+                                      Showing products exclusively from "{block.data?.shopName || "selected shop"}"
+                                    </div>
+                                  ) : (
+                                    <p className="text-[11px] text-amber-300/80 mt-1">
+                                      Please select a shop above to show only products from that shop.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Mode C: Curated Product Picker (Search & Select) */}
+                              {currentSource === "custom" && (
+                                <div className="space-y-3 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                                  {/* Selected Products Shelf */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                                        ⭐ Curated Products Selected ({currentProductIds.length})
+                                      </span>
+                                      {currentProductIds.length > 0 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleUpdateBlockData(block.id, "productIds", [])}
+                                          className="text-[11px] text-red-400 hover:text-red-300 font-bold transition-colors"
+                                        >
+                                          Clear All
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {currentProductIds.length === 0 ? (
+                                      <div className="p-3 bg-slate-950/80 rounded-xl border border-dashed border-slate-800 text-center text-xs text-slate-400">
+                                        No products picked yet. Search or filter products below and click <strong>[+ Add]</strong>!
+                                      </div>
+                                    ) : (
+                                      <div className="flex gap-2 overflow-x-auto pb-2 pt-1">
+                                        {selectedProductsList.map((prod: any, idx: number) => {
+                                          const img = Array.isArray(prod.images) && prod.images.length > 0 ? prod.images[0] : prod.image;
+                                          const shopObj = realShops.find((s) => (s.id || s._id) === prod.shopId);
+                                          return (
+                                            <div
+                                              key={prod.id || prod._id}
+                                              className="min-w-[130px] max-w-[130px] bg-slate-950 p-2 rounded-xl border border-primary/40 flex flex-col justify-between shrink-0 shadow-md relative group"
+                                            >
+                                              <div className="space-y-1">
+                                                <div className="relative">
+                                                  {img ? (
+                                                    <img src={img} alt={prod.name} className="w-full h-14 object-cover rounded-lg bg-slate-900" />
+                                                  ) : (
+                                                    <div className="w-full h-14 bg-slate-800 rounded-lg flex items-center justify-center text-sm">📦</div>
+                                                  )}
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleToggleProduct(prod.id || prod._id)}
+                                                    className="absolute top-1 right-1 w-5 h-5 bg-red-600 hover:bg-red-500 text-white rounded-full flex items-center justify-center shadow transition-all"
+                                                    title="Remove"
+                                                  >
+                                                    <X className="w-3 h-3" />
+                                                  </button>
+                                                </div>
+                                                <div className="text-[10px] font-bold text-white line-clamp-1" title={prod.name}>
+                                                  {prod.name}
+                                                </div>
+                                                <div className="text-[10px] font-bold text-emerald-400">
+                                                  ₹{prod.discountedPrice || prod.price || 0}
+                                                </div>
+                                                {shopObj && (
+                                                  <div className="text-[8px] text-slate-400 truncate bg-slate-900 px-1 py-0.5 rounded">
+                                                    🏪 {shopObj.name}
+                                                  </div>
+                                                )}
+                                              </div>
+
+                                              {/* Reorder buttons */}
+                                              <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-800/80">
+                                                <button
+                                                  type="button"
+                                                  disabled={idx === 0}
+                                                  onClick={() => handleMoveProductOrder(idx, "left")}
+                                                  className="p-1 text-slate-400 hover:text-white disabled:opacity-20"
+                                                >
+                                                  <ArrowLeft className="w-3 h-3" />
+                                                </button>
+                                                <span className="text-[9px] font-mono text-slate-500 font-bold">{idx + 1}</span>
+                                                <button
+                                                  type="button"
+                                                  disabled={idx === currentProductIds.length - 1}
+                                                  onClick={() => handleMoveProductOrder(idx, "right")}
+                                                  className="p-1 text-slate-400 hover:text-white disabled:opacity-20"
+                                                >
+                                                  <ArrowRight className="w-3 h-3" />
+                                                </button>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Product Finder (Search + Shop & Category Filters) */}
+                                  <div className="pt-2 border-t border-slate-800 space-y-2.5">
+                                    <div className="text-xs font-bold text-slate-200">🔍 Search & Add Products from Database</div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                      <div className="relative">
+                                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-3 text-slate-400" />
+                                        <Input
+                                          value={productSearch[block.id] || ""}
+                                          onChange={(e) => setProductSearch({ ...productSearch, [block.id]: e.target.value })}
+                                          placeholder="Search name / brand..."
+                                          className="bg-slate-950 border-slate-800 text-white font-bold pl-8 text-xs h-9 placeholder:text-slate-500 focus:border-primary"
+                                        />
+                                      </div>
+                                      <select
+                                        value={productFilterShop[block.id] || ""}
+                                        onChange={(e) => setProductFilterShop({ ...productFilterShop, [block.id]: e.target.value })}
+                                        className="h-9 px-2 rounded-lg border border-slate-800 bg-slate-950 text-white font-bold text-xs"
+                                      >
+                                        <option value="">All Shops ({realShops.length})</option>
+                                        {realShops.map((s) => (
+                                          <option key={s.id || s._id} value={s.id || s._id}>
+                                            🏪 {s.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <select
+                                        value={productFilterCategory[block.id] || ""}
+                                        onChange={(e) => setProductFilterCategory({ ...productFilterCategory, [block.id]: e.target.value })}
+                                        className="h-9 px-2 rounded-lg border border-slate-800 bg-slate-950 text-white font-bold text-xs"
+                                      >
+                                        <option value="">All Categories ({realCategories.length})</option>
+                                        {realCategories.map((c) => (
+                                          <option key={c.id || c.slug} value={c.slug}>
+                                            {c.emoji || "🛍️"} {c.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+
+                                    {/* Available products list to pick */}
+                                    <div className="max-h-[220px] overflow-y-auto space-y-1.5 pr-1 bg-slate-950/60 p-2 rounded-xl border border-slate-800/80">
+                                      {availableProducts.length === 0 ? (
+                                        <div className="text-center py-6 text-xs text-slate-500">
+                                          No products match your search/filters.
+                                        </div>
+                                      ) : (
+                                        availableProducts.slice(0, 40).map((prod) => {
+                                          const prodId = String(prod.id || prod._id);
+                                          const isSelected = currentProductIds.includes(prodId);
+                                          const img = Array.isArray(prod.images) && prod.images.length > 0 ? prod.images[0] : prod.image;
+                                          const shopObj = realShops.find((s) => (s.id || s._id) === prod.shopId);
+
+                                          return (
+                                            <div
+                                              key={prodId}
+                                              className={`flex items-center justify-between p-2 rounded-lg border transition-all ${
+                                                isSelected
+                                                  ? "bg-primary/10 border-primary/40"
+                                                  : "bg-slate-900 border-slate-800 hover:bg-slate-850"
+                                              }`}
+                                            >
+                                              <div className="flex items-center gap-2.5 min-w-0">
+                                                {img ? (
+                                                  <img src={img} alt={prod.name} className="w-9 h-9 object-cover rounded bg-slate-950 shrink-0" />
+                                                ) : (
+                                                  <div className="w-9 h-9 bg-slate-800 rounded flex items-center justify-center text-xs shrink-0">📦</div>
+                                                )}
+                                                <div className="min-w-0">
+                                                  <div className="text-xs font-bold text-white truncate" title={prod.name}>
+                                                    {prod.name}
+                                                  </div>
+                                                  <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                                                    <span className="text-emerald-400 font-bold">₹{prod.discountedPrice || prod.price || 0}</span>
+                                                    {shopObj && <span className="truncate">· 🏪 {shopObj.name}</span>}
+                                                    {prod.category && <span className="truncate">· 📦 {prod.category}</span>}
+                                                  </div>
+                                                </div>
+                                              </div>
+
+                                              <button
+                                                type="button"
+                                                onClick={() => handleToggleProduct(prodId)}
+                                                className={`px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 transition-all ${
+                                                  isSelected
+                                                    ? "bg-emerald-600 text-white hover:bg-red-600"
+                                                    : "bg-primary text-white hover:opacity-90"
+                                                }`}
+                                              >
+                                                {isSelected ? "✓ Added (Remove)" : "+ Add"}
+                                              </button>
+                                            </div>
+                                          );
+                                        })
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                         {/* PROMOTIONAL STRIP EDIT FIELDS */}
                         {block.type === "promotional_strip" && (
                           <div className="space-y-3 text-sm">
@@ -1255,32 +1582,56 @@ export function LayoutBuilderTab({
                   }
 
                   if (block.type === "product_carousel") {
+                    const sourceType = block.data?.sourceType || "category";
+                    const pIds: string[] = Array.isArray(block.data?.productIds) ? block.data.productIds : [];
+                    const shopId = block.data?.shopId;
                     const catSlug = block.data?.categorySlug;
-                    const filteredProducts = catSlug && realProducts.length > 0
-                      ? realProducts.filter((p) => String(p.category || "").toLowerCase() === String(catSlug).toLowerCase())
-                      : realProducts;
-                    const itemsToRender = filteredProducts.length > 0 ? filteredProducts.slice(0, 6) : realProducts.slice(0, 6);
+
+                    let itemsToRender: any[] = [];
+                    let modeBadge = "DB Items";
+
+                    if (sourceType === "custom" && pIds.length > 0) {
+                      itemsToRender = pIds
+                        .map((id) => realProducts.find((p) => String(p.id || p._id) === String(id)))
+                        .filter(Boolean);
+                      modeBadge = `⭐ ${itemsToRender.length} Curated`;
+                    } else if (sourceType === "shop" && shopId) {
+                      itemsToRender = realProducts.filter((p) => String(p.shopId || "") === String(shopId));
+                      modeBadge = `🏪 ${block.data?.shopName || "Shop"}`;
+                    } else if (catSlug && realProducts.length > 0) {
+                      itemsToRender = realProducts.filter((p) => String(p.category || "").toLowerCase() === String(catSlug).toLowerCase());
+                      modeBadge = `📦 ${catSlug}`;
+                    } else {
+                      itemsToRender = realProducts.slice(0, 6);
+                    }
+
+                    if (itemsToRender.length > (block.data?.limit || 10)) {
+                      itemsToRender = itemsToRender.slice(0, block.data?.limit || 10);
+                    }
 
                     return (
                       <div key={block.id} className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-xs font-bold text-white">
+                          <span className="text-xs font-bold text-white line-clamp-1">
                             {block.data?.title || "Trending Products"}
                           </span>
-                          <span className="text-[9px] text-emerald-400 font-bold font-mono">
-                            {itemsToRender.length} DB Items
+                          <span className="text-[9px] text-emerald-400 font-bold font-mono shrink-0">
+                            {modeBadge}
                           </span>
                         </div>
                         <div className="flex gap-2 overflow-x-auto pb-1">
                           {itemsToRender.length === 0 ? (
-                            <div className="text-[10px] text-slate-500 p-2">No items in DB for '{catSlug}'</div>
+                            <div className="text-[10px] text-slate-500 p-2">
+                              {sourceType === "shop" ? "No products found for this shop" : "No products found"}
+                            </div>
                           ) : (
                             itemsToRender.map((prod) => {
                               const img = Array.isArray(prod.images) && prod.images.length > 0 ? prod.images[0] : prod.image;
+                              const shopObj = realShops.find((s) => (s.id || s._id) === prod.shopId);
                               return (
                                 <div
                                   key={prod.id || prod._id}
-                                  className="min-w-[110px] bg-slate-800 p-2 rounded-xl border border-slate-700/50 space-y-1 shrink-0 relative"
+                                  className="min-w-[110px] max-w-[110px] bg-slate-800 p-2 rounded-xl border border-slate-700/50 space-y-1 shrink-0 relative"
                                 >
                                   {prod.fomoTag && (
                                     <span className="absolute top-1 left-1 bg-red-600 text-white text-[8px] font-extrabold px-1 rounded z-10 shadow">
@@ -1304,6 +1655,11 @@ export function LayoutBuilderTab({
                                   <div className="text-[10px] text-emerald-400 font-bold">
                                     ₹{prod.discountedPrice || prod.price || 49}
                                   </div>
+                                  {shopObj && (
+                                    <div className="text-[8px] text-slate-400 truncate">
+                                      🏪 {shopObj.name}
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })

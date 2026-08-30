@@ -1511,7 +1511,7 @@ function OrdersTab() {
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<PlatformOrder['status'] | 'all'>('all');
-  const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'instant' | 'scheduled'>('all');
+  const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'instant' | 'standard' | 'saver' | 'scheduled'>('all');
   const [unassignedOnly, setUnassignedOnly] = useState(false);
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
   const [assigningOrder, setAssigningOrder] = useState<string | null>(null);
@@ -1582,7 +1582,7 @@ function OrdersTab() {
         status: o.status as PlatformOrder['status'],
         paymentMethod: (o.paymentMethod ?? "COD") as PlatformOrder['paymentMethod'],
         paymentStatus: (o.paymentStatus ?? "pending") as PlatformOrder['paymentStatus'],
-        deliveryType: (o.deliveryType === 'scheduled' ? 'scheduled' : 'instant') as 'instant' | 'scheduled',
+        deliveryType: o.deliveryType || 'instant',
         placedAt: o.createdAt,
         updatedAt: o.updatedAt ?? o.createdAt,
         address: o.address,
@@ -1840,17 +1840,33 @@ function OrdersTab() {
           ))}
         </div>
         <div className="flex gap-2 shrink-0 flex-wrap">
-          {(['all', 'instant', 'scheduled'] as const).map(f => (
+          {(['all', 'instant', 'standard', 'saver', 'scheduled'] as const).map(f => (
             <button
               key={f}
               onClick={() => setDeliveryFilter(f)}
               className={`px-3 py-2 rounded-xl text-sm font-medium capitalize whitespace-nowrap transition-all ${
                 deliveryFilter === f
-                  ? f === 'scheduled' ? 'bg-violet-600 text-white neu-card' : f === 'instant' ? 'bg-amber-500 text-white neu-card' : 'bg-primary text-primary-foreground neu-card'
+                  ? f === 'scheduled'
+                    ? 'bg-violet-600 text-white neu-card'
+                    : f === 'saver'
+                    ? 'bg-emerald-600 text-white neu-card'
+                    : f === 'standard'
+                    ? 'bg-blue-600 text-white neu-card'
+                    : f === 'instant'
+                    ? 'bg-amber-500 text-white neu-card'
+                    : 'bg-primary text-primary-foreground neu-card'
                   : 'bg-background text-muted-foreground neu-inset'
               }`}
             >
-              {f === 'all' ? '⚡ All types' : f === 'instant' ? '⚡ Instant' : '🕐 Scheduled'}
+              {f === 'all'
+                ? '⚡ All types'
+                : f === 'instant'
+                ? '⚡ Instant'
+                : f === 'standard'
+                ? '🚚 Standard'
+                : f === 'saver'
+                ? '🌱 Saver'
+                : '🕐 Scheduled'}
             </button>
           ))}
           <button
@@ -1889,10 +1905,15 @@ function OrdersTab() {
                 <Badge className={`${getPaymentColor(o.paymentStatus)} border-none px-2 py-0.5 text-xs`}>
                   {o.paymentMethod} · {o.paymentStatus}
                 </Badge>
-                {o.deliveryType === 'scheduled'
-                  ? <span className="text-xs text-violet-600 dark:text-violet-400 font-medium">🕐 Scheduled</span>
-                  : <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">⚡ Instant</span>
-                }
+                {o.deliveryType === 'scheduled' ? (
+                  <span className="text-xs text-violet-600 dark:text-violet-400 font-bold">🕐 Scheduled</span>
+                ) : o.deliveryType === 'saver' ? (
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">🌱 Saver (Same Day)</span>
+                ) : o.deliveryType === 'standard' ? (
+                  <span className="text-xs text-blue-600 dark:text-blue-400 font-bold">🚚 Standard (2-4h)</span>
+                ) : (
+                  <span className="text-xs text-amber-600 dark:text-amber-400 font-bold">⚡ Instant (10-15m)</span>
+                )}
                 {o.deliveryOtp && (
                   <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 text-xs font-mono font-bold">
                     🔑 OTP: {o.deliveryOtp}

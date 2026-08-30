@@ -111007,7 +111007,7 @@ var require_bn = __commonJS({
         assert((this.negative | num.negative) === 0);
         return this.iuand(num);
       };
-      BN.prototype.and = function and21(num) {
+      BN.prototype.and = function and22(num) {
         if (this.length > num.length) return this.clone().iand(num);
         return num.clone().iand(this);
       };
@@ -127482,19 +127482,47 @@ var import_express16 = __toESM(require_express2(), 1);
 var import_multer = __toESM(require_multer(), 1);
 import path2 from "path";
 var router16 = (0, import_express16.Router)();
-var ALLOWED_IMAGE_EXTS = /* @__PURE__ */ new Set([".jpg", ".jpeg", ".png", ".webp"]);
-var ALLOWED_IMAGE_MIME = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/webp"]);
+var ALLOWED_IMAGE_EXTS = /* @__PURE__ */ new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"]);
+var ALLOWED_IMAGE_MIME = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"]);
+var ALLOWED_MEDIA_EXTS = /* @__PURE__ */ new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".mp4", ".webm", ".mov", ".mkv", ".json", ".lottie"]);
+var ALLOWED_MEDIA_MIME = /* @__PURE__ */ new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/svg+xml",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "video/x-matroska",
+  "application/json",
+  "text/plain",
+  "application/octet-stream"
+]);
 var ALLOWED_CERT_EXTS = /* @__PURE__ */ new Set([".jpg", ".jpeg", ".png", ".webp", ".pdf"]);
 var ALLOWED_CERT_MIME = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
 var imageUpload = (0, import_multer.default)({
   storage: import_multer.default.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = path2.extname(file.originalname).toLowerCase();
-    if (ALLOWED_IMAGE_EXTS.has(ext) && ALLOWED_IMAGE_MIME.has(file.mimetype)) {
+    if (ALLOWED_IMAGE_EXTS.has(ext) && (ALLOWED_IMAGE_MIME.has(file.mimetype) || file.mimetype.startsWith("image/"))) {
       cb(null, true);
     } else {
-      cb(new Error("Only JPG, PNG, or WEBP images are allowed"));
+      cb(new Error("Only JPG, PNG, WEBP, GIF, or SVG images are allowed"));
+    }
+  }
+});
+var bannerMediaUpload = (0, import_multer.default)({
+  storage: import_multer.default.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  // 50MB for video / lottie
+  fileFilter: (_req, file, cb) => {
+    const ext = path2.extname(file.originalname).toLowerCase();
+    if (ALLOWED_MEDIA_EXTS.has(ext) || ALLOWED_MEDIA_MIME.has(file.mimetype) || file.mimetype.startsWith("video/") || file.mimetype.startsWith("image/") || ext === ".json" || ext === ".lottie") {
+      cb(null, true);
+    } else {
+      cb(new Error("Only Image, Video (MP4/WebM), GIF, or Lottie/JSON animation files are allowed"));
     }
   }
 });
@@ -127526,7 +127554,7 @@ router16.post(
       await runMulter(imageUpload.single("image"), req, res);
     } catch (err) {
       const isMulterLimit = err instanceof import_multer.default.MulterError && err.code === "LIMIT_FILE_SIZE";
-      const msg = isMulterLimit ? "Image is too large. Maximum size is 5 MB." : err instanceof Error ? err.message : "Invalid file";
+      const msg = isMulterLimit ? "Image is too large. Maximum size is 10 MB." : err instanceof Error ? err.message : "Invalid file";
       res.status(400).json({ success: false, message: msg });
       return;
     }
@@ -127536,38 +127564,50 @@ router16.post(
     }
     try {
       const { url } = await uploadToImageKit(req.file.buffer, "swiftmart/products", req.file.originalname);
-      res.json({ success: true, imageUrl: url });
+      res.json({ success: true, imageUrl: url, url });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
       res.status(502).json({ success: false, message: msg });
     }
   }
 );
-router16.post(
-  "/banner-image",
-  authenticate,
-  async (req, res) => {
-    try {
-      await runMulter(imageUpload.single("image"), req, res);
-    } catch (err) {
-      const isMulterLimit = err instanceof import_multer.default.MulterError && err.code === "LIMIT_FILE_SIZE";
-      const msg = isMulterLimit ? "Image is too large. Maximum size is 5 MB." : err instanceof Error ? err.message : "Invalid file";
-      res.status(400).json({ success: false, message: msg });
-      return;
-    }
-    if (!req.file) {
-      res.status(400).json({ success: false, message: "No file uploaded" });
-      return;
-    }
-    try {
-      const { url } = await uploadToImageKit(req.file.buffer, "swiftmart/banners", req.file.originalname);
-      res.json({ success: true, imageUrl: url });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Upload failed";
-      res.status(502).json({ success: false, message: msg });
-    }
+var handleBannerUpload = async (req, res) => {
+  try {
+    const uploadMiddleware = req.is("multipart/form-data") ? bannerMediaUpload.fields([
+      { name: "image", maxCount: 1 },
+      { name: "video", maxCount: 1 },
+      { name: "file", maxCount: 1 },
+      { name: "media", maxCount: 1 }
+    ]) : bannerMediaUpload.single("image");
+    await runMulter(uploadMiddleware, req, res);
+  } catch (err) {
+    const isMulterLimit = err instanceof import_multer.default.MulterError && err.code === "LIMIT_FILE_SIZE";
+    const msg = isMulterLimit ? "Media file is too large. Maximum size is 50 MB." : err instanceof Error ? err.message : "Invalid file";
+    res.status(400).json({ success: false, message: msg });
+    return;
   }
-);
+  const files = req.files;
+  const file = req.file || files?.["image"]?.[0] || files?.["video"]?.[0] || files?.["file"]?.[0] || files?.["media"]?.[0];
+  if (!file) {
+    res.status(400).json({ success: false, message: "No file uploaded" });
+    return;
+  }
+  try {
+    const { url } = await uploadToImageKit(file.buffer, "swiftmart/banners", file.originalname, "auto");
+    res.json({
+      success: true,
+      imageUrl: url,
+      videoUrl: url,
+      fileUrl: url,
+      url
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Upload failed";
+    res.status(502).json({ success: false, message: msg });
+  }
+};
+router16.post("/banner-image", authenticate, handleBannerUpload);
+router16.post("/banner-media", authenticate, handleBannerUpload);
 router16.post(
   "/shop-image",
   authenticate,
@@ -129662,7 +129702,7 @@ var themeConfig_default = router30;
 
 // src/routes/v1/layouts.ts
 var import_express31 = __toESM(require_express2(), 1);
-import { eq as eq33 } from "drizzle-orm";
+import { eq as eq33, inArray as inArray16, and as and20 } from "drizzle-orm";
 var router31 = (0, import_express31.Router)();
 var DEFAULT_HOME_BLOCKS = [
   {
@@ -129966,6 +130006,128 @@ function getDefaultBlocksForPage(pageName) {
     }
   ];
 }
+async function resolveLayoutBlocks(blocks) {
+  const explicitIds = /* @__PURE__ */ new Set();
+  for (const block of blocks) {
+    if ((block.type === "product_carousel" || block.type === "product_slider") && block.data) {
+      if (Array.isArray(block.data.productIds) && block.data.productIds.length > 0) {
+        block.data.productIds.forEach((id) => {
+          if (id && typeof id === "string") explicitIds.add(id.trim());
+        });
+      }
+    }
+  }
+  const explicitMap = /* @__PURE__ */ new Map();
+  if (explicitIds.size > 0) {
+    try {
+      const dbProds = await db.select().from(products).where(inArray16(products.id, Array.from(explicitIds)));
+      for (const p of dbProds) {
+        const isAvailable = (p.stock ?? 0) > 0 && p.status === "active";
+        const imgList = Array.isArray(p.images) ? p.images : [];
+        const imageUrl = imgList.length > 0 ? imgList[0] : "";
+        explicitMap.set(p.id, {
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          discountedPrice: p.discountedPrice,
+          imageUrl,
+          image: imageUrl,
+          images: imgList,
+          unit: p.unit,
+          category: p.category,
+          shopId: p.shopId,
+          fomoTag: p.fomoTag,
+          stockStatus: isAvailable ? "in_stock" : "out_of_stock"
+        });
+      }
+    } catch (e2) {
+      logger.warn({ e: e2 }, "Failed to fetch explicit products for layout");
+    }
+  }
+  return await Promise.all(
+    blocks.map(async (block) => {
+      if ((block.type === "product_carousel" || block.type === "product_slider") && block.data) {
+        if (Array.isArray(block.data.productIds) && block.data.productIds.length > 0) {
+          const resolved = block.data.productIds.map((id) => explicitMap.get(id)).filter((p) => p !== void 0);
+          return {
+            ...block,
+            data: {
+              ...block.data,
+              products: resolved
+            }
+          };
+        }
+        if (block.data.shopId) {
+          try {
+            const shopProds = await db.select().from(products).where(and20(eq33(products.shopId, block.data.shopId), eq33(products.status, "active"))).limit(Number(block.data.limit) || 12);
+            const resolved = shopProds.map((p) => {
+              const isAvailable = (p.stock ?? 0) > 0;
+              const imgList = Array.isArray(p.images) ? p.images : [];
+              const imageUrl = imgList.length > 0 ? imgList[0] : "";
+              return {
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                discountedPrice: p.discountedPrice,
+                imageUrl,
+                image: imageUrl,
+                images: imgList,
+                unit: p.unit,
+                category: p.category,
+                shopId: p.shopId,
+                fomoTag: p.fomoTag,
+                stockStatus: isAvailable ? "in_stock" : "out_of_stock"
+              };
+            });
+            return {
+              ...block,
+              data: {
+                ...block.data,
+                products: resolved
+              }
+            };
+          } catch (e2) {
+            return block;
+          }
+        }
+        if (block.data.categorySlug && block.data.categorySlug !== "all") {
+          try {
+            const catProds = await db.select().from(products).where(and20(eq33(products.category, block.data.categorySlug), eq33(products.status, "active"))).limit(Number(block.data.limit) || 12);
+            const resolved = catProds.map((p) => {
+              const isAvailable = (p.stock ?? 0) > 0;
+              const imgList = Array.isArray(p.images) ? p.images : [];
+              const imageUrl = imgList.length > 0 ? imgList[0] : "";
+              return {
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                discountedPrice: p.discountedPrice,
+                imageUrl,
+                image: imageUrl,
+                images: imgList,
+                unit: p.unit,
+                category: p.category,
+                shopId: p.shopId,
+                fomoTag: p.fomoTag,
+                stockStatus: isAvailable ? "in_stock" : "out_of_stock"
+              };
+            });
+            return {
+              ...block,
+              data: {
+                ...block.data,
+                products: resolved
+              }
+            };
+          } catch (e2) {
+            return block;
+          }
+        }
+      }
+      return block;
+    })
+  );
+}
 router31.get("/:pageName", async (req, res) => {
   const rawParam = req.params["pageName"];
   const pageName = String(Array.isArray(rawParam) ? rawParam[0] : rawParam || "home").toLowerCase();
@@ -129973,32 +130135,38 @@ router31.get("/:pageName", async (req, res) => {
     const [layout] = await db.select().from(appLayouts).where(eq33(appLayouts.pageName, pageName)).limit(1);
     if (!layout) {
       const defaultBlocks = getDefaultBlocksForPage(pageName);
+      const resolvedDefaults = await resolveLayoutBlocks(defaultBlocks);
       res.json({
         success: true,
         pageName,
         isDefault: true,
-        blocks: defaultBlocks,
-        allBlocks: defaultBlocks
+        blocks: resolvedDefaults,
+        allBlocks: resolvedDefaults
       });
       return;
     }
     const allBlocks = Array.isArray(layout.blocks) ? layout.blocks : [];
     const activeSortedBlocks = allBlocks.filter((b) => b.isActive !== false).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const resolvedActiveBlocks = await resolveLayoutBlocks(activeSortedBlocks);
+    const resolvedAllBlocks = await resolveLayoutBlocks(
+      allBlocks.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    );
     res.json({
       success: true,
       pageName,
       isDefault: false,
-      blocks: activeSortedBlocks,
-      allBlocks: allBlocks.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
+      blocks: resolvedActiveBlocks,
+      allBlocks: resolvedAllBlocks,
       updatedAt: layout.updatedAt
     });
   } catch (err) {
     logger.error({ err, pageName }, "Failed to fetch layout \u2014 returning fallback");
+    const fallbackBlocks = getDefaultBlocksForPage(pageName);
     res.json({
       success: true,
       pageName,
       isDefault: true,
-      blocks: getDefaultBlocksForPage(pageName)
+      blocks: fallbackBlocks
     });
   }
 });
@@ -130144,11 +130312,11 @@ router32.get("/", authenticate, A25, async (_req, res) => {
 var adminRiders_default = router32;
 
 // src/routes/v1/index.ts
-import { eq as eq35, and as and20, asc as asc8 } from "drizzle-orm";
+import { eq as eq35, and as and21, asc as asc8 } from "drizzle-orm";
 var router33 = (0, import_express33.Router)();
 router33.get("/home-filters", async (_req, res) => {
   try {
-    const list = await db.select().from(categories).where(and20(eq35(categories.isActive, true), eq35(categories.showOnHome, true))).orderBy(asc8(categories.filterOrder));
+    const list = await db.select().from(categories).where(and21(eq35(categories.isActive, true), eq35(categories.showOnHome, true))).orderBy(asc8(categories.filterOrder));
     const mapped = miArr(list);
     const grouped = {
       swiftmart: [],

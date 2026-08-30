@@ -191,7 +191,7 @@ export interface PlatformOrder {
   status: 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled';
   paymentMethod: 'UPI' | 'Card' | 'COD' | string;
   paymentStatus: 'success' | 'failed' | 'pending' | 'refunded';
-  deliveryType: 'instant' | 'scheduled';
+  deliveryType?: 'instant' | 'standard' | 'saver' | 'scheduled' | string;
   placedAt: string;
   updatedAt: string;
   refundedAt?: string;

@@ -307,9 +307,17 @@ function OrderCard({ order, onUpdate, updatingId, isNew }: {
               <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
                 Scheduled
               </span>
+            ) : order.deliveryType === 'saver' ? (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                🌱 Saver
+              </span>
+            ) : order.deliveryType === 'standard' ? (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                🚚 Standard
+              </span>
             ) : (
               <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                Instant
+                ⚡ Instant
               </span>
             )}
           </div>

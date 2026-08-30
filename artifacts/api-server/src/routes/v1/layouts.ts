@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
-import { db, appLayouts, type LayoutBlock } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, appLayouts, products as productsTable, type LayoutBlock } from "@workspace/db";
+import { eq, inArray, and } from "drizzle-orm";
 import { authenticate, requireRole } from "../../middlewares/auth.js";
 import { logger } from "../../lib/logger.js";
 
@@ -315,6 +315,157 @@ function getDefaultBlocksForPage(pageName: string): LayoutBlock[] {
   ];
 }
 
+async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]> {
+  const explicitIds = new Set<string>();
+
+  for (const block of blocks) {
+    if ((block.type === "product_carousel" || block.type === "product_slider") && block.data) {
+      if (Array.isArray(block.data.productIds) && block.data.productIds.length > 0) {
+        block.data.productIds.forEach((id: string) => {
+          if (id && typeof id === "string") explicitIds.add(id.trim());
+        });
+      }
+    }
+  }
+
+  const explicitMap = new Map<string, any>();
+  if (explicitIds.size > 0) {
+    try {
+      const dbProds = await db
+        .select()
+        .from(productsTable)
+        .where(inArray(productsTable.id, Array.from(explicitIds)));
+
+      for (const p of dbProds) {
+        const isAvailable = (p.stock ?? 0) > 0 && p.status === "active";
+        const imgList = Array.isArray(p.images) ? p.images : [];
+        const imageUrl = imgList.length > 0 ? imgList[0] : "";
+        explicitMap.set(p.id, {
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          discountedPrice: p.discountedPrice,
+          imageUrl: imageUrl,
+          image: imageUrl,
+          images: imgList,
+          unit: p.unit,
+          category: p.category,
+          shopId: p.shopId,
+          fomoTag: p.fomoTag,
+          stockStatus: isAvailable ? "in_stock" : "out_of_stock",
+        });
+      }
+    } catch (e) {
+      logger.warn({ e }, "Failed to fetch explicit products for layout");
+    }
+  }
+
+  return await Promise.all(
+    blocks.map(async (block) => {
+      if ((block.type === "product_carousel" || block.type === "product_slider") && block.data) {
+        // Case 1: Curated explicit product IDs selected by admin
+        if (Array.isArray(block.data.productIds) && block.data.productIds.length > 0) {
+          const resolved = block.data.productIds
+            .map((id: string) => explicitMap.get(id))
+            .filter((p: any) => p !== undefined);
+
+          return {
+            ...block,
+            data: {
+              ...block.data,
+              products: resolved,
+            },
+          };
+        }
+
+        // Case 2: Products exclusively from a specific Shop / Dokan
+        if (block.data.shopId) {
+          try {
+            const shopProds = await db
+              .select()
+              .from(productsTable)
+              .where(and(eq(productsTable.shopId, block.data.shopId), eq(productsTable.status, "active")))
+              .limit(Number(block.data.limit) || 12);
+
+            const resolved = shopProds.map((p) => {
+              const isAvailable = (p.stock ?? 0) > 0;
+              const imgList = Array.isArray(p.images) ? p.images : [];
+              const imageUrl = imgList.length > 0 ? imgList[0] : "";
+              return {
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                discountedPrice: p.discountedPrice,
+                imageUrl: imageUrl,
+                image: imageUrl,
+                images: imgList,
+                unit: p.unit,
+                category: p.category,
+                shopId: p.shopId,
+                fomoTag: p.fomoTag,
+                stockStatus: isAvailable ? "in_stock" : "out_of_stock",
+              };
+            });
+
+            return {
+              ...block,
+              data: {
+                ...block.data,
+                products: resolved,
+              },
+            };
+          } catch (e) {
+            return block;
+          }
+        }
+
+        // Case 3: Products from a specific category
+        if (block.data.categorySlug && block.data.categorySlug !== "all") {
+          try {
+            const catProds = await db
+              .select()
+              .from(productsTable)
+              .where(and(eq(productsTable.category, block.data.categorySlug), eq(productsTable.status, "active")))
+              .limit(Number(block.data.limit) || 12);
+
+            const resolved = catProds.map((p) => {
+              const isAvailable = (p.stock ?? 0) > 0;
+              const imgList = Array.isArray(p.images) ? p.images : [];
+              const imageUrl = imgList.length > 0 ? imgList[0] : "";
+              return {
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                discountedPrice: p.discountedPrice,
+                imageUrl: imageUrl,
+                image: imageUrl,
+                images: imgList,
+                unit: p.unit,
+                category: p.category,
+                shopId: p.shopId,
+                fomoTag: p.fomoTag,
+                stockStatus: isAvailable ? "in_stock" : "out_of_stock",
+              };
+            });
+
+            return {
+              ...block,
+              data: {
+                ...block.data,
+                products: resolved,
+              },
+            };
+          } catch (e) {
+            return block;
+          }
+        }
+      }
+
+      return block;
+    })
+  );
+}
+
 // ─── GET /api/v1/layout/:pageName ─────────────────────────────────────
 // Public SDUI layout API endpoint — returns sorted active layout blocks
 router.get("/:pageName", async (req: Request, res: Response): Promise<void> => {
@@ -332,12 +483,13 @@ router.get("/:pageName", async (req: Request, res: Response): Promise<void> => {
     // something to show on first load before the admin configures anything.
     if (!layout) {
       const defaultBlocks = getDefaultBlocksForPage(pageName);
+      const resolvedDefaults = await resolveLayoutBlocks(defaultBlocks);
       res.json({
         success: true,
         pageName,
         isDefault: true,
-        blocks: defaultBlocks,
-        allBlocks: defaultBlocks,
+        blocks: resolvedDefaults,
+        allBlocks: resolvedDefaults,
       });
       return;
     }
@@ -351,21 +503,27 @@ router.get("/:pageName", async (req: Request, res: Response): Promise<void> => {
       .filter((b) => b.isActive !== false)
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
+    const resolvedActiveBlocks = await resolveLayoutBlocks(activeSortedBlocks);
+    const resolvedAllBlocks = await resolveLayoutBlocks(
+      allBlocks.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    );
+
     res.json({
       success: true,
       pageName,
       isDefault: false,
-      blocks: activeSortedBlocks,
-      allBlocks: allBlocks.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
+      blocks: resolvedActiveBlocks,
+      allBlocks: resolvedAllBlocks,
       updatedAt: layout.updatedAt,
     });
   } catch (err) {
     logger.error({ err, pageName }, "Failed to fetch layout — returning fallback");
+    const fallbackBlocks = getDefaultBlocksForPage(pageName);
     res.json({
       success: true,
       pageName,
       isDefault: true,
-      blocks: getDefaultBlocksForPage(pageName),
+      blocks: fallbackBlocks,
     });
   }
 });
