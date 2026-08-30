@@ -566,14 +566,43 @@ export function LayoutBuilderTab({
                       <div className="p-4 bg-slate-950/60 space-y-4 rounded-b-2xl border-t border-slate-800">
                         {/* HERO BANNER EDIT FIELDS */}
                         {block.type === "hero_banner" && (
-                          <div className="space-y-3 text-sm">
+                          <div className="space-y-4 text-sm">
+                            {/* Media Type Selector */}
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-slate-200 block">Media Type</label>
+                              <div className="grid grid-cols-4 gap-2">
+                                {[
+                                  { id: "image", label: "Image 🖼️" },
+                                  { id: "video", label: "Video 🎥" },
+                                  { id: "gif", label: "GIF ✨" },
+                                  { id: "lottie", label: "Lottie 💫" },
+                                ].map((m) => {
+                                  const isSel = (block.data?.mediaType || "image") === m.id;
+                                  return (
+                                    <button
+                                      key={m.id}
+                                      type="button"
+                                      onClick={() => handleUpdateBlockData(block.id, "mediaType", m.id)}
+                                      className={`py-1.5 px-2 rounded-xl text-xs font-bold border transition-all ${
+                                        isSel
+                                          ? "bg-primary text-white border-primary shadow-xs"
+                                          : "bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-850 hover:border-slate-700"
+                                      }`}
+                                    >
+                                      {m.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div>
                                 <label className="text-xs font-bold text-slate-200 block mb-1">Banner Title</label>
                                 <Input
                                   value={block.data?.title || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "title", e.target.value)}
-                                  placeholder="e.g. 10-Minute Grocery Delivery"
+                                  placeholder="e.g. 10-Minute Super Fast Delivery"
                                   className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
                                 />
                               </div>
@@ -582,62 +611,189 @@ export function LayoutBuilderTab({
                                 <Input
                                   value={block.data?.subtitle || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "subtitle", e.target.value)}
-                                  placeholder="e.g. Fresh veggies & fruits"
+                                  placeholder="e.g. Fresh veggies & hot snacks delivered"
                                   className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
                                 />
                               </div>
                             </div>
 
-                            {/* Image URL & File Upload */}
-                            <div>
-                              <label className="text-xs font-bold text-slate-200 block mb-1">Image URL</label>
-                              <div className="flex gap-2">
-                                <Input
-                                  value={block.data?.imageUrl || ""}
-                                  onChange={(e) => handleUpdateBlockData(block.id, "imageUrl", e.target.value)}
-                                  placeholder="https://..."
-                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
-                                />
-                                <label className="cursor-pointer shrink-0">
-                                  <Button type="button" variant="outline" disabled={uploadingBlockId === block.id} className="pointer-events-none bg-slate-800 border-slate-700 text-white font-bold">
-                                    {uploadingBlockId === block.id ? (
-                                      <RefreshCw className="w-4 h-4 animate-spin mr-1 text-slate-300" />
-                                    ) : (
-                                      <Upload className="w-4 h-4 mr-1 text-slate-300" />
-                                    )}
-                                    Upload
-                                  </Button>
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                      if (e.target.files?.[0]) {
-                                        handleImageFileUpload(block.id, "imageUrl", e.target.files[0]);
-                                      }
-                                    }}
+                            {/* Video or Image URL & Upload */}
+                            {(block.data?.mediaType === "video") ? (
+                              <div className="space-y-1.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                                <div className="flex items-center justify-between">
+                                  <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                                    🎥 MP4 / WebM Video Stream URL
+                                  </label>
+                                  <span className="text-[10px] text-slate-400">Plays natively on Flutter & Web</span>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Input
+                                    value={block.data?.videoUrl || ""}
+                                    onChange={(e) => handleUpdateBlockData(block.id, "videoUrl", e.target.value)}
+                                    placeholder="https://.../video.mp4"
+                                    className="bg-slate-950 border-slate-800 text-white font-mono text-xs placeholder:text-slate-500 focus:border-primary flex-1"
                                   />
+                                  <label className="cursor-pointer shrink-0">
+                                    <Button type="button" variant="outline" disabled={uploadingBlockId === block.id} className="pointer-events-none bg-slate-800 border-slate-700 text-white font-bold text-xs">
+                                      {uploadingBlockId === block.id ? (
+                                        <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1 text-slate-300" />
+                                      ) : (
+                                        <Upload className="w-3.5 h-3.5 mr-1 text-slate-300" />
+                                      )}
+                                      Upload Video
+                                    </Button>
+                                    <input
+                                      type="file"
+                                      accept="video/mp4,video/webm,video/quicktime,image/gif"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        if (e.target.files?.[0]) {
+                                          handleImageFileUpload(block.id, "videoUrl", e.target.files[0]);
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-200 block">
+                                  {block.data?.mediaType === "gif" ? "GIF Animation URL" : "Image URL"}
                                 </label>
+                                <div className="flex gap-2">
+                                  <Input
+                                    value={block.data?.imageUrl || ""}
+                                    onChange={(e) => handleUpdateBlockData(block.id, "imageUrl", e.target.value)}
+                                    placeholder="https://images.unsplash.com/..."
+                                    className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary flex-1"
+                                  />
+                                  <label className="cursor-pointer shrink-0">
+                                    <Button type="button" variant="outline" disabled={uploadingBlockId === block.id} className="pointer-events-none bg-slate-800 border-slate-700 text-white font-bold text-xs">
+                                      {uploadingBlockId === block.id ? (
+                                        <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1 text-slate-300" />
+                                      ) : (
+                                        <Upload className="w-3.5 h-3.5 mr-1 text-slate-300" />
+                                      )}
+                                      Upload
+                                    </Button>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        if (e.target.files?.[0]) {
+                                          handleImageFileUpload(block.id, "imageUrl", e.target.files[0]);
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Banner Height, Aspect Ratio & Autoplay Options */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900/40 p-3 rounded-xl border border-slate-800/80">
+                              <div>
+                                <label className="text-[11px] font-bold text-slate-300 block mb-1">Banner Height</label>
+                                <select
+                                  value={block.data?.height || 180}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "height", Number(e.target.value))}
+                                  className="w-full h-8 px-2 rounded-lg border border-slate-800 bg-slate-950 text-xs font-bold text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                                >
+                                  <option value={140}>Compact (140px)</option>
+                                  <option value={160}>Medium (160px)</option>
+                                  <option value={180}>Standard (180px)</option>
+                                  <option value={200}>Large (200px)</option>
+                                  <option value={220}>Tall (220px)</option>
+                                  <option value={260}>Hero Plus (260px)</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="text-[11px] font-bold text-slate-300 block mb-1">Aspect Ratio</label>
+                                <select
+                                  value={block.data?.aspectRatio || "16:9"}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "aspectRatio", e.target.value)}
+                                  className="w-full h-8 px-2 rounded-lg border border-slate-800 bg-slate-950 text-xs font-bold text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                                >
+                                  <option value="16:9">16:9 Standard</option>
+                                  <option value="21:9">21:9 Ultrawide</option>
+                                  <option value="4:3">4:3 Box</option>
+                                  <option value="custom">Custom Auto</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="text-[11px] font-bold text-slate-300 block mb-1">AutoPlay</label>
+                                <select
+                                  value={block.data?.autoPlay !== false ? "true" : "false"}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "autoPlay", e.target.value === "true")}
+                                  className="w-full h-8 px-2 rounded-lg border border-slate-800 bg-slate-950 text-xs font-bold text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                                >
+                                  <option value="true">Enabled (Loop)</option>
+                                  <option value="false">Disabled</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="text-[11px] font-bold text-slate-300 block mb-1">Interval</label>
+                                <select
+                                  value={block.data?.interval || 4}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "interval", Number(e.target.value))}
+                                  className="w-full h-8 px-2 rounded-lg border border-slate-800 bg-slate-950 text-xs font-bold text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                                >
+                                  <option value={3}>3 Seconds</option>
+                                  <option value={4}>4 Seconds</option>
+                                  <option value={5}>5 Seconds</option>
+                                  <option value={7}>7 Seconds</option>
+                                </select>
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {/* Action Link, Preset Selector & CTA Button */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div className="md:col-span-1">
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Target Page Preset</label>
+                                <select
+                                  value={
+                                    ["/shops", "/categories", "/festive", "/cafe", "/super_store", "/search"].includes(block.data?.link)
+                                      ? block.data?.link
+                                      : "custom"
+                                  }
+                                  onChange={(e) => {
+                                    if (e.target.value !== "custom") {
+                                      handleUpdateBlockData(block.id, "link", e.target.value);
+                                    }
+                                  }}
+                                  className="w-full h-9 px-2 rounded-lg border border-slate-800 bg-slate-950 text-xs font-bold text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                                >
+                                  <option value="/shops">🏬 All Shops (/shops)</option>
+                                  <option value="/categories">📦 Categories (/categories)</option>
+                                  <option value="/festive">🎉 Festive Store (/festive)</option>
+                                  <option value="/cafe">🍕 Cafe & Food (/cafe)</option>
+                                  <option value="/super_store">🛒 Super Store (/super_store)</option>
+                                  <option value="/search">🔍 Search (/search)</option>
+                                  <option value="custom">✏️ Custom URL / Slug</option>
+                                </select>
+                              </div>
+
                               <div>
-                                <label className="text-xs font-bold text-slate-200 block mb-1">Action Link</label>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Action Link (Deeplink)</label>
                                 <Input
                                   value={block.data?.link || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "link", e.target.value)}
                                   placeholder="e.g. /shops or /category/dairy"
-                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
+                                  className="bg-slate-950 border-slate-800 text-white font-mono text-xs placeholder:text-slate-500 focus:border-primary h-9"
                                 />
                               </div>
+
                               <div>
                                 <label className="text-xs font-bold text-slate-200 block mb-1">Button Text</label>
                                 <Input
                                   value={block.data?.buttonText || ""}
                                   onChange={(e) => handleUpdateBlockData(block.id, "buttonText", e.target.value)}
-                                  placeholder="e.g. Shop Now"
-                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
+                                  placeholder="e.g. Order Now / Shop Now"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary h-9"
                                 />
                               </div>
                             </div>
@@ -998,28 +1154,60 @@ export function LayoutBuilderTab({
                 .filter((b) => b.isActive)
                 .map((block) => {
                   if (block.type === "hero_banner") {
+                    const isVideo = block.data?.mediaType === "video" && block.data?.videoUrl;
+                    const heightVal = block.data?.height ? `${block.data.height}px` : "160px";
+
                     return (
                       <div
                         key={block.id}
-                        className="relative rounded-2xl overflow-hidden bg-slate-800 min-h-[140px] flex flex-col justify-end p-4 border border-slate-700/50"
+                        className="relative rounded-2xl overflow-hidden bg-slate-900 flex flex-col justify-end p-4 border border-slate-700/50 shadow-md group"
                         style={{
-                          backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.85), transparent), url(${
-                            block.data?.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80"
-                          })`,
+                          height: heightVal,
+                          backgroundImage: !isVideo
+                            ? `linear-gradient(to top, rgba(0,0,0,0.88), rgba(0,0,0,0.1)), url(${
+                                block.data?.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80"
+                              })`
+                            : undefined,
                           backgroundSize: "cover",
                           backgroundPosition: "center",
                         }}
                       >
-                        <h4 className="font-bold text-white text-sm line-clamp-1">
-                          {block.data?.title || "Hero Banner Title"}
-                        </h4>
-                        <p className="text-[11px] text-slate-300 line-clamp-1 mt-0.5">
-                          {block.data?.subtitle || "Hero banner subtitle..."}
-                        </p>
-                        <div className="mt-2 flex">
-                          <span className="bg-primary text-white text-[10px] font-bold px-2.5 py-1 rounded-lg">
-                            {block.data?.buttonText || "Shop Now"}
-                          </span>
+                        {isVideo && (
+                          <>
+                            <video
+                              src={block.data.videoUrl}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+                          </>
+                        )}
+
+                        <div className="relative z-10 space-y-1">
+                          {block.data?.mediaType === "video" && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500 text-black uppercase tracking-wider mb-1">
+                              🎥 Video Banner
+                            </span>
+                          )}
+                          <h4 className="font-extrabold text-white text-sm line-clamp-1 drop-shadow">
+                            {block.data?.title || "Hero Banner Title"}
+                          </h4>
+                          <p className="text-[11px] text-slate-200 line-clamp-1 drop-shadow opacity-90">
+                            {block.data?.subtitle || "Hero banner subtitle..."}
+                          </p>
+                          <div className="pt-1 flex items-center justify-between">
+                            <span className="bg-primary text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shadow-sm">
+                              {block.data?.buttonText || "Shop Now"}
+                            </span>
+                            {block.data?.link && (
+                              <span className="text-[9px] font-mono text-slate-300 bg-black/50 px-1.5 py-0.5 rounded">
+                                {block.data.link}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
