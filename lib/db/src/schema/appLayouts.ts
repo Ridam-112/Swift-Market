@@ -8,7 +8,8 @@ export type BlockType =
   | "spacer"
   | "daily_regulars"
   | "weather_cravings"
-  | "shoppable_recipe";
+  | "shoppable_recipe"
+  | "super_store_showcase";
 
 export interface LayoutBlock {
   id: string;

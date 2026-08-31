@@ -185,6 +185,24 @@ const DEFAULT_SUPER_STORE_BLOCKS: LayoutBlock[] = [
     },
   },
   {
+    id: "block_super_showcase_1",
+    type: "super_store_showcase" as any,
+    sortOrder: 2,
+    isActive: true,
+    data: {
+      title: "Super Store",
+      subtitle: "Beyond groceries",
+      items: [
+        { name: "Home", color: "0xFFD97706", icon: "🏺", image: "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=150", slug: "home-kitchen" },
+        { name: "Beauty", color: "0xFFE11D48", icon: "💄", image: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=150", slug: "beauty-personal-care" },
+        { name: "Electronics", color: "0xFF0284C7", icon: "🎧", image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=150", slug: "electronics" },
+        { name: "Fashion", color: "0xFFEA580C", icon: "👗", image: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=150", slug: "fashion" },
+        { name: "Stationery", color: "0xFF475569", icon: "✏️", image: "https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=150", slug: "books-stationery" },
+        { name: "Deal Store", color: "0xFF16A34A", icon: "🏷️", isDeal: true, slug: "deals" },
+      ],
+    },
+  },
+  {
     id: "block_super_promo_1",
     type: "promotional_strip",
     sortOrder: 2,

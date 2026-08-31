@@ -45,7 +45,8 @@ export type BlockType =
   | "spacer"
   | "daily_regulars"
   | "weather_cravings"
-  | "shoppable_recipe";
+  | "shoppable_recipe"
+  | "super_store_showcase";
 
 export interface LayoutBlock {
   id: string;
@@ -104,6 +105,12 @@ const BLOCK_TYPES_META: Array<{ type: BlockType; label: string; description: str
     label: "Shoppable Recipe",
     description: "Recipe card allowing 1-tap purchase of all ingredients",
     icon: Utensils,
+  },
+  {
+    type: "super_store_showcase",
+    label: "Super Store Showcase",
+    description: "Dark neon cyber-purple 3×2 grid with category cards & Deal Store badge",
+    icon: Store,
   },
   {
     type: "spacer",
@@ -308,6 +315,19 @@ export function LayoutBuilderTab({
           ingredients: [
             { id: "ing_1", name: "Fresh Dairy Paneer 200g", price: 90, unit: "200g", image: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=500" },
             { id: "ing_2", name: "Amul Butter 100g", price: 58, unit: "100g", image: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=500" },
+          ],
+        };
+      case "super_store_showcase":
+        return {
+          title: "Super Store",
+          subtitle: "Beyond groceries",
+          items: [
+            { name: "Home", color: "0xFFD97706", icon: "🏺", image: "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=150", slug: "home-kitchen" },
+            { name: "Beauty", color: "0xFFE11D48", icon: "💄", image: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=150", slug: "beauty-personal-care" },
+            { name: "Electronics", color: "0xFF0284C7", icon: "🎧", image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=150", slug: "electronics" },
+            { name: "Fashion", color: "0xFFEA580C", icon: "👗", image: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=150", slug: "fashion" },
+            { name: "Stationery", color: "0xFF475569", icon: "✏️", image: "https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=150", slug: "books-stationery" },
+            { name: "Deal Store", color: "0xFF16A34A", icon: "🏷️", isDeal: true, slug: "deals" },
           ],
         };
       case "spacer":
@@ -1495,6 +1515,139 @@ export function LayoutBuilderTab({
                             />
                           </div>
                         )}
+
+                        {/* SUPER STORE SHOWCASE EDIT FIELDS */}
+                        {block.type === "super_store_showcase" && (
+                          <div className="space-y-3 text-sm">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Title</label>
+                                <Input
+                                  value={block.data?.title || ""}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "title", e.target.value)}
+                                  placeholder="Super Store"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-slate-200 block mb-1">Subtitle</label>
+                                <Input
+                                  value={block.data?.subtitle || ""}
+                                  onChange={(e) => handleUpdateBlockData(block.id, "subtitle", e.target.value)}
+                                  placeholder="Beyond groceries"
+                                  className="bg-slate-950 border-slate-800 text-white font-bold placeholder:text-slate-500 focus:border-primary"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                                🧩 Category Cards (3×2 Grid)
+                              </label>
+                              {(block.data?.items || []).map((item: any, idx: number) => (
+                                <div key={idx} className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-white">{item.icon || "📦"} Card #{idx + 1}</span>
+                                    <div className="flex gap-1">
+                                      {item.isDeal && <Badge variant="outline" className="text-emerald-400 border-emerald-600 text-[10px]">DEAL</Badge>}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const items = [...(block.data?.items || [])];
+                                          items.splice(idx, 1);
+                                          handleUpdateBlockData(block.id, "items", items);
+                                        }}
+                                        className="p-1 hover:bg-red-900/50 rounded text-red-400"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <Input
+                                      value={item.name || ""}
+                                      onChange={(e) => {
+                                        const items = [...(block.data?.items || [])];
+                                        items[idx] = { ...items[idx], name: e.target.value };
+                                        handleUpdateBlockData(block.id, "items", items);
+                                      }}
+                                      placeholder="Name"
+                                      className="bg-slate-950 border-slate-800 text-white text-xs font-bold"
+                                    />
+                                    <Input
+                                      value={item.icon || ""}
+                                      onChange={(e) => {
+                                        const items = [...(block.data?.items || [])];
+                                        items[idx] = { ...items[idx], icon: e.target.value };
+                                        handleUpdateBlockData(block.id, "items", items);
+                                      }}
+                                      placeholder="Emoji 🎧"
+                                      className="bg-slate-950 border-slate-800 text-white text-xs font-bold"
+                                    />
+                                    <Input
+                                      value={item.slug || ""}
+                                      onChange={(e) => {
+                                        const items = [...(block.data?.items || [])];
+                                        items[idx] = { ...items[idx], slug: e.target.value };
+                                        handleUpdateBlockData(block.id, "items", items);
+                                      }}
+                                      placeholder="slug"
+                                      className="bg-slate-950 border-slate-800 text-white text-xs font-mono"
+                                    />
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <Input
+                                      value={item.image || ""}
+                                      onChange={(e) => {
+                                        const items = [...(block.data?.items || [])];
+                                        items[idx] = { ...items[idx], image: e.target.value };
+                                        handleUpdateBlockData(block.id, "items", items);
+                                      }}
+                                      placeholder="Image URL"
+                                      className="bg-slate-950 border-slate-800 text-white text-xs font-bold"
+                                    />
+                                    <div className="flex gap-2">
+                                      <Input
+                                        value={item.color || ""}
+                                        onChange={(e) => {
+                                          const items = [...(block.data?.items || [])];
+                                          items[idx] = { ...items[idx], color: e.target.value };
+                                          handleUpdateBlockData(block.id, "items", items);
+                                        }}
+                                        placeholder="0xFFD97706"
+                                        className="bg-slate-950 border-slate-800 text-white text-xs font-mono flex-1"
+                                      />
+                                      <label className="flex items-center gap-1 text-[10px] text-slate-400 cursor-pointer select-none">
+                                        <input
+                                          type="checkbox"
+                                          checked={item.isDeal || false}
+                                          onChange={(e) => {
+                                            const items = [...(block.data?.items || [])];
+                                            items[idx] = { ...items[idx], isDeal: e.target.checked };
+                                            handleUpdateBlockData(block.id, "items", items);
+                                          }}
+                                          className="accent-emerald-500"
+                                        />
+                                        Deal
+                                      </label>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full bg-slate-900 border-slate-700 text-white font-bold text-xs"
+                                onClick={() => {
+                                  const items = [...(block.data?.items || []), { name: "New Category", color: "0xFF6366F1", icon: "📦", image: "", slug: "new-category" }];
+                                  handleUpdateBlockData(block.id, "items", items);
+                                }}
+                              >
+                                <Plus className="w-3 h-3 mr-1" /> Add Category Card
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1823,6 +1976,45 @@ export function LayoutBuilderTab({
                         style={{ height: `${block.data?.height || 24}px` }}
                       >
                         Spacer ({block.data?.height || 24}px)
+                      </div>
+                    );
+                  }
+
+                  if (block.type === "super_store_showcase") {
+                    const items = block.data?.items || [];
+                    return (
+                      <div key={block.id} className="mx-3 my-2 p-3 rounded-2xl bg-gradient-to-br from-[#1a1035] to-[#2d1b69] border border-purple-800/50 shadow-lg shadow-purple-900/30">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <p className="text-[11px] font-extrabold text-white">{block.data?.title || "Super Store"}</p>
+                            <p className="text-[8px] text-purple-300">{block.data?.subtitle || "Beyond groceries"}</p>
+                          </div>
+                          <span className="text-[8px] text-purple-400 font-bold">See All →</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {items.slice(0, 6).map((cat: any, i: number) => {
+                            let bgColor = '#6366F1';
+                            try {
+                              if (cat.color?.startsWith('0x')) bgColor = '#' + cat.color.slice(4);
+                              else if (cat.color?.startsWith('#')) bgColor = cat.color;
+                            } catch {}
+                            return cat.isDeal ? (
+                              <div key={i} className="rounded-lg p-1.5 flex flex-col items-center justify-center text-center" style={{ backgroundColor: bgColor + '22', border: `1px solid ${bgColor}44` }}>
+                                <span className="text-sm">{cat.icon || '🏷️'}</span>
+                                <span className="text-[7px] font-extrabold text-emerald-300 mt-0.5">{cat.name}</span>
+                                <span className="text-[6px] text-emerald-400/70">UP TO 80% OFF</span>
+                              </div>
+                            ) : (
+                              <div key={i} className="rounded-lg overflow-hidden relative" style={{ height: 48 }}>
+                                {cat.image && <img src={cat.image} alt={cat.name} className="absolute inset-0 w-full h-full object-cover opacity-60" />}
+                                <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: bgColor + '88' }}>
+                                  <span className="text-xs">{cat.icon}</span>
+                                  <span className="text-[7px] font-extrabold text-white drop-shadow">{cat.name}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   }
