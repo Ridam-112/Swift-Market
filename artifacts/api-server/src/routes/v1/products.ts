@@ -88,18 +88,29 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
       return;
     }
     conditions.push(inArray(products.shopId, pincodeShops.map(s => s.id)));
-  } else if (shopId) {
-    if (status === "all") {
-      // Vendor/admin viewing their own shop's products — no approval check needed
-      conditions.push(eq(products.shopId, shopId));
-    } else {
-      // Customer-facing: only return products from approved shops
-      const [shop] = await db.select({ status: shops.status }).from(shops).where(eq(shops.id, shopId)).limit(1);
-      if (!shop || (shop.status !== "approved" && shop.status !== "active")) {
-        res.json({ success: true, products: [], total: 0, page: pg, pages: 0 });
-        return;
+  } else if ((req.query as Record<string, string>)["shopIds"] || shopId) {
+    const rawShopParam = ((req.query as Record<string, string>)["shopIds"] || shopId || "").trim();
+    const parsedShopIds = rawShopParam.split(",").map(s => s.trim()).filter(Boolean);
+
+    if (parsedShopIds.length > 0) {
+      if (status === "all") {
+        if (parsedShopIds.length === 1) {
+          conditions.push(eq(products.shopId, parsedShopIds[0]));
+        } else {
+          conditions.push(inArray(products.shopId, parsedShopIds));
+        }
+      } else {
+        const validShops = await db
+          .select({ id: shops.id })
+          .from(shops)
+          .where(and(inArray(shops.id, parsedShopIds), or(eq(shops.status, "approved"), eq(shops.status, "active"))));
+
+        if (validShops.length === 0) {
+          res.json({ success: true, products: [], total: 0, page: pg, pages: 0 });
+          return;
+        }
+        conditions.push(inArray(products.shopId, validShops.map(s => s.id)));
       }
-      conditions.push(eq(products.shopId, shopId));
     }
   } else {
     // No shopId, no pincode — restrict to products from approved shops.

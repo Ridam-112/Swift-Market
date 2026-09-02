@@ -381,25 +381,29 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
   return await Promise.all(
     blocks.map(async (block) => {
       if (((block.type as string) === "product_carousel" || (block.type as string) === "product_slider") && block.data) {
-        const sourceType = block.data.sourceType || (block.data.shopId ? "shop" : (Array.isArray(block.data.productIds) && block.data.productIds.length > 0 ? "custom" : "category"));
+        const sourceType = block.data.sourceType || (block.data.shopIds?.length > 0 || block.data.shopId ? "shop" : (Array.isArray(block.data.productIds) && block.data.productIds.length > 0 ? "custom" : "category"));
+        const targetShopIds: string[] = Array.isArray(block.data.shopIds) && block.data.shopIds.length > 0
+          ? block.data.shopIds.map(String).filter(Boolean)
+          : (block.data.shopId ? [String(block.data.shopId)] : []);
 
-        // Case 1: Products exclusively from a specific Shop / Dokan
-        if (sourceType === "shop" && block.data.shopId) {
+        // Case 1: Products exclusively from specific Shop(s) / Dokan
+        if (sourceType === "shop" && targetShopIds.length > 0) {
           try {
-            const [shopProds, [shopRecord]] = await Promise.all([
+            const [shopProds, dbShops] = await Promise.all([
               db
                 .select()
                 .from(productsTable)
-                .where(and(eq(productsTable.shopId, block.data.shopId), or(eq(productsTable.status, "active"), eq(productsTable.status, "approved"))))
+                .where(and(inArray(productsTable.shopId, targetShopIds), or(eq(productsTable.status, "active"), eq(productsTable.status, "approved"))))
                 .limit(Number(block.data.limit) || 12),
               db
                 .select({ id: shopsTable.id, shopName: shopsTable.shopName })
                 .from(shopsTable)
-                .where(eq(shopsTable.id, block.data.shopId))
-                .limit(1),
+                .where(inArray(shopsTable.id, targetShopIds)),
             ]);
 
-            const resolvedShopName = block.data.shopName || shopRecord?.shopName || "Vendor Shop";
+            const shopNameMap = new Map(dbShops.map((s) => [s.id, s.shopName]));
+            const resolvedShopNames = dbShops.map((s) => s.shopName);
+            const resolvedShopName = block.data.shopName || resolvedShopNames.join(", ") || "Vendor Shop";
 
             const resolved = shopProds.map((p) => {
               const isAvailable = (p.stock ?? 0) > 0;
@@ -416,7 +420,7 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
                 unit: p.unit,
                 category: p.category,
                 shopId: p.shopId,
-                shopName: resolvedShopName,
+                shopName: shopNameMap.get(p.shopId) || resolvedShopName,
                 fomoTag: (p as any).fomoTag,
                 stockStatus: isAvailable ? "in_stock" : "out_of_stock",
               };
@@ -426,6 +430,8 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
               ...block,
               data: {
                 ...block.data,
+                shopIds: targetShopIds,
+                shopNames: resolvedShopNames,
                 shopName: resolvedShopName,
                 products: resolved,
               },

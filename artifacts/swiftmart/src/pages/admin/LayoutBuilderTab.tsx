@@ -215,12 +215,15 @@ export function LayoutBuilderTab({
       .catch(() => {});
   }, []);
 
-  // When a block with shopId is selected/active, ensure that shop's products are preloaded
+  // When a block with shopIds/shopId is selected/active, ensure that shop's products are preloaded
   useEffect(() => {
     const currentBlock = blocks.find((b) => b.id === expandedBlockId);
-    const sId = currentBlock?.data?.shopId;
-    if (sId && currentBlock?.data?.sourceType === "shop") {
-      api.get<{ success: boolean; products: any[] }>(`/products?shopId=${sId}&status=all&limit=100`)
+    const shopIds: string[] = Array.isArray(currentBlock?.data?.shopIds) && currentBlock.data.shopIds.length > 0
+      ? currentBlock.data.shopIds.map(String)
+      : (currentBlock?.data?.shopId ? [String(currentBlock.data.shopId)] : []);
+
+    if (shopIds.length > 0 && currentBlock?.data?.sourceType === "shop") {
+      api.get<{ success: boolean; products: any[] }>(`/products?shopIds=${shopIds.join(",")}&status=all&limit=100`)
         .then((res) => {
           if (res?.success && Array.isArray(res.products)) {
             setRealProducts((prev) => {
@@ -384,12 +387,18 @@ export function LayoutBuilderTab({
   };
 
   const handleToggleActive = (id: string) => {
-    setBlocks(blocks.map((b) => (b.id === id ? { ...b, isActive: !b.isActive } : b)));
+    setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, isActive: !b.isActive } : b)));
   };
 
   const handleUpdateBlockData = (id: string, key: string, value: any) => {
-    setBlocks(
-      blocks.map((b) => (b.id === id ? { ...b, data: { ...b.data, [key]: value } } : b))
+    setBlocks((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, data: { ...b.data, [key]: value } } : b))
+    );
+  };
+
+  const handleUpdateBlockMultipleData = (id: string, updates: Record<string, any>) => {
+    setBlocks((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, data: { ...b.data, ...updates } } : b))
     );
   };
 
@@ -945,6 +954,9 @@ export function LayoutBuilderTab({
                           const currentSource = block.data?.sourceType || "category";
                           const currentProductIds: string[] = Array.isArray(block.data?.productIds) ? block.data.productIds : [];
                           const currentShopId = block.data?.shopId || "";
+                          const currentShopIds: string[] = Array.isArray(block.data?.shopIds) && block.data.shopIds.length > 0
+                            ? block.data.shopIds.map(String)
+                            : (block.data?.shopId ? [String(block.data.shopId)] : []);
                           const currentCategory = block.data?.categorySlug || "";
 
                           const query = (productSearch[block.id] || "").toLowerCase().trim();
@@ -1062,61 +1074,138 @@ export function LayoutBuilderTab({
                                 </div>
                               )}
 
-                              {/* Mode B: By Specific Shop (Dokan) */}
+                              {/* Mode B: By Specific Shop(s) (Dokan) */}
                               {currentSource === "shop" && (
-                                <div className="space-y-2 bg-slate-900/60 p-3.5 rounded-xl border border-amber-500/30">
+                                <div className="space-y-3 bg-slate-900/60 p-3.5 rounded-xl border border-amber-500/30">
                                   <div className="flex items-center justify-between">
                                     <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                                      <Store className="w-4 h-4" /> Select Vendor Shop (Dokan)
+                                      <Store className="w-4 h-4" /> Select Vendor Shops (Dokan)
                                     </label>
-                                    <span className="text-[10px] text-slate-400">{realShops.length} Approved Shops</span>
+                                    <span className="text-[10px] text-slate-400">
+                                      {currentShopIds.length} Selected · {realShops.length} Approved Shops
+                                    </span>
                                   </div>
-                                  <select
-                                     value={currentShopId}
-                                     onChange={(e) => {
-                                       const sId = e.target.value;
-                                       const shopObj = realShops.find((s) => String(s.id || s._id) === String(sId));
-                                       const sName = getShopDisplayName(shopObj);
-                                       handleUpdateBlockData(block.id, "shopId", sId);
-                                       handleUpdateBlockData(block.id, "shopName", sId ? sName : "");
-                                       if (sId) {
-                                         // Dynamically fetch products of this shop so live preview & product list update instantly
-                                         api.get<{ success: boolean; products: any[] }>(`/products?shopId=${sId}&status=all&limit=100`)
-                                           .then((res) => {
-                                             if (res?.success && Array.isArray(res.products)) {
-                                               setRealProducts((prev) => {
-                                                 const existingIds = new Set(prev.map((p) => String(p.id || p._id)));
-                                                 const newProds = res.products.filter((p) => !existingIds.has(String(p.id || p._id)));
-                                                 return [...prev, ...newProds];
-                                               });
-                                             }
-                                           })
-                                           .catch(() => {});
-                                       }
-                                     }}
-                                     className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-950 text-white font-bold text-sm"
-                                   >
-                                     <option value="">-- Choose a Seller Shop --</option>
-                                     {realShops.map((shop) => {
-                                       const sId = String(shop.id || shop._id || "");
-                                       const sName = getShopDisplayName(shop);
-                                       const city = shop.address?.city ? `(${shop.address.city.toString().trim()})` : "";
-                                       return (
-                                         <option key={sId} value={sId}>
-                                           🏪 {sName} {city}
-                                         </option>
-                                       );
-                                     })}
-                                   </select>
-                                  {currentShopId ? (
-                                    <div className="flex items-center gap-2 text-xs text-emerald-400 font-bold mt-1 bg-emerald-950/30 px-2.5 py-1.5 rounded-lg border border-emerald-800/40">
-                                      <Check className="w-3.5 h-3.5" />
-                                      Showing products exclusively from "{block.data?.shopName || getShopDisplayName(realShops.find((s) => String(s.id || s._id) === String(currentShopId))) || "selected shop"}"
+
+                                  {/* Selected Shops Chips Shelf */}
+                                  {currentShopIds.length > 0 ? (
+                                    <div className="space-y-2 bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                                      <div className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
+                                        <span>Selected Shops ({currentShopIds.length}):</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            handleUpdateBlockMultipleData(block.id, {
+                                              shopIds: [],
+                                              shopId: "",
+                                              shopNames: [],
+                                              shopName: "",
+                                            });
+                                          }}
+                                          className="text-[10px] text-red-400 hover:text-red-300 font-bold hover:underline"
+                                        >
+                                          Clear All
+                                        </button>
+                                      </div>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {currentShopIds.map((sId) => {
+                                          const sObj = realShops.find((s) => String(s.id || s._id) === String(sId));
+                                          const sName = getShopDisplayName(sObj);
+                                          const city = sObj?.address?.city ? `(${sObj.address.city.toString().trim()})` : "";
+                                          return (
+                                            <span
+                                              key={sId}
+                                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-bold shadow-xs"
+                                            >
+                                              🏪 {sName} {city}
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  const nextIds = currentShopIds.filter((id) => id !== sId);
+                                                  const selectedObjs = nextIds
+                                                    .map((id) => realShops.find((s) => String(s.id || s._id) === String(id)))
+                                                    .filter(Boolean);
+                                                  const names = selectedObjs.map((s) => getShopDisplayName(s));
+                                                  handleUpdateBlockMultipleData(block.id, {
+                                                    shopIds: nextIds,
+                                                    shopId: nextIds[0] || "",
+                                                    shopNames: names,
+                                                    shopName: names.join(", "),
+                                                  });
+                                                }}
+                                                className="hover:bg-amber-500/30 rounded-full p-0.5 ml-1 transition"
+                                                title="Remove Shop"
+                                              >
+                                                <X className="w-3 h-3 text-amber-400 hover:text-white" />
+                                              </button>
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
                                     </div>
                                   ) : (
-                                    <p className="text-[11px] text-amber-300/80 mt-1">
-                                      Please select a shop above to show only products from that shop.
-                                    </p>
+                                    <div className="p-2.5 bg-slate-950/80 rounded-xl border border-dashed border-amber-500/30 text-xs text-amber-300/80">
+                                      No shop selected yet. Choose one or more shops below to show products exclusively from them.
+                                    </div>
+                                  )}
+
+                                  {/* Dropdown to add another shop */}
+                                  <div className="space-y-1">
+                                    <label className="text-[11px] font-bold text-slate-300 block">
+                                      + Add a Shop to this Section:
+                                    </label>
+                                    <select
+                                      value=""
+                                      onChange={(e) => {
+                                        const sId = e.target.value;
+                                        if (!sId) return;
+                                        const nextIds = Array.from(new Set([...currentShopIds, sId]));
+                                        const selectedObjs = nextIds
+                                          .map((id) => realShops.find((s) => String(s.id || s._id) === String(id)))
+                                          .filter(Boolean);
+                                        const names = selectedObjs.map((s) => getShopDisplayName(s));
+                                        handleUpdateBlockMultipleData(block.id, {
+                                          shopIds: nextIds,
+                                          shopId: nextIds[0] || "",
+                                          shopNames: names,
+                                          shopName: names.join(", "),
+                                        });
+
+                                        // Preload products for this shop dynamically
+                                        api.get<{ success: boolean; products: any[] }>(`/products?shopId=${sId}&status=all&limit=100`)
+                                          .then((res) => {
+                                            if (res?.success && Array.isArray(res.products)) {
+                                              setRealProducts((prev) => {
+                                                const existingIds = new Set(prev.map((p) => String(p.id || p._id)));
+                                                const newProds = res.products.filter((p) => !existingIds.has(String(p.id || p._id)));
+                                                return [...prev, ...newProds];
+                                              });
+                                            }
+                                          })
+                                          .catch(() => {});
+                                      }}
+                                      className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-950 text-white font-bold text-sm"
+                                    >
+                                      <option value="">-- Click to add a seller shop ({realShops.length - currentShopIds.length} available) --</option>
+                                      {realShops
+                                        .filter((shop) => !currentShopIds.includes(String(shop.id || shop._id)))
+                                        .map((shop) => {
+                                          const sId = String(shop.id || shop._id || "");
+                                          const sName = getShopDisplayName(shop);
+                                          const city = shop.address?.city ? `(${shop.address.city.toString().trim()})` : "";
+                                          return (
+                                            <option key={sId} value={sId}>
+                                              + 🏪 {sName} {city}
+                                            </option>
+                                          );
+                                        })}
+                                    </select>
+                                  </div>
+
+                                  {currentShopIds.length > 0 && (
+                                    <div className="flex items-center gap-2 text-xs text-emerald-400 font-bold bg-emerald-950/30 px-2.5 py-1.5 rounded-lg border border-emerald-800/40">
+                                      <Check className="w-3.5 h-3.5" />
+                                      Showing products from {currentShopIds.length} selected shop{currentShopIds.length > 1 ? "s" : ""}: "{block.data?.shopName || "selected shops"}"
+                                    </div>
                                   )}
                                 </div>
                               )}
@@ -1828,7 +1917,9 @@ export function LayoutBuilderTab({
                   if (block.type === "product_carousel") {
                     const sourceType = block.data?.sourceType || "category";
                     const pIds: string[] = Array.isArray(block.data?.productIds) ? block.data.productIds : [];
-                    const shopId = block.data?.shopId;
+                    const shopIds: string[] = Array.isArray(block.data?.shopIds) && block.data.shopIds.length > 0
+                      ? block.data.shopIds.map(String)
+                      : (block.data?.shopId ? [String(block.data.shopId)] : []);
                     const catSlug = block.data?.categorySlug;
 
                     let itemsToRender: any[] = [];
@@ -1839,10 +1930,9 @@ export function LayoutBuilderTab({
                         .map((id) => realProducts.find((p) => String(p.id || p._id) === String(id)))
                         .filter(Boolean);
                       modeBadge = `⭐ ${itemsToRender.length} Curated`;
-                    } else if (sourceType === "shop" && shopId) {
-                      itemsToRender = realProducts.filter((p) => String(p.shopId || "") === String(shopId));
-                      const activeShopObj = realShops.find((s) => String(s.id || s._id) === String(shopId));
-                      modeBadge = `🏪 ${block.data?.shopName || getShopDisplayName(activeShopObj) || "Shop"}`;
+                    } else if (sourceType === "shop" && shopIds.length > 0) {
+                      itemsToRender = realProducts.filter((p) => shopIds.includes(String(p.shopId || "")));
+                      modeBadge = `🏪 ${shopIds.length === 1 ? (block.data?.shopName || "1 Shop") : `${shopIds.length} Shops Selected`}`;
                     } else if (catSlug && realProducts.length > 0) {
                       itemsToRender = realProducts.filter((p) => String(p.category || "").toLowerCase() === String(catSlug).toLowerCase());
                       modeBadge = `📦 ${catSlug}`;
