@@ -354,8 +354,19 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
         .from(productsTable)
         .where(inArray(productsTable.id, Array.from(explicitIds)));
 
+      // Batch-fetch shop names for all products
+      const shopIdsForProds = [...new Set(dbProds.map(p => p.shopId).filter(Boolean))];
+      const shopNameMapForExplicit = new Map<string, string>();
+      if (shopIdsForProds.length > 0) {
+        const shopRows = await db
+          .select({ id: shopsTable.id, shopName: shopsTable.shopName })
+          .from(shopsTable)
+          .where(inArray(shopsTable.id, shopIdsForProds));
+        shopRows.forEach(s => shopNameMapForExplicit.set(s.id, s.shopName));
+      }
+
       for (const p of dbProds) {
-        const isAvailable = (p.stock ?? 0) > 0 && p.status === "active";
+        const isAvailable = (p.stock ?? 0) > 0 && (p.status === "active" || p.status === "approved");
         const imgList = Array.isArray(p.images) ? p.images : [];
         const imageUrl = imgList.length > 0 ? imgList[0] : "";
         explicitMap.set(p.id, {
@@ -369,6 +380,7 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
           unit: p.unit,
           category: p.category,
           shopId: p.shopId,
+          shopName: shopNameMapForExplicit.get(p.shopId) || "",
           fomoTag: (p as any).fomoTag,
           stockStatus: isAvailable ? "in_stock" : "out_of_stock",
         });

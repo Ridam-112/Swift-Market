@@ -198,10 +198,28 @@ export function LayoutBuilderTab({
       })
       .catch(() => {});
 
-    api.get<{ success: boolean; products: any[] }>("/products?limit=250&status=all")
-      .then((r) => {
+    // Fetch all products for admin curation - use high limit to get all products across all shops
+    api.get<{ success: boolean; products: any[]; total: number }>("/products?limit=500&status=active")
+      .then(async (r) => {
         if (r?.success && Array.isArray(r.products)) {
           setRealProducts(r.products);
+          // If there are more products (pagination), fetch the rest
+          if (r.total && r.total > 500) {
+            const pages = Math.ceil(r.total / 500);
+            const extraFetches = Array.from({ length: pages - 1 }, (_, i) =>
+              api.get<{ success: boolean; products: any[] }>(`/products?limit=500&status=active&page=${i + 2}`)
+            );
+            const extras = await Promise.allSettled(extraFetches);
+            const moreProds: any[] = [];
+            extras.forEach((result) => {
+              if (result.status === "fulfilled" && result.value?.success && Array.isArray(result.value.products)) {
+                moreProds.push(...result.value.products);
+              }
+            });
+            if (moreProds.length > 0) {
+              setRealProducts((prev) => [...prev, ...moreProds]);
+            }
+          }
         }
       })
       .catch(() => {});
