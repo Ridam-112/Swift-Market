@@ -35,7 +35,13 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
   const safeCity    = typeof city    === "string" ? city.trim().replace(/[%_\\]/g, "").slice(0, 100) : "";
   const safePincode = typeof pincode === "string" ? pincode.replace(/\D/g, "").slice(0, 6)           : "";
 
-  if (status) conditions.push(eq(shops.status, status));
+  if (status) {
+    if (status === "approved" || status === "active") {
+      conditions.push(or(eq(shops.status, "approved"), eq(shops.status, "active")));
+    } else if (status !== "all") {
+      conditions.push(eq(shops.status, status));
+    }
+  }
   if (category) conditions.push(ilike(shops.category, `%${category}%`));
   if (safeCity)    conditions.push(sql`${shops.address}->>'city' ILIKE ${"%" + safeCity + "%"}`);
   if (ownerId) conditions.push(eq(shops.ownerId, ownerId));
@@ -48,10 +54,10 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     )!);
   }
 
-  // Non-admin browsing without an explicit status filter must only see approved shops.
+  // Non-admin browsing without an explicit status filter must only see approved/active shops.
   // Vendors viewing their own shop (ownerId filter) are exempt so they can see pending/rejected too.
   if (!isAdmin && !status && !ownerId) {
-    conditions.push(eq(shops.status, "approved"));
+    conditions.push(or(eq(shops.status, "approved"), eq(shops.status, "active")));
   }
 
   if (shopType) {
@@ -66,7 +72,10 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     db.select({ total: count() }).from(shops).where(where),
   ]);
 
-  const mapped = miArr(result);
+  const mapped = miArr(result).map((s: any) => ({
+    ...s,
+    name: s.shopName || s.name || s.ownerName || "Shop",
+  }));
   const sanitised = isAdmin ? mapped : mapped.map(s => stripSensitiveFields(s as Record<string, unknown>));
   res.json({ success: true, shops: sanitised, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
   } catch {

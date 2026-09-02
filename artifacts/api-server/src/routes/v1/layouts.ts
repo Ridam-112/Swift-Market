@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
-import { db, appLayouts, products as productsTable, type LayoutBlock } from "@workspace/db";
-import { eq, inArray, and } from "drizzle-orm";
+import { db, appLayouts, products as productsTable, shops as shopsTable, type LayoutBlock } from "@workspace/db";
+import { eq, inArray, and, or } from "drizzle-orm";
 import { authenticate, requireRole } from "../../middlewares/auth.js";
 import { logger } from "../../lib/logger.js";
 
@@ -381,29 +381,25 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
   return await Promise.all(
     blocks.map(async (block) => {
       if (((block.type as string) === "product_carousel" || (block.type as string) === "product_slider") && block.data) {
-        // Case 1: Curated explicit product IDs selected by admin
-        if (Array.isArray(block.data.productIds) && block.data.productIds.length > 0) {
-          const resolved = block.data.productIds
-            .map((id: string) => explicitMap.get(id))
-            .filter((p: any) => p !== undefined);
+        const sourceType = block.data.sourceType || (block.data.shopId ? "shop" : (Array.isArray(block.data.productIds) && block.data.productIds.length > 0 ? "custom" : "category"));
 
-          return {
-            ...block,
-            data: {
-              ...block.data,
-              products: resolved,
-            },
-          };
-        }
-
-        // Case 2: Products exclusively from a specific Shop / Dokan
-        if (block.data.shopId) {
+        // Case 1: Products exclusively from a specific Shop / Dokan
+        if (sourceType === "shop" && block.data.shopId) {
           try {
-            const shopProds = await db
-              .select()
-              .from(productsTable)
-              .where(and(eq(productsTable.shopId, block.data.shopId), eq(productsTable.status, "active")))
-              .limit(Number(block.data.limit) || 12);
+            const [shopProds, [shopRecord]] = await Promise.all([
+              db
+                .select()
+                .from(productsTable)
+                .where(and(eq(productsTable.shopId, block.data.shopId), or(eq(productsTable.status, "active"), eq(productsTable.status, "approved"))))
+                .limit(Number(block.data.limit) || 12),
+              db
+                .select({ id: shopsTable.id, shopName: shopsTable.shopName })
+                .from(shopsTable)
+                .where(eq(shopsTable.id, block.data.shopId))
+                .limit(1),
+            ]);
+
+            const resolvedShopName = block.data.shopName || shopRecord?.shopName || "Vendor Shop";
 
             const resolved = shopProds.map((p) => {
               const isAvailable = (p.stock ?? 0) > 0;
@@ -420,6 +416,7 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
                 unit: p.unit,
                 category: p.category,
                 shopId: p.shopId,
+                shopName: resolvedShopName,
                 fomoTag: (p as any).fomoTag,
                 stockStatus: isAvailable ? "in_stock" : "out_of_stock",
               };
@@ -429,6 +426,7 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
               ...block,
               data: {
                 ...block.data,
+                shopName: resolvedShopName,
                 products: resolved,
               },
             };
@@ -437,13 +435,28 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
           }
         }
 
+        // Case 2: Curated explicit product IDs selected by admin
+        if (sourceType === "custom" && Array.isArray(block.data.productIds) && block.data.productIds.length > 0) {
+          const resolved = block.data.productIds
+            .map((id: string) => explicitMap.get(id))
+            .filter((p: any) => p !== undefined);
+
+          return {
+            ...block,
+            data: {
+              ...block.data,
+              products: resolved,
+            },
+          };
+        }
+
         // Case 3: Products from a specific category
         if (block.data.categorySlug && block.data.categorySlug !== "all") {
           try {
             const catProds = await db
               .select()
               .from(productsTable)
-              .where(and(eq(productsTable.category, block.data.categorySlug), eq(productsTable.status, "active")))
+              .where(and(eq(productsTable.category, block.data.categorySlug), or(eq(productsTable.status, "active"), eq(productsTable.status, "approved"))))
               .limit(Number(block.data.limit) || 12);
 
             const resolved = catProds.map((p) => {

@@ -151,6 +151,12 @@ export function LayoutBuilderTab({
   const [realProducts, setRealProducts] = useState<any[]>([]);
   const [realShops, setRealShops] = useState<any[]>([]);
 
+  // Helper to reliably extract shop display name
+  const getShopDisplayName = (shop?: any): string => {
+    if (!shop) return "";
+    return shop.shopName || shop.name || shop.storeName || shop.ownerName || "Unnamed Shop";
+  };
+
   // Product Carousel Curation Search & Filter State (keyed by blockId)
   const [productSearch, setProductSearch] = useState<Record<string, string>>({});
   const [productFilterShop, setProductFilterShop] = useState<Record<string, string>>({});
@@ -192,7 +198,7 @@ export function LayoutBuilderTab({
       })
       .catch(() => {});
 
-    api.get<{ success: boolean; products: any[] }>("/products?limit=250")
+    api.get<{ success: boolean; products: any[] }>("/products?limit=250&status=all")
       .then((r) => {
         if (r?.success && Array.isArray(r.products)) {
           setRealProducts(r.products);
@@ -208,6 +214,25 @@ export function LayoutBuilderTab({
       })
       .catch(() => {});
   }, []);
+
+  // When a block with shopId is selected/active, ensure that shop's products are preloaded
+  useEffect(() => {
+    const currentBlock = blocks.find((b) => b.id === expandedBlockId);
+    const sId = currentBlock?.data?.shopId;
+    if (sId && currentBlock?.data?.sourceType === "shop") {
+      api.get<{ success: boolean; products: any[] }>(`/products?shopId=${sId}&status=all&limit=100`)
+        .then((res) => {
+          if (res?.success && Array.isArray(res.products)) {
+            setRealProducts((prev) => {
+              const existingIds = new Set(prev.map((p) => String(p.id || p._id)));
+              const newProds = res.products.filter((p) => !existingIds.has(String(p.id || p._id)));
+              return [...prev, ...newProds];
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [expandedBlockId, blocks]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -1047,26 +1072,46 @@ export function LayoutBuilderTab({
                                     <span className="text-[10px] text-slate-400">{realShops.length} Approved Shops</span>
                                   </div>
                                   <select
-                                    value={currentShopId}
-                                    onChange={(e) => {
-                                      const sId = e.target.value;
-                                      const shopObj = realShops.find((s) => s.id === sId || s._id === sId);
-                                      handleUpdateBlockData(block.id, "shopId", sId);
-                                      handleUpdateBlockData(block.id, "shopName", shopObj?.name || "");
-                                    }}
-                                    className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-950 text-white font-bold text-sm"
-                                  >
-                                    <option value="">-- Choose a Seller Shop --</option>
-                                    {realShops.map((shop) => (
-                                      <option key={shop.id || shop._id} value={shop.id || shop._id}>
-                                        🏪 {shop.name} {shop.address?.city ? `(${shop.address.city})` : ""}
-                                      </option>
-                                    ))}
-                                  </select>
+                                     value={currentShopId}
+                                     onChange={(e) => {
+                                       const sId = e.target.value;
+                                       const shopObj = realShops.find((s) => String(s.id || s._id) === String(sId));
+                                       const sName = getShopDisplayName(shopObj);
+                                       handleUpdateBlockData(block.id, "shopId", sId);
+                                       handleUpdateBlockData(block.id, "shopName", sId ? sName : "");
+                                       if (sId) {
+                                         // Dynamically fetch products of this shop so live preview & product list update instantly
+                                         api.get<{ success: boolean; products: any[] }>(`/products?shopId=${sId}&status=all&limit=100`)
+                                           .then((res) => {
+                                             if (res?.success && Array.isArray(res.products)) {
+                                               setRealProducts((prev) => {
+                                                 const existingIds = new Set(prev.map((p) => String(p.id || p._id)));
+                                                 const newProds = res.products.filter((p) => !existingIds.has(String(p.id || p._id)));
+                                                 return [...prev, ...newProds];
+                                               });
+                                             }
+                                           })
+                                           .catch(() => {});
+                                       }
+                                     }}
+                                     className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-950 text-white font-bold text-sm"
+                                   >
+                                     <option value="">-- Choose a Seller Shop --</option>
+                                     {realShops.map((shop) => {
+                                       const sId = String(shop.id || shop._id || "");
+                                       const sName = getShopDisplayName(shop);
+                                       const city = shop.address?.city ? `(${shop.address.city.toString().trim()})` : "";
+                                       return (
+                                         <option key={sId} value={sId}>
+                                           🏪 {sName} {city}
+                                         </option>
+                                       );
+                                     })}
+                                   </select>
                                   {currentShopId ? (
                                     <div className="flex items-center gap-2 text-xs text-emerald-400 font-bold mt-1 bg-emerald-950/30 px-2.5 py-1.5 rounded-lg border border-emerald-800/40">
                                       <Check className="w-3.5 h-3.5" />
-                                      Showing products exclusively from "{block.data?.shopName || "selected shop"}"
+                                      Showing products exclusively from "{block.data?.shopName || getShopDisplayName(realShops.find((s) => String(s.id || s._id) === String(currentShopId))) || "selected shop"}"
                                     </div>
                                   ) : (
                                     <p className="text-[11px] text-amber-300/80 mt-1">
@@ -1134,7 +1179,7 @@ export function LayoutBuilderTab({
                                                 </div>
                                                 {shopObj && (
                                                   <div className="text-[8px] text-slate-400 truncate bg-slate-900 px-1 py-0.5 rounded">
-                                                    🏪 {shopObj.name}
+                                                    🏪 {getShopDisplayName(shopObj)}
                                                   </div>
                                                 )}
                                               </div>
@@ -1187,7 +1232,7 @@ export function LayoutBuilderTab({
                                         <option value="">All Shops ({realShops.length})</option>
                                         {realShops.map((s) => (
                                           <option key={s.id || s._id} value={s.id || s._id}>
-                                            🏪 {s.name}
+                                            🏪 {getShopDisplayName(s)}
                                           </option>
                                         ))}
                                       </select>
@@ -1239,7 +1284,7 @@ export function LayoutBuilderTab({
                                                   </div>
                                                   <div className="flex items-center gap-2 text-[10px] text-slate-400">
                                                     <span className="text-emerald-400 font-bold">₹{prod.discountedPrice || prod.price || 0}</span>
-                                                    {shopObj && <span className="truncate">· 🏪 {shopObj.name}</span>}
+                                                    {shopObj && <span className="truncate">· 🏪 {getShopDisplayName(shopObj)}</span>}
                                                     {prod.category && <span className="truncate">· 📦 {prod.category}</span>}
                                                   </div>
                                                 </div>
@@ -1796,7 +1841,8 @@ export function LayoutBuilderTab({
                       modeBadge = `⭐ ${itemsToRender.length} Curated`;
                     } else if (sourceType === "shop" && shopId) {
                       itemsToRender = realProducts.filter((p) => String(p.shopId || "") === String(shopId));
-                      modeBadge = `🏪 ${block.data?.shopName || "Shop"}`;
+                      const activeShopObj = realShops.find((s) => String(s.id || s._id) === String(shopId));
+                      modeBadge = `🏪 ${block.data?.shopName || getShopDisplayName(activeShopObj) || "Shop"}`;
                     } else if (catSlug && realProducts.length > 0) {
                       itemsToRender = realProducts.filter((p) => String(p.category || "").toLowerCase() === String(catSlug).toLowerCase());
                       modeBadge = `📦 ${catSlug}`;
@@ -1856,7 +1902,7 @@ export function LayoutBuilderTab({
                                   </div>
                                   {shopObj && (
                                     <div className="text-[8px] text-slate-400 truncate">
-                                      🏪 {shopObj.name}
+                                      🏪 {getShopDisplayName(shopObj)}
                                     </div>
                                   )}
                                 </div>
