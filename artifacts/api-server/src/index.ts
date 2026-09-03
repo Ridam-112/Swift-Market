@@ -118,6 +118,59 @@ async function autoEnsureDatabaseTablesAndColumns() {
       ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS rc_number text;
       ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS documents jsonb DEFAULT '{}'::jsonb;
       ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS rejection_reason text;
+
+      -- Shops table columns for Pickup QR and Verification
+      ALTER TABLE shops ADD COLUMN IF NOT EXISTS store_code text;
+      ALTER TABLE shops ADD COLUMN IF NOT EXISTS pickup_qr_token text;
+      ALTER TABLE shops ADD COLUMN IF NOT EXISTS qr_status text DEFAULT 'active';
+      ALTER TABLE shops ADD COLUMN IF NOT EXISTS qr_regenerated_at timestamp;
+      ALTER TABLE shops ADD COLUMN IF NOT EXISTS pickup_gps_radius_meters integer DEFAULT 200;
+      ALTER TABLE shops ADD COLUMN IF NOT EXISTS pickup_gps_enforced boolean DEFAULT true;
+      ALTER TABLE shops ADD COLUMN IF NOT EXISTS last_qr_scan_at timestamp;
+      ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_type text;
+      ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_number text;
+      ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_expiry_date text;
+      ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_file text;
+      ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_status text DEFAULT 'pending';
+      ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_reject_reason text;
+      ALTER TABLE shops ADD COLUMN IF NOT EXISTS verification_status text DEFAULT 'pending';
+
+      UPDATE shops SET pickup_qr_token = gen_random_uuid()::text WHERE pickup_qr_token IS NULL;
+      UPDATE shops SET qr_status = 'active' WHERE qr_status IS NULL;
+      UPDATE shops SET pickup_gps_radius_meters = 200 WHERE pickup_gps_radius_meters IS NULL;
+      UPDATE shops SET pickup_gps_enforced = true WHERE pickup_gps_enforced IS NULL;
+
+      -- Pickup verification sessions table
+      CREATE TABLE IF NOT EXISTS pickup_verification_sessions (
+        id text PRIMARY KEY NOT NULL,
+        order_id text NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        shop_id text NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+        rider_id text NOT NULL REFERENCES delivery_partners(id) ON DELETE CASCADE,
+        token text NOT NULL,
+        status text NOT NULL DEFAULT 'verified',
+        distance_meters double precision,
+        gps_verified boolean NOT NULL DEFAULT false,
+        expires_at timestamp NOT NULL,
+        confirmed_at timestamp,
+        created_at timestamp DEFAULT now() NOT NULL
+      );
+
+      -- Pickup scan logs table
+      CREATE TABLE IF NOT EXISTS pickup_scan_logs (
+        id text PRIMARY KEY NOT NULL,
+        order_id text REFERENCES orders(id) ON DELETE SET NULL,
+        shop_id text NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+        rider_id text NOT NULL REFERENCES delivery_partners(id) ON DELETE CASCADE,
+        scanned_token text NOT NULL,
+        status text NOT NULL,
+        failure_reason text,
+        rider_lat double precision,
+        rider_lng double precision,
+        distance_meters double precision,
+        ip_address text,
+        user_agent text,
+        created_at timestamp DEFAULT now() NOT NULL
+      );
     `);
     logger.info("[startup] DB schema auto-verification completed successfully ✅");
   } catch (err: any) {

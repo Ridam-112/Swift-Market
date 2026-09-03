@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { db, shops, shopTypes, users, products, orders } from "@workspace/db";
 import { eq, and, ilike, or, inArray, desc, count, sql } from "drizzle-orm";
 import { deleteFromImageKit } from "../../lib/imagekit.js";
+import { logger } from "../../lib/logger.js";
 import { authenticate, requireRole, optionalAuth, type AuthRequest } from "../../middlewares/auth.js";
 import { createNotificationLimited } from "../../utils/notification.js";
 import { mi, miArr } from "../../utils/mapId.js";
@@ -78,8 +79,73 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
   }));
   const sanitised = isAdmin ? mapped : mapped.map(s => stripSensitiveFields(s as Record<string, unknown>));
   res.json({ success: true, shops: sanitised, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
-  } catch {
-    res.status(500).json({ success: false, message: "Failed to load shops. Please try again." });
+  } catch (err: any) {
+    logger.error({ err: err?.message || err }, "GET /api/shops initial query failed — attempting schema auto-repair");
+    try {
+      await db.execute(sql`
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS store_code text;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS pickup_qr_token text;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS qr_status text DEFAULT 'active';
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS qr_regenerated_at timestamp;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS pickup_gps_radius_meters integer DEFAULT 200;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS pickup_gps_enforced boolean DEFAULT true;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS last_qr_scan_at timestamp;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_type text;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_number text;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_expiry_date text;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_file text;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_status text DEFAULT 'pending';
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_reject_reason text;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS verification_status text DEFAULT 'pending';
+      `);
+      const authReq = req as AuthRequest;
+      const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
+      const { status, shopType, city, ownerId, pincode, page = "1", limit = "20", search, category } =
+        req.query as Record<string, string>;
+      const pg = Math.max(1, parseInt(page) || 1);
+      const lm = Math.min(200, Math.max(1, parseInt(limit) || 20));
+      const conditions = [];
+      const safeCity    = typeof city    === "string" ? city.trim().replace(/[%_\\]/g, "").slice(0, 100) : "";
+      const safePincode = typeof pincode === "string" ? pincode.replace(/\D/g, "").slice(0, 6)           : "";
+      if (status) {
+        if (status === "approved" || status === "active") {
+          conditions.push(or(eq(shops.status, "approved"), eq(shops.status, "active")));
+        } else if (status !== "all") {
+          conditions.push(eq(shops.status, status));
+        }
+      }
+      if (category) conditions.push(ilike(shops.category, `%${category}%`));
+      if (safeCity)    conditions.push(sql`${shops.address}->>'city' ILIKE ${"%" + safeCity + "%"}`);
+      if (ownerId) conditions.push(eq(shops.ownerId, ownerId));
+      if (safePincode) conditions.push(sql`${shops.address}->>'pincode' = ${safePincode}`);
+      if (search) {
+        conditions.push(or(
+          ilike(shops.shopName, `%${search}%`),
+          ilike(shops.ownerName, `%${search}%`),
+          ilike(shops.phone, `%${search}%`),
+        )!);
+      }
+      if (!isAdmin && !status && !ownerId) {
+        conditions.push(or(eq(shops.status, "approved"), eq(shops.status, "active")));
+      }
+      if (shopType) conditions.push(eq(shops.shopType, shopType));
+      const where = conditions.length ? and(...conditions) : undefined;
+      const skip = (pg - 1) * lm;
+      const [result, [{ total }]] = await Promise.all([
+        db.select().from(shops).where(where).orderBy(desc(shops.createdAt)).offset(skip).limit(lm),
+        db.select({ total: count() }).from(shops).where(where),
+      ]);
+      const mapped = miArr(result).map((s: any) => ({
+        ...s,
+        name: s.shopName || s.name || s.ownerName || "Shop",
+      }));
+      const sanitised = isAdmin ? mapped : mapped.map(s => stripSensitiveFields(s as Record<string, unknown>));
+      res.json({ success: true, shops: sanitised, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
+      return;
+    } catch (retryErr: any) {
+      logger.error({ retryErr: retryErr?.message || retryErr }, "GET /api/shops retry failed");
+      res.status(500).json({ success: false, message: "Failed to load shops. Please try again.", error: retryErr?.message });
+    }
   }
 });
 
