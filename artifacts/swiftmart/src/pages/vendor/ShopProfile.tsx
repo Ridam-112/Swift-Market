@@ -539,7 +539,7 @@ export default function ShopProfile() {
                       storeCode: qrData.storeCode,
                       pickupQrToken: qrData.pickupQrToken,
                       address: addressLine1,
-                      phone: shop?.phone,
+                      phone: qrData?.phone || "",
                     })}
                     className="flex-1 rounded-xl bg-primary text-white shadow-none neu-card gap-2 text-xs font-bold h-10"
                   >
@@ -555,7 +555,7 @@ export default function ShopProfile() {
                       storeCode: qrData.storeCode,
                       pickupQrToken: qrData.pickupQrToken,
                       address: addressLine1,
-                      phone: shop?.phone,
+                      phone: qrData?.phone || "",
                     })}
                     className="flex-1 rounded-xl gap-2 text-xs font-bold h-10"
                   >

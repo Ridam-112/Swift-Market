@@ -192,6 +192,7 @@ export interface PlatformOrder {
   paymentMethod: 'UPI' | 'Card' | 'COD' | string;
   paymentStatus: 'success' | 'failed' | 'pending' | 'refunded';
   deliveryType?: 'instant' | 'standard' | 'saver' | 'scheduled' | string;
+  deliveryOtp?: string;
   placedAt: string;
   updatedAt: string;
   refundedAt?: string;
