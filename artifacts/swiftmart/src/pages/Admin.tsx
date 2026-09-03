@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { generateShopSticker } from "@/lib/shopSticker";
+import { downloadPickupSticker, printPickupSticker } from "@/lib/pickupSticker";
 import { categories } from "@/data/categories";
 import { GROCERY_SUBCAT_OPTIONS as GROCERY_SUBCAT_OPTIONS_ADMIN } from "@/data/grocerySubcats";
 import { VendorApplication, VendorStatus, AdminCustomer, PlatformOrder, Report, TransactionLog, Vendor } from "@/types";
@@ -4265,8 +4266,28 @@ function ShopListPanel({ onManageProducts }: { onManageProducts: (shop: ApiShopF
   const handleDownloadSticker = async (shop: ApiShopFull) => {
     setDownloadingStickerId(shop._id);
     try {
-      await generateShopSticker(shop._id, shop.shopName);
-      toast.success(`Sticker downloaded for ${shop.shopName}`);
+      let qrToken = shop._id;
+      let storeCode = `SM-BLR-${shop._id.slice(0, 4).toUpperCase()}`;
+      try {
+        const qrInfo = await api.get<{
+          success: boolean;
+          shop: { id: string; shopName: string; storeCode?: string; pickupQrToken: string; phone?: string };
+        }>(`/delivery/store/${shop._id}/qr`);
+        if (qrInfo.shop?.pickupQrToken) qrToken = qrInfo.shop.pickupQrToken;
+        if (qrInfo.shop?.storeCode) storeCode = qrInfo.shop.storeCode;
+      } catch {}
+
+      const addressStr = [shop.address?.line1, shop.address?.city, shop.address?.pincode].filter(Boolean).join(", ") || "Balurghat, West Bengal";
+
+      await downloadPickupSticker({
+        shopId: shop._id,
+        shopName: shop.shopName,
+        storeCode: storeCode,
+        pickupQrToken: qrToken,
+        address: addressStr,
+        phone: shop.phone,
+      });
+      toast.success(`Pickup Counter Sticker downloaded for ${shop.shopName}`);
     } catch (e) {
       toast.error((e as Error).message ?? 'Failed to generate sticker');
     } finally {
