@@ -543,7 +543,7 @@ export default function ShopProfile() {
                     })}
                     className="flex-1 rounded-xl bg-primary text-white shadow-none neu-card gap-2 text-xs font-bold h-10"
                   >
-                    <Download className="w-4 h-4" /> Download Poster (PNG)
+                    <Download className="w-4 h-4" /> Download Store QR (PNG)
                   </Button>
 
                   <Button
@@ -559,7 +559,7 @@ export default function ShopProfile() {
                     })}
                     className="flex-1 rounded-xl gap-2 text-xs font-bold h-10"
                   >
-                    <Printer className="w-4 h-4" /> Print Sticker (A4)
+                    <Printer className="w-4 h-4" /> Print Store QR Sticker
                   </Button>
                 </div>
               </div>

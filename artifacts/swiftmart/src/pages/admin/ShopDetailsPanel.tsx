@@ -617,7 +617,7 @@ export function ShopDetailsPanel({ shopId, onClose }: Props) {
                     })}
                     className="w-full bg-primary text-white rounded-xl shadow-none neu-card gap-2 font-bold text-sm"
                   >
-                    <Download className="w-4 h-4" /> Download Counter Poster (PNG)
+                    <Download className="w-4 h-4" /> Download Store QR (PNG)
                   </Button>
 
                   <Button
@@ -632,7 +632,7 @@ export function ShopDetailsPanel({ shopId, onClose }: Props) {
                     })}
                     className="w-full rounded-xl gap-2 font-bold text-sm"
                   >
-                    <Printer className="w-4 h-4" /> Print A4 Counter Sticker
+                    <Printer className="w-4 h-4" /> Print Store QR Sticker
                   </Button>
 
                   <div className="pt-2 flex gap-2">

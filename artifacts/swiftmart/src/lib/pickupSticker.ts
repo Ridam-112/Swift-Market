@@ -1,9 +1,12 @@
 /**
  * pickupSticker.ts
  *
- * Generates the official SwiftMart Partner Store Pickup Counter QR Poster/Sticker.
- * Designed for shopkeepers to stick on their counters or walls.
- * Delivery riders scan this permanent QR via the SwiftMart Rider App.
+ * Generates the official SwiftMart Partner Store Pickup Counter QR.
+ * Features:
+ * - Rounded squircle modules and custom rounded corner eyes
+ * - Official SwiftMart logo badge in the dead center (High Error Correction 'H')
+ * - Store ID pill badge and Store Name directly below
+ * - Clean standalone sticker format without unnecessary poster/mockup clutter
  */
 
 import QRCode from "qrcode";
@@ -18,161 +21,191 @@ export interface PickupStickerOptions {
 }
 
 export async function generatePickupStickerDataUrl(options: PickupStickerOptions): Promise<string> {
-  const { shopName, storeCode, pickupQrToken, address, phone } = options;
+  const { shopName, storeCode, pickupQrToken } = options;
   const displayCode = storeCode || `SW-BLG-${options.shopId.slice(0, 4).toUpperCase()}`;
   const qrPayload = `SWIFTMART_PICKUP:${pickupQrToken}`;
 
-  // Canvas Dimensions: 1200 x 1600 (High-Res 3:4 Poster Ratio for Crisp Counter Printouts)
-  const W = 1200;
-  const H = 1600;
+  // 1. Generate QR Code matrix with High Error Correction Level 'H' (~30% recovery)
+  const qr = QRCode.create(qrPayload, { errorCorrectionLevel: "H" });
+  const moduleCount = qr.modules.size;
+  const moduleData = qr.modules.data; // Uint8Array of size moduleCount * moduleCount (1 = dark, 0 = light)
+
+  // Canvas size: 800 x 940 (Clean dedicated sticker card)
+  const W = 800;
+  const H = 940;
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d")!;
 
-  // 1. Background Gradient (Clean Premium White/Cream with SwiftMart Yellow Header)
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-  bgGrad.addColorStop(0, "#FFFFFF");
-  bgGrad.addColorStop(1, "#F8F7FF");
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, W, H);
+  ctx.imageSmoothingEnabled = true;
 
-  // Outer Border Frame
-  ctx.strokeStyle = "#6C3DE8";
-  ctx.lineWidth = 16;
-  ctx.strokeRect(20, 20, W - 40, H - 40);
-
-  // Inner Accent Border
-  ctx.strokeStyle = "#FACC15";
-  ctx.lineWidth = 6;
-  ctx.strokeRect(36, 36, W - 72, H - 72);
-
-  // 2. Top Header Banner (Purple Brand Background)
-  const headerHeight = 220;
-  ctx.fillStyle = "#6C3DE8";
+  // Background: Pure Clean White rounded card
+  ctx.fillStyle = "#FFFFFF";
   ctx.beginPath();
-  ctx.roundRect(50, 50, W - 100, headerHeight, 28);
+  ctx.roundRect(0, 0, W, H, 36);
   ctx.fill();
 
-  // Top Badge
-  ctx.fillStyle = "#FACC15";
-  ctx.font = "bold 24px system-ui, -apple-system, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("⚡ OFFICIAL PARTNER STORE • RIDER PICKUP COUNTER", W / 2, 105);
-
-  // SwiftMart Logo & Tagline
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = "900 52px system-ui, -apple-system, sans-serif";
-  ctx.fillText("SwiftMart", W / 2, 175);
-
-  ctx.fillStyle = "#E9D5FF";
-  ctx.font = "bold 22px system-ui, -apple-system, sans-serif";
-  ctx.fillText("Instant 10-Minute Hyperlocal Delivery", W / 2, 220);
-
-  // 3. Store Name & Store ID Badge Card
-  ctx.fillStyle = "#FFFFFF";
-  ctx.shadowColor = "rgba(108, 61, 232, 0.12)";
-  ctx.shadowBlur = 30;
-  ctx.shadowOffsetY = 12;
+  // Subtle sleek outer border
+  ctx.strokeStyle = "#E2E8F0";
+  ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.roundRect(80, 300, W - 160, 190, 24);
+  ctx.roundRect(2, 2, W - 4, H - 4, 34);
+  ctx.stroke();
+
+  // QR Code Area Geometry
+  const qrMargin = 60;
+  const qrSize = W - qrMargin * 2; // 680px
+  const qrX = qrMargin;
+  const qrY = 60;
+  const cellSize = qrSize / moduleCount;
+
+  // Eye detection helper (3 corners, each 7x7 modules)
+  function isEye(r: number, c: number): boolean {
+    if (r < 7 && c < 7) return true; // Top-Left
+    if (r < 7 && c >= moduleCount - 7) return true; // Top-Right
+    if (r >= moduleCount - 7 && c < 7) return true; // Bottom-Left
+    return false;
+  }
+
+  // Center logo cutout helper (keep modules in middle clear for logo)
+  const centerRadius = 4;
+  const centerMid = Math.floor(moduleCount / 2);
+  function isCenter(r: number, c: number): boolean {
+    return Math.abs(r - centerMid) <= centerRadius && Math.abs(c - centerMid) <= centerRadius;
+  }
+
+  // 1. Draw rounded QR modules (excluding eyes and center cutout)
+  ctx.fillStyle = "#0F172A"; // Deep premium dark slate / charcoal
+  for (let r = 0; r < moduleCount; r++) {
+    for (let c = 0; c < moduleCount; c++) {
+      if (isEye(r, c) || isCenter(r, c)) continue;
+      const isDark = moduleData[r * moduleCount + c] === 1;
+      if (isDark) {
+        const x = qrX + c * cellSize;
+        const y = qrY + r * cellSize;
+        const radius = cellSize * 0.35; // Smooth rounded module dot
+        ctx.beginPath();
+        ctx.roundRect(x + 0.5, y + 0.5, cellSize - 1, cellSize - 1, radius);
+        ctx.fill();
+      }
+    }
+  }
+
+  // 2. Draw Custom Stylish Rounded Eyes (Top-Left, Top-Right, Bottom-Left)
+  function drawEye(startX: number, startY: number) {
+    const eyeSize = 7 * cellSize;
+    // Outer rounded square
+    ctx.fillStyle = "#6C3DE8"; // Brand Purple
+    ctx.beginPath();
+    ctx.roundRect(startX, startY, eyeSize, eyeSize, eyeSize * 0.28);
+    ctx.fill();
+
+    // Inner white cutout
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.roundRect(
+      startX + cellSize,
+      startY + cellSize,
+      eyeSize - 2 * cellSize,
+      eyeSize - 2 * cellSize,
+      (eyeSize - 2 * cellSize) * 0.22
+    );
+    ctx.fill();
+
+    // Center rounded pupil
+    ctx.fillStyle = "#6C3DE8";
+    ctx.beginPath();
+    ctx.roundRect(
+      startX + 2 * cellSize,
+      startY + 2 * cellSize,
+      eyeSize - 4 * cellSize,
+      eyeSize - 4 * cellSize,
+      (eyeSize - 4 * cellSize) * 0.35
+    );
+    ctx.fill();
+  }
+
+  // Draw 3 eyes
+  drawEye(qrX, qrY); // Top-Left
+  drawEye(qrX + (moduleCount - 7) * cellSize, qrY); // Top-Right
+  drawEye(qrX, qrY + (moduleCount - 7) * cellSize); // Bottom-Left
+
+  // 3. Draw Center SwiftMart Logo Badge
+  const logoBoxSize = (centerRadius * 2 + 1) * cellSize;
+  const logoX = qrX + (qrSize - logoBoxSize) / 2;
+  const logoY = qrY + (qrSize - logoBoxSize) / 2;
+
+  // White background badge with soft purple shadow
+  ctx.fillStyle = "#FFFFFF";
+  ctx.shadowColor = "rgba(108, 61, 232, 0.25)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 4;
+  ctx.beginPath();
+  ctx.roundRect(logoX, logoY, logoBoxSize, logoBoxSize, logoBoxSize * 0.28);
   ctx.fill();
   ctx.shadowColor = "transparent";
 
+  // Purple border around logo badge
+  ctx.strokeStyle = "#6C3DE8";
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.roundRect(logoX + 2, logoY + 2, logoBoxSize - 4, logoBoxSize - 4, logoBoxSize * 0.26);
+  ctx.stroke();
+
+  // Draw SwiftMart Brand Emblem inside Center Badge
+  const emblemSize = logoBoxSize - 16;
+  const emblemX = logoX + 8;
+  const emblemY = logoY + 8;
+  const emblemGrad = ctx.createLinearGradient(emblemX, emblemY, emblemX + emblemSize, emblemY + emblemSize);
+  emblemGrad.addColorStop(0, "#6C3DE8");
+  emblemGrad.addColorStop(1, "#4F46E5");
+  ctx.fillStyle = emblemGrad;
+  ctx.beginPath();
+  ctx.roundRect(emblemX, emblemY, emblemSize, emblemSize, emblemSize * 0.22);
+  ctx.fill();
+
+  // Lightning icon + "SwiftMart" branding
+  ctx.fillStyle = "#FACC15";
+  ctx.font = "900 34px system-ui, -apple-system, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("⚡", logoX + logoBoxSize / 2, logoY + logoBoxSize / 2 - 12);
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = "900 16px system-ui, -apple-system, sans-serif";
+  ctx.fillText("SwiftMart", logoX + logoBoxSize / 2, logoY + logoBoxSize / 2 + 18);
+
+  // 4. Clean Bottom Area (Store Name + Store ID Badge only)
+  const bottomY = qrY + qrSize + 28;
+
   // Store ID Pill Badge
+  const pillW = 340;
+  const pillH = 46;
+  const pillX = (W - pillW) / 2;
   ctx.fillStyle = "#F3EEFF";
   ctx.beginPath();
-  ctx.roundRect(W / 2 - 140, 325, 280, 42, 21);
+  ctx.roundRect(pillX, bottomY, pillW, pillH, 23);
   ctx.fill();
+
+  ctx.strokeStyle = "#DDD6FE";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(pillX, bottomY, pillW, pillH, 23);
+  ctx.stroke();
 
   ctx.fillStyle = "#6C3DE8";
-  ctx.font = "900 20px system-ui, -apple-system, sans-serif";
-  ctx.fillText(`STORE ID: ${displayCode}`, W / 2, 353);
+  ctx.font = "900 20px system-ui, -apple-system, monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`STORE ID: ${displayCode}`, W / 2, bottomY + pillH / 2);
 
-  // Store Name
-  ctx.fillStyle = "#111827";
-  ctx.font = "bold 44px system-ui, -apple-system, sans-serif";
-  const truncatedShopName = shopName.length > 28 ? shopName.slice(0, 26) + "..." : shopName;
-  ctx.fillText(truncatedShopName, W / 2, 425);
-
-  // Address & Phone
-  ctx.fillStyle = "#6B7280";
-  ctx.font = "600 20px system-ui, -apple-system, sans-serif";
-  const addressText = address ? (address.length > 48 ? address.slice(0, 45) + "..." : address) : "Balurghat, West Bengal";
-  ctx.fillText(addressText, W / 2, 465);
-
-  // 4. QR Code Box (Center Stage)
-  const qrSize = 580;
-  const qrX = (W - qrSize) / 2;
-  const qrY = 525;
-
-  // Yellow Glow Container Box around QR
-  ctx.fillStyle = "#FFFFFF";
-  ctx.strokeStyle = "#E5E7EB";
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.roundRect(qrX - 25, qrY - 25, qrSize + 50, qrSize + 50, 32);
-  ctx.fill();
-  ctx.stroke();
-
-  // Generate QR Matrix
-  const qrDataUrl = await QRCode.toDataURL(qrPayload, {
-    width: qrSize,
-    margin: 1,
-    errorCorrectionLevel: "H",
-    color: {
-      dark: "#111827",
-      light: "#FFFFFF",
-    },
-  });
-
-  const qrImg = await loadImage(qrDataUrl);
-  ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-
-  // Center QR SwiftMart Logo Icon Badge
-  const badgeSize = 88;
-  const badgeX = (W - badgeSize) / 2;
-  const badgeY = qrY + (qrSize - badgeSize) / 2;
-  ctx.fillStyle = "#6C3DE8";
-  ctx.beginPath();
-  ctx.roundRect(badgeX, badgeY, badgeSize, badgeSize, 18);
-  ctx.fill();
-  ctx.strokeStyle = "#FFFFFF";
-  ctx.lineWidth = 6;
-  ctx.stroke();
-
-  ctx.fillStyle = "#FACC15";
-  ctx.font = "900 40px system-ui, -apple-system, sans-serif";
-  ctx.fillText("⚡", W / 2, badgeY + 58);
-
-  // 5. Scan Instructions Banner (Clay Style)
-  ctx.fillStyle = "#FEF3C7";
-  ctx.strokeStyle = "#FDE68A";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.roundRect(80, 1160, W - 160, 160, 24);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = "#92400E";
+  // Store Name below ID
+  ctx.fillStyle = "#0F172A";
   ctx.font = "bold 26px system-ui, -apple-system, sans-serif";
-  ctx.fillText("📱 RIDER INSTRUCTIONS", W / 2, 1205);
-
-  ctx.fillStyle = "#1F2937";
-  ctx.font = "600 22px system-ui, -apple-system, sans-serif";
-  ctx.fillText("1. Open SwiftMart Rider App → Arrived at Store", W / 2, 1248);
-  ctx.fillText("2. Scan this counter QR to verify store & active orders", W / 2, 1285);
-
-  // 6. Bottom Notice / Shopkeeper Advice
-  ctx.fillStyle = "#6B7280";
-  ctx.font = "bold 18px system-ui, -apple-system, sans-serif";
-  ctx.fillText("🔒 Secure Store Identification Token • Valid for all SwiftMart Delivery Partners", W / 2, 1375);
-  ctx.fillText("Keep this permanent QR sticker clearly visible at the billing/packaging counter.", W / 2, 1405);
-
-  // Footer
-  ctx.fillStyle = "#9CA3AF";
-  ctx.font = "600 16px system-ui, -apple-system, sans-serif";
-  ctx.fillText(`Token: ${pickupQrToken.slice(0, 8)}••••${pickupQrToken.slice(-6)} | Support: +91 62961 18949 | swiftmart.space`, W / 2, 1530);
+  ctx.textBaseline = "top";
+  const truncatedShopName = shopName.length > 26 ? shopName.slice(0, 24) + "..." : shopName;
+  ctx.fillText(truncatedShopName, W / 2, bottomY + pillH + 12);
 
   return canvas.toDataURL("image/png");
 }
@@ -185,7 +218,7 @@ export async function downloadPickupSticker(options: PickupStickerOptions): Prom
     .replace(/^-+|-+$/g, "");
 
   const link = document.createElement("a");
-  link.download = `${safeName}-pickup-counter-qr.png`;
+  link.download = `${safeName}-pickup-qr.png`;
   link.href = dataUrl;
   link.click();
 }
@@ -199,14 +232,14 @@ export async function printPickupSticker(options: PickupStickerOptions): Promise
     <!DOCTYPE html>
     <html>
       <head>
-        <title>SwiftMart Pickup Counter QR - ${options.shopName}</title>
+        <title>SwiftMart Store Pickup QR - ${options.shopName}</title>
         <style>
-          @page { size: A4 portrait; margin: 10mm; }
+          @page { size: auto; margin: 10mm; }
           body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #fff; font-family: system-ui, sans-serif; }
-          img { max-width: 100%; height: auto; max-height: 96vh; object-fit: contain; box-shadow: 0 4px 20px rgba(0,0,0,0.1); border-radius: 12px; }
+          img { max-width: 480px; width: 100%; height: auto; object-fit: contain; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-radius: 20px; }
           @media print {
             body { background: transparent; }
-            img { box-shadow: none; max-height: 100vh; width: 100%; }
+            img { box-shadow: none; max-width: 140mm; }
           }
         </style>
       </head>
@@ -216,14 +249,4 @@ export async function printPickupSticker(options: PickupStickerOptions): Promise
     </html>
   `);
   printWindow.document.close();
-}
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
-    img.src = src;
-  });
 }
