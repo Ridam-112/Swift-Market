@@ -131,50 +131,55 @@ export async function generatePickupStickerDataUrl(options: PickupStickerOptions
   drawEye(qrX + (moduleCount - 7) * cellSize, qrY); // Top-Right
   drawEye(qrX, qrY + (moduleCount - 7) * cellSize); // Bottom-Left
 
-  // 3. Draw Center SwiftMart Logo Badge
-  const logoBoxSize = (centerRadius * 2 + 1) * cellSize;
-  const logoX = qrX + (qrSize - logoBoxSize) / 2;
-  const logoY = qrY + (qrSize - logoBoxSize) / 2;
+  // 3. Draw Center Official SwiftMart Circular Logo Badge (from official brand asset)
+  const centerX = qrX + qrSize / 2;
+  const centerY = qrY + qrSize / 2;
+  const logoRadius = (centerRadius + 0.4) * cellSize;
 
-  // White background badge with soft purple shadow
-  ctx.fillStyle = "#FFFFFF";
-  ctx.shadowColor = "rgba(108, 61, 232, 0.25)";
+  // Outer clean white circular container with soft shadow
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.22)";
   ctx.shadowBlur = 18;
   ctx.shadowOffsetY = 4;
   ctx.beginPath();
-  ctx.roundRect(logoX, logoY, logoBoxSize, logoBoxSize, logoBoxSize * 0.28);
+  ctx.arc(centerX, centerY, logoRadius + 5, 0, Math.PI * 2);
+  ctx.fillStyle = "#FFFFFF";
   ctx.fill();
-  ctx.shadowColor = "transparent";
+  ctx.restore();
 
-  // Purple border around logo badge
-  ctx.strokeStyle = "#6C3DE8";
-  ctx.lineWidth = 3.5;
+  // Clean white border ring
   ctx.beginPath();
-  ctx.roundRect(logoX + 2, logoY + 2, logoBoxSize - 4, logoBoxSize - 4, logoBoxSize * 0.26);
+  ctx.arc(centerX, centerY, logoRadius + 4, 0, Math.PI * 2);
+  ctx.strokeStyle = "#FFFFFF";
+  ctx.lineWidth = 4;
   ctx.stroke();
 
-  // Draw SwiftMart Brand Emblem inside Center Badge
-  const emblemSize = logoBoxSize - 16;
-  const emblemX = logoX + 8;
-  const emblemY = logoY + 8;
-  const emblemGrad = ctx.createLinearGradient(emblemX, emblemY, emblemX + emblemSize, emblemY + emblemSize);
-  emblemGrad.addColorStop(0, "#6C3DE8");
-  emblemGrad.addColorStop(1, "#4F46E5");
-  ctx.fillStyle = emblemGrad;
-  ctx.beginPath();
-  ctx.roundRect(emblemX, emblemY, emblemSize, emblemSize, emblemSize * 0.22);
-  ctx.fill();
-
-  // Lightning icon + "SwiftMart" branding
-  ctx.fillStyle = "#FACC15";
-  ctx.font = "900 34px system-ui, -apple-system, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("⚡", logoX + logoBoxSize / 2, logoY + logoBoxSize / 2 - 12);
-
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = "900 16px system-ui, -apple-system, sans-serif";
-  ctx.fillText("SwiftMart", logoX + logoBoxSize / 2, logoY + logoBoxSize / 2 + 18);
+  // Draw the official circular SwiftMart Logo
+  const logoImg = await loadOfficialLogo();
+  if (logoImg) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, logoRadius, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(logoImg, centerX - logoRadius, centerY - logoRadius, logoRadius * 2, logoRadius * 2);
+    ctx.restore();
+  } else {
+    // Fallback: Black circular emblem with cart & brand text
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, logoRadius, 0, Math.PI * 2);
+    ctx.fillStyle = "#000000";
+    ctx.fill();
+    ctx.fillStyle = "#FACC15";
+    ctx.font = "900 30px system-ui, -apple-system, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🛒", centerX, centerY - 10);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "900 13px system-ui, -apple-system, sans-serif";
+    ctx.fillText("SWIFTMART", centerX, centerY + 16);
+    ctx.restore();
+  }
 
   // 4. Clean Bottom Area (Store Name + Store ID Badge only)
   const bottomY = qrY + qrSize + 28;
@@ -249,4 +254,24 @@ export async function printPickupSticker(options: PickupStickerOptions): Promise
     </html>
   `);
   printWindow.document.close();
+}
+
+async function loadOfficialLogo(): Promise<HTMLImageElement | null> {
+  const sources = [
+    "/swiftmart-badge-logo.png",
+    "/logo.png",
+  ];
+  for (const src of sources) {
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        image.crossOrigin = "anonymous";
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = src;
+      });
+      return img;
+    } catch {}
+  }
+  return null;
 }
