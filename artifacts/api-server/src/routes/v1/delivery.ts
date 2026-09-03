@@ -1,6 +1,6 @@
 import { Router, type Response } from "express";
-import { db, deliveryPartners, deliveryChargeRules, deliverySettings, orders, users, shops } from "@workspace/db";
-import { eq, desc, and, or } from "drizzle-orm";
+import { db, deliveryPartners, deliveryChargeRules, deliverySettings, orders, users, shops, pickupVerificationSessions, pickupScanLogs } from "@workspace/db";
+import { eq, desc, and, or, inArray, sql } from "drizzle-orm";
 import { authenticate, optionalAuth, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { validateUuidParams } from "../../middlewares/validateUuid.js";
 import { mi, miArr } from "../../utils/mapId.js";
@@ -739,15 +739,534 @@ router.post("/admin/:id/reject", authenticate, A, validateUuidParams("id"), asyn
   res.json({ success: true, partner: mi(updated), message: "Partner application rejected." });
 });
 
-router.post("/admin/:id/request-reupload", authenticate, A, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
-  const id = req.params["id"] as string;
-  const { note } = req.body as { note?: string };
-  const [updated] = await db.update(deliveryPartners)
-    .set({ applicationStatus: "pending", rejectionReason: note ?? "Please re-upload clear documents", updatedAt: new Date() })
-    .where(eq(deliveryPartners.id, id))
+// ─── Store-Level Rider Pickup QR Verification System ────────────────────────
+
+function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371e3; // Earth radius in meters
+  const phi1 = (lat1 * Math.PI) / 180;
+  const phi2 = (lat2 * Math.PI) / 180;
+  const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+  const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+            Math.cos(phi1) * Math.cos(phi2) *
+            Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
+function parsePickupQrToken(raw: string): string {
+  const trimmed = String(raw ?? "").trim();
+  if (trimmed.startsWith("SWIFTMART_PICKUP:")) {
+    return trimmed.replace("SWIFTMART_PICKUP:", "").trim();
+  }
+  const match = trimmed.match(/\/pickup\/store\/([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+  return trimmed;
+}
+
+// POST /delivery/pickup/verify-store — rider scans physical counter QR
+router.post("/pickup/verify-store", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const { qrToken, qrPayload, scannedToken, lat, lon, orderId } = req.body as {
+    qrToken?: string;
+    qrPayload?: string;
+    scannedToken?: string;
+    lat?: number;
+    lon?: number;
+    orderId?: string;
+  };
+
+  const rawToken = qrToken || qrPayload || scannedToken || "";
+  const token = parsePickupQrToken(rawToken);
+
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) {
+    res.status(403).json({ success: false, storeVerified: false, message: "Not an authorized delivery partner" });
+    return;
+  }
+
+  if (!token) {
+    res.status(400).json({ success: false, storeVerified: false, reason: "INVALID_QR", message: "QR token missing in request" });
+    return;
+  }
+
+  // 1. Find store by pickupQrToken
+  const [store] = await db.select().from(shops).where(eq(shops.pickupQrToken, token)).limit(1);
+
+  if (!store) {
+    await db.insert(pickupScanLogs).values({
+      riderId: partner.id,
+      riderName: partner.name,
+      orderId: orderId || null,
+      scannedToken: token,
+      scanResult: "INVALID_QR",
+      reason: "No partner store registered with this QR token",
+      riderLat: typeof lat === "number" ? lat : null,
+      riderLon: typeof lon === "number" ? lon : null,
+    });
+
+    res.status(400).json({
+      success: false,
+      storeVerified: false,
+      reason: "INVALID_QR",
+      message: "Unrecognized SwiftMart Store QR code. Please ensure you are scanning the official SwiftMart counter poster.",
+    });
+    return;
+  }
+
+  // 2. Check if QR is active
+  if (store.qrStatus === "disabled") {
+    await db.insert(pickupScanLogs).values({
+      riderId: partner.id,
+      riderName: partner.name,
+      storeId: store.id,
+      storeName: store.shopName,
+      orderId: orderId || null,
+      scannedToken: token,
+      scanResult: "EXPIRED_QR",
+      reason: "Store QR token has been disabled by merchant or admin",
+      riderLat: typeof lat === "number" ? lat : null,
+      riderLon: typeof lon === "number" ? lon : null,
+    });
+
+    res.status(400).json({
+      success: false,
+      storeVerified: false,
+      reason: "EXPIRED_QR",
+      message: `The QR code for "${store.shopName}" is currently deactivated. Please ask the shopkeeper for assistance.`,
+    });
+    return;
+  }
+
+  // 3. GPS Proximity Verification
+  let distanceMeters: number | null = null;
+  const storeAddr = (store.address ?? {}) as Record<string, any>;
+  const storeLat = (typeof storeAddr.lat === "number" ? storeAddr.lat : (typeof storeAddr.latitude === "number" ? storeAddr.latitude : null));
+  const storeLon = (typeof storeAddr.lng === "number" ? storeAddr.lng : (typeof storeAddr.longitude === "number" ? storeAddr.longitude : (typeof storeAddr.lon === "number" ? storeAddr.lon : null)));
+
+  if (store.pickupGpsEnforced && storeLat != null && storeLon != null && typeof lat === "number" && typeof lon === "number") {
+    distanceMeters = calculateDistanceMeters(lat, lon, storeLat, storeLon);
+    const maxRadius = store.pickupGpsRadiusMeters || 200;
+
+    if (distanceMeters > maxRadius) {
+      await db.insert(pickupScanLogs).values({
+        riderId: partner.id,
+        riderName: partner.name,
+        storeId: store.id,
+        storeName: store.shopName,
+        orderId: orderId || null,
+        scannedToken: token,
+        scanResult: "TOO_FAR_FROM_STORE",
+        reason: `Rider GPS distance (${Math.round(distanceMeters)}m) exceeds maximum radius (${maxRadius}m)`,
+        riderLat: lat,
+        riderLon: lon,
+        distanceMeters,
+      });
+
+      res.status(400).json({
+        success: false,
+        storeVerified: false,
+        reason: "TOO_FAR_FROM_STORE",
+        distanceMeters: Math.round(distanceMeters),
+        maxRadiusMeters: maxRadius,
+        message: `You are too far from ${store.shopName} (${Math.round(distanceMeters)}m away). Please reach the store counter before scanning.`,
+      });
+      return;
+    }
+  }
+
+  // 4. Find all active assigned pickup orders from THIS store for this rider
+  const storeOrders = await db
+    .select()
+    .from(orders)
+    .where(
+      and(
+        eq(orders.deliveryPartnerId, partner.id),
+        eq(orders.shopId, store.id),
+        or(
+          eq(orders.status, "accepted"),
+          eq(orders.status, "preparing"),
+          eq(orders.status, "packed"),
+          eq(orders.status, "ready"),
+          eq(orders.status, "placed")
+        )
+      )
+    )
+    .orderBy(desc(orders.createdAt));
+
+  if (storeOrders.length === 0) {
+    // Check if rider has active orders at a DIFFERENT store
+    const [otherOrder] = await db
+      .select({ id: orders.id, shopName: orders.shopName, shopId: orders.shopId })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.deliveryPartnerId, partner.id),
+          or(
+            eq(orders.status, "accepted"),
+            eq(orders.status, "preparing"),
+            eq(orders.status, "packed"),
+            eq(orders.status, "ready"),
+            eq(orders.status, "placed")
+          )
+        )
+      )
+      .limit(1);
+
+    if (otherOrder && otherOrder.shopId !== store.id) {
+      await db.insert(pickupScanLogs).values({
+        riderId: partner.id,
+        riderName: partner.name,
+        storeId: store.id,
+        storeName: store.shopName,
+        orderId: otherOrder.id,
+        scannedToken: token,
+        scanResult: "WRONG_STORE",
+        reason: `Rider scanned ${store.shopName} but has active order assigned to ${otherOrder.shopName}`,
+        riderLat: typeof lat === "number" ? lat : null,
+        riderLon: typeof lon === "number" ? lon : null,
+        distanceMeters: distanceMeters ?? undefined,
+      });
+
+      res.status(400).json({
+        success: false,
+        storeVerified: false,
+        reason: "WRONG_STORE",
+        scannedStore: {
+          id: store.id,
+          storeCode: store.storeCode || `SW-${store.id.slice(0, 6).toUpperCase()}`,
+          name: store.shopName,
+        },
+        expectedStore: {
+          name: otherOrder.shopName,
+        },
+        message: `Wrong Pickup Store! You scanned "${store.shopName}", but your assigned order is from "${otherOrder.shopName}". Please scan the QR at the correct store.`,
+      });
+      return;
+    }
+
+    // No active pickup orders at all
+    await db.insert(pickupScanLogs).values({
+      riderId: partner.id,
+      riderName: partner.name,
+      storeId: store.id,
+      storeName: store.shopName,
+      orderId: orderId || null,
+      scannedToken: token,
+      scanResult: "NO_ACTIVE_PICKUP",
+      reason: "No active unpicked orders assigned to rider at this store",
+      riderLat: typeof lat === "number" ? lat : null,
+      riderLon: typeof lon === "number" ? lon : null,
+      distanceMeters: distanceMeters ?? undefined,
+    });
+
+    res.status(400).json({
+      success: false,
+      storeVerified: false,
+      reason: "NO_ACTIVE_PICKUP",
+      message: `You do not have any pending pickup orders at "${store.shopName}".`,
+    });
+    return;
+  }
+
+  // 5. Successful Store Verification — create temporary 15-minute session
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  const [session] = await db
+    .insert(pickupVerificationSessions)
+    .values({
+      riderId: partner.id,
+      storeId: store.id,
+      token,
+      expiresAt,
+      riderLat: typeof lat === "number" ? lat : null,
+      riderLon: typeof lon === "number" ? lon : null,
+      status: "active",
+    })
     .returning();
-  if (!updated) { res.status(404).json({ success: false, message: "Partner not found" }); return; }
-  res.json({ success: true, partner: mi(updated), message: "Re-upload request sent." });
+
+  // Stamp store last QR scan timestamp
+  await db.update(shops).set({ lastQrScanAt: new Date() }).where(eq(shops.id, store.id));
+
+  // Log successful scan
+  await db.insert(pickupScanLogs).values({
+    riderId: partner.id,
+    riderName: partner.name,
+    storeId: store.id,
+    storeName: store.shopName,
+    orderId: storeOrders[0]?.id || null,
+    scannedToken: token,
+    scanResult: "SUCCESS",
+    reason: `Verified ${storeOrders.length} assigned order(s) at ${store.shopName}`,
+    riderLat: typeof lat === "number" ? lat : null,
+    riderLon: typeof lon === "number" ? lon : null,
+    distanceMeters: distanceMeters ?? undefined,
+  });
+
+  res.json({
+    success: true,
+    storeVerified: true,
+    verificationId: session!.id,
+    expiresAt: expiresAt.toISOString(),
+    store: {
+      id: store.id,
+      storeCode: store.storeCode || `SW-${store.id.slice(0, 6).toUpperCase()}`,
+      storeName: store.shopName,
+      ownerName: store.ownerName,
+      phone: store.phone,
+      address: store.address,
+    },
+    assignedOrders: miArr(storeOrders),
+  });
+});
+
+// POST /delivery/pickup/confirm — rider confirms pickup with verification session
+router.post("/pickup/confirm", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const { verificationId, orderId, orderIds } = req.body as {
+    verificationId: string;
+    orderId?: string;
+    orderIds?: string[];
+  };
+
+  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+  if (!partner) {
+    res.status(403).json({ success: false, message: "Not an authorized delivery partner" });
+    return;
+  }
+
+  if (!verificationId) {
+    res.status(400).json({ success: false, message: "Verification session ID required. Please scan the store QR code." });
+    return;
+  }
+
+  // 1. Validate session
+  const [session] = await db
+    .select()
+    .from(pickupVerificationSessions)
+    .where(and(eq(pickupVerificationSessions.id, verificationId), eq(pickupVerificationSessions.riderId, partner.id)))
+    .limit(1);
+
+  if (!session) {
+    res.status(404).json({ success: false, message: "Invalid verification session. Please scan the store QR code again." });
+    return;
+  }
+
+  if (session.status !== "active" || session.expiresAt < new Date()) {
+    res.status(400).json({
+      success: false,
+      message: "Verification session has expired (15-min limit). Please scan the store QR code again to refresh.",
+    });
+    return;
+  }
+
+  // Determine target order IDs
+  const targetIds: string[] = [];
+  if (Array.isArray(orderIds) && orderIds.length > 0) {
+    targetIds.push(...orderIds.map(String).filter(Boolean));
+  } else if (orderId) {
+    targetIds.push(String(orderId));
+  }
+
+  if (targetIds.length === 0) {
+    // Default to all active orders assigned to rider at this store
+    const allStoreOrders = await db
+      .select({ id: orders.id })
+      .from(orders)
+      .where(and(eq(orders.deliveryPartnerId, partner.id), eq(orders.shopId, session.storeId)));
+    targetIds.push(...allStoreOrders.map(o => o.id));
+  }
+
+  if (targetIds.length === 0) {
+    res.status(400).json({ success: false, message: "No assigned orders found to confirm pickup." });
+    return;
+  }
+
+  // 2. Update orders to out_for_delivery
+  const updatedOrders = await db
+    .update(orders)
+    .set({
+      status: "out_for_delivery",
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        inArray(orders.id, targetIds),
+        eq(orders.deliveryPartnerId, partner.id),
+        eq(orders.shopId, session.storeId)
+      )
+    )
+    .returning();
+
+  // 3. Mark verification session as completed
+  await db
+    .update(pickupVerificationSessions)
+    .set({ status: "completed", updatedAt: new Date() })
+    .where(eq(pickupVerificationSessions.id, session.id));
+
+  // 4. Update partner's active order
+  await db
+    .update(deliveryPartners)
+    .set({ currentOrderId: targetIds[0], updatedAt: new Date() })
+    .where(eq(deliveryPartners.id, partner.id));
+
+  // 5. Notify customers
+  for (const o of updatedOrders) {
+    if (o.customerId) {
+      try {
+        await createNotificationLimited(o.customerId, {
+          type: "order_update",
+          title: "Order Picked Up! 🛵",
+          message: `Order #${o.id.slice(-6).toUpperCase()} is picked up from ${o.shopName} and is on its way to you!`,
+          data: { orderId: o.id, url: `/orders/${o.id}` },
+        });
+      } catch { /* ignore */ }
+    }
+  }
+
+  res.json({
+    success: true,
+    message: `Successfully confirmed pickup of ${updatedOrders.length} order(s)! Status updated to OUT FOR DELIVERY.`,
+    orders: miArr(updatedOrders),
+  });
+});
+
+// ─── Store QR Code Management Endpoints ─────────────────────────────────────
+
+// GET /delivery/store/:id/qr — get QR payload and store code for printable counter poster
+router.get("/store/:id/qr", optionalAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  const shopId = req.params["id"] as string;
+  const [shop] = await db.select().from(shops).where(eq(shops.id, shopId)).limit(1);
+  if (!shop) {
+    res.status(404).json({ success: false, message: "Shop not found" });
+    return;
+  }
+
+  // Generate fallback store code and pickup token if missing
+  let storeCode = shop.storeCode;
+  let pickupQrToken = shop.pickupQrToken;
+  if (!storeCode || !pickupQrToken) {
+    storeCode = storeCode || `SW-BLG-${shop.id.slice(0, 4).toUpperCase()}`;
+    pickupQrToken = pickupQrToken || crypto.randomUUID();
+    await db.update(shops).set({ storeCode, pickupQrToken }).where(eq(shops.id, shop.id));
+  }
+
+  const qrPayload = `SWIFTMART_PICKUP:${pickupQrToken}`;
+  const pickupUrl = `https://swiftmart.space/pickup/store/${pickupQrToken}`;
+
+  res.json({
+    success: true,
+    shop: {
+      id: shop.id,
+      shopName: shop.shopName,
+      ownerName: shop.ownerName,
+      phone: shop.phone,
+      address: shop.address,
+      storeCode,
+      pickupQrToken,
+      qrStatus: shop.qrStatus || "active",
+      qrPayload,
+      pickupUrl,
+      lastQrScanAt: shop.lastQrScanAt,
+      pickupGpsRadiusMeters: shop.pickupGpsRadiusMeters || 200,
+      pickupGpsEnforced: shop.pickupGpsEnforced ?? true,
+    },
+  });
+});
+
+// POST /delivery/store/:id/qr/regenerate — admin/merchant regenerates QR token
+router.post("/store/:id/qr/regenerate", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const shopId = req.params["id"] as string;
+  const [shop] = await db.select().from(shops).where(eq(shops.id, shopId)).limit(1);
+  if (!shop) {
+    res.status(404).json({ success: false, message: "Shop not found" });
+    return;
+  }
+
+  const newToken = crypto.randomUUID();
+  const [updated] = await db
+    .update(shops)
+    .set({
+      pickupQrToken: newToken,
+      qrStatus: "active",
+      qrRegeneratedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(shops.id, shopId))
+    .returning();
+
+  // Expire all existing active sessions for this store immediately
+  await db
+    .update(pickupVerificationSessions)
+    .set({ status: "expired", updatedAt: new Date() })
+    .where(and(eq(pickupVerificationSessions.storeId, shopId), eq(pickupVerificationSessions.status, "active")));
+
+  res.json({
+    success: true,
+    message: "Store Pickup QR regenerated successfully! Old QR code is now invalid.",
+    pickupQrToken: newToken,
+    qrPayload: `SWIFTMART_PICKUP:${newToken}`,
+    pickupUrl: `https://swiftmart.space/pickup/store/${newToken}`,
+  });
+});
+
+// PATCH /delivery/store/:id/qr/status — admin toggles QR status & GPS radius
+router.patch("/store/:id/qr/status", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const shopId = req.params["id"] as string;
+  const { qrStatus, pickupGpsRadiusMeters, pickupGpsEnforced } = req.body as {
+    qrStatus?: string;
+    pickupGpsRadiusMeters?: number;
+    pickupGpsEnforced?: boolean;
+  };
+
+  const updateData: Record<string, any> = { updatedAt: new Date() };
+  if (qrStatus && (qrStatus === "active" || qrStatus === "disabled")) {
+    updateData["qrStatus"] = qrStatus;
+  }
+  if (typeof pickupGpsRadiusMeters === "number" && pickupGpsRadiusMeters >= 50) {
+    updateData["pickupGpsRadiusMeters"] = pickupGpsRadiusMeters;
+  }
+  if (typeof pickupGpsEnforced === "boolean") {
+    updateData["pickupGpsEnforced"] = pickupGpsEnforced;
+  }
+
+  const [updated] = await db
+    .update(shops)
+    .set(updateData)
+    .where(eq(shops.id, shopId))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ success: false, message: "Shop not found" });
+    return;
+  }
+
+  res.json({ success: true, shop: mi(updated) });
+});
+
+// GET /delivery/admin/pickup-logs — admin audit logs of QR scans
+router.get("/admin/pickup-logs", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
+  const storeId = req.query["storeId"] as string | undefined;
+  const riderId = req.query["riderId"] as string | undefined;
+  const limit = Math.min(Number(req.query["limit"] || 50), 200);
+
+  const conditions = [];
+  if (storeId) conditions.push(eq(pickupScanLogs.storeId, storeId));
+  if (riderId) conditions.push(eq(pickupScanLogs.riderId, riderId));
+
+  const whereClause = conditions.length ? and(...conditions) : undefined;
+  const logs = await db
+    .select()
+    .from(pickupScanLogs)
+    .where(whereClause)
+    .orderBy(desc(pickupScanLogs.createdAt))
+    .limit(limit);
+
+  res.json({ success: true, logs: miArr(logs) });
 });
 
 export default router;
+

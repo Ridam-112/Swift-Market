@@ -10,6 +10,8 @@ import {
   Plus, Edit2, Trash2, Loader2, Upload, X, ChevronDown, RefreshCw,
 } from "lucide-react";
 import { categories } from "@/data/categories";
+import { downloadPickupSticker, printPickupSticker } from "@/lib/pickupSticker";
+import { QrCode, Download, Printer, ShieldCheck, MapPin, AlertTriangle, CheckCircle2, History } from "lucide-react";
 import { formatINR } from "@/lib/currency";
 import { api } from "@/lib/api";
 
@@ -312,7 +314,10 @@ interface Props {
 export function ShopDetailsPanel({ shopId, onClose }: Props) {
   const [data, setData] = useState<DetailData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"products" | "orders" | "analytics">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "orders" | "analytics" | "pickup_qr">("products");
+  const [qrData, setQrData] = useState<any>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [scanLogs, setScanLogs] = useState<any[]>([]);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductData | null>(null);
 
@@ -359,6 +364,25 @@ export function ShopDetailsPanel({ shopId, onClose }: Props) {
   }
 
   const { shop, products, orders, owner } = data;
+
+  useEffect(() => {
+    if (activeTab === "pickup_qr" && shopId) {
+      setQrLoading(true);
+      api.get<{ success: boolean; shop: any }>(`/delivery/store/${shopId}/qr`)
+        .then(res => {
+          if (res?.success) setQrData(res.shop);
+        })
+        .catch(() => toast.error("Failed to load store QR data"))
+        .finally(() => setQrLoading(false));
+
+      api.get<{ success: boolean; logs: any[] }>(`/delivery/admin/pickup-logs?storeId=${shopId}&limit=10`)
+        .then(res => {
+          if (res?.success && Array.isArray(res.logs)) setScanLogs(res.logs);
+        })
+        .catch(() => {});
+    }
+  }, [activeTab, shopId]);
+
   const addressStr = [shop.address?.line1, shop.address?.city, shop.address?.pincode].filter(Boolean).join(", ");
 
   return (
@@ -431,9 +455,9 @@ export function ShopDetailsPanel({ shopId, onClose }: Props) {
 
       {/* Tabs */}
       <div className="flex gap-2 p-1 bg-background neu-inset rounded-xl max-w-fit">
-        {(["products", "orders", "analytics"] as const).map(t => (
+        {(["products", "orders", "analytics", "pickup_qr"] as const).map(t => (
           <button
-            key={t}
+            key={t === "pickup_qr" ? "⚡ Pickup QR" : t}
             onClick={() => setActiveTab(t)}
             className={`px-5 py-2 rounded-lg text-sm font-medium transition-all capitalize ${
               activeTab === t
@@ -544,6 +568,253 @@ export function ShopDetailsPanel({ shopId, onClose }: Props) {
                 </div>
               </div>
             ))
+          )}
+        </div>
+      )}
+
+
+      {/* Pickup QR & Verification Tab */}
+      {activeTab === "pickup_qr" && (
+        <div className="space-y-6">
+          {qrLoading ? (
+            <div className="text-center p-12 bg-card rounded-3xl neu-card">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
+              <p className="text-sm text-muted-foreground">Loading Store Pickup QR details...</p>
+            </div>
+          ) : qrData ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column: QR Poster & Action Buttons */}
+              <div className="bg-card p-6 rounded-3xl neu-card space-y-5 flex flex-col items-center text-center">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                    <ShieldCheck className="w-3.5 h-3.5" /> OFFICIAL STORE PICKUP QR
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground mt-1">{qrData.shopName}</h3>
+                  <p className="text-xs text-muted-foreground font-mono">Store ID: {qrData.storeCode}</p>
+                </div>
+
+                {/* QR Code Preview Box */}
+                <div className="p-4 bg-white rounded-2xl border-4 border-[#6C3DE8] shadow-md relative group">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrData.qrPayload || `SWIFTMART_PICKUP:${qrData.pickupQrToken}`)}`}
+                    alt="Pickup QR Preview"
+                    className="w-52 h-52 object-contain"
+                  />
+                  <div className="mt-2 text-[11px] font-bold text-slate-700 bg-amber-100 py-1 px-2 rounded-lg">
+                    ⚡ RIDER COUNTER QR
+                  </div>
+                </div>
+
+                <div className="w-full space-y-2.5">
+                  <Button
+                    onClick={() => downloadPickupSticker({
+                      shopId: qrData.id,
+                      shopName: qrData.shopName,
+                      storeCode: qrData.storeCode,
+                      pickupQrToken: qrData.pickupQrToken,
+                      address: addressStr,
+                      phone: qrData.phone,
+                    })}
+                    className="w-full bg-primary text-white rounded-xl shadow-none neu-card gap-2 font-bold text-sm"
+                  >
+                    <Download className="w-4 h-4" /> Download Counter Poster (PNG)
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => printPickupSticker({
+                      shopId: qrData.id,
+                      shopName: qrData.shopName,
+                      storeCode: qrData.storeCode,
+                      pickupQrToken: qrData.pickupQrToken,
+                      address: addressStr,
+                      phone: qrData.phone,
+                    })}
+                    className="w-full rounded-xl gap-2 font-bold text-sm"
+                  >
+                    <Printer className="w-4 h-4" /> Print A4 Counter Sticker
+                  </Button>
+
+                  <div className="pt-2 flex gap-2">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={async () => {
+                        if (confirm(`Regenerate Pickup QR for ${qrData.shopName}? The existing printed QR will stop working immediately.`)) {
+                          try {
+                            const res = await api.post<{ success: boolean; pickupQrToken: string; message: string }>(`/delivery/store/${shopId}/qr/regenerate`, {});
+                            if (res?.success) {
+                              toast.success("QR Token regenerated! Please print the new sticker.");
+                              setQrData((prev: any) => ({ ...prev, pickupQrToken: res.pickupQrToken }));
+                            }
+                          } catch {
+                            toast.error("Failed to regenerate QR token");
+                          }
+                        }
+                      }}
+                      className="flex-1 rounded-xl text-xs"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 mr-1" /> Regenerate QR
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        const newStatus = qrData.qrStatus === "active" ? "disabled" : "active";
+                        try {
+                          const res = await api.patch<{ success: boolean }>(`/delivery/store/${shopId}/qr/status`, { qrStatus: newStatus });
+                          if (res?.success) {
+                            toast.success(`QR status updated to ${newStatus.toUpperCase()}`);
+                            setQrData((prev: any) => ({ ...prev, qrStatus: newStatus }));
+                          }
+                        } catch {
+                          toast.error("Failed to update status");
+                        }
+                      }}
+                      className={`flex-1 rounded-xl text-xs ${qrData.qrStatus === "active" ? "text-amber-600 hover:text-amber-700" : "text-green-600 hover:text-green-700"}`}
+                    >
+                      {qrData.qrStatus === "active" ? "Disable QR" : "Activate QR"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: GPS Settings & Scan Audit Logs */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* GPS Settings Card */}
+                <div className="bg-card p-5 rounded-3xl neu-card space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                        <MapPin className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-foreground">GPS Proximity Verification</h4>
+                        <p className="text-xs text-muted-foreground">Ensure rider is physically at the store before scanning</p>
+                      </div>
+                    </div>
+                    <Badge className={qrData.pickupGpsEnforced ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}>
+                      {qrData.pickupGpsEnforced ? "Enforced" : "Disabled"}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Max Distance Radius ({qrData.pickupGpsRadiusMeters || 200}m)</Label>
+                      <input
+                        type="range"
+                        min="50"
+                        max="500"
+                        step="25"
+                        value={qrData.pickupGpsRadiusMeters || 200}
+                        onChange={e => setQrData({ ...qrData, pickupGpsRadiusMeters: Number(e.target.value) })}
+                        className="w-full accent-primary cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[10px] text-muted-foreground">
+                        <span>50m (Strict)</span>
+                        <span>200m (Default)</span>
+                        <span>500m (Relaxed)</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-background neu-inset">
+                      <div>
+                        <p className="text-xs font-bold text-foreground">Enforce GPS Proximity</p>
+                        <p className="text-[11px] text-muted-foreground">Block scan if rider is too far</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={qrData.pickupGpsEnforced ?? true}
+                        onChange={e => setQrData({ ...qrData, pickupGpsEnforced: e.target.checked })}
+                        className="w-4 h-4 accent-primary cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await api.patch(`/delivery/store/${shopId}/qr/status`, {
+                            pickupGpsRadiusMeters: qrData.pickupGpsRadiusMeters,
+                            pickupGpsEnforced: qrData.pickupGpsEnforced,
+                          });
+                          toast.success("GPS proximity settings saved!");
+                        } catch {
+                          toast.error("Failed to save GPS settings");
+                        }
+                      }}
+                      className="rounded-xl font-bold text-xs"
+                    >
+                      Save GPS Settings
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Recent QR Scan Logs Table */}
+                <div className="bg-card p-5 rounded-3xl neu-card space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <History className="w-4 h-4 text-muted-foreground" />
+                      <h4 className="text-sm font-bold text-foreground">Recent Rider Pickup Scans</h4>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{scanLogs.length} recent scan{scanLogs.length !== 1 ? "s" : ""}</span>
+                  </div>
+
+                  {scanLogs.length === 0 ? (
+                    <div className="text-center py-8 text-xs text-muted-foreground">
+                      No QR scans recorded for this store yet.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-border/50 text-muted-foreground text-left">
+                            <th className="pb-2">Timestamp</th>
+                            <th className="pb-2">Rider</th>
+                            <th className="pb-2">Result</th>
+                            <th className="pb-2">Distance</th>
+                            <th className="pb-2">Reason / Details</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/30">
+                          {scanLogs.map((l: any) => (
+                            <tr key={l.id} className="py-2">
+                              <td className="py-2 text-muted-foreground whitespace-nowrap">
+                                {new Date(l.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                              </td>
+                              <td className="py-2 font-medium text-foreground">{l.riderName || "Rider"}</td>
+                              <td className="py-2">
+                                <Badge className={`text-[10px] border-none ${
+                                  l.scanResult === "SUCCESS" ? "bg-green-100 text-green-800" :
+                                  l.scanResult === "WRONG_STORE" ? "bg-red-100 text-red-800" :
+                                  l.scanResult === "TOO_FAR_FROM_STORE" ? "bg-amber-100 text-amber-800" :
+                                  "bg-gray-100 text-gray-800"
+                                }`}>
+                                  {l.scanResult}
+                                </Badge>
+                              </td>
+                              <td className="py-2 text-muted-foreground">
+                                {l.distanceMeters != null ? `${Math.round(l.distanceMeters)}m` : "—"}
+                              </td>
+                              <td className="py-2 text-muted-foreground truncate max-w-[200px]" title={l.reason}>
+                                {l.reason || "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center p-8 bg-card rounded-3xl neu-card text-muted-foreground">
+              Unable to load QR data for this store.
+            </div>
           )}
         </div>
       )}

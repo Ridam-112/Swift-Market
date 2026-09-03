@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Upload, X, Loader2, ChevronDown, Store, Clock } from "lucide-react";
+import { Upload, X, Loader2, ChevronDown, Store, Clock, QrCode, Download, Printer, ShieldCheck } from "lucide-react";
+import { downloadPickupSticker, printPickupSticker } from "@/lib/pickupSticker";
 
 interface ApiCategory {
   _id: string;
@@ -154,6 +155,7 @@ export default function ShopProfile() {
   const [shopId, setShopId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [qrData, setQrData] = useState<any>(null);
   const [categories, setCategories] = useState<ApiCategory[]>([]);
 
   const [shopName, setShopName] = useState("");
@@ -482,6 +484,88 @@ export default function ShopProfile() {
           </div>
           <p className="text-xs text-muted-foreground">These are the hours your shop is expected to be operational.</p>
         </section>
+
+
+        {/* Store Pickup Counter QR Card */}
+        {qrData && (
+          <section className="bg-card p-6 rounded-3xl neu-card space-y-5 border-2 border-primary/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                  <QrCode className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-foreground flex items-center gap-2">
+                    Official Store Pickup QR <ShieldCheck className="w-4 h-4 text-primary" />
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Permanent SwiftMart counter QR for delivery riders to verify store and pick up orders.
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-primary/10 text-primary font-bold">
+                {qrData.storeCode}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center pt-2">
+              <div className="flex flex-col items-center sm:items-start text-center sm:text-left space-y-2">
+                <div className="p-3 bg-white rounded-2xl border-2 border-border shadow-sm inline-block">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrData.qrPayload || `SWIFTMART_PICKUP:${qrData.pickupQrToken}`)}`}
+                    alt="Counter QR"
+                    className="w-36 h-36 object-contain"
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground">Keep this sticker displayed at the counter.</p>
+              </div>
+
+              <div className="sm:col-span-2 space-y-3">
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 p-3.5 rounded-2xl">
+                  <p className="text-xs font-bold text-amber-900 dark:text-amber-300 mb-1">
+                    💡 How it works:
+                  </p>
+                  <p className="text-xs text-amber-800 dark:text-amber-400 leading-relaxed">
+                    You don't need to operate a phone for every pickup! Simply keep this QR printed at your counter. The rider will scan it to verify and take the package.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2.5 pt-1">
+                  <Button
+                    type="button"
+                    onClick={() => downloadPickupSticker({
+                      shopId: qrData.id,
+                      shopName: qrData.shopName,
+                      storeCode: qrData.storeCode,
+                      pickupQrToken: qrData.pickupQrToken,
+                      address: addressLine1,
+                      phone: shop?.phone,
+                    })}
+                    className="flex-1 rounded-xl bg-primary text-white shadow-none neu-card gap-2 text-xs font-bold h-10"
+                  >
+                    <Download className="w-4 h-4" /> Download Poster (PNG)
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => printPickupSticker({
+                      shopId: qrData.id,
+                      shopName: qrData.shopName,
+                      storeCode: qrData.storeCode,
+                      pickupQrToken: qrData.pickupQrToken,
+                      address: addressLine1,
+                      phone: shop?.phone,
+                    })}
+                    className="flex-1 rounded-xl gap-2 text-xs font-bold h-10"
+                  >
+                    <Printer className="w-4 h-4" /> Print Sticker (A4)
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         <div className="flex gap-3 pt-2">
           <Button

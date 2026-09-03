@@ -39,12 +39,21 @@ export const shops = pgTable("shops", {
   certificateStatus: text("certificate_status"),
   certificateRejectReason: text("certificate_reject_reason"),
   verificationStatus: text("verification_status").notNull().default("pending"),
+  storeCode: text("store_code"),
+  pickupQrToken: text("pickup_qr_token").$defaultFn(() => crypto.randomUUID()),
+  qrStatus: text("qr_status").notNull().default("active"),
+  qrRegeneratedAt: timestamp("qr_regenerated_at"),
+  pickupGpsRadiusMeters: integer("pickup_gps_radius_meters").default(200),
+  pickupGpsEnforced: boolean("pickup_gps_enforced").notNull().default(true),
+  lastQrScanAt: timestamp("last_qr_scan_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [
   index("shops_owner_id_idx").on(t.ownerId),
   index("shops_status_idx").on(t.status),
   index("shops_shop_type_idx").on(t.shopType),
+  index("shops_pickup_qr_token_idx").on(t.pickupQrToken),
+  index("shops_store_code_idx").on(t.storeCode),
 ]);
 
 export type Shop = typeof shops.$inferSelect;
