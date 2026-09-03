@@ -19,6 +19,8 @@ import { Star, ChevronRight, Zap, MapPin, Search, ChevronDown, ChevronUp } from 
 import type { Product } from "@/types";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { isAddressServiceable } from "@/lib/serviceArea";
+import { MapLocationPicker, type MapLocationResult } from "@/components/MapLocationPicker";
 
 const FAQ_ITEMS = [
   {
@@ -296,10 +298,14 @@ function DynamicSection({ section }: { section: HomepageSection }) {
 }
 
 export default function Home() {
-  const { user, selectedDeliveryAddress } = useAuth();
+  const { user, selectedDeliveryAddress, setSelectedDeliveryAddress } = useAuth();
   const { shops, isLoading: shopsLoading } = useShops();
-  const selectedCity = (selectedDeliveryAddress?.city ?? "").trim();
+  const selectedCity = (selectedDeliveryAddress?.city ?? selectedDeliveryAddress?.line1 ?? "Your Location").trim();
   const loading = shopsLoading;
+
+  // Check if current user address is in active service area
+  const isServiceable = isAddressServiceable(selectedDeliveryAddress);
+  const showComingSoon = !isServiceable && !!selectedDeliveryAddress;
 
   // When a delivery city is selected, restrict dynamic sections to products from visible shops.
   const visibleShopIds = useMemo(
@@ -308,6 +314,7 @@ export default function Home() {
   );
   const [, setLocation] = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
   const [apiCategories, setApiCategories] = useState<DisplayCategory[]>([]);
   const [categoriesExpanded, setCategoriesExpanded] = useState(false);
   const [dynamicSections, setDynamicSections] = useState<HomepageSection[]>([]);
@@ -385,7 +392,25 @@ export default function Home() {
 
       <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
-      {isCityEmpty ? (
+      <MapLocationPicker
+        isOpen={mapPickerOpen}
+        onClose={() => setMapPickerOpen(false)}
+        onConfirm={(loc: MapLocationResult) => {
+          setSelectedDeliveryAddress({
+            id: `addr_${Date.now()}`,
+            label: "Home",
+            line1: loc.line1,
+            line2: loc.line2,
+            city: loc.city,
+            pincode: loc.pincode,
+            lat: loc.lat,
+            lng: loc.lng,
+          });
+          setMapPickerOpen(false);
+        }}
+      />
+
+      {showComingSoon ? (
         <div className="py-12 md:py-24 flex items-center justify-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -402,11 +427,19 @@ export default function Home() {
               <div className="absolute inset-0 rounded-full border border-primary/20 animate-ping opacity-40" />
             </div>
             <h2 className="text-2xl font-black bg-gradient-to-r from-primary to-orange-500 bg-clip-text text-transparent">
-              Coming Soon to Your City!
+              Coming Soon to Your Area!
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              SwiftMart is currently expanding its network. We will start delivering fresh groceries, food, and daily essentials to <span className="font-semibold text-foreground capitalize">{selectedCity}</span> very soon!
+              SwiftMart is currently serving <span className="font-bold text-primary">Balurghat (733101, 733102, 733103)</span> and surrounding areas. We will start delivering fresh groceries, food, and daily essentials to <span className="font-semibold text-foreground capitalize">{selectedCity}</span> very soon!
             </p>
+            <div className="pt-2 w-full">
+              <Button
+                onClick={() => setMapPickerOpen(true)}
+                className="w-full rounded-2xl bg-primary text-white font-bold text-sm h-11 neu-card gap-2"
+              >
+                <MapPin className="w-4 h-4" /> Change Location to Balurghat
+              </Button>
+            </div>
           </motion.div>
         </div>
       ) : (

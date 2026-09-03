@@ -162,18 +162,22 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
 
 function normalizeCity(str: string): string {
   if (!str) return "";
-  return str.toLowerCase().split(/[,(\-\d]/)[0].trim();
+  const lower = str.toLowerCase();
+  if (lower.includes("balurghat") || lower.includes("dinajpur") || lower.includes("733101") || lower.includes("733102") || lower.includes("733103")) {
+    return "balurghat";
+  }
+  return lower.split(/[,(\-\d]/)[0].trim();
 }
 
   // City-based filtering — when the user has picked a delivery address, only show
-  // shops that serve that city.  allShops stays full so lookups (getShopById) still work.
-  const selectedCityRaw = (auth?.selectedDeliveryAddress?.city ?? "").trim();
+  // shops that serve that city. allShops stays full so lookups (getShopById) still work.
+  const selectedCityRaw = (auth?.selectedDeliveryAddress?.city ?? auth?.selectedDeliveryAddress?.line1 ?? "").trim();
   const normalizedSelectedCity = useMemo(() => normalizeCity(selectedCityRaw), [selectedCityRaw]);
 
   const shops = useMemo(() => {
-    if (!normalizedSelectedCity) return allShops;
+    if (!normalizedSelectedCity || normalizedSelectedCity === "balurghat") return allShops;
     const filtered = allShops.filter(s => {
-      const sc = normalizeCity(s.city);
+      const sc = normalizeCity(s.city || "balurghat");
       return sc.includes(normalizedSelectedCity) || normalizedSelectedCity.includes(sc);
     });
     return filtered.length > 0 ? filtered : allShops;

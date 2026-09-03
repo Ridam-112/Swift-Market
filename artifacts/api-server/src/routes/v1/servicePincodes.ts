@@ -6,6 +6,28 @@ import { authenticate, requireRole, type AuthRequest } from "../../middlewares/a
 const router = Router();
 const A = requireRole("admin", "super_admin");
 
+// GET /api/service-pincodes/public — Public endpoint for app and web to check live service areas
+router.get("/public", async (_req, res: Response): Promise<void> => {
+  try {
+    const rawPincodes = process.env["SERVICE_PINCODES"] ?? "733101,733102,733103";
+    const envPincodes = rawPincodes.split(",").map(p => p.trim()).filter(Boolean);
+
+    let rows: Array<{ pincode: string; area: string; state: string; isActive: boolean }>;
+    try {
+      const dbRows = await db.select().from(servicePincodes).where(eq(servicePincodes.isActive, true));
+      rows = dbRows.length > 0
+        ? dbRows
+        : envPincodes.map(p => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal", isActive: true }));
+    } catch {
+      rows = envPincodes.map(p => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal", isActive: true }));
+    }
+
+    res.json({ success: true, serviceAreas: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to fetch service areas", error: String(err) });
+  }
+});
+
 router.get("/", authenticate, A, async (_req, res: Response): Promise<void> => {
   const rows = await db.select().from(servicePincodes).orderBy(servicePincodes.createdAt);
   // service_pincodes has no `id` column — return rows directly (pincode is the PK)
