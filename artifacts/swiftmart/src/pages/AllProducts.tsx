@@ -37,7 +37,13 @@ export default function AllProducts() {
   useEffect(() => {
     api.get<{ success: boolean; categories: ApiCategory[] }>("/categories")
       .then(d => {
-        const sorted = [...(d.categories ?? [])].sort((a, b) => {
+        const cleaned = (d.categories ?? [])
+          .filter(c => c.slug !== "sexual-wellness" && !c.name.toLowerCase().includes("sexual"))
+          .map(c => ({
+            ...c,
+            name: c.name === "Zepto Cafe" || c.slug === "food_junction" ? "SwiftMart Cafe" : c.name,
+          }));
+        const sorted = cleaned.sort((a, b) => {
           const pa = CATEGORY_PRIORITY[a.slug] ?? 999;
           const pb = CATEGORY_PRIORITY[b.slug] ?? 999;
           if (pa !== pb) return pa - pb;

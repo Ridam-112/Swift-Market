@@ -125212,19 +125212,36 @@ async function invalidateCategoryCache() {
 var router7 = (0, import_express7.Router)();
 var A6 = requireRole("admin", "super_admin");
 router7.get("/", async (_req, res) => {
+  try {
+    await db.delete(categories).where(eq9(categories.slug, "sexual-wellness"));
+    await db.update(categories).set({ name: "SwiftMart Cafe" }).where(eq9(categories.slug, "food_junction"));
+  } catch {
+  }
   const cached = await cacheGet(KEYS.CATEGORIES);
-  if (cached) {
-    res.json(cached);
+  if (cached && typeof cached === "object" && "categories" in cached) {
+    const cleanedCategories = (cached.categories || []).filter((c) => c.slug !== "sexual-wellness" && !c.name.toLowerCase().includes("sexual")).map((c) => ({
+      ...c,
+      name: c.name === "Zepto Cafe" || c.slug === "food_junction" ? "SwiftMart Cafe" : c.name
+    }));
+    res.json({ success: true, categories: cleanedCategories });
     return;
   }
-  const cats = await db.select().from(categories).where(eq9(categories.isActive, true)).orderBy(asc3(categories.name));
-  const payload = { success: true, categories: miArr(cats) };
+  const rawCats = await db.select().from(categories).where(eq9(categories.isActive, true)).orderBy(asc3(categories.name));
+  const cleaned = rawCats.filter((c) => c.slug !== "sexual-wellness" && !c.name.toLowerCase().includes("sexual")).map((c) => ({
+    ...c,
+    name: c.name === "Zepto Cafe" || c.slug === "food_junction" ? "SwiftMart Cafe" : c.name
+  }));
+  const payload = { success: true, categories: miArr(cleaned) };
   void cacheSet(KEYS.CATEGORIES, payload, TTL.CATEGORIES);
   res.json(payload);
 });
 router7.get("/all", authenticate, A6, async (_req, res) => {
   const cats = await db.select().from(categories).orderBy(asc3(categories.name));
-  res.json({ success: true, categories: miArr(cats) });
+  const cleaned = cats.filter((c) => c.slug !== "sexual-wellness" && !c.name.toLowerCase().includes("sexual")).map((c) => ({
+    ...c,
+    name: c.name === "Zepto Cafe" || c.slug === "food_junction" ? "SwiftMart Cafe" : c.name
+  }));
+  res.json({ success: true, categories: miArr(cleaned) });
 });
 router7.post("/", authenticate, A6, async (req, res) => {
   const { name, shopTypes: shopTypesList, commissionRate, packagingCharge, emoji, color, subcategories, parentTab, group, showOnHome, homeTab, filterOrder } = req.body;

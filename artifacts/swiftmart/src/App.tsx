@@ -112,12 +112,14 @@ function Categories() {
   useEffect(() => {
     api.get<{ success: boolean; categories: Array<{ _id: string; name: string; slug: string; emoji?: string; color?: string }> }>('/categories')
       .then(d => {
-        const mapped = (d.categories ?? []).map((c, i) => ({
-          id: c.slug,
-          name: c.name,
-          emoji: c.emoji ?? "🛍️",
-          color: c.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length],
-        }));
+        const mapped = (d.categories ?? [])
+          .filter(c => c.slug !== "sexual-wellness" && !c.name.toLowerCase().includes("sexual"))
+          .map((c, i) => ({
+            id: c.slug,
+            name: c.name === "Zepto Cafe" || c.slug === "food_junction" ? "SwiftMart Cafe" : c.name,
+            emoji: c.emoji ?? "🛍️",
+            color: c.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+          }));
         setApiCategories(sortCategories(mapped));
       })
       .catch(() => {})
