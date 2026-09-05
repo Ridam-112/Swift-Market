@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { Link } from "wouter";
 import { useProducts } from "@/hooks/useProducts";
 import { ProductCard } from "@/components/ProductCard";
 import { EmptyState } from "@/components/EmptyState";
 import { SEO } from "@/components/SEO";
+import { AdSenseInFeedCard } from "@/components/GoogleAdSense";
 import { ArrowLeft, PackageOpen, Search, X, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -286,7 +287,12 @@ export default function GroceryStore() {
           {!isLoading && filteredProducts.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {filteredProducts.map((product, i) => (
-                <ProductCard key={product.id} product={product} index={i} />
+                <Fragment key={product.id}>
+                  <ProductCard product={product} index={i} />
+                  {(i + 1) % 8 === 0 && (
+                    <AdSenseInFeedCard key={`ad-groc-${i}`} />
+                  )}
+                </Fragment>
               ))}
             </div>
           )}

@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { isAddressServiceable } from "@/lib/serviceArea";
 import { MapLocationPicker, type MapLocationResult } from "@/components/MapLocationPicker";
+import { AdSenseSectionBanner } from "@/components/GoogleAdSense";
 
 const FAQ_ITEMS = [
   {
@@ -543,6 +544,9 @@ export default function Home() {
             )}
           </section>
 
+          {/* ── AdSense Section Banner: Category & Shops Divider ── */}
+          <AdSenseSectionBanner />
+
           {/* ── Popular Shops ─────────────────────────────────────── */}
           <section>
             <SectionHeader
@@ -629,6 +633,9 @@ export default function Home() {
               .filter(s => s.products.length > 0)
               .map(section => <DynamicSection key={section._id} section={section} />)
           ) : null}
+
+          {/* ── AdSense Section Banner: Above FAQ ── */}
+          <AdSenseSectionBanner />
 
           {/* FAQ Section */}
           <FaqSection />

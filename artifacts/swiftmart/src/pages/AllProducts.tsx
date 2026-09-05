@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { Link } from "wouter";
 import { SEO } from "@/components/SEO";
 import { useProducts } from "@/hooks/useProducts";
 import { ProductCard } from "@/components/ProductCard";
 import { SkeletonGrid } from "@/components/SkeletonGrid";
+import { AdSenseInFeedCard } from "@/components/GoogleAdSense";
 import { api } from "@/lib/api";
 import { Search, X, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -165,7 +166,12 @@ export default function AllProducts() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
             {paginated.map((product, index) => (
-              <ProductCard key={product.id} product={product} index={index} />
+              <Fragment key={product.id}>
+                <ProductCard product={product} index={index} />
+                {(index + 1) % 8 === 0 && (
+                  <AdSenseInFeedCard key={`ad-all-${index}`} />
+                )}
+              </Fragment>
             ))}
           </div>
           {hasMore && (
