@@ -24,7 +24,7 @@ const DEFAULT_THEME: ThemeConfig = {
 const COLOR_PRESETS = [
   { name: "Zomato Red", color: "#E23744" },
   { name: "Swiggy Orange", color: "#FC8019" },
-  { name: "Zepto Violet", color: "#7B2CBF" },
+  { name: "Swift Violet", color: "#7B2CBF" },
   { name: "Blinkit Yellow", color: "#F7C948" },
   { name: "Emerald Green", color: "#10B981" },
   { name: "Royal Blue", color: "#2563EB" },
