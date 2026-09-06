@@ -594,22 +594,22 @@ function ShopRequestsTab() {
 
   useEffect(() => { fetchShops(); }, []);
 
-  const applications = shops.map(s => ({
-    id: s._id,
-    userId: s._id,
-    userName: s.ownerName,
-    userPhone: s.phone,
-    storeName: s.shopName,
-    storeCategory: s.shopType as VendorApplication['storeCategory'],
+  const applications = (Array.isArray(shops) ? shops : []).map(s => ({
+    id: s._id || (s as any).id || "",
+    userId: s._id || (s as any).id || "",
+    userName: s.ownerName || "Vendor",
+    userPhone: s.phone || "",
+    storeName: s.shopName || "Unnamed Store",
+    storeCategory: ((s.shopType || "grocery") as VendorApplication['storeCategory']),
     storeDescription: s.description ?? "",
-    ownerName: s.ownerName,
-    panNumber: s.panNumber,
+    ownerName: s.ownerName || "Vendor Owner",
+    panNumber: s.panNumber || "—",
     gstNumber: s.gstNumber ?? "",
-    bankAccountNumber: s.bankAccountNumber,
-    bankIfscCode: s.bankIfscCode,
-    upiId: s.upiId,
-    submittedAt: s.createdAt,
-    status: (s.status === 'banned' ? 'rejected' : s.status) as VendorApplication['status'],
+    bankAccountNumber: s.bankAccountNumber || "—",
+    bankIfscCode: s.bankIfscCode || "—",
+    upiId: s.upiId || "",
+    submittedAt: s.createdAt || new Date().toISOString(),
+    status: (s.status === 'banned' ? 'rejected' : (s.status || 'pending')) as VendorApplication['status'],
     rejectionReason: s.rejectionReason,
   }));
 
@@ -726,7 +726,7 @@ function ShopRequestsTab() {
         ) : (
           filteredApplications.map(app => {
             const rawShop = shops.find(s => s._id === app.id);
-            const certName = rawShop?.certificateType ? (CERT_NAMES[rawShop.certificateType] ?? "Certificate") : null;
+            const certName = rawShop?.certificateType ? (CERT_NAMES[rawShop.certificateType] ?? rawShop.certificateType) : null;
             return (
             <div key={app.id} className="bg-card p-6 rounded-3xl neu-card space-y-4">
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -740,14 +740,14 @@ function ShopRequestsTab() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-bold text-xl text-foreground">{app.storeName}</h3>
                       <Badge variant="secondary" className="bg-background neu-inset text-xs border-none capitalize">
-                        {app.storeCategory.replace('-', ' ')}
+                        {(app.storeCategory ? String(app.storeCategory).replace(/-/g, ' ') : 'General')}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <User className="w-4 h-4" /> {app.ownerName}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Applied: {new Date(app.submittedAt).toLocaleDateString()}
+                      Applied: {app.submittedAt ? new Date(app.submittedAt).toLocaleDateString() : 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -823,7 +823,7 @@ function ShopRequestsTab() {
                     {rawShop.certificateExpiryDate && (
                       <>
                         <span className="text-muted-foreground">Expiry:</span>
-                        <span className="text-foreground">{new Date(rawShop.certificateExpiryDate).toLocaleDateString()}</span>
+                        <span className="text-foreground">{rawShop.certificateExpiryDate ? new Date(rawShop.certificateExpiryDate).toLocaleDateString() : 'N/A'}</span>
                       </>
                     )}
                   </div>
@@ -2350,7 +2350,7 @@ function AnalyticsTab() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate">{p.name}</p>
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 border-none bg-background neu-inset capitalize mt-0.5">
-                      {p.category.replace('-', ' ')}
+                      {(p.category ? String(p.category).replace(/-/g, ' ') : 'General')}
                     </Badge>
                   </div>
                   <div className="text-right shrink-0">

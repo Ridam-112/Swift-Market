@@ -96,7 +96,7 @@ function StatusBadge({ status }: { status: string }) {
   };
   return (
     <Badge className={`text-xs border-none capitalize ${cls[status] ?? "bg-muted text-muted-foreground"}`}>
-      {status.replace("_", " ")}
+      {(status || "").replace("_", " ")}
     </Badge>
   );
 }

@@ -148,6 +148,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [resetToken, setResetToken] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState("");
   const [truecallerLoading, setTruecallerLoading] = useState(false);
   const truecallerRan = useRef(false);
   const [configFetching, setConfigFetching] = useState(true);
@@ -190,7 +191,9 @@ export default function Auth() {
       })
       .then((d: { authMode?: string; googleClientId?: string; truecallerAppKey?: string }) => {
         console.log("[Auth] Config loaded:", JSON.stringify(d));
-        setAuthConfig((d.authMode ?? "both") as Parameters<typeof setAuthConfig>[0], d.googleClientId ?? "");
+        const rawGId = (d.googleClientId ?? "").trim().replace(/^["']|["']$/g, "");
+        setGoogleClientId(rawGId);
+        setAuthConfig((d.authMode ?? "both") as Parameters<typeof setAuthConfig>[0], rawGId);
         if (d.truecallerAppKey) setTruecallerAppKey(d.truecallerAppKey);
       })
       .catch((err) => {
@@ -202,6 +205,50 @@ export default function Auth() {
       .finally(() => setConfigFetching(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ─── Web: Google Identity Services (GIS) One-Tap / Popup Setup ───────────────
+  useEffect(() => {
+    if (isCapacitorShell || !googleClientId || googleClientId === "placeholder") return;
+    try {
+      if ((window as any).google?.accounts?.id) {
+        (window as any).google.accounts.id.initialize({
+          client_id: googleClientId,
+          cancel_on_tap_outside: true,
+          callback: async (response: { credential?: string }) => {
+            if (!response?.credential) return;
+            setGoogleLoading(true);
+            try {
+              const res = await fetch(`${api.BASE}/auth/google`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ credential: response.credential }),
+              });
+              const data = await res.json() as any;
+              if (!res.ok || !data.success || !data.accessToken || !data.refreshToken || !data.user) {
+                throw new Error(data.message ?? "Google sign-in failed.");
+              }
+              setTokens(data.accessToken, data.refreshToken);
+              localStorage.setItem("sm_user", JSON.stringify(data.user));
+              localStorage.setItem("sm_role", data.user.role);
+              await refreshUser();
+              const goTo = (data.needsProfile || !data.user.phone || data.user.phone.startsWith("g_"))
+                ? "/complete-profile"
+                : getNextPath();
+              setLocation(goTo);
+            } catch (err) {
+              console.error("[Auth] Google GIS sign-in failed:", err);
+              toast.error(err instanceof Error ? err.message : "Google sign-in failed. Please try again.");
+            } finally {
+              setGoogleLoading(false);
+            }
+          },
+        });
+      }
+    } catch (err) {
+      console.warn("[Auth] GIS initialization note:", err);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleClientId, isCapacitorShell]);
 
   // ─── Android: probe native Google plugin availability ──────────────────────
   // Runs once on mount. Web browsers skip this entirely.
@@ -224,16 +271,23 @@ export default function Auth() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Detect reset-password token in URL query params.
-  // Depends on `search` so it re-fires if the URL changes without a full reload
-  // (e.g. email client opens the link in an already-open browser tab).
+  // Detect reset-password token or error in URL query params.
   useEffect(() => {
     const params = new URLSearchParams(search);
     const token = params.get("token");
+    const err = params.get("error");
     if (token) {
       setResetToken(token);
       setStep("reset");
-      // Remove token from URL so it doesn't linger in history
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (err) {
+      if (err === "google_not_configured") {
+        toast.error("Google sign-in is not fully configured on this server yet. Please use email & password.");
+      } else if (err === "google_disabled") {
+        toast.error("Google sign-in is currently disabled.");
+      } else if (err !== "access_denied") {
+        toast.error(`Authentication notice: ${err}`);
+      }
       window.history.replaceState({}, "", window.location.pathname);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -463,8 +517,19 @@ export default function Auth() {
         console.log("[Auth] Native Google login success → navigating to", goTo);
         setLocation(goTo);
       } else {
-        // ── Web: server-side OAuth2 redirect ──────────────────────────────────
-        // api.BASE is "/api" in browser → redirect goes to /api/auth/google/redirect ✓
+        // ── Web: Google Sign-In ──────────────────────────────────────────────
+        if ((window as any).google?.accounts?.id && googleClientId && googleClientId !== "placeholder") {
+          try {
+            (window as any).google.accounts.id.prompt((notification: any) => {
+              if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                window.location.href = `${api.BASE}/auth/google/redirect`;
+              }
+            });
+            return;
+          } catch (e) {
+            console.warn("[Auth] GIS prompt fallback:", e);
+          }
+        }
         window.location.href = `${api.BASE}/auth/google/redirect`;
       }
     } catch (err) {

@@ -22,7 +22,8 @@ import {
 
 import { isSuperAdminEmail } from "../../utils/seedAdmins.js";
 
-const googleClient = new OAuth2Client(process.env["GOOGLE_CLIENT_ID"]);
+const rawGoogleClientId = (process.env["GOOGLE_CLIENT_ID"] ?? "").trim().replace(/^["']|["']$/g, "");
+const googleClient = new OAuth2Client(rawGoogleClientId);
 const router = Router();
 
 const BCRYPT_ROUNDS = 12;
@@ -635,7 +636,11 @@ router.post("/google", googleAuthLimiter, async (req: Request, res: Response): P
     let profilePhoto: string | undefined;
 
     if (credential) {
-      const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: process.env["GOOGLE_CLIENT_ID"] });
+      const rawClientId = (process.env["GOOGLE_CLIENT_ID"] ?? "").trim().replace(/^["']|["']$/g, "");
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        ...(rawClientId ? { audience: rawClientId } : {}),
+      });
       const payload = ticket.getPayload();
       if (!payload?.email) { res.status(400).json({ success: false, message: "Invalid Google token" }); return; }
       email = payload.email; name = payload.name; googleId = payload.sub; profilePhoto = payload.picture;
@@ -685,31 +690,44 @@ router.post("/google", googleAuthLimiter, async (req: Request, res: Response): P
 // the old Firebase ID-token flow) are matched in /google/exchange by googleId
 // OR email, so their accounts and all data are preserved automatically.
 router.get("/google/redirect", (req: Request, res: Response): void => {
-  const clientId     = process.env["GOOGLE_CLIENT_ID"];
-  const clientSecret = process.env["GOOGLE_CLIENT_SECRET"];
+  const rawClientId     = process.env["GOOGLE_CLIENT_ID"] ?? "";
+  const rawClientSecret = process.env["GOOGLE_CLIENT_SECRET"] ?? "";
+  const clientId     = rawClientId.trim().replace(/^["']|["']$/g, "");
+  const clientSecret = rawClientSecret.trim().replace(/^["']|["']$/g, "");
+
   if (AUTH_MODE === "otp") {
-    res.status(400).json({ success: false, message: "Google login is not enabled on this server." });
+    res.redirect("/auth?error=google_disabled");
     return;
   }
-  if (!clientId) {
-    res.status(503).json({ success: false, message: "Google login is not configured — GOOGLE_CLIENT_ID is missing." });
-    return;
-  }
-  if (!clientSecret) {
-    res.status(503).json({ success: false, message: "Google login is not fully configured — GOOGLE_CLIENT_SECRET is missing. Add it in Replit → Tools → Secrets." });
+  if (!clientId || !clientSecret) {
+    req.log.warn({ hasClientId: !!clientId, hasSecret: !!clientSecret }, "Google login credentials not configured in environment");
+    res.redirect("/auth?error=google_not_configured");
     return;
   }
 
-  const proto = ((req.headers["x-forwarded-proto"] as string | undefined) ?? "https").split(",")[0]!.trim();
-  const host  = ((req.headers["x-forwarded-host"]  as string | undefined) ?? req.headers.host ?? "").split(",")[0]!.trim();
-  const redirectUri = `${proto}://${host}/auth/google/callback`;
+  let redirectUri: string;
+  if (process.env["GOOGLE_REDIRECT_URI"]) {
+    redirectUri = process.env["GOOGLE_REDIRECT_URI"].trim().replace(/^["']|["']$/g, "");
+  } else {
+    const rawAppUrl = (process.env["APP_URL"] ?? process.env["PUBLIC_URL"] ?? process.env["REPLIT_DEV_DOMAIN"] ?? "").trim().replace(/^["']|["']$/g, "");
+    if (rawAppUrl) {
+      const base = rawAppUrl.startsWith("http://") || rawAppUrl.startsWith("https://")
+        ? rawAppUrl
+        : `https://${rawAppUrl}`;
+      redirectUri = `${base.replace(/\/+$/, "")}/auth/google/callback`;
+    } else {
+      const proto = ((req.headers["x-forwarded-proto"] as string | undefined) ?? (req.secure ? "https" : "http")).split(",")[0]!.trim();
+      const host  = ((req.headers["x-forwarded-host"]  as string | undefined) ?? req.headers.host ?? "swiftmart.space").split(",")[0]!.trim();
+      redirectUri = `${proto}://${host}/auth/google/callback`;
+    }
+  }
 
-  req.log.info({ redirectUri }, "Google OAuth redirect — using this redirect_uri (must be registered in Google Cloud Console)");
+  req.log.info({ redirectUri, clientId: clientId.slice(0, 16) + "..." }, "Google OAuth redirect — using this redirect_uri");
 
   const nonce = randomBytes(16).toString("hex");
   const state = jwt.sign(
     { oauth: true, nonce, redirectUri },
-    process.env["JWT_SECRET"]!,
+    process.env["JWT_SECRET"] || "swiftmart-oauth-secret",
     { expiresIn: "10m" },
   );
 
@@ -741,8 +759,10 @@ router.post("/google/exchange", googleAuthLimiter, async (req: Request, res: Res
     return;
   }
 
-  const clientId     = process.env["GOOGLE_CLIENT_ID"];
-  const clientSecret = process.env["GOOGLE_CLIENT_SECRET"];
+  const rawClientId     = process.env["GOOGLE_CLIENT_ID"] ?? "";
+  const rawClientSecret = process.env["GOOGLE_CLIENT_SECRET"] ?? "";
+  const clientId     = rawClientId.trim().replace(/^["']|["']$/g, "");
+  const clientSecret = rawClientSecret.trim().replace(/^["']|["']$/g, "");
   if (!clientId || !clientSecret) {
     res.status(500).json({ success: false, message: "Google OAuth is not fully configured on the server. GOOGLE_CLIENT_SECRET is missing." });
     return;
@@ -750,7 +770,7 @@ router.post("/google/exchange", googleAuthLimiter, async (req: Request, res: Res
 
   let redirectUri: string;
   try {
-    const payload = jwt.verify(state, process.env["JWT_SECRET"]!) as { oauth: boolean; redirectUri: string };
+    const payload = jwt.verify(state, process.env["JWT_SECRET"] || "swiftmart-oauth-secret") as { oauth: boolean; redirectUri: string };
     if (!payload.oauth) throw new Error("Bad state");
     redirectUri = payload.redirectUri;
   } catch {
@@ -797,7 +817,10 @@ router.post("/google/exchange", googleAuthLimiter, async (req: Request, res: Res
     let profilePhoto: string | undefined;
 
     if (tokenData.id_token) {
-      const ticket = await googleClient.verifyIdToken({ idToken: tokenData.id_token, audience: clientId });
+      const ticket = await googleClient.verifyIdToken({
+        idToken: tokenData.id_token,
+        ...(clientId ? { audience: clientId } : {}),
+      });
       const payload = ticket.getPayload();
       if (!payload?.email) { res.status(400).json({ success: false, message: "Invalid Google token" }); return; }
       email = payload.email; name = payload.name; googleId = payload.sub; profilePhoto = payload.picture;
