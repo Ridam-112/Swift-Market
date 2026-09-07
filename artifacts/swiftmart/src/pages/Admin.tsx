@@ -1584,9 +1584,15 @@ function OrdersTab() {
         paymentMethod: (o.paymentMethod ?? "COD") as PlatformOrder['paymentMethod'],
         paymentStatus: (o.paymentStatus ?? "pending") as PlatformOrder['paymentStatus'],
         deliveryType: o.deliveryType || 'instant',
+        deliveryOtp: (o as any).deliveryOtp,
         placedAt: o.createdAt,
         updatedAt: o.updatedAt ?? o.createdAt,
         address: o.address,
+        deliveryPartnerId: o.deliveryPartnerId,
+        riderName: o.riderName,
+        riderPhone: o.riderPhone,
+        riderPhotoUrl: o.riderPhotoUrl,
+        deliveryPartner: o.deliveryPartner,
       })));
       // Build orderId → deliveryPartnerId map
       const map: Record<string, string | null> = {};
@@ -1969,34 +1975,42 @@ function OrdersTab() {
                   </div>
 
                   {/* Delivery Partner Read-Only Card (v2 Contract) */}
-                  {!isTerminal && (
-                    <div className="space-y-2">
-                      {(o.riderName || o.deliveryPartner) ? (
+                  {(() => {
+                    const assignedId = o.deliveryPartnerId || partnerMap[o.id];
+                    const activeP = assignedId ? activePartners.find(p => p._id === assignedId) : null;
+                    const rName = o.riderName || o.deliveryPartner?.name || activeP?.name;
+                    const rPhone = o.riderPhone || o.deliveryPartner?.phone || activeP?.phone;
+                    const rPhoto = o.riderPhotoUrl || o.deliveryPartner?.photoUrl;
+
+                    if (rName) {
+                      return (
                         <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl space-y-2">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2.5 min-w-0">
-                              {(o.riderPhotoUrl || o.deliveryPartner?.photoUrl) ? (
+                              {rPhoto ? (
                                 <img
-                                  src={o.riderPhotoUrl || o.deliveryPartner?.photoUrl}
-                                  alt={o.riderName || o.deliveryPartner?.name}
+                                  src={rPhoto}
+                                  alt={rName}
                                   className="w-9 h-9 rounded-full object-cover border border-emerald-500/30 shrink-0"
                                 />
                               ) : (
                                 <div className="w-9 h-9 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold flex items-center justify-center text-xs border border-emerald-500/30 shrink-0">
-                                  {(o.riderName || o.deliveryPartner?.name || "R").slice(0, 1).toUpperCase()}
+                                  {rName.slice(0, 1).toUpperCase()}
                                 </div>
                               )}
                               <div className="min-w-0">
                                 <span className="font-bold text-xs text-foreground block truncate">
-                                  🛵 {o.riderName || o.deliveryPartner?.name}
+                                  🛵 {rName}
                                 </span>
-                                <a
-                                  href={`tel:${o.riderPhone || o.deliveryPartner?.phone}`}
-                                  className="text-[11px] font-mono text-primary hover:underline flex items-center gap-1"
-                                >
-                                  <Phone className="w-3 h-3 inline text-primary shrink-0" />
-                                  {o.riderPhone || o.deliveryPartner?.phone}
-                                </a>
+                                {rPhone && (
+                                  <a
+                                    href={`tel:${rPhone}`}
+                                    className="text-[11px] font-mono text-primary hover:underline flex items-center gap-1"
+                                  >
+                                    <Phone className="w-3 h-3 inline text-primary shrink-0" />
+                                    {rPhone}
+                                  </a>
+                                )}
                               </div>
                             </div>
                             <Badge variant="outline" className="text-[10px] font-bold uppercase border-emerald-500/40 text-emerald-700 dark:text-emerald-300 shrink-0">
@@ -2006,10 +2020,14 @@ function OrdersTab() {
 
                           <div className="text-[10px] text-muted-foreground font-mono flex items-center justify-between border-t border-emerald-500/10 pt-1.5">
                             <span>Accepted {formatAgo(o.updatedAt || o.placedAt)}</span>
-                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">🟢 Active</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{o.status === "delivered" ? "Delivered" : "🟢 Active"}</span>
                           </div>
                         </div>
-                      ) : (
+                      );
+                    }
+
+                    if (!isTerminal) {
+                      return (
                         <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2">
                           <div className="flex items-center justify-between gap-2">
                             {(Date.now() - new Date(o.placedAt).getTime() > 60000) ? (
@@ -2031,9 +2049,11 @@ function OrdersTab() {
                             </Button>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  )}
+                      );
+                    }
+
+                    return null;
+                  })()}
 
                   {/* Status update */}
                   {updatingOrder === o.id ? (

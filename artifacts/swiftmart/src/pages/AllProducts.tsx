@@ -57,7 +57,11 @@ export default function AllProducts() {
   const filtered = useMemo(() => {
     let result = products;
     if (selectedCategory) {
-      result = result.filter(p => p.category === selectedCategory);
+      if (selectedCategory === "fruits-vegetables" || selectedCategory === "vegetables") {
+        result = result.filter(p => p.category === "fruits-vegetables" || p.category === "vegetables" || p.category === "fruits");
+      } else {
+        result = result.filter(p => p.category === selectedCategory);
+      }
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase();

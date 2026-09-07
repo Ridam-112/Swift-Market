@@ -125360,13 +125360,31 @@ router8.get("/", optionalAuth, async (req, res) => {
         conditions.push(eq10(products.status, status));
       }
     }
-    if (category) conditions.push(eq10(products.category, category));
+    if (category) {
+      const catLower = category.toLowerCase().trim();
+      if (catLower === "fruits-vegetables") {
+        conditions.push(or4(
+          eq10(products.category, "fruits-vegetables"),
+          eq10(products.category, "vegetables"),
+          eq10(products.category, "fruits")
+        ));
+      } else if (catLower === "vegetables") {
+        conditions.push(or4(
+          eq10(products.category, "vegetables"),
+          eq10(products.category, "fruits-vegetables")
+        ));
+      } else {
+        conditions.push(eq10(products.category, category));
+      }
+    }
     if (search) conditions.push(ilike3(products.name, `%${search}%`));
     if (trending === "true") conditions.push(eq10(products.trending, true));
     if (status === "active" && category) {
       const activeCats = await db.select({ slug: categories.slug }).from(categories).where(eq10(categories.isActive, true));
       const activeSlugs = activeCats.map((c) => c.slug);
-      if (activeSlugs.length > 0 && !activeSlugs.includes(category)) {
+      const catLower = category.toLowerCase().trim();
+      const isAllowed = activeSlugs.includes(category) || catLower === "vegetables" && activeSlugs.includes("fruits-vegetables") || catLower === "fruits" && activeSlugs.includes("fruits-vegetables") || catLower === "fruits-vegetables" && activeSlugs.includes("vegetables");
+      if (activeSlugs.length > 0 && !isAllowed) {
         res.json({ success: true, products: [], total: 0, page: 1, pages: 0 });
         return;
       }
