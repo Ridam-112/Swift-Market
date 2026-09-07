@@ -21,6 +21,9 @@ export interface ShopListing {
   packagingCharge?: number;
   gstEnabled?: boolean;
   gstRate?: number;
+  address?: Record<string, any>;
+  lat?: number;
+  lng?: number;
 }
 
 interface ApiShopItem {
@@ -28,7 +31,7 @@ interface ApiShopItem {
   shopName: string;
   ownerName: string;
   shopType: string;
-  address?: { city?: string; pincode?: string };
+  address?: Record<string, any>;
   phone: string;
   isOpen: boolean;
   rating: number;
@@ -44,13 +47,17 @@ interface ApiShopItem {
 }
 
 export function mapApiShop(s: ApiShopItem): ShopListing {
+  const addr = s.address ?? {};
+  const latVal = typeof addr.lat === 'number' ? addr.lat : (typeof addr.latitude === 'number' ? addr.latitude : undefined);
+  const lngVal = typeof addr.lng === 'number' ? addr.lng : (typeof addr.longitude === 'number' ? addr.longitude : undefined);
+
   return {
     id: s._id,
     storeName: s.shopName,
     ownerName: s.ownerName,
     category: s.shopType,
-    city: s.address?.city ?? "",
-    pincode: s.address?.pincode ?? "",
+    city: addr.city ?? "",
+    pincode: addr.pincode ?? "",
     phone: s.phone,
     isOpen: s.isOpen ?? false,
     rating: s.rating ?? 0,
@@ -63,6 +70,9 @@ export function mapApiShop(s: ApiShopItem): ShopListing {
     packagingCharge: s.packagingCharge ?? undefined,
     gstEnabled: s.gstEnabled ?? false,
     gstRate: s.gstRate ?? undefined,
+    address: addr,
+    lat: latVal,
+    lng: lngVal,
   };
 }
 

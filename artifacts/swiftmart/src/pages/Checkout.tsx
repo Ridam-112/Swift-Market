@@ -109,7 +109,8 @@ export default function Checkout() {
         coords = await getCustomerCoords();
         customerCoordsRef.current = coords;
       }
-      const eta = computeSingleShopEta(coords, shopPincodeForEta, shopEtaStr);
+      const shopCoords = (shopForEta?.lat && shopForEta?.lng) ? { lat: shopForEta.lat, lng: shopForEta.lng } : null;
+      const eta = computeSingleShopEta(coords, shopPincodeForEta, shopEtaStr, shopCoords);
       setDeliveryEta(eta);
       setEtaLoading(false);
     };
@@ -587,7 +588,8 @@ export default function Checkout() {
                         const coords = await getCustomerCoords();
                         customerCoordsRef.current = coords;
                         const shopForEta = shops.find(s => s.id === shopId);
-                        const eta = computeSingleShopEta(coords, shopForEta?.pincode ?? "", shopForEta?.eta ?? "");
+                        const shopCoords = (shopForEta?.lat && shopForEta?.lng) ? { lat: shopForEta.lat, lng: shopForEta.lng } : null;
+                        const eta = computeSingleShopEta(coords, shopForEta?.pincode ?? "", shopForEta?.eta ?? "", shopCoords);
                         setDeliveryEta(eta);
                         setEtaLoading(false);
                       }}

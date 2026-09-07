@@ -103,8 +103,12 @@ export function computeSingleShopEta(
   customerCoords: LatLng | null,
   shopPincode: string,
   shopEta: string,
+  shopCoordsOverride?: LatLng | null,
 ): SingleShopEta {
-  const shopCoords = coordsForPincode(shopPincode);
+  // Use exact shop GPS coordinates if available, otherwise fallback to pincode centroid
+  const shopCoords = (shopCoordsOverride && typeof shopCoordsOverride.lat === "number" && typeof shopCoordsOverride.lng === "number")
+    ? shopCoordsOverride
+    : coordsForPincode(shopPincode);
   let distanceKm: number | null = null;
   let customerCoordsUsed = false;
 
@@ -196,32 +200,37 @@ export function calculateDeliveryFee(
   const dist = Math.max(1.0, Math.round(rawDist * 10) / 10);
 
   if (isFood || slot === "instant") {
-    // Base delivery fee = ₹20, Rider petrol allowance = ₹5 per km
+    // Base delivery fee = ₹20, Rider petrol allowance = ₹5 per km (capped at ₹50 max)
     // 1 km: ₹20 + ₹5 = ₹25
     // 2 km: ₹20 + ₹10 = ₹30
     // 3 km: ₹20 + ₹15 = ₹35
+    // 6+ km: capped at ₹50
     const baseFee = 20;
-    const petrolFee = Math.round(dist * 5);
+    const rawPetrol = Math.round(dist * 5);
+    const totalFee = Math.min(50, baseFee + rawPetrol);
+    const petrolFee = totalFee - baseFee;
     return {
       distanceKm: dist,
       baseFee,
       petrolFee,
-      totalFee: baseFee + petrolFee,
+      totalFee,
     };
   }
 
   if (slot === "standard") {
-    // Standard: Base fee ₹15, Rider petrol allowance = ₹3 per km
+    // Standard: Base fee ₹15, Rider petrol allowance = ₹3 per km (capped at ₹50 max)
     // 1 km: ₹15 + ₹3 = ₹18
     // 2 km: ₹15 + ₹6 = ₹21
     // 3 km: ₹15 + ₹9 = ₹24
     const baseFee = 15;
-    const petrolFee = Math.round(dist * 3);
+    const rawPetrol = Math.round(dist * 3);
+    const totalFee = Math.min(50, baseFee + rawPetrol);
+    const petrolFee = totalFee - baseFee;
     return {
       distanceKm: dist,
       baseFee,
       petrolFee,
-      totalFee: baseFee + petrolFee,
+      totalFee,
     };
   }
 

@@ -149,10 +149,11 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config' | 'theme-config' | 'app-home-builder' | 'app-superstore-builder' | 'app-cafe-builder' | 'riders';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'shops-map' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config' | 'theme-config' | 'app-home-builder' | 'app-superstore-builder' | 'app-cafe-builder' | 'riders';
 
 import { SEO } from "@/components/SEO";
 import FleetMapTab from "@/components/FleetMapTab";
+import ShopsMapTab from "@/components/ShopsMapTab";
 import { ThemeConfigTab } from "./admin/ThemeConfigTab";
 import { LayoutBuilderTab } from "./admin/LayoutBuilderTab";
 
@@ -224,6 +225,7 @@ export default function Admin() {
               {activeSection === 'overview' && <OverviewTab onNavigate={setActiveSection} />}
               {activeSection === 'requests' && <ShopRequestsTab />}
               {activeSection === 'shops' && <ShopsManagementTab />}
+              {activeSection === 'shops-map' && <ShopsMapTab />}
               {activeSection === 'users' && <UsersTab />}
               {activeSection === 'orders' && <OrdersTab />}
               {activeSection === 'reports' && <ReportsTab />}
@@ -303,6 +305,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'requests', label: 'Shop Requests', icon: FileText, badge: pendingRequests },
     { id: 'shops', label: 'Shops', icon: Store },
+    { id: 'shops-map', label: 'Shops Map', icon: MapPin },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'orders', label: 'Orders', icon: ShoppingBag, badge: pendingOrders },
     { id: 'riders', label: 'Riders', icon: Truck, badge: pendingRiders },
