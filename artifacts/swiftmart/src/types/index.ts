@@ -16,6 +16,8 @@ export interface VendorApplication {
   storeArea?: string;
   storeCity?: string;
   storePincode?: string;
+  storeLat?: number;
+  storeLng?: number;
   panNumber: string;
   gstNumber: string;
   bankAccountHolderName?: string;

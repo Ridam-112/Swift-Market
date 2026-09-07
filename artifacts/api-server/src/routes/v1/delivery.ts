@@ -295,10 +295,17 @@ router.get("/me/orders", authenticate, async (req: AuthRequest, res: Response): 
     .where(eq(orders.deliveryPartnerId, partner.id))
     .orderBy(desc(orders.createdAt));
 
-  const result = rows.map(({ order, shopAddress }) => ({
-    ...mi(order),
-    shopAddress: (shopAddress ?? {}) as Record<string, string>,
-  }));
+  const result = rows.map(({ order, shopAddress }) => {
+    const sAddr = (shopAddress ?? {}) as Record<string, any>;
+    const sLat = typeof sAddr.lat === "number" ? sAddr.lat : (typeof sAddr.latitude === "number" ? sAddr.latitude : undefined);
+    const sLon = typeof sAddr.lng === "number" ? sAddr.lng : (typeof sAddr.longitude === "number" ? sAddr.longitude : (typeof sAddr.lon === "number" ? sAddr.lon : undefined));
+    return {
+      ...mi(order),
+      shopAddress: sAddr,
+      shopLat: sLat,
+      shopLon: sLon,
+    };
+  });
 
   res.json({ success: true, orders: result, partner: mi(partner) });
 });
@@ -494,11 +501,18 @@ router.get("/available-orders", authenticate, async (req: AuthRequest, res: Resp
 
   res.json({
     success: true,
-    orders: filtered.map(({ order, shopName, shopAddress }) => ({
-      ...mi(order),
-      shopName: shopName ?? "Shop",
-      shopAddress: (shopAddress ?? {}) as Record<string, string>,
-    })),
+    orders: filtered.map(({ order, shopName, shopAddress }) => {
+      const sAddr = (shopAddress ?? {}) as Record<string, any>;
+      const sLat = typeof sAddr.lat === "number" ? sAddr.lat : (typeof sAddr.latitude === "number" ? sAddr.latitude : undefined);
+      const sLon = typeof sAddr.lng === "number" ? sAddr.lng : (typeof sAddr.longitude === "number" ? sAddr.longitude : (typeof sAddr.lon === "number" ? sAddr.lon : undefined));
+      return {
+        ...mi(order),
+        shopName: shopName ?? "Shop",
+        shopAddress: sAddr,
+        shopLat: sLat,
+        shopLon: sLon,
+      };
+    }),
   });
 });
 

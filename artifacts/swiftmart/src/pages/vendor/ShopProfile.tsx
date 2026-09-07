@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Upload, X, Loader2, ChevronDown, Store, Clock, QrCode, Download, Printer, ShieldCheck } from "lucide-react";
+import { Upload, X, Loader2, ChevronDown, Store, Clock, QrCode, Download, Printer, ShieldCheck, Navigation, CheckCircle, AlertCircle, MapPin } from "lucide-react";
 import { downloadPickupSticker, printPickupSticker } from "@/lib/pickupSticker";
 
 interface ApiCategory {
@@ -166,6 +166,9 @@ export default function ShopProfile() {
   const [city, setCity] = useState("");
   const [pincode, setPincode] = useState("");
   const [state, setState] = useState("");
+  const [shopLat, setShopLat] = useState<number | null>(null);
+  const [shopLng, setShopLng] = useState<number | null>(null);
+  const [detectingLocation, setDetectingLocation] = useState(false);
   const [shopType, setShopType] = useState("");
   const [category, setCategory] = useState("");
   const [timingsOpen, setTimingsOpen] = useState("09:00");
@@ -195,6 +198,11 @@ export default function ShopProfile() {
         setCity(shop.address?.city ?? "");
         setPincode(shop.address?.pincode ?? "");
         setState(shop.address?.state ?? "");
+        const addrAny = (shop.address || {}) as any;
+        const resolvedLat = addrAny.lat ?? addrAny.latitude ?? null;
+        const resolvedLng = addrAny.lng ?? addrAny.longitude ?? null;
+        setShopLat(resolvedLat != null ? Number(resolvedLat) : null);
+        setShopLng(resolvedLng != null ? Number(resolvedLng) : null);
         setShopType(shop.shopType ?? "");
         setCategory(shop.category ?? "");
         setTimingsOpen(shop.timings?.open ?? "09:00");
@@ -206,6 +214,29 @@ export default function ShopProfile() {
       })
       .catch(() => setLoading(false));
   }, [user]);
+
+  const handleDetectGps = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+    setDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        setShopLat(lat);
+        setShopLng(lng);
+        setDetectingLocation(false);
+        toast.success(`Location synced: ${lat}, ${lng}`);
+      },
+      (err) => {
+        setDetectingLocation(false);
+        toast.error(`Location detection failed: ${err.message}`);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,6 +258,12 @@ export default function ShopProfile() {
           city: city.trim(),
           pincode: pincode.trim(),
           state: state.trim() || undefined,
+          ...(shopLat != null && shopLng != null ? {
+            lat: shopLat,
+            lng: shopLng,
+            latitude: shopLat,
+            longitude: shopLng,
+          } : {}),
         },
         shopType,
         category,
@@ -400,6 +437,45 @@ export default function ShopProfile() {
               className="bg-background neu-inset border-none"
               placeholder="State"
             />
+          </div>
+
+          {/* GPS Coordinates Auto-Detection */}
+          <div className="p-3 bg-muted/40 rounded-2xl border border-border/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-primary shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-foreground">GPS Location Pin</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {shopLat != null && shopLng != null ? (
+                    <span className="text-emerald-500 font-medium inline-flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" /> Pinned: {shopLat.toFixed(4)}, {shopLng.toFixed(4)}
+                    </span>
+                  ) : (
+                    <span className="text-amber-500 font-medium inline-flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> Not pinned yet (Required for accurate delivery)
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDetectGps}
+              disabled={detectingLocation}
+              className="text-xs h-8 gap-1.5 shrink-0"
+            >
+              {detectingLocation ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Detecting...
+                </>
+              ) : (
+                <>
+                  <Navigation className="w-3.5 h-3.5 text-primary" /> Auto-Detect GPS
+                </>
+              )}
+            </Button>
           </div>
         </section>
 

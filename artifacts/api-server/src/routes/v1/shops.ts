@@ -249,9 +249,15 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
     phone:                z.string().regex(/^[6-9]\d{9}$/, "Valid 10-digit mobile number required"),
     address:              z.object({
       line1:   z.string().min(1).max(200).nullish(),
+      line2:   z.string().max(200).nullish(),
       city:    z.string().min(1).max(100).nullish(),
+      state:   z.string().max(100).nullish(),
       pincode: z.string().regex(/^\d{6}$/).nullish(),
-    }).nullish(),
+      lat:     z.number().nullish(),
+      lng:     z.number().nullish(),
+      latitude: z.number().nullish(),
+      longitude: z.number().nullish(),
+    }).passthrough().nullish(),
     shopType:             z.string().max(50).nullish(),
     category:             z.string().max(50).nullish(),
     subcategory:          z.string().max(50).nullish(),
@@ -381,11 +387,26 @@ const RESTAURANT_SHOP_TYPES = new Set(["restaurant", "fast-food", "cloud-kitchen
 
 // PATCH /api/shops/my/profile — vendor updates their own shop profile (safe fields only)
 router.patch("/my/profile", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const body = req.body as Record<string, unknown>;
-  const allowed = ["shopName", "description", "image", "banner", "address", "shopType", "category", "timings"] as const;
+  const allowed = ["shopName", "description", "image", "banner", "shopType", "category", "timings", "address"];
   const update: Record<string, unknown> = {};
+  const body = req.body as Record<string, unknown>;
   for (const key of allowed) {
-    if (body[key] !== undefined) update[key] = body[key];
+    if (key !== "address" && body[key] !== undefined) update[key] = body[key];
+  }
+
+  // Address: merge existing lat/lng so coordinates are never accidentally wiped
+  if (body["address"] !== undefined && typeof body["address"] === "object" && body["address"] !== null) {
+    const newAddr = body["address"] as Record<string, unknown>;
+    const [existingShop] = await db.select({ address: shops.address }).from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
+    const oldAddr = (existingShop?.address || {}) as Record<string, unknown>;
+    update["address"] = {
+      ...oldAddr,
+      ...newAddr,
+      lat: newAddr["lat"] ?? newAddr["latitude"] ?? oldAddr["lat"] ?? oldAddr["latitude"],
+      lng: newAddr["lng"] ?? newAddr["longitude"] ?? oldAddr["lng"] ?? oldAddr["longitude"],
+      latitude: newAddr["latitude"] ?? newAddr["lat"] ?? oldAddr["latitude"] ?? oldAddr["lat"],
+      longitude: newAddr["longitude"] ?? newAddr["lng"] ?? oldAddr["longitude"] ?? oldAddr["lng"],
+    };
   }
 
   // GST fields — allowed for all vendors

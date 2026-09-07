@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Check, ChevronRight, ChevronDown, CheckCircle2, XCircle, Upload, Loader2, X, FileText, Camera } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, ChevronDown, CheckCircle2, XCircle, Upload, Loader2, X, FileText, Camera, MapPin, Navigation, AlertCircle } from "lucide-react";
 import { categories } from "@/data/categories";
 import { api } from "@/lib/api";
 import { isServicePincode, getServiceAreaName } from "@/lib/serviceArea";
@@ -123,6 +123,32 @@ export default function VendorRegister() {
   const [storeArea, setStoreArea] = useState("");
   const [storeCity, setStoreCity] = useState("");
   const [storePincode, setStorePincode] = useState("");
+  const [storeLat, setStoreLat] = useState<number | null>(null);
+  const [storeLng, setStoreLng] = useState<number | null>(null);
+  const [detectingGps, setDetectingGps] = useState(false);
+
+  const handleDetectGps = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+    setDetectingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        setStoreLat(lat);
+        setStoreLng(lng);
+        setDetectingGps(false);
+        toast.success(`Shop GPS pinned: ${lat}, ${lng}`);
+      },
+      (err) => {
+        setDetectingGps(false);
+        toast.error(`Location detection failed: ${err.message}`);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   // Files are stored locally and only uploaded to Cloudinary on final submit
   // to prevent orphaned assets if the user abandons the form mid-way.
@@ -218,6 +244,8 @@ export default function VendorRegister() {
         storeArea,
         storeCity,
         storePincode,
+        storeLat: storeLat ?? undefined,
+        storeLng: storeLng ?? undefined,
         panNumber,
         gstNumber,
         upiId,
@@ -372,6 +400,45 @@ export default function VendorRegister() {
                       <p className="text-xs mt-0.5">SwiftMart vendor service is currently available only in 733101 and 733103.</p>
                     </div>
                   )}
+
+                  {/* GPS Coordinates Auto-Detection */}
+                  <div className="p-3 bg-muted/40 rounded-2xl border border-border/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-primary shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">GPS Location Pin</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {storeLat != null && storeLng != null ? (
+                            <span className="text-emerald-500 font-medium inline-flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" /> Pinned: {storeLat.toFixed(4)}, {storeLng.toFixed(4)}
+                            </span>
+                          ) : (
+                            <span className="text-amber-500 font-medium inline-flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" /> Optional: Auto-pins shop for delivery riders
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDetectGps}
+                      disabled={detectingGps}
+                      className="text-xs h-8 gap-1.5 shrink-0"
+                    >
+                      {detectingGps ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Detecting...
+                        </>
+                      ) : (
+                        <>
+                          <Navigation className="w-3.5 h-3.5 text-primary" /> Auto-Detect GPS
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
 
                 <Button onClick={handleNext} disabled={!step1Valid} className="w-full rounded-2xl h-14 text-lg font-bold shadow-none neu-card mt-4">

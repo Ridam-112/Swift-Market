@@ -538,6 +538,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         city: appData.storeCity || "",
         pincode: appData.storePincode || "",
         state: "West Bengal",
+        ...(appData.storeLat != null && appData.storeLng != null ? {
+          lat: appData.storeLat,
+          lng: appData.storeLng,
+          latitude: appData.storeLat,
+          longitude: appData.storeLng,
+        } : {}),
       },
     });
 
