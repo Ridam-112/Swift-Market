@@ -196,8 +196,12 @@ export function calculateDeliveryFee(
   const dist = Math.max(1.0, Math.round(rawDist * 10) / 10);
 
   if (isFood || slot === "instant") {
-    const baseFee = Math.max(20, Math.round(dist * 20));
-    const petrolFee = Math.max(5, Math.round(dist * 5));
+    // Base delivery fee = ₹20, Rider petrol allowance = ₹5 per km
+    // 1 km: ₹20 + ₹5 = ₹25
+    // 2 km: ₹20 + ₹10 = ₹30
+    // 3 km: ₹20 + ₹15 = ₹35
+    const baseFee = 20;
+    const petrolFee = Math.round(dist * 5);
     return {
       distanceKm: dist,
       baseFee,
@@ -207,8 +211,12 @@ export function calculateDeliveryFee(
   }
 
   if (slot === "standard") {
-    const baseFee = Math.max(12, Math.round(dist * 12));
-    const petrolFee = Math.max(3, Math.round(dist * 3));
+    // Standard: Base fee ₹15, Rider petrol allowance = ₹3 per km
+    // 1 km: ₹15 + ₹3 = ₹18
+    // 2 km: ₹15 + ₹6 = ₹21
+    // 3 km: ₹15 + ₹9 = ₹24
+    const baseFee = 15;
+    const petrolFee = Math.round(dist * 3);
     return {
       distanceKm: dist,
       baseFee,
