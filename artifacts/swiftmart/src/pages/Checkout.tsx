@@ -20,6 +20,10 @@ import { formatINR } from "@/lib/currency";
 import {
   getCustomerCoords,
   computeSingleShopEta,
+  calculateDeliveryFee,
+  getSlotTimingLabel,
+  isFoodCategory,
+  isVegFruitCategory,
   type DeliveryEta,
   type LatLng,
 } from "@/lib/deliveryEta";
@@ -113,9 +117,51 @@ export default function Checkout() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMultiShop, shopId, items.length, shops.length]);
 
-  // ─── Packaging & GST (dynamic) ───────────────────────────────────────────────
-  const RESTAURANT_TYPES = new Set(["restaurant", "fast-food", "cloud-kitchen"]);
+  // ─── Food & Vegetable Detection ──────────────────────────────────────────────
+  const hasFood = useMemo(() => {
+    return items.some(i => {
+      const shopObj = shops.find(s => s.id === i.product.vendorId);
+      return isFoodCategory(i.product.category, shopObj?.category);
+    });
+  }, [items, shops]);
 
+  const isVegFruitCart = useMemo(() => {
+    if (hasFood || items.length === 0) return false;
+    return items.every(i => {
+      const shopObj = shops.find(s => s.id === i.product.vendorId);
+      return isVegFruitCategory(i.product.category, shopObj?.category);
+    });
+  }, [hasFood, items, shops]);
+
+  // Food orders MUST use instant slot (Express 30-40 min)
+  useEffect(() => {
+    if (hasFood && deliverySlot !== 'instant') {
+      setDeliverySlot('instant');
+    }
+  }, [hasFood, deliverySlot]);
+
+  // Distance in KM (from GPS/ETA calculation, fallback 1.5 km)
+  const distanceKm = useMemo(() => {
+    if (deliveryEta?.kind === "single-shop" && deliveryEta.breakdown.distanceKm != null) {
+      return Math.max(1.0, Math.round(deliveryEta.breakdown.distanceKm * 10) / 10);
+    }
+    return 1.5;
+  }, [deliveryEta]);
+
+  // Fee breakdowns for all slots based on distance (₹20/km base + ₹5/km petrol)
+  const instantBreakdown = useMemo(() => calculateDeliveryFee(distanceKm, 'instant', hasFood), [distanceKm, hasFood]);
+  const standardBreakdown = useMemo(() => calculateDeliveryFee(distanceKm, 'standard', false), [distanceKm]);
+  const saverBreakdown = useMemo(() => calculateDeliveryFee(distanceKm, 'saver', false), [distanceKm]);
+
+  // Current active slot fee breakdown
+  const currentFeeBreakdown = useMemo(() => calculateDeliveryFee(distanceKm, deliverySlot, hasFood), [distanceKm, deliverySlot, hasFood]);
+
+  const instantTimingLabel = getSlotTimingLabel('instant', hasFood, isVegFruitCart);
+  const standardTimingLabel = getSlotTimingLabel('standard', hasFood, isVegFruitCart);
+  const saverTimingLabel = getSlotTimingLabel('saver', hasFood, isVegFruitCart);
+  const currentTimingLabel = getSlotTimingLabel(deliverySlot, hasFood, isVegFruitCart);
+
+  // ─── Packaging & GST (dynamic) ───────────────────────────────────────────────
   // Category-level packaging charges fetched from API (for non-restaurant shops)
   const [categoryPackagingCharges, setCategoryPackagingCharges] = useState<Record<string, number>>({});
   useEffect(() => {
@@ -152,7 +198,7 @@ export default function Checkout() {
   const getShopPackagingCharge = (sid: string): number => {
     const shopObj = shops.find(s => s.id === sid);
     if (!shopObj) return 0;
-    if (RESTAURANT_TYPES.has(shopObj.category)) return shopObj.packagingCharge ?? 2;
+    if (isFoodCategory(undefined, shopObj.category)) return shopObj.packagingCharge ?? 2;
     return categoryPackagingCharges[shopObj.category] ?? 2;
   };
 
@@ -163,9 +209,11 @@ export default function Checkout() {
     return +(shopSub * shopObj.gstRate / 100).toFixed(2);
   };
 
-  const slotFee = deliverySlot === 'instant' ? 25 : deliverySlot === 'standard' ? 20 : 0;
+  const slotFee = currentFeeBreakdown.totalFee;
   // Each shop's order carries the full delivery fee — not split
   const totalDeliveryFee = slotFee * uniqueShopIds.length;
+  const totalBaseDeliveryFee = currentFeeBreakdown.baseFee * uniqueShopIds.length;
+  const totalPetrolFee = currentFeeBreakdown.petrolFee * uniqueShopIds.length;
   const totalPackagingFee = uniqueShopIds.reduce((sum, sid) => sum + getShopPackagingCharge(sid), 0);
   const totalGstAmount = uniqueShopIds.reduce((sum, sid) => sum + getShopGst(sid), 0);
   const orderTotalForCoupon = subtotal + totalDeliveryFee;
@@ -556,62 +604,121 @@ export default function Checkout() {
         )}
 
         <section>
-          <h3 className="font-bold text-lg mb-1">Delivery Slot</h3>
-          <p className="text-xs text-muted-foreground mb-4">Choose how fast you need it</p>
-          <div className="grid grid-cols-3 gap-3">
-
-            {/* Instant */}
-            <div
-              onClick={() => { setDeliverySlot('instant'); handleRemoveCoupon(); }}
-              className={cn(
-                "aspect-square p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center justify-between text-center",
-                deliverySlot === 'instant' ? "neu-card border-orange-400/60 bg-orange-500/5" : "bg-card border-transparent neu-inset"
-              )}
-            >
-              <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0",
-                deliverySlot === 'instant' ? "bg-orange-500 text-white" : "bg-background text-orange-500 neu-inset"
-              )}>⚡</div>
-              <div className="font-bold text-xs leading-tight">Instant</div>
-              <div className="text-[10px] text-muted-foreground leading-tight">10–30 min</div>
-              <div className={cn("font-extrabold text-sm", deliverySlot === 'instant' ? "text-orange-500" : "text-foreground")}>₹25</div>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h3 className="font-bold text-lg">Delivery Slot</h3>
+              <p className="text-xs text-muted-foreground">
+                {hasFood
+                  ? "Freshly prepared and delivered directly to your doorstep"
+                  : "Choose how fast you need your delivery"}
+              </p>
             </div>
-
-            {/* Standard */}
-            <div
-              onClick={() => { setDeliverySlot('standard'); handleRemoveCoupon(); }}
-              className={cn(
-                "aspect-square p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center justify-between text-center",
-                deliverySlot === 'standard' ? "neu-card border-blue-400/60 bg-blue-500/5" : "bg-card border-transparent neu-inset"
-              )}
-            >
-              <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0",
-                deliverySlot === 'standard' ? "bg-blue-500 text-white" : "bg-background text-blue-500 neu-inset"
-              )}>🕐</div>
-              <div className="font-bold text-xs leading-tight">Standard</div>
-              <div className="text-[10px] text-muted-foreground leading-tight">2–4 hours</div>
-              <div className={cn("font-extrabold text-sm", deliverySlot === 'standard' ? "text-blue-500" : "text-foreground")}>₹20</div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary font-bold text-xs">
+              <MapPin className="w-3.5 h-3.5" />
+              <span>{distanceKm} km</span>
             </div>
-
-            {/* Saver */}
-            <div
-              onClick={() => { setDeliverySlot('saver'); handleRemoveCoupon(); }}
-              className={cn(
-                "aspect-square p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center justify-between text-center",
-                deliverySlot === 'saver' ? "neu-card border-green-400/60 bg-green-500/5" : "bg-card border-transparent neu-inset"
-              )}
-            >
-              <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0",
-                deliverySlot === 'saver' ? "bg-green-500 text-white" : "bg-background text-green-500 neu-inset"
-              )}>🌿</div>
-              <div className="font-bold text-xs leading-tight">Saver</div>
-              <div className="text-[10px] text-muted-foreground leading-tight">Same day</div>
-              <div className={cn("font-extrabold text-sm", deliverySlot === 'saver' ? "text-green-500" : "text-foreground")}>FREE</div>
-            </div>
-
           </div>
+
+          {/* If Cart has Food: Single Express Option only (30-40 mins) */}
+          {hasFood ? (
+            <div className="p-4 rounded-2xl neu-card border-2 border-orange-400/60 bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-transparent flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center text-2xl shadow-lg shadow-orange-500/20 shrink-0">
+                  🍔
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-foreground">Express Food Delivery</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-600 font-extrabold">
+                      ONLY OPTION
+                    </span>
+                  </div>
+                  <div className="text-xs font-semibold text-orange-600 dark:text-orange-400 mt-0.5 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Arrival in 30–40 mins</span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-1">
+                    Rate: ₹20/km delivery + ₹5/km rider petrol ({distanceKm} km)
+                  </div>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="font-black text-lg text-orange-600 dark:text-orange-400">
+                  ₹{instantBreakdown.totalFee}
+                </div>
+                <div className="text-[10px] text-muted-foreground">all-inclusive</div>
+              </div>
+            </div>
+          ) : (
+            /* Non-Food: 3 Slots with category-based dynamic timing & distance pricing */
+            <div className="grid grid-cols-3 gap-3">
+              {/* Instant */}
+              <div
+                onClick={() => { setDeliverySlot('instant'); handleRemoveCoupon(); }}
+                className={cn(
+                  "p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center justify-between text-center min-h-[120px]",
+                  deliverySlot === 'instant' ? "neu-card border-orange-400/60 bg-orange-500/5" : "bg-card border-transparent neu-inset"
+                )}
+              >
+                <div className={cn(
+                  "w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0",
+                  deliverySlot === 'instant' ? "bg-orange-500 text-white" : "bg-background text-orange-500 neu-inset"
+                )}>⚡</div>
+                <div className="font-bold text-xs leading-tight mt-1">Instant</div>
+                <div className="text-[10px] text-orange-600 dark:text-orange-400 font-bold leading-tight">
+                  {instantTimingLabel}
+                </div>
+                <div className={cn("font-extrabold text-sm mt-1", deliverySlot === 'instant' ? "text-orange-500" : "text-foreground")}>
+                  ₹{instantBreakdown.totalFee}
+                </div>
+                <div className="text-[9px] text-muted-foreground">₹25/km</div>
+              </div>
+
+              {/* Standard */}
+              <div
+                onClick={() => { setDeliverySlot('standard'); handleRemoveCoupon(); }}
+                className={cn(
+                  "p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center justify-between text-center min-h-[120px]",
+                  deliverySlot === 'standard' ? "neu-card border-blue-400/60 bg-blue-500/5" : "bg-card border-transparent neu-inset"
+                )}
+              >
+                <div className={cn(
+                  "w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0",
+                  deliverySlot === 'standard' ? "bg-blue-500 text-white" : "bg-background text-blue-500 neu-inset"
+                )}>🕐</div>
+                <div className="font-bold text-xs leading-tight mt-1">Standard</div>
+                <div className="text-[10px] text-blue-600 dark:text-blue-400 font-bold leading-tight">
+                  {standardTimingLabel}
+                </div>
+                <div className={cn("font-extrabold text-sm mt-1", deliverySlot === 'standard' ? "text-blue-500" : "text-foreground")}>
+                  ₹{standardBreakdown.totalFee}
+                </div>
+                <div className="text-[9px] text-muted-foreground">₹15/km</div>
+              </div>
+
+              {/* Saver */}
+              <div
+                onClick={() => { setDeliverySlot('saver'); handleRemoveCoupon(); }}
+                className={cn(
+                  "p-3 rounded-2xl cursor-pointer border-2 transition-all flex flex-col items-center justify-between text-center min-h-[120px]",
+                  deliverySlot === 'saver' ? "neu-card border-green-400/60 bg-green-500/5" : "bg-card border-transparent neu-inset"
+                )}
+              >
+                <div className={cn(
+                  "w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0",
+                  deliverySlot === 'saver' ? "bg-green-500 text-white" : "bg-background text-green-500 neu-inset"
+                )}>🌿</div>
+                <div className="font-bold text-xs leading-tight mt-1">Saver</div>
+                <div className="text-[10px] text-green-600 dark:text-green-400 font-bold leading-tight">
+                  {saverTimingLabel}
+                </div>
+                <div className={cn("font-extrabold text-sm mt-1", deliverySlot === 'saver' ? "text-green-500" : "text-foreground")}>
+                  FREE
+                </div>
+                <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold">₹0</div>
+              </div>
+            </div>
+          )}
         </section>
 
         <section>
@@ -698,6 +805,11 @@ export default function Checkout() {
             gstAmount={totalGstAmount}
             couponDiscount={couponApplied?.discount ?? 0}
             couponCode={couponApplied?.code}
+            distanceKm={distanceKm}
+            baseDeliveryFee={totalBaseDeliveryFee}
+            petrolCharge={totalPetrolFee}
+            isFood={hasFood}
+            deliveryTimingLabel={currentTimingLabel}
           />
 
           <Button

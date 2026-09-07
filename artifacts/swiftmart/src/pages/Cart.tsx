@@ -14,6 +14,7 @@ import { AdSenseSectionBanner } from "@/components/GoogleAdSense";
 const MINIMUM_ORDER_AMOUNT = 40;
 
 import { SEO } from "@/components/SEO";
+import { isFoodCategory, calculateDeliveryFee } from "@/lib/deliveryEta";
 
 export default function Cart() {
   const { items, subtotal } = useCart();
@@ -23,6 +24,11 @@ export default function Cart() {
   const cartShop = cartShopId ? shops.find(s => s.id === cartShopId) : null;
   const shopClosed = cartShop ? !cartShop.isOpen : false;
   const belowMinimum = subtotal < MINIMUM_ORDER_AMOUNT;
+
+  const hasFood = items.some(i => {
+    const shopObj = shops.find(s => s.id === i.product.vendorId);
+    return isFoodCategory(i.product.category, shopObj?.category);
+  });
   const remaining = +(MINIMUM_ORDER_AMOUNT - subtotal).toFixed(2);
 
   if (items.length === 0) {
@@ -45,7 +51,10 @@ export default function Cart() {
   }
 
   const uniqueShopCount = new Set(items.map(i => i.product.vendorId)).size || 1;
-  const estimatedDeliveryFee = 25 * uniqueShopCount;
+  const estimatedBreakdown = calculateDeliveryFee(1.5, "instant", hasFood);
+  const estimatedDeliveryFee = estimatedBreakdown.totalFee * uniqueShopCount;
+  const estimatedBaseFee = estimatedBreakdown.baseFee * uniqueShopCount;
+  const estimatedPetrolFee = estimatedBreakdown.petrolFee * uniqueShopCount;
 
   return (
     <div className="w-full max-w-5xl mx-auto pb-24 pt-4 px-4 space-y-6">
@@ -87,6 +96,11 @@ export default function Cart() {
             deliveryFee={estimatedDeliveryFee}
             deliveryType="instant"
             shopCount={uniqueShopCount}
+            distanceKm={1.5}
+            baseDeliveryFee={estimatedBaseFee}
+            petrolCharge={estimatedPetrolFee}
+            isFood={hasFood}
+            deliveryTimingLabel={hasFood ? "30–40 min" : "30 min–1 hr"}
           />
           
           {shopClosed ? (

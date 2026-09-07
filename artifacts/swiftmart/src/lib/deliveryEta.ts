@@ -137,3 +137,134 @@ export function computeSingleShopEta(
     rangeMax: totalMin + 5,
   };
 }
+
+// ─── Food & Vegetable Category Detection ──────────────────────────────────────
+export const FOOD_SHOP_TYPES = new Set([
+  "restaurant",
+  "fast-food",
+  "fastfood",
+  "cloud-kitchen",
+  "bakery",
+  "sweet-shop",
+  "sweetshop",
+  "sweets",
+  "cafe",
+  "food_junction",
+  "dhaba",
+]);
+
+export function isFoodCategory(category?: string | null, shopType?: string | null): boolean {
+  const c = (category || "").toLowerCase().trim();
+  const s = (shopType || "").toLowerCase().trim();
+  return FOOD_SHOP_TYPES.has(c) || FOOD_SHOP_TYPES.has(s);
+}
+
+export const VEG_FRUIT_CATEGORIES = new Set([
+  "fruits-vegetables",
+  "vegetables",
+  "fruits",
+  "mandi",
+]);
+
+export function isVegFruitCategory(category?: string | null, shopType?: string | null): boolean {
+  const c = (category || "").toLowerCase().trim();
+  const s = (shopType || "").toLowerCase().trim();
+  return VEG_FRUIT_CATEGORIES.has(c) || VEG_FRUIT_CATEGORIES.has(s);
+}
+
+// ─── Distance & Delivery Fee Calculation ──────────────────────────────────────
+export interface DeliveryFeeBreakdown {
+  distanceKm: number;
+  baseFee: number;     // ₹20/km
+  petrolFee: number;   // ₹5/km rider petrol
+  totalFee: number;    // base + petrol
+}
+
+/**
+ * Calculates delivery fee based on customer distance:
+ * - Express / Instant / Food: ₹20/km base + ₹5/km petrol = ₹25/km (min ₹25)
+ * - Standard: ₹12/km base + ₹3/km petrol = ₹15/km (min ₹15)
+ * - Saver: FREE (₹0)
+ */
+export function calculateDeliveryFee(
+  distanceKm: number | null | undefined,
+  slot: "instant" | "standard" | "saver",
+  isFood: boolean = false
+): DeliveryFeeBreakdown {
+  const rawDist = distanceKm != null && distanceKm > 0 ? distanceKm : 1.5;
+  // Round distance to 1 decimal place, minimum 1.0 km
+  const dist = Math.max(1.0, Math.round(rawDist * 10) / 10);
+
+  if (isFood || slot === "instant") {
+    const baseFee = Math.max(20, Math.round(dist * 20));
+    const petrolFee = Math.max(5, Math.round(dist * 5));
+    return {
+      distanceKm: dist,
+      baseFee,
+      petrolFee,
+      totalFee: baseFee + petrolFee,
+    };
+  }
+
+  if (slot === "standard") {
+    const baseFee = Math.max(12, Math.round(dist * 12));
+    const petrolFee = Math.max(3, Math.round(dist * 3));
+    return {
+      distanceKm: dist,
+      baseFee,
+      petrolFee,
+      totalFee: baseFee + petrolFee,
+    };
+  }
+
+  // Saver is FREE
+  return {
+    distanceKm: dist,
+    baseFee: 0,
+    petrolFee: 0,
+    totalFee: 0,
+  };
+}
+
+/**
+ * Returns dynamic delivery timing and slot description based on category:
+ * - Food: Single slot "30–40 mins"
+ * - Veg & Fruits:
+ *     - Instant: "Within 1 hour"
+ *     - Standard: "Within 2–3 hours"
+ *     - Saver: "Next day or within 12 hours"
+ * - Grocery & Others:
+ *     - Instant: "30 mins to 1 hour"
+ *     - Standard: "Within 2–3 hours"
+ *     - Saver: "Within 12 hours"
+ */
+export function getSlotTimingLabel(
+  slot: "instant" | "standard" | "saver",
+  isFood: boolean,
+  isVegFruit: boolean
+): string {
+  if (isFood) {
+    return "30–40 min";
+  }
+
+  if (isVegFruit) {
+    switch (slot) {
+      case "instant":
+        return "Within 1 hour";
+      case "standard":
+        return "Within 2–3 hours";
+      case "saver":
+        return "Next day or 12 hrs";
+    }
+  }
+
+  // Grocery & All Others
+  switch (slot) {
+    case "instant":
+      return "30 min to 1 hr";
+    case "standard":
+      return "Within 2–3 hours";
+    case "saver":
+      return "Within 12 hours";
+  }
+}

@@ -665,7 +665,7 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
         commissionAmount,
         vendorPayable,
         platformRevenue: +(commissionAmount + packagingFee).toFixed(2),
-        deliveryType: (parsed.data.deliveryType || "instant") as "instant" | "scheduled",
+        deliveryType: (parsed.data.deliveryType || "instant") as 'instant' | 'standard' | 'saver' | 'scheduled',
         paymentMethod,
         paymentStatus: "pending",
         address: (body["address"] ?? {}) as Record<string, string>,
