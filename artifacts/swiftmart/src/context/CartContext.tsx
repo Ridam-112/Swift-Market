@@ -1,3 +1,4 @@
+import React, { createContext, useState, useEffect } from "react";
 import { CartItem, Product, ProductVariant } from "@/types";
 import { parseUnit, priceForWeight } from "@/lib/weightUtils";
 import { api } from "@/lib/api";

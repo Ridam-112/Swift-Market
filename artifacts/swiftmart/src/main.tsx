@@ -33,7 +33,10 @@ async function bootstrap() {
 
   try {
     const configUrl = API_BASE ? `${API_BASE}/api/auth/config` : "/api/auth/config";
-    const res = await fetch(configUrl);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(configUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
     const data = await res.json() as {
       success: boolean;
       authMode?: AuthMode;
