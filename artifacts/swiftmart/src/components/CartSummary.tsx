@@ -71,20 +71,6 @@ export function CartSummary({
             <span className="font-bold text-green-600 dark:text-green-400">FREE</span>
           )}
         </div>
-
-        {/* Breakdown of base delivery and petrol charge */}
-        {deliveryFee > 0 && baseDeliveryFee != null && petrolCharge != null && (
-          <div className="pl-2 border-l-2 border-primary/30 text-[11px] text-muted-foreground space-y-0.5 py-0.5">
-            <div className="flex justify-between">
-              <span>• Base Delivery ({distanceKm ?? 1} km @ ₹20/km):</span>
-              <span>{formatINR(baseDeliveryFee)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>• Rider Petrol Charge ({distanceKm ?? 1} km @ ₹5/km):</span>
-              <span>{formatINR(petrolCharge)}</span>
-            </div>
-          </div>
-        )}
       </div>
 
       {packagingFee > 0 && (

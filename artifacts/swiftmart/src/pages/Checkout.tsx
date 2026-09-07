@@ -638,7 +638,7 @@ export default function Checkout() {
                     <span>Arrival in 30–40 mins</span>
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-1">
-                    Rate: ₹20/km delivery + ₹5/km rider petrol ({distanceKm} km)
+                    Direct doorstep delivery ({distanceKm} km)
                   </div>
                 </div>
               </div>
@@ -671,7 +671,6 @@ export default function Checkout() {
                 <div className={cn("font-extrabold text-sm mt-1", deliverySlot === 'instant' ? "text-orange-500" : "text-foreground")}>
                   ₹{instantBreakdown.totalFee}
                 </div>
-                <div className="text-[9px] text-muted-foreground">₹25/km</div>
               </div>
 
               {/* Standard */}
@@ -693,7 +692,6 @@ export default function Checkout() {
                 <div className={cn("font-extrabold text-sm mt-1", deliverySlot === 'standard' ? "text-blue-500" : "text-foreground")}>
                   ₹{standardBreakdown.totalFee}
                 </div>
-                <div className="text-[9px] text-muted-foreground">₹15/km</div>
               </div>
 
               {/* Saver */}
