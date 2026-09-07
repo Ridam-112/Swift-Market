@@ -21,6 +21,24 @@ function sanitizeImages(raw: unknown): string[] {
   });
 }
 
+function sanitizeVariants(raw: unknown): Array<{ id: string; name: string; price: number; discountedPrice?: number; stock?: number; unit?: string }> {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && typeof v["name"] === "string" && v["name"].trim().length > 0)
+    .map((v, i) => {
+      const price = Math.max(0, Number(v["price"] ?? 0) || 0);
+      const discounted = v["discountedPrice"] != null && Number(v["discountedPrice"]) > 0 ? Number(v["discountedPrice"]) : undefined;
+      return {
+        id: String(v["id"] || `var_${Date.now()}_${i}`),
+        name: String(v["name"]).trim(),
+        price,
+        ...(discounted != null ? { discountedPrice: discounted } : {}),
+        stock: v["stock"] != null ? Math.max(0, Number(v["stock"]) || 0) : undefined,
+        unit: v["unit"] ? String(v["unit"]).trim() : undefined,
+      };
+    });
+}
+
 // GET /api/products
 router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -317,6 +335,7 @@ router.post("/", authenticate, vendorWriteLimiter, async (req: AuthRequest, res:
       colors: Array.isArray(body["colors"]) ? body["colors"] : undefined,
       sizes: Array.isArray(body["sizes"]) ? body["sizes"] : undefined,
       colorImages: (body["colorImages"] && typeof body["colorImages"] === "object" && !Array.isArray(body["colorImages"])) ? body["colorImages"] : undefined,
+      variants: sanitizeVariants(body["variants"]),
       fomoTag: body["fomoTag"] ? String(body["fomoTag"]) : undefined,
     }).returning();
     void invalidateProductCaches();
@@ -353,6 +372,7 @@ router.post("/", authenticate, vendorWriteLimiter, async (req: AuthRequest, res:
     colors: Array.isArray(safeBody["colors"]) ? safeBody["colors"] : undefined,
     sizes: Array.isArray(safeBody["sizes"]) ? safeBody["sizes"] : undefined,
     colorImages: (safeBody["colorImages"] && typeof safeBody["colorImages"] === "object" && !Array.isArray(safeBody["colorImages"])) ? safeBody["colorImages"] : undefined,
+    variants: sanitizeVariants(safeBody["variants"]),
     fomoTag: safeBody["fomoTag"] ? String(safeBody["fomoTag"]) : undefined,
   }).returning();
 
@@ -453,7 +473,7 @@ router.patch("/:id", authenticate, V, vendorWriteLimiter, async (req: AuthReques
   // (e.g. prevents a vendor from overwriting shopId, vendorId, or status directly)
   const VENDOR_ALLOWED_FIELDS = new Set([
     "name", "description", "price", "discountedPrice", "unit",
-    "stock", "category", "images", "trending", "colors", "sizes", "fomoTag",
+    "stock", "category", "subcategory", "images", "trending", "colors", "sizes", "colorImages", "variants", "fomoTag",
   ]);
   const ADMIN_EXTRA_FIELDS = new Set(["status", "rejectionReason", "shopId"]);
 
@@ -483,6 +503,9 @@ router.patch("/:id", authenticate, V, vendorWriteLimiter, async (req: AuthReques
   // M6 fix: sanitize image URLs on update too
   if ("images" in updateData) {
     updateData["images"] = sanitizeImages(updateData["images"]);
+  }
+  if ("variants" in updateData) {
+    updateData["variants"] = sanitizeVariants(updateData["variants"]);
   }
 
   const [product] = await db.update(products)

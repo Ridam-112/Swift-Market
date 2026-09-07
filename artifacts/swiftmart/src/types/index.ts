@@ -32,6 +32,15 @@ export interface VendorApplication {
   rejectionReason?: string;
 }
 
+export interface ProductVariant {
+  id?: string;
+  name: string;
+  price: number;
+  discountedPrice?: number;
+  stock?: number;
+  unit?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -50,6 +59,7 @@ export interface Product {
   colors?: string[];
   sizes?: string[];
   colorImages?: Record<string, string>;
+  variants?: ProductVariant[];
   shopName?: string;
   shopId?: string;
   fomoTag?: string;
@@ -62,6 +72,7 @@ export interface CartItem {
   selectedSize?: string;
   selectedGrams?: number;
   selectedVariantId?: string;
+  selectedVariant?: ProductVariant;
 }
 
 export interface Address {

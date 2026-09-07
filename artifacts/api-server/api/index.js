@@ -116560,6 +116560,7 @@ var products = pgTable7("products", {
   colors: jsonb5("colors"),
   sizes: jsonb5("sizes"),
   colorImages: jsonb5("color_images"),
+  variants: jsonb5("variants"),
   fomoTag: text7("fomo_tag"),
   createdAt: timestamp7("created_at").notNull().defaultNow(),
   updatedAt: timestamp7("updated_at").notNull().defaultNow()
@@ -125333,6 +125334,21 @@ function sanitizeImages(raw) {
     }
   });
 }
+function sanitizeVariants(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((v) => typeof v === "object" && v !== null && typeof v["name"] === "string" && v["name"].trim().length > 0).map((v, i2) => {
+    const price = Math.max(0, Number(v["price"] ?? 0) || 0);
+    const discounted = v["discountedPrice"] != null && Number(v["discountedPrice"]) > 0 ? Number(v["discountedPrice"]) : void 0;
+    return {
+      id: String(v["id"] || `var_${Date.now()}_${i2}`),
+      name: String(v["name"]).trim(),
+      price,
+      ...discounted != null ? { discountedPrice: discounted } : {},
+      stock: v["stock"] != null ? Math.max(0, Number(v["stock"]) || 0) : void 0,
+      unit: v["unit"] ? String(v["unit"]).trim() : void 0
+    };
+  });
+}
 router8.get("/", optionalAuth, async (req, res) => {
   try {
     const authReq = req;
@@ -125564,6 +125580,7 @@ router8.post("/", authenticate, vendorWriteLimiter, async (req, res) => {
       colors: Array.isArray(body["colors"]) ? body["colors"] : void 0,
       sizes: Array.isArray(body["sizes"]) ? body["sizes"] : void 0,
       colorImages: body["colorImages"] && typeof body["colorImages"] === "object" && !Array.isArray(body["colorImages"]) ? body["colorImages"] : void 0,
+      variants: sanitizeVariants(body["variants"]),
       fomoTag: body["fomoTag"] ? String(body["fomoTag"]) : void 0
     }).returning();
     void invalidateProductCaches();
@@ -125600,6 +125617,7 @@ router8.post("/", authenticate, vendorWriteLimiter, async (req, res) => {
     colors: Array.isArray(safeBody["colors"]) ? safeBody["colors"] : void 0,
     sizes: Array.isArray(safeBody["sizes"]) ? safeBody["sizes"] : void 0,
     colorImages: safeBody["colorImages"] && typeof safeBody["colorImages"] === "object" && !Array.isArray(safeBody["colorImages"]) ? safeBody["colorImages"] : void 0,
+    variants: sanitizeVariants(safeBody["variants"]),
     fomoTag: safeBody["fomoTag"] ? String(safeBody["fomoTag"]) : void 0
   }).returning();
   try {
@@ -125685,10 +125703,13 @@ router8.patch("/:id", authenticate, V, vendorWriteLimiter, async (req, res) => {
     "unit",
     "stock",
     "category",
+    "subcategory",
     "images",
     "trending",
     "colors",
     "sizes",
+    "colorImages",
+    "variants",
     "fomoTag"
   ]);
   const ADMIN_EXTRA_FIELDS = /* @__PURE__ */ new Set(["status", "rejectionReason", "shopId"]);
@@ -125712,6 +125733,9 @@ router8.patch("/:id", authenticate, V, vendorWriteLimiter, async (req, res) => {
   }
   if ("images" in updateData) {
     updateData["images"] = sanitizeImages(updateData["images"]);
+  }
+  if ("variants" in updateData) {
+    updateData["variants"] = sanitizeVariants(updateData["variants"]);
   }
   const [product] = await db.update(products).set(updateData).where(eq10(products.id, req.params["id"])).returning();
   if (!product) {

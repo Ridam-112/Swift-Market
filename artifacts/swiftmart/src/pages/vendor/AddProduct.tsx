@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Upload, X, Loader2, ChevronDown, Plus, Palette, Ruler } from "lucide-react";
+import { Upload, X, Loader2, ChevronDown, Plus, Palette, Ruler, Layers, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { compressIfNeeded } from "@/lib/imageCompression";
 import { GROCERY_SUBCAT_OPTIONS } from "@/data/grocerySubcats";
+import type { ProductVariant } from "@/types";
 
 interface ApiCategory {
   _id: string;
@@ -90,6 +91,13 @@ export default function AddProduct() {
   const [sizes, setSizes] = useState<string[]>([]);
   const [newSize, setNewSize] = useState("");
 
+  const [variantsEnabled, setVariantsEnabled] = useState(false);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [newVariantName, setNewVariantName] = useState("");
+  const [newVariantPrice, setNewVariantPrice] = useState("");
+  const [newVariantDiscounted, setNewVariantDiscounted] = useState("");
+  const [newVariantStock, setNewVariantStock] = useState("");
+
   const selectedCat = apiCategories.find(c => c.slug === category);
 
   const colorImages: Record<string, string> = Object.fromEntries(
@@ -168,6 +176,75 @@ export default function AddProduct() {
     setNewSize("");
   };
 
+  const handleAddPresetVariant = (preset: string) => {
+    if (variants.some(v => v.name.toLowerCase() === preset.toLowerCase())) {
+      toast.info(`Variant "${preset}" already added`);
+      return;
+    }
+    const currentPrice = Number(price) || 0;
+    let suggestedPrice = currentPrice;
+    if (currentPrice > 0) {
+      if (preset === "250 g") suggestedPrice = Math.round(currentPrice * 0.28);
+      else if (preset === "500 g") suggestedPrice = Math.round(currentPrice * 0.52);
+      else if (preset === "1 kg") suggestedPrice = currentPrice;
+      else if (preset === "2 kg") suggestedPrice = Math.round(currentPrice * 1.95);
+      else if (preset === "5 kg") suggestedPrice = Math.round(currentPrice * 4.8);
+      else if (preset === "Pack of 2") suggestedPrice = Math.round(currentPrice * 1.9);
+      else if (preset === "Pack of 4") suggestedPrice = Math.round(currentPrice * 3.7);
+    }
+    setVariants(prev => [
+      ...prev,
+      {
+        id: `var_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        name: preset,
+        price: suggestedPrice > 0 ? suggestedPrice : currentPrice,
+        unit: preset,
+        stock: Number(stock) || 50,
+      }
+    ]);
+    toast.success(`Added variant: ${preset}`);
+  };
+
+  const handleAddCustomVariant = () => {
+    const trimmed = newVariantName.trim();
+    if (!trimmed) {
+      toast.error("Please enter a variant name");
+      return;
+    }
+    const p = Number(newVariantPrice);
+    if (!p || p <= 0) {
+      toast.error("Please enter a valid selling price for this variant");
+      return;
+    }
+    if (variants.some(v => v.name.toLowerCase() === trimmed.toLowerCase())) {
+      toast.error(`Variant "${trimmed}" already exists`);
+      return;
+    }
+    const disc = newVariantDiscounted ? Number(newVariantDiscounted) : undefined;
+    const stk = newVariantStock ? Number(newVariantStock) : (Number(stock) || 50);
+
+    setVariants(prev => [
+      ...prev,
+      {
+        id: `var_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        name: trimmed,
+        price: p,
+        ...(disc ? { discountedPrice: disc } : {}),
+        stock: stk,
+        unit: trimmed,
+      }
+    ]);
+    setNewVariantName("");
+    setNewVariantPrice("");
+    setNewVariantDiscounted("");
+    setNewVariantStock("");
+    toast.success(`Added variant: ${trimmed}`);
+  };
+
+  const handleRemoveVariant = (index: number) => {
+    setVariants(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (uploadingSlot !== null) { toast.error("Please wait for image upload to finish"); return; }
@@ -198,6 +275,7 @@ export default function AddProduct() {
         ...(colorsEnabled && colors.length > 0 ? { colors } : {}),
         ...(colorsEnabled && Object.keys(colorImages).length > 0 ? { colorImages } : {}),
         ...(sizesEnabled && sizes.length > 0 ? { sizes } : {}),
+        ...(variantsEnabled && variants.length > 0 ? { variants } : {}),
       });
       toast.success("Product submitted for review. It will go live once approved.");
       setLocation("/vendor/products");
@@ -542,6 +620,148 @@ export default function AddProduct() {
                     </span>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Product Variants & Custom Pricing ── */}
+        <div className="bg-card p-5 rounded-3xl neu-card space-y-4">
+          <button
+            type="button"
+            onClick={() => setVariantsEnabled(v => !v)}
+            className="w-full flex items-center justify-between gap-3 text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${variantsEnabled ? "bg-primary text-primary-foreground" : "bg-background neu-inset text-muted-foreground"}`}>
+                <Layers className="w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-sm">Product Variants & Custom Pricing</p>
+                  <span className="text-[10px] bg-amber-500/10 text-amber-600 font-bold px-1.5 py-0.5 rounded-full">NEW</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Add multiple options (weights, sizes, packs) each with its own price</p>
+              </div>
+            </div>
+            <div className={`w-11 h-6 rounded-full transition-colors relative ${variantsEnabled ? "bg-primary" : "bg-muted"}`}>
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${variantsEnabled ? "translate-x-6" : "translate-x-1"}`} />
+            </div>
+          </button>
+
+          {variantsEnabled && (
+            <div className="space-y-4 pt-2 border-t border-border">
+              {/* Quick Preset Buttons */}
+              <div>
+                <p className="text-xs text-muted-foreground mb-2 font-medium">Quick add popular portion/size:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {["250 g", "500 g", "1 kg", "2 kg", "5 kg", "Pack of 2", "Pack of 4", "Small", "Medium", "Large"].map(preset => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleAddPresetVariant(preset)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-background neu-inset text-foreground hover:bg-primary/10 hover:text-primary transition-all flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" /> {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Add Custom Variant Form */}
+              <div className="p-3.5 rounded-2xl bg-muted/30 border border-border space-y-3">
+                <p className="text-xs font-bold text-foreground">Add New Variant:</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Variant Name *</Label>
+                    <Input
+                      value={newVariantName}
+                      onChange={e => setNewVariantName(e.target.value)}
+                      placeholder="e.g. 500 g, Large, Red/XL"
+                      className="bg-background neu-inset border-none text-xs font-bold"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Selling Price (₹) *</Label>
+                    <Input
+                      type="number"
+                      value={newVariantPrice}
+                      onChange={e => setNewVariantPrice(e.target.value)}
+                      placeholder="e.g. 45"
+                      className="bg-background neu-inset border-none text-xs font-bold"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">MRP / Orig Price (₹)</Label>
+                    <Input
+                      type="number"
+                      value={newVariantDiscounted}
+                      onChange={e => setNewVariantDiscounted(e.target.value)}
+                      placeholder="e.g. 50 (optional)"
+                      className="bg-background neu-inset border-none text-xs"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Stock (Qty)</Label>
+                    <Input
+                      type="number"
+                      value={newVariantStock}
+                      onChange={e => setNewVariantStock(e.target.value)}
+                      placeholder="e.g. 20 (optional)"
+                      className="bg-background neu-inset border-none text-xs"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      onClick={handleAddCustomVariant}
+                      className="w-full text-xs font-bold rounded-xl neu-card h-9"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" /> Add Variant
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* List of Added Variants */}
+              {variants.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-muted-foreground">Configured Variants ({variants.length}):</p>
+                  <div className="grid gap-2">
+                    {variants.map((v, idx) => (
+                      <div key={v.id || idx} className="p-3 rounded-2xl bg-background border border-border flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-foreground truncate">{v.name}</span>
+                            {v.unit && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{v.unit}</span>}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs mt-0.5">
+                            <span className="font-extrabold text-primary">₹{v.price}</span>
+                            {v.discountedPrice && v.discountedPrice > v.price && (
+                              <span className="line-through text-muted-foreground text-[11px]">₹{v.discountedPrice}</span>
+                            )}
+                            {v.stock !== undefined && (
+                              <span className="text-muted-foreground text-[11px]">• Stock: {v.stock}</span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveVariant(idx)}
+                          className="p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-colors shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-2">
+                  No variants added yet. Add portion sizes or variations with custom prices above.
+                </p>
               )}
             </div>
           )}

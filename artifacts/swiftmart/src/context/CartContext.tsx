@@ -1,5 +1,4 @@
-import React, { createContext, useState, useEffect } from "react";
-import { CartItem, Product } from "@/types";
+import { CartItem, Product, ProductVariant } from "@/types";
 import { parseUnit, priceForWeight } from "@/lib/weightUtils";
 import { api } from "@/lib/api";
 
@@ -12,13 +11,21 @@ export function cartKey(
   color?: string | null,
   size?: string | null,
   grams?: number | null,
+  variantId?: string | null,
 ): string {
-  return `${productId}::${color ?? ""}::${size ?? ""}::${grams ?? ""}`;
+  return `${productId}::${color ?? ""}::${size ?? ""}::${grams ?? ""}::${variantId ?? ""}`;
 }
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product, qty?: number, selectedColor?: string, selectedSize?: string, selectedGrams?: number) => void;
+  addToCart: (
+    product: Product,
+    qty?: number,
+    selectedColor?: string,
+    selectedSize?: string,
+    selectedGrams?: number,
+    selectedVariant?: ProductVariant
+  ) => void;
   removeFromCart: (key: string) => void;
   updateQty: (key: string, qty: number) => void;
   updateWeight: (key: string, grams: number) => void;
@@ -31,6 +38,12 @@ interface CartContextType {
 export const CartContext = createContext<CartContextType | null>(null);
 
 function itemPrice(item: CartItem): number {
+  if (item.selectedVariant) {
+    const vPrice = item.selectedVariant.discountedPrice != null && item.selectedVariant.discountedPrice > 0 && item.selectedVariant.discountedPrice < item.selectedVariant.price
+      ? item.selectedVariant.discountedPrice
+      : item.selectedVariant.price;
+    return vPrice * item.qty;
+  }
   const p = item.product;
   const unitPrice = p.discountedPrice != null && p.discountedPrice < p.price
     ? p.discountedPrice
@@ -111,28 +124,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     selectedColor?: string,
     selectedSize?: string,
     selectedGrams?: number,
+    selectedVariant?: ProductVariant,
   ) => {
     setItems(current => {
-      const key = cartKey(product.id, selectedColor, selectedSize, selectedGrams);
+      const vId = selectedVariant ? (selectedVariant.id || selectedVariant.name) : undefined;
+      const key = cartKey(product.id, selectedColor, selectedSize, selectedGrams, vId);
       const existing = current.find(
-        item => cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams) === key
+        item => cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams, item.selectedVariantId) === key
       );
       const limit = productLimits[product.id];
+      const maxStock = selectedVariant?.stock ?? product.stock;
 
       if (existing) {
         const newQty = existing.qty + qty;
-        let capped = product.stock > 0 ? Math.min(newQty, product.stock) : newQty;
+        let capped = maxStock > 0 ? Math.min(newQty, maxStock) : newQty;
         if (limit !== undefined) {
           capped = Math.min(capped, limit);
         }
         return current.map(item =>
-          cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams) === key
+          cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams, item.selectedVariantId) === key
             ? { ...item, qty: capped }
             : item
         );
       }
 
-      let initialQty = selectedGrams !== undefined ? 1 : Math.min(qty, product.stock > 0 ? product.stock : qty);
+      let initialQty = selectedGrams !== undefined ? 1 : Math.min(qty, maxStock > 0 ? maxStock : qty);
       if (limit !== undefined) {
         initialQty = Math.min(initialQty, limit);
       }
@@ -145,9 +161,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           selectedColor,
           selectedSize,
           selectedGrams,
-          selectedVariantId: selectedGrams !== undefined
-            ? weightVariantId(product.id, selectedGrams)
-            : undefined,
+          selectedVariantId: vId || (selectedGrams !== undefined ? weightVariantId(product.id, selectedGrams) : undefined),
+          selectedVariant,
         },
       ];
     });
@@ -155,7 +170,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const removeFromCart = (key: string) => {
     setItems(current =>
-      current.filter(item => cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams) !== key)
+      current.filter(item => cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams, item.selectedVariantId) !== key)
     );
   };
 
@@ -166,8 +181,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
     setItems(current =>
       current.map(item => {
-        if (cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams) !== key) return item;
-        const stock = item.product.stock;
+        if (cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams, item.selectedVariantId) !== key) return item;
+        const stock = item.selectedVariant?.stock ?? item.product.stock;
         let capped = stock > 0 ? Math.min(qty, stock) : qty;
         const limit = productLimits[item.product.id];
         if (limit !== undefined) {

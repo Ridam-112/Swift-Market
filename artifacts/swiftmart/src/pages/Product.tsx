@@ -46,7 +46,7 @@ export default function Product() {
     // Global list loaded but product not in it — fetch directly
     setDirectLoading(true);
     setDirectFailed(false);
-    api.get<{ success: boolean; product: { _id: string; name: string; category: string; price: number; discountedPrice?: number; unit?: string; image?: string; images?: string[]; description?: string; stock?: number; rating?: number; shopId?: string; shopName?: string; trending?: boolean; colors?: string[]; sizes?: string[]; colorImages?: Record<string, string> } }>(`/products/${id}`)
+    api.get<{ success: boolean; product: { _id: string; name: string; category: string; price: number; discountedPrice?: number; unit?: string; image?: string; images?: string[]; description?: string; stock?: number; rating?: number; shopId?: string; shopName?: string; trending?: boolean; colors?: string[]; sizes?: string[]; colorImages?: Record<string, string>; variants?: any[] } }>(`/products/${id}`)
       .then(d => {
         const p = d.product;
         setDirectProduct({
@@ -68,6 +68,7 @@ export default function Product() {
           colors: p.colors,
           sizes: p.sizes,
           colorImages: p.colorImages,
+          variants: p.variants,
         });
       })
       .catch(() => setDirectFailed(true))
@@ -84,6 +85,7 @@ export default function Product() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [showVariantError, setShowVariantError] = useState(false);
 
   // Show sticky Add-to-Cart bar when the main CTA button scrolls out of view on mobile.
@@ -219,8 +221,14 @@ export default function Product() {
     ]
   };
 
-  const isOutOfStock = product.stock === 0;
-  const isLowStock = product.stock > 0 && product.stock <= 5;
+  const hasCustomVariants = (product.variants?.length ?? 0) > 0;
+  const activeVariant = hasCustomVariants
+    ? (product.variants!.find(v => (v.id || v.name) === selectedVariantId) ?? product.variants![0])
+    : undefined;
+
+  const currentStock = activeVariant?.stock !== undefined ? activeVariant.stock : product.stock;
+  const isOutOfStock = currentStock === 0;
+  const isLowStock = !isOutOfStock && currentStock <= 5;
 
   const relatedProducts = products.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
 
@@ -230,7 +238,7 @@ export default function Product() {
 
   // Weight-based unit detection
   const unitInfo = parseUnit(product.unit);
-  const isWeightBased = !hasColors && !hasSizes && unitInfo.type === "weight";
+  const isWeightBased = !hasColors && !hasSizes && !hasCustomVariants && unitInfo.type === "weight";
   const baseGrams = isWeightBased && unitInfo.type === "weight" ? unitInfo.baseGrams : 1000;
   const maxGrams = product.stock > 0 ? product.stock * baseGrams : undefined;
   const weightPresetList = weightPresets(maxGrams);
@@ -259,6 +267,7 @@ export default function Product() {
     item => item.product.id === product.id
       && item.selectedColor === (hasColors ? selectedColor : undefined)
       && item.selectedSize === (hasSizes ? selectedSize : undefined)
+      && (activeVariant ? item.selectedVariantId === (activeVariant.id || activeVariant.name) : !item.selectedVariantId)
   );
   const qty = cartItem?.qty || 0;
   const selectedGrams = cartItem?.selectedGrams;
@@ -267,10 +276,18 @@ export default function Product() {
     hasColors ? selectedColor : undefined,
     hasSizes ? selectedSize : undefined,
     selectedGrams,
+    activeVariant ? (activeVariant.id || activeVariant.name) : undefined,
   );
 
-  const effectivePrice = product.discountedPrice && product.discountedPrice < product.price
-    ? product.discountedPrice : product.price;
+  const effectivePrice = activeVariant
+    ? (activeVariant.discountedPrice && activeVariant.discountedPrice < activeVariant.price ? activeVariant.discountedPrice : activeVariant.price)
+    : (product.discountedPrice && product.discountedPrice < product.price ? product.discountedPrice : product.price);
+
+  const displayOriginalPrice = activeVariant ? activeVariant.price : product.price;
+  const displayDiscountedPrice = activeVariant ? activeVariant.discountedPrice : product.discountedPrice;
+  const hasDiscount = displayDiscountedPrice != null && displayDiscountedPrice > 0 && displayDiscountedPrice < displayOriginalPrice;
+  const discountPercent = hasDiscount ? Math.round((1 - displayDiscountedPrice! / displayOriginalPrice) * 100) : 0;
+
   const displayPrice = isWeightBased && selectedGrams
     ? priceForWeight(effectivePrice, baseGrams, selectedGrams)
     : effectivePrice;
@@ -289,6 +306,8 @@ export default function Product() {
         1,
         hasColors ? selectedColor ?? undefined : undefined,
         hasSizes ? selectedSize ?? undefined : undefined,
+        undefined,
+        activeVariant,
       );
     }
   };
@@ -358,13 +377,13 @@ export default function Product() {
               <div className="text-sm text-muted-foreground mb-1">
                 {formatWeight(selectedGrams)} · {formatINR(effectivePrice)}/{formatWeight(baseGrams)}
               </div>
-            ) : product.discountedPrice && product.discountedPrice < product.price ? (
+            ) : hasDiscount ? (
               <>
                 <div className="text-lg text-muted-foreground line-through mb-0.5">
-                  {formatINR(product.price)}
+                  {formatINR(displayOriginalPrice)}
                 </div>
                 <div className="mb-0.5 bg-green-500/15 text-green-600 text-sm font-bold px-2 py-0.5 rounded-full">
-                  {Math.round((1 - product.discountedPrice / product.price) * 100)}% off
+                  {discountPercent}% off
                 </div>
               </>
             ) : null}
@@ -420,6 +439,43 @@ export default function Product() {
                     {size}
                   </button>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Custom Variant / Pack Selector */}
+          {hasCustomVariants && (
+            <div className="mb-5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold">Select Option / Pack</span>
+                {activeVariant && (
+                  <span className="text-xs text-muted-foreground font-medium">
+                    Selected: <strong className="text-foreground">{activeVariant.name}</strong>
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2.5">
+                {product.variants!.map((v, idx) => {
+                  const vKey = v.id || v.name;
+                  const isSelected = activeVariant ? (activeVariant.id || activeVariant.name) === vKey : idx === 0;
+                  const vEffPrice = v.discountedPrice && v.discountedPrice < v.price ? v.discountedPrice : v.price;
+                  return (
+                    <button
+                      key={vKey}
+                      type="button"
+                      onClick={() => setSelectedVariantId(vKey)}
+                      className={`px-3.5 py-2 rounded-xl text-sm font-bold border-2 transition-all flex items-center gap-2.5
+                        ${isSelected
+                          ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20 shadow-sm"
+                          : "border-border bg-background text-foreground hover:border-primary/50"}`}
+                    >
+                      <span>{v.name}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-md font-extrabold ${isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+                        {formatINR(vEffPrice)}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -507,7 +563,9 @@ export default function Product() {
                   {selectedColor && <span className="font-semibold">{selectedColor}</span>}
                   {selectedColor && selectedSize && " · "}
                   {selectedSize && <span className="font-semibold">{selectedSize}</span>}
-                  {(selectedColor || selectedSize) ? " added" : "Added to cart"}
+                  {activeVariant && ((selectedColor || selectedSize) ? " · " : "")}
+                  {activeVariant && <span className="font-semibold text-primary">{activeVariant.name}</span>}
+                  {(selectedColor || selectedSize || activeVariant) ? " added" : "Added to cart"}
                 </div>
               </div>
             ) : (
@@ -532,8 +590,10 @@ export default function Product() {
       {showStickyBar && !isOutOfStock && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur border-t border-border/50 px-4 py-3 flex items-center gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.10)]">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-foreground truncate">{product.name}</p>
-            <p className="text-primary font-bold text-sm">{formatINR(product.discountedPrice ?? product.price)}</p>
+            <p className="text-sm font-bold text-foreground truncate">
+              {product.name} {activeVariant ? `(${activeVariant.name})` : ""}
+            </p>
+            <p className="text-primary font-bold text-sm">{formatINR(displayPrice)}</p>
           </div>
           {isWeightBased ? (
             selectedGrams ? (

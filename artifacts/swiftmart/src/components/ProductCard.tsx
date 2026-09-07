@@ -21,7 +21,8 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
   const { items, addToCart, updateQty, updateWeight, productLimits } = useCart();
   const [, navigate] = useLocation();
 
-  const hasVariants = (product.colors?.length ?? 0) > 0 || (product.sizes?.length ?? 0) > 0;
+  const hasCustomVariants = (product.variants?.length ?? 0) > 0;
+  const hasVariants = (product.colors?.length ?? 0) > 0 || (product.sizes?.length ?? 0) > 0 || hasCustomVariants;
   const unitInfo = parseUnit(product.unit);
   const isWeightBased = unitInfo.type === "weight";
 
@@ -51,9 +52,13 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
   const selectedGrams = cartItem?.selectedGrams;
   const weightInCart = isWeightBased && selectedGrams != null && selectedGrams > 0;
 
-  const effectivePrice = product.discountedPrice && product.discountedPrice < product.price
+  const lowestVariantPrice = hasCustomVariants
+    ? Math.min(...product.variants!.map(v => (v.discountedPrice && v.discountedPrice < v.price ? v.discountedPrice : v.price)))
+    : null;
+
+  const effectivePrice = lowestVariantPrice ?? (product.discountedPrice && product.discountedPrice < product.price
     ? product.discountedPrice
-    : product.price;
+    : product.price);
 
   const displayPrice = isWeightBased && weightInCart && selectedGrams
     ? priceForWeight(effectivePrice, baseGrams, selectedGrams)
@@ -159,13 +164,19 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
             {product.sizes?.slice(0, 3).map(s => (
               <span key={s} className="text-[9px] font-bold bg-background/50 px-1 rounded neu-inset">{s}</span>
             ))}
+            {hasCustomVariants && (
+              <span className="text-[9px] font-bold bg-primary/10 text-primary px-1.5 py-0.5 rounded-md">
+                {product.variants!.length} {product.variants!.length === 1 ? "Option" : "Options"}
+              </span>
+            )}
           </div>
         )}
 
         <div className="mt-auto flex items-center justify-between gap-1">
           <div className="flex flex-col min-w-0">
-            <div className="font-bold text-base text-primary">
-              {formatINR(displayPrice)}
+            <div className="font-bold text-base text-primary flex items-baseline gap-1">
+              {hasCustomVariants && <span className="text-[11px] text-muted-foreground font-normal">From</span>}
+              <span>{formatINR(displayPrice)}</span>
             </div>
             {/* Show "per kg" label or original MRP if discounted */}
             {isWeightBased && weightInCart && selectedGrams ? (
