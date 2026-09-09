@@ -5,6 +5,8 @@ export * from "./shopTypes.js";
 export * from "./categories.js";
 export * from "./shops.js";
 export * from "./products.js";
+export * from "./masterProducts.js";
+export * from "./productWrongReports.js";
 export * from "./orders.js";
 export * from "./otpSessions.js";
 export * from "./payouts.js";

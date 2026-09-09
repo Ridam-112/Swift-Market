@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { db, products, shops, categories, users } from "@workspace/db";
+import { db, products, masterProducts, productWrongReports, shops, categories, users } from "@workspace/db";
 import { eq, and, ilike, inArray, desc, count, gt, gte, sql, or } from "drizzle-orm";
 import { authenticate, requireRole, optionalAuth, type AuthRequest } from "../../middlewares/auth.js";
 import { vendorWriteLimiter } from "../../middlewares/rateLimiter.js";
@@ -7,6 +7,7 @@ import { deleteFromImageKit } from "../../lib/imagekit.js";
 import { createNotificationLimited } from "../../utils/notification.js";
 import { mi, miArr } from "../../utils/mapId.js";
 import { cacheGet, cacheSet, invalidateProductCaches, productsCacheKey, TTL } from "../../lib/cache.js";
+import { ProductLookupService } from "../../services/productLookupService.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -265,6 +266,204 @@ router.get("/trending-manager", authenticate, A, async (req: AuthRequest, res: R
   res.json({ success: true, products: enriched });
 });
 
+// GET /api/products/barcode/:barcode — Exact Master Catalog & External Lookup
+router.get("/barcode/:barcode", optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rawBarcode = String(req.params["barcode"] || "").trim();
+    if (!rawBarcode) {
+      res.status(400).json({ success: false, status: "INVALID_BARCODE", message: "Barcode is required" });
+      return;
+    }
+
+    const result = await ProductLookupService.lookupByBarcode(rawBarcode);
+    res.json({
+      success: result.status === "FOUND",
+      ...result,
+    });
+  } catch (_err) {
+    res.status(500).json({ success: false, status: "NOT_FOUND", message: "Failed to lookup barcode" });
+  }
+});
+
+// GET /api/products/master-catalog — Search master catalog
+router.get("/master-catalog", optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { search, category, limit = "30" } = req.query as Record<string, string>;
+    const lm = Math.min(100, Math.max(1, parseInt(limit) || 30));
+    const conditions = [];
+
+    if (search && search.trim().length > 0) {
+      const q = search.trim();
+      conditions.push(or(
+        ilike(masterProducts.name, `%${q}%`),
+        ilike(masterProducts.brand, `%${q}%`),
+        eq(masterProducts.barcode, q)
+      ));
+    }
+
+    if (category && category !== "All") {
+      conditions.push(eq(masterProducts.category, category));
+    }
+
+    const where = conditions.length ? and(...conditions) : undefined;
+    const list = await db.select().from(masterProducts).where(where).orderBy(desc(masterProducts.createdAt)).limit(lm);
+
+    res.json({ success: true, count: list.length, products: list.map(mi) });
+  } catch (_err) {
+    res.status(500).json({ success: false, message: "Failed to search master catalog" });
+  }
+});
+
+// POST /api/products/master — Create or update master catalog product
+router.post("/master", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const body = req.body as Record<string, unknown>;
+    const rawBarcode = ProductLookupService.normalizeBarcode(String(body["barcode"] || ""));
+    const name = String(body["name"] || "").trim();
+    const category = String(body["category"] || "Grocery").trim();
+
+    if (!name || name.length < 2) {
+      res.status(400).json({ success: false, message: "Product name is required" });
+      return;
+    }
+
+    // Check existing master product with this barcode
+    if (rawBarcode) {
+      const [existing] = await db.select().from(masterProducts).where(eq(masterProducts.barcode, rawBarcode)).limit(1);
+      if (existing) {
+        res.json({ success: true, masterProduct: mi(existing), isExisting: true });
+        return;
+      }
+    }
+
+    const images = sanitizeImages(body["images"] || (body["primaryImage"] ? [body["primaryImage"]] : []));
+    const primaryImage = images.length > 0 ? images[0] : (body["primaryImage"] ? String(body["primaryImage"]) : undefined);
+
+    const [created] = await db.insert(masterProducts).values({
+      barcode: rawBarcode || undefined,
+      gtin: body["gtin"] ? String(body["gtin"]) : undefined,
+      name,
+      brand: body["brand"] ? String(body["brand"]).trim() : undefined,
+      category,
+      subcategory: body["subcategory"] ? String(body["subcategory"]).trim() : undefined,
+      variant: body["variant"] ? String(body["variant"]).trim() : undefined,
+      netQuantity: body["netQuantity"] ? String(body["netQuantity"]).trim() : undefined,
+      unit: body["unit"] ? String(body["unit"]).trim() : "1 unit",
+      mrp: Math.max(0, Number(body["mrp"] ?? 0) || 0),
+      description: body["description"] ? String(body["description"]).trim() : undefined,
+      primaryImage,
+      images,
+      manufacturer: body["manufacturer"] ? String(body["manufacturer"]).trim() : undefined,
+      countryOfOrigin: body["countryOfOrigin"] ? String(body["countryOfOrigin"]).trim() : "India",
+      source: body["source"] ? String(body["source"]) : "MANUAL",
+      verificationStatus: req.user?.role === "admin" || req.user?.role === "super_admin" ? "VERIFIED" : "PENDING_REVIEW",
+      productType: body["productType"] ? String(body["productType"]) : (rawBarcode ? "PACKAGED" : "STORE_ITEM"),
+      createdBy: req.user?.userId,
+    }).returning();
+
+    res.status(201).json({ success: true, masterProduct: mi(created!) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message: "Failed to save master product", error: msg });
+  }
+});
+
+// POST /api/products/link-master — Link a seller listing to an existing master product
+router.post("/link-master", authenticate, vendorWriteLimiter, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const body = req.body as Record<string, unknown>;
+    const masterProductId = String(body["masterProductId"] || "");
+    const sellingPrice = Math.max(0, Number(body["sellingPrice"] ?? body["price"] ?? 0) || 0);
+    const stock = Math.max(0, Number(body["stock"] ?? 10) || 0);
+    const inStock = body["inStock"] !== false && stock > 0;
+
+    const [master] = await db.select().from(masterProducts).where(eq(masterProducts.id, masterProductId)).limit(1);
+    if (!master) {
+      res.status(404).json({ success: false, message: "Master product not found" });
+      return;
+    }
+
+    const [shop] = await db.select({ id: shops.id }).from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
+    const targetShopId = shop?.id || String(body["shopId"] || "");
+    if (!targetShopId) {
+      res.status(400).json({ success: false, message: "No approved shop found for this vendor" });
+      return;
+    }
+
+    // Check if seller already has a listing for this master product
+    const [existingListing] = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.shopId, targetShopId), eq(products.masterProductId, master.id)))
+      .limit(1);
+
+    if (existingListing) {
+      const [updated] = await db.update(products).set({
+        price: master.mrp && master.mrp > 0 ? master.mrp : sellingPrice,
+        discountedPrice: master.mrp && master.mrp > sellingPrice ? sellingPrice : undefined,
+        stock,
+        status: inStock ? "active" : "out_of_stock",
+      }).where(eq(products.id, existingListing.id)).returning();
+
+      void invalidateProductCaches();
+      res.json({ success: true, product: mi(updated!), isUpdate: true });
+      return;
+    }
+
+    const [newListing] = await db.insert(products).values({
+      name: master.name,
+      description: master.description ?? undefined,
+      brand: master.brand ?? undefined,
+      barcode: master.barcode ?? undefined,
+      sku: master.barcode ?? body["sellerSku"]?.toString(),
+      masterProductId: master.id,
+      price: master.mrp && master.mrp > 0 ? master.mrp : sellingPrice,
+      discountedPrice: master.mrp && master.mrp > sellingPrice ? sellingPrice : undefined,
+      category: master.category,
+      subcategory: master.subcategory ?? undefined,
+      shopId: targetShopId,
+      images: Array.isArray(master.images) && master.images.length > 0 ? master.images : (master.primaryImage ? [master.primaryImage] : []),
+      stock,
+      unit: master.unit ?? "1 unit",
+      status: "active",
+      source: "SWIFTMART",
+      verificationStatus: master.verificationStatus,
+    }).returning();
+
+    void invalidateProductCaches();
+    res.status(201).json({ success: true, product: mi(newListing!) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message: "Failed to link product to store", error: msg });
+  }
+});
+
+// POST /api/products/report-wrong — Report incorrect barcode matching
+router.post("/report-wrong", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const body = req.body as Record<string, unknown>;
+    const barcode = ProductLookupService.normalizeBarcode(String(body["barcode"] || ""));
+    if (!barcode) {
+      res.status(400).json({ success: false, message: "Barcode is required" });
+      return;
+    }
+
+    await db.insert(productWrongReports).values({
+      barcode,
+      reportedBy: req.user?.userId,
+      shopId: body["shopId"] ? String(body["shopId"]) : undefined,
+      actualName: body["actualName"] ? String(body["actualName"]).trim() : undefined,
+      photoUrl: body["photoUrl"] ? String(body["photoUrl"]).trim() : undefined,
+      note: body["note"] ? String(body["note"]).trim() : undefined,
+      status: "pending",
+    });
+
+    res.json({ success: true, message: "Report submitted to admin for review. Thank you for keeping catalog accurate!" });
+  } catch (_err) {
+    res.status(500).json({ success: false, message: "Failed to submit report" });
+  }
+});
+
 // GET /api/products/:id
 // L4 fix: strip admin-only fields (rejectionReason, commissionRate) for public/non-admin callers
 router.get("/:id", optionalAuth, async (req: Request, res: Response): Promise<void> => {
@@ -398,6 +597,213 @@ router.post("/", authenticate, vendorWriteLimiter, async (req: AuthRequest, res:
 
   void invalidateProductCaches();
   res.status(201).json({ success: true, product: mi(product!) });
+});
+
+// POST /api/products/bulk — Bulk create products for vendor
+router.post("/bulk", authenticate, vendorWriteLimiter, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const body = req.body as { items?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>;
+    const rawItems = Array.isArray(body) ? body : (Array.isArray(body.items) ? body.items : []);
+
+    if (rawItems.length === 0) {
+      res.status(400).json({ success: false, message: "No products provided in bulk payload" });
+      return;
+    }
+
+    if (rawItems.length > 100) {
+      res.status(400).json({ success: false, message: "Maximum 100 products allowed per batch" });
+      return;
+    }
+
+    const VENDOR_ROLES = new Set(["vendor", "admin", "super_admin"]);
+    if (!VENDOR_ROLES.has(req.user!.role)) {
+      const [ownedShop] = await db.select({ id: shops.id })
+        .from(shops)
+        .where(and(eq(shops.ownerId, req.user!.userId), eq(shops.status, "approved")))
+        .limit(1);
+      if (ownedShop) {
+        await db.update(users).set({ role: "vendor", vendorStatus: "approved" }).where(eq(users.id, req.user!.userId));
+        req.user!.role = "vendor";
+      } else {
+        res.status(403).json({ success: false, message: "Forbidden: insufficient role" });
+        return;
+      }
+    }
+
+    const [shop] = await db.select({ id: shops.id }).from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
+    const targetShopId = shop?.id || (req.body as Record<string, unknown>)["shopId"]?.toString();
+    if (!targetShopId) {
+      res.status(400).json({ success: false, message: "Shop ID is required" });
+      return;
+    }
+
+    const insertedProducts = [];
+    for (const item of rawItems) {
+      const price = Math.max(0, Number(item["price"] ?? item["mrp"] ?? 0) || 0);
+      const discountedPrice = item["discountedPrice"] != null
+        ? Number(item["discountedPrice"])
+        : (item["price"] != null && item["mrp"] != null && Number(item["price"]) < Number(item["mrp"]) ? Number(item["price"]) : undefined);
+      
+      const [newProd] = await db.insert(products).values({
+        name: String(item["name"] || "Untitled Product").trim(),
+        description: item["description"] ? String(item["description"]) : undefined,
+        price: price,
+        discountedPrice: discountedPrice && discountedPrice < price ? discountedPrice : undefined,
+        category: String(item["category"] || "Grocery").trim(),
+        subcategory: item["subcategory"] ? String(item["subcategory"]) : undefined,
+        shopId: targetShopId,
+        images: sanitizeImages(item["images"] || (item["imageUrl"] ? [item["imageUrl"]] : item["image"] ? [item["image"]] : [])),
+        stock: Math.max(0, Number(item["stock"] ?? 10) || 10),
+        sku: item["sku"] ? String(item["sku"]) : (item["barcode"] ? String(item["barcode"]) : undefined),
+        unit: item["unit"] ? String(item["unit"]) : "1 unit",
+        status: "pending",
+      }).returning();
+      if (newProd) insertedProducts.push(mi(newProd));
+    }
+
+    void invalidateProductCaches();
+    res.status(201).json({
+      success: true,
+      count: insertedProducts.length,
+      products: insertedProducts,
+      message: `Successfully created ${insertedProducts.length} products.`,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message: "Failed to bulk create products", error: msg });
+  }
+});
+
+// POST /api/products/bulk-import-csv — Process and match CSV/Excel rows against Master Catalog
+router.post("/bulk-import-csv", authenticate, vendorWriteLimiter, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { rows, shopId: reqShopId } = req.body as { rows?: Array<Record<string, unknown>>; shopId?: string };
+    if (!Array.isArray(rows) || rows.length === 0) {
+      res.status(400).json({ success: false, message: "No rows provided for import" });
+      return;
+    }
+
+    if (rows.length > 500) {
+      res.status(400).json({ success: false, message: "Maximum 500 rows allowed per import batch" });
+      return;
+    }
+
+    const [shop] = await db.select({ id: shops.id }).from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
+    const targetShopId = shop?.id || reqShopId;
+    if (!targetShopId) {
+      res.status(400).json({ success: false, message: "Shop ID is required" });
+      return;
+    }
+
+    let matchedExisting = 0;
+    let newProductsCreated = 0;
+    const errors: Array<{ row: number; reason: string }> = [];
+    const seenBarcodes = new Set<string>();
+    let duplicateBarcodes = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rawBarcode = ProductLookupService.normalizeBarcode(String(row["barcode"] || row["Barcode"] || row["sku"] || row["SKU"] || ""));
+      const rawName = String(row["name"] || row["productName"] || row["Product Name"] || "").trim();
+      const rawPrice = Math.max(0, Number(row["sellingPrice"] ?? row["Selling Price"] ?? row["price"] ?? row["Price"] ?? 0) || 0);
+      const rawMrp = Math.max(0, Number(row["mrp"] ?? row["MRP"] ?? rawPrice) || 0);
+      const rawStock = Math.max(0, Number(row["stock"] ?? row["Stock"] ?? 10) || 0);
+      const rawCategory = String(row["category"] || row["Category"] || "Grocery").trim();
+      const rawUnit = String(row["unit"] || row["Unit"] || row["size"] || row["Size"] || "1 unit").trim();
+      const brand = String(row["brand"] || row["Brand"] || "").trim() || undefined;
+
+      if (rawBarcode) {
+        if (seenBarcodes.has(rawBarcode)) {
+          duplicateBarcodes++;
+          continue;
+        }
+        seenBarcodes.add(rawBarcode);
+
+        // Check exact match in masterProducts
+        const [master] = await db.select().from(masterProducts).where(eq(masterProducts.barcode, rawBarcode)).limit(1);
+        if (master) {
+          // Link to existing master product
+          await db.insert(products).values({
+            name: master.name,
+            description: master.description ?? undefined,
+            brand: master.brand ?? undefined,
+            barcode: master.barcode ?? undefined,
+            sku: master.barcode ?? undefined,
+            masterProductId: master.id,
+            price: master.mrp && master.mrp > 0 ? master.mrp : rawPrice,
+            discountedPrice: master.mrp && master.mrp > rawPrice ? rawPrice : undefined,
+            category: master.category,
+            subcategory: master.subcategory ?? undefined,
+            shopId: targetShopId,
+            images: Array.isArray(master.images) && master.images.length > 0 ? master.images : (master.primaryImage ? [master.primaryImage] : []),
+            stock: rawStock,
+            unit: master.unit ?? rawUnit,
+            status: "active",
+            source: "SWIFTMART",
+          });
+          matchedExisting++;
+          continue;
+        }
+      }
+
+      // Not in master catalog — validate product name
+      if (!rawName || rawName.length < 2) {
+        errors.push({ row: i + 1, reason: "Product Name is required" });
+        continue;
+      }
+
+      // Create new Master Product if barcode is present
+      let createdMasterId: string | undefined;
+      if (rawBarcode) {
+        const [newMaster] = await db.insert(masterProducts).values({
+          barcode: rawBarcode,
+          name: rawName,
+          brand,
+          category: rawCategory,
+          unit: rawUnit,
+          mrp: rawMrp > 0 ? rawMrp : rawPrice,
+          source: "MANUAL",
+          verificationStatus: "PENDING_REVIEW",
+          createdBy: req.user?.userId,
+        }).onConflictDoNothing().returning();
+        if (newMaster) createdMasterId = newMaster.id;
+      }
+
+      // Create Store Listing
+      await db.insert(products).values({
+        name: rawName,
+        brand,
+        barcode: rawBarcode || undefined,
+        sku: rawBarcode || undefined,
+        masterProductId: createdMasterId,
+        price: rawMrp > 0 ? rawMrp : rawPrice,
+        discountedPrice: (rawPrice > 0 && rawPrice < rawMrp) ? rawPrice : undefined,
+        category: rawCategory,
+        shopId: targetShopId,
+        stock: rawStock,
+        unit: rawUnit,
+        status: "active",
+        source: "MANUAL",
+      });
+      newProductsCreated++;
+    }
+
+    void invalidateProductCaches();
+    res.json({
+      success: true,
+      summary: {
+        totalRows: rows.length,
+        matchedExisting,
+        newProductsCreated,
+        duplicateBarcodes,
+        errorCount: errors.length,
+        errors: errors.slice(0, 20),
+      },
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message: "Failed to process bulk import", error: msg });
+  }
 });
 
 // PATCH /api/products/:id/approval — admin: approve or reject a product with notification

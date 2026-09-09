@@ -9,6 +9,7 @@ import { cleanupAbandonedOrders } from "./utils/orderCleanup.js";
 import { OTP_MODE } from "./lib/sms.js";
 import { verifyShardConnections } from "./lib/dbRouter.js";
 import { migrateDataToBalurghat } from "./utils/migrateBalurghat.js";
+import { initMasterProducts } from "./utils/initMasterProducts.js";
 
 // AUTH_MODE controls which login methods are enabled (otp | google | both).
 // Default is "otp" — safe to run without a domain or Google OAuth credentials.
@@ -172,6 +173,7 @@ async function autoEnsureDatabaseTablesAndColumns() {
         created_at timestamp DEFAULT now() NOT NULL
       );
     `);
+    await initMasterProducts();
     logger.info("[startup] DB schema auto-verification completed successfully ✅");
   } catch (err: any) {
     logger.error({ err: err?.message || err }, "[startup] DB schema auto-verification failed (non-fatal)");
