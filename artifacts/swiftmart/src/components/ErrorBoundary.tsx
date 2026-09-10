@@ -55,7 +55,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <p style={{ fontSize: 14, color: "var(--muted-foreground, #666)", textAlign: "center", maxWidth: 300, marginBottom: 24, lineHeight: 1.6 }}>
             An unexpected error occurred. Please refresh the page to continue.
           </p>
-          {this.state.error && (
+          {import.meta.env.DEV && this.state.error && (
             <pre
               style={{
                 fontSize: 11,
@@ -68,11 +68,9 @@ export class ErrorBoundary extends Component<Props, State> {
                 overflow: "auto",
                 marginBottom: 24,
                 color: "#ef4444",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word"
               }}
             >
-              {this.state.error.message || String(this.state.error)}
+              {this.state.error.message}
             </pre>
           )}
           <button
