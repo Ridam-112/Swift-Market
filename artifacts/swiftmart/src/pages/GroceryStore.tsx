@@ -15,23 +15,68 @@ const NON_GROCERY_CATS = new Set([
   "restaurant", "fast-food", "cloud-kitchen",
   "meat-fish", "meat-shop", "fish-shop",
   "clothing", "fashion", "electronics", "mobile-phone",
-  "toys", "gaming", "hardware", "handmade", "gifts",
+  "toys", "gaming", "hardware", "handmade", "gifts", "gift-shop",
+  "book-store", "books", "Stationery & Crafts", "stationary",
+  "Roll", "Chowmin", "Mughlai", "Fried Rice", "Gravy", "Milkshake", "Mojito", "Lassi", "Coffee"
 ]);
 
-// ─── Word-boundary keyword matcher ────────────────────────────────────────────
-// Uses \b so "deo" ≠ "video", "atta" ≠ "khatta", "bru" ≠ "brush", "gur" in
-// "nolen gur ice cream" is vetoed by the exclusion list on the sugar subcat.
-function escRe(s: string) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+function matchSubcat(product: { name: string; category?: string; subcategory?: string; description?: string }, subcatId: string): boolean {
+  const name = (product.name || "").toLowerCase();
+  const subcat = (product.subcategory || "").toLowerCase();
+  const cat = (product.category || "").toLowerCase();
+  const combined = `${name} ${subcat} ${cat}`;
 
-function matchSubcat(product: { name: string }, subcat: { keywords: string[]; excludes?: string[] }): boolean {
-  const name = product.name.toLowerCase();
-  if (subcat.excludes?.some(ex => new RegExp(`\\b${escRe(ex)}\\b`, "i").test(name))) return false;
-  return subcat.keywords.some(kw => new RegExp(`\\b${escRe(kw)}\\b`, "i").test(name));
+  switch (subcatId) {
+    case "rice":
+      return /rice|chawal|basmati|gobindo|miniket|sona masoori|poha|sabudana|makhana/i.test(combined) || subcat.includes("rice") || subcat.includes("grains") || subcat.includes("poha");
+    case "atta":
+      return /atta|flour|maida|sooji|suji|semolina|besan|gram flour|ragi|bajra|jowar/i.test(combined) || subcat.includes("atta") || subcat.includes("flour");
+    case "dal":
+      return /dal|pulse|masoor|moong|chana|urad|toor|arhar|rajma|matar|chole|chickpea|lobiya/i.test(combined) || subcat.includes("dal") || subcat.includes("pulses");
+    case "oil":
+      return (/oil|ghee|mustard|sunflower|refined|soyabean|palm|groundnut|vanaspati/i.test(combined) && !/hair oil|baby oil|essential oil/i.test(name)) || subcat.includes("oil") || subcat.includes("ghee");
+    case "spices":
+      return /spice|masala|turmeric|haldi|jeera|cumin|coriander|dhania|pepper|chilli|mirchi|hing|cardamom|elaichi|clove|bay leaf|cinnamon|dalchini|methi|ajwain/i.test(combined) || cat === "spices-dryfruits" || subcat.includes("spice");
+    case "tea":
+      return /tea|coffee|nescafe|bru|lipton|tata tea|taj mahal|wagh bakri/i.test(combined) || cat === "tea-coffee" || subcat.includes("tea") || subcat.includes("coffee");
+    case "sugar":
+      return (/sugar|chini|jaggery|gur|salt|namak/i.test(combined) && !/hair|shampoo/i.test(name)) || subcat.includes("sugar") || subcat.includes("salt");
+    case "biscuits":
+      return /biscuit|cookie|rusk|wafer|cracker|marie|parle|bourbon|oreo|good day|hide & seek|digestive/i.test(combined) || cat === "biscuits-cookies" || subcat.includes("biscuit");
+    case "chocolates":
+      return /chocolate|cadbury|kitkat|dairy milk|5 star|snickers|ferrero|gems|candy|toffee|lollipop|mithai|sweet/i.test(combined) || cat === "sweets" || subcat.includes("chocolate") || subcat.includes("sweet");
+    case "drinks":
+      return /cold drink|soft drink|pepsi|sprite|coke|coca cola|thums up|limca|maaza|frooti|juice|squash|sharbat|soda|energy drink|sting|red bull/i.test(combined) || cat === "cold-drinks" || subcat.includes("juice") || subcat.includes("drink");
+    case "health-drinks":
+      return /horlicks|bournvita|complan|protinex|boost|glucon-d|ensure|pediasure|protein|nutrition/i.test(combined) || cat === "protein-nutrition" || subcat.includes("health") || subcat.includes("nutrition");
+    case "bread":
+      return /bread|pav|bun|bakery|cake|muffin|croissant/i.test(combined) || subcat.includes("bread") || subcat.includes("bakery");
+    case "dairy":
+      return /milk|curd|dahi|paneer|butter|cheese|cream|yogurt|lassi|amul|dairy/i.test(combined) || cat === "dairy-bread-eggs" || subcat.includes("milk") || subcat.includes("butter");
+    case "dry-fruits":
+      return /kaju|cashew|badam|almond|raisin|kishmish|pista|pistachio|walnut|akhrot|dates|khajur|anjeer|peanut|nut/i.test(combined) || subcat.includes("dry fruit");
+    case "snacks":
+      return /chips|lays|kurkure|bingo|pringles|namkeen|bhujia|chanachur|mixture|popcorn|snack/i.test(combined) || cat === "snacks" || subcat.includes("chips") || subcat.includes("snack");
+    case "noodles":
+      return /maggi|yippee|noodles|pasta|macaroni|vermicelli|chowmein|ready to eat|ready to cook|soup/i.test(combined) || cat === "packaged-food" || subcat.includes("ready to") || subcat.includes("noodle");
+    case "sauces":
+      return /ketchup|sauce|mayonnaise|jam|jelly|spread|pickle|achar|papad|vinegar/i.test(combined) || cat === "breakfast-sauces" || subcat.includes("spread") || subcat.includes("sauce") || subcat.includes("pickle");
+    case "personal-care":
+      return /soap|body wash|handwash|shampoo|conditioner|face wash|lotion|cream|powder|toothpaste|toothbrush|deodorant|perfume|shaving|razor|grooming|hygiene|skincare/i.test(combined) || cat === "fragrance" || cat === "feminine-hygiene" || cat === "beauty-personal-care" || subcat.includes("wellness") || subcat.includes("grooming");
+    case "cleaning":
+      return /detergent|surf excel|tide|ariel|vim|dishwash|phenyl|lizol|harpic|cleaner|air freshner|repellent|mop|broom|garbage/i.test(combined) || cat === "cleaning-essentials" || subcat.includes("dishwashing") || subcat.includes("cleaning");
+    case "baby-care":
+      return /baby|diaper|pampers|huggies|wipes|cerelac|johnson/i.test(combined) || cat === "baby-care";
+    case "pooja":
+      return /agarbatti|incense|camphor|kapoor|diya|sindoor|kumkum|dhoop|pooja/i.test(combined) || cat === "pooja" || subcat.includes("pooja");
+    default:
+      return false;
+  }
 }
 
-function getProductSubcatId(product: { name: string; category?: string }): string | null {
+function getProductSubcatId(product: { name: string; category?: string; subcategory?: string; description?: string }): string | null {
   if (NON_GROCERY_CATS.has(product.category ?? "")) return null;
-  return GROCERY_SUBCATS.find(sc => matchSubcat(product, sc))?.id ?? null;
+  return GROCERY_SUBCATS.find(sc => matchSubcat(product, sc.id))?.id ?? null;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -56,14 +101,15 @@ export default function GroceryStore() {
   const filteredProducts = useMemo(() => {
     let list = products.filter(p => !NON_GROCERY_CATS.has(p.category ?? ""));
     if (selectedId !== "all") {
-      const subcat = GROCERY_SUBCATS.find(sc => sc.id === selectedId);
-      list = subcat ? list.filter(p => matchSubcat(p, subcat)) : [];
+      list = list.filter(p => matchSubcat(p, selectedId));
     }
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        (p.description ?? "").toLowerCase().includes(q)
+        (p.name || "").toLowerCase().includes(q) ||
+        (p.subcategory || "").toLowerCase().includes(q) ||
+        (p.category || "").toLowerCase().includes(q) ||
+        (p.description || "").toLowerCase().includes(q)
       );
     }
     return list;

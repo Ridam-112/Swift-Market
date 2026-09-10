@@ -86,7 +86,7 @@ export default function Cart() {
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_20rem] gap-6 items-start">
         <div className="min-w-0 space-y-4">
           {items.map(item => (
-            <CartItemRow key={cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams)} item={item} />
+            <CartItemRow key={cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams, item.selectedVariantId)} item={item} />
           ))}
           <AddonSuggestions />
           <AdSenseSectionBanner className="mt-4" />

@@ -17,6 +17,16 @@ export function cartKey(
   return `${productId}::${color ?? ""}::${size ?? ""}::${grams ?? ""}::${variantId ?? ""}`;
 }
 
+export function getCartItemKey(item: CartItem): string {
+  return cartKey(
+    item.product.id,
+    item.selectedColor,
+    item.selectedSize,
+    item.selectedGrams,
+    item.selectedVariantId || item.selectedVariant?.id || item.selectedVariant?.name,
+  );
+}
+
 interface CartContextType {
   items: CartItem[];
   addToCart: (
@@ -169,10 +179,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const matchesKey = (item: CartItem, targetKey: string): boolean => {
+    const fullKey = cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams, item.selectedVariantId);
+    const shortKey = cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams);
+    const vIdKey = cartKey(item.product.id, item.selectedColor, item.selectedSize, undefined, item.selectedVariantId);
+    const bareKey = cartKey(item.product.id);
+    return fullKey === targetKey || shortKey === targetKey || vIdKey === targetKey || item.product.id === targetKey || bareKey === targetKey;
+  };
+
   const removeFromCart = (key: string) => {
-    setItems(current =>
-      current.filter(item => cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams, item.selectedVariantId) !== key)
-    );
+    setItems(current => current.filter(item => !matchesKey(item, key)));
   };
 
   const updateQty = (key: string, qty: number) => {
@@ -182,7 +198,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
     setItems(current =>
       current.map(item => {
-        if (cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams, item.selectedVariantId) !== key) return item;
+        if (!matchesKey(item, key)) return item;
         const stock = item.selectedVariant?.stock ?? item.product.stock;
         let capped = stock > 0 ? Math.min(qty, stock) : qty;
         const limit = productLimits[item.product.id];
@@ -200,15 +216,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setItems(current =>
-      current.map(item =>
-        cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams) === key
-          ? {
-              ...item,
-              selectedGrams: grams,
-              selectedVariantId: weightVariantId(item.product.id, grams),
-            }
-          : item
-      )
+      current.map(item => {
+        if (!matchesKey(item, key)) return item;
+        return {
+          ...item,
+          selectedGrams: grams,
+          selectedVariantId: weightVariantId(item.product.id, grams),
+        };
+      })
     );
   };
 

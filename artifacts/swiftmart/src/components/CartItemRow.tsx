@@ -17,7 +17,7 @@ const COLOR_HEX: Record<string, string> = {
 export function CartItemRow({ item }: { item: CartItem }) {
   const { updateQty, updateWeight, removeFromCart, productLimits } = useCart();
   const { product, qty, selectedColor, selectedSize, selectedGrams } = item;
-  const key = cartKey(product.id, selectedColor, selectedSize, selectedGrams);
+  const key = cartKey(product.id, selectedColor, selectedSize, selectedGrams, item.selectedVariantId);
 
   const unitInfo = parseUnit(product.unit);
   const isWeightBased = isProductWeightBased(product) && Boolean(selectedGrams);
