@@ -4868,7 +4868,7 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
     setLoading(true);
     try {
       const data = await api.get<{ success: boolean; products: ApiProductFull[] }>(
-        `/products?shopId=${shop._id}&status=all&limit=200`
+        `/products?shopId=${shop._id}&status=all&limit=5000`
       );
       setProducts(data.products);
       await loadCommissions(data.products.map(p => p._id));

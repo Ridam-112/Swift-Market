@@ -51,7 +51,7 @@ export default function VendorProducts() {
     try {
       // status=all so vendor sees pending/active/rejected in one list
       const d = await api.get<{ success: boolean; products: ApiProduct[] }>(
-        `/products?shopId=${sid}&status=all&limit=200`
+        `/products?shopId=${sid}&status=all&limit=5000`
       );
       setProducts(d.products);
     } catch {
