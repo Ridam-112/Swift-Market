@@ -40,6 +40,7 @@ interface AuthContextType {
   signup: (name: string, phone: string, password: string) => Promise<{ isNewUser: boolean; user?: User }>;
   loginWithGoogle: (token: string, type?: "credential" | "accessToken") => Promise<{ isNewUser: boolean; needsProfile?: boolean; user?: User }>;
   loginWithPhone: (phone: string) => Promise<void>;
+  verifyOtp: (otp: string, phone: string) => Promise<{ isNewUser: boolean; user?: User }>;
   // ── Modal Login Popup ──────────────────────────────────────────────
   isLoginModalOpen: boolean;
   loginModalMessage?: string;

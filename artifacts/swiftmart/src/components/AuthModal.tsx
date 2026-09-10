@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff, Mail, Lock, User, ShoppingBag, ShieldCheck } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, setTokens } from "@/lib/api";
 import { setAuthConfig } from "@/lib/authConfig";
 
 function GoogleLogo() {

@@ -681,15 +681,21 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
 
       // 6. Create payout record inside transaction — vendor payout is guaranteed or order rolls back
       if (shopId && vendorPayable > 0 && shop) {
+        const scheduledDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); // 3 days after order
         await tx.insert(payouts).values({
           vendorId: shop.ownerId,
           vendorName: shop.ownerName ?? String(body["shopName"] ?? ""),
           shopId,
+          orderId: order!.id,
+          orderNumber: order!.id.slice(-6).toUpperCase(),
           amount: vendorPayable,
           orderTotal: netAmount,
           commissionAmount,
+          deductionAmount: 0,
           status: "pending",
           ordersIncluded: [order!.id],
+          scheduledDate,
+          earlyPayoutRequested: false,
         });
       }
 

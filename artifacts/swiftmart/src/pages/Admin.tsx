@@ -5729,17 +5729,25 @@ interface ApiPayoutRecord {
   vendorId: string;
   vendorName: string;
   shopId: string;
+  orderId?: string;
+  orderNumber?: string;
   amount: number;
   orderTotal?: number;
   commissionAmount?: number;
+  deductionAmount?: number;
+  adjustedReason?: string;
   status: "pending" | "processing" | "paid" | "failed";
   ordersIncluded: string[];
+  scheduledDate?: string;
+  earlyPayoutRequested?: boolean;
+  earlyPayoutRequestedAt?: string;
+  earlyPayoutReason?: string;
   paidAt?: string;
   notes?: string;
   createdAt: string;
 }
 
-const PAYOUT_FILTER_STATUSES = ["all", "pending", "processing", "paid", "failed"] as const;
+const PAYOUT_FILTER_STATUSES = ["all", "early_requested", "pending", "processing", "paid", "failed"] as const;
 
 function payoutBadgeClass(status: string) {
   switch (status) {
@@ -5755,13 +5763,29 @@ function PayoutsTab() {
   const [payouts, setPayouts] = useState<ApiPayoutRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [notesMap, setNotesMap] = useState<Record<string, string>>({});
+  const [markingAllPaid, setMarkingAllPaid] = useState(false);
+
+  // Edit Payout Modal State
+  const [editingPayout, setEditingPayout] = useState<ApiPayoutRecord | null>(null);
+  const [editAmount, setEditAmount] = useState<string>("");
+  const [editDeduction, setEditDeduction] = useState<string>("");
+  const [editReason, setEditReason] = useState<string>("");
+  const [editDate, setEditDate] = useState<string>("");
+  const [editNotes, setEditNotes] = useState<string>("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const q = filterStatus !== "all" ? `?status=${filterStatus}` : "";
+      let q = "";
+      if (filterStatus === "early_requested") {
+        q = "?earlyRequested=true";
+      } else if (filterStatus !== "all") {
+        q = `?status=${filterStatus}`;
+      }
       const d = await api.get<{ success: boolean; payouts: ApiPayoutRecord[] }>(`/payouts${q}`);
       setPayouts(d.payouts ?? []);
     } catch { } finally { setLoading(false); }
@@ -5772,26 +5796,123 @@ function PayoutsTab() {
   const handleUpdateStatus = async (id: string, status: string) => {
     setUpdatingId(id);
     try {
-      await api.patch(`/payouts/${id}/status`, { status, notes: notesMap[id] || undefined });
-      toast.success(`Marked as ${status}`); load();
+      await api.patch(`/payouts/${id}`, { status, notes: notesMap[id] || undefined });
+      toast.success(`Marked as ${status}`);
+      load();
     } catch { toast.error("Update failed"); } finally { setUpdatingId(null); }
   };
 
-  const totalPending = payouts.filter(p => p.status === "pending").reduce((s, p) => s + p.amount, 0);
-  const totalPaid = payouts.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
+  const handleMarkAllPaid = async () => {
+    if (!window.confirm("Are you sure you want to mark ALL pending & processing shop payouts as PAID? This will settle all past balances.")) return;
+    setMarkingAllPaid(true);
+    try {
+      const res = await api.post<{ success: boolean; message: string; updatedCount: number }>("/payouts/mark-all-paid", {});
+      toast.success(res.message || "All payouts marked as paid!");
+      load();
+    } catch {
+      toast.error("Failed to mark all payouts as paid");
+    } finally {
+      setMarkingAllPaid(false);
+    }
+  };
+
+  const openEditModal = (p: ApiPayoutRecord) => {
+    setEditingPayout(p);
+    setEditAmount(String(p.amount ?? "0"));
+    setEditDeduction(String(p.deductionAmount ?? "0"));
+    setEditReason(p.adjustedReason ?? "");
+    const dateVal = p.scheduledDate ? new Date(p.scheduledDate).toISOString().split("T")[0] : "";
+    setEditDate(dateVal);
+    setEditNotes(p.notes ?? "");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingPayout) return;
+    setSavingEdit(true);
+    try {
+      const amountNum = parseFloat(editAmount);
+      const deductionNum = parseFloat(editDeduction) || 0;
+      await api.patch(`/payouts/${editingPayout._id}`, {
+        amount: isNaN(amountNum) ? editingPayout.amount : amountNum,
+        deductionAmount: deductionNum,
+        adjustedReason: editReason.trim() || undefined,
+        scheduledDate: editDate ? new Date(editDate).toISOString() : undefined,
+        notes: editNotes.trim() || undefined,
+      });
+      toast.success("Payout details & schedule updated successfully");
+      setEditingPayout(null);
+      load();
+    } catch {
+      toast.error("Failed to update payout details");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const earlyRequestedCount = payouts.filter(p => p.earlyPayoutRequested && p.status !== "paid").length;
+  const totalPending = payouts.filter(p => p.status === "pending" || p.status === "processing").reduce((s, p) => s + (p.amount ?? 0), 0);
+  const totalPaid = payouts.filter(p => p.status === "paid").reduce((s, p) => s + (p.amount ?? 0), 0);
+
+  const filteredPayouts = payouts.filter(p => {
+    if (filterStatus === "early_requested" && !p.earlyPayoutRequested) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchVendor = p.vendorName?.toLowerCase().includes(q);
+      const matchOrder = p.orderNumber?.toLowerCase().includes(q) || p.orderId?.toLowerCase().includes(q);
+      const matchShop = p.shopId?.toLowerCase().includes(q);
+      if (!matchVendor && !matchOrder && !matchShop) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Vendor Payouts</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Track and process pending vendor payouts generated from orders.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Vendor Payouts & Settlements</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Automated 3-day release schedule, admin order adjustments, and instant early payout management.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleMarkAllPaid}
+            disabled={markingAllPaid}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm text-xs font-bold gap-1.5 h-9"
+          >
+            {markingAllPaid ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+            Mark All Past as Paid
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      {earlyRequestedCount > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-500/20 text-amber-600 rounded-xl">
+              <Flame className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">
+                {earlyRequestedCount} Shop{earlyRequestedCount > 1 ? "s" : ""} Requested Early Payout
+              </p>
+              <p className="text-xs text-muted-foreground">Vendors requested expedited transfer for delivered orders.</p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setFilterStatus("early_requested")}
+            className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold h-8"
+          >
+            View Requests
+          </Button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Pending Payout", value: formatINR(totalPending), sub: `${payouts.filter(p => p.status === "pending").length} payouts`, color: "text-amber-600" },
-          { label: "Total Paid Out", value: formatINR(totalPaid), sub: `${payouts.filter(p => p.status === "paid").length} payouts`, color: "text-green-600" },
-          { label: "Total Records", value: String(payouts.length), sub: "across all statuses", color: "text-foreground" },
+          { label: "Pending Settlements", value: formatINR(totalPending), sub: `${payouts.filter(p => p.status === "pending" || p.status === "processing").length} pending orders`, color: "text-amber-600" },
+          { label: "Total Settled / Paid", value: formatINR(totalPaid), sub: `${payouts.filter(p => p.status === "paid").length} paid records`, color: "text-green-600" },
+          { label: "Early Payout Requests", value: String(earlyRequestedCount), sub: "Needs urgent action", color: "text-orange-600" },
+          { label: "Default Payout Rule", value: "3 Days After Order", sub: "Admin can adjust date & Rs", color: "text-blue-600" },
         ].map(c => (
           <div key={c.label} className="bg-card rounded-2xl neu-card p-4">
             <p className="text-xs text-muted-foreground font-medium">{c.label}</p>
@@ -5801,73 +5922,254 @@ function PayoutsTab() {
         ))}
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
-        {PAYOUT_FILTER_STATUSES.map(s => (
-          <button key={s} onClick={() => setFilterStatus(s)}
-            className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors capitalize ${filterStatus === s ? "bg-primary text-primary-foreground" : "bg-card neu-card text-muted-foreground hover:text-foreground"}`}>
-            {s === "all" ? "All" : s}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {PAYOUT_FILTER_STATUSES.map(s => {
+            const label = s === "all" ? "All Payouts" : s === "early_requested" ? `⚡ Early Requests (${earlyRequestedCount})` : s;
+            return (
+              <button
+                key={s}
+                onClick={() => setFilterStatus(s)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors capitalize ${
+                  filterStatus === s
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-card neu-card text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search shop, vendor, order..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="h-8 pl-8 text-xs bg-card neu-inset border-none rounded-xl"
+            />
+          </div>
+          <button onClick={load} className="p-2 hover:bg-muted rounded-xl text-muted-foreground transition-colors" title="Refresh">
+            <RefreshCw className="w-4 h-4" />
           </button>
-        ))}
-        <button onClick={load} className="ml-auto p-2 hover:bg-muted rounded-xl text-muted-foreground transition-colors" title="Refresh"><RefreshCw className="w-4 h-4" /></button>
+        </div>
       </div>
 
       {loading ? (
-        <div className="space-y-3">{[1, 2, 3, 4].map(i => <div key={i} className="h-20 bg-muted rounded-2xl animate-pulse" />)}</div>
-      ) : payouts.length === 0 ? (
+        <div className="space-y-3">{[1, 2, 3, 4].map(i => <div key={i} className="h-24 bg-muted rounded-2xl animate-pulse" />)}</div>
+      ) : filteredPayouts.length === 0 ? (
         <div className="bg-card rounded-3xl neu-card p-16 text-center">
           <CreditCard className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-25" />
-          <p className="font-semibold text-muted-foreground">No payouts {filterStatus !== "all" ? `with status "${filterStatus}"` : "yet"}</p>
-          <p className="text-sm text-muted-foreground mt-1">Payouts are created automatically when orders are placed.</p>
+          <p className="font-semibold text-muted-foreground">No payouts found {filterStatus !== "all" ? `under "${filterStatus}"` : ""}</p>
+          <p className="text-sm text-muted-foreground mt-1">New payouts are automatically generated when orders are placed and delivered.</p>
         </div>
       ) : (
         <div className="bg-card rounded-3xl neu-card overflow-hidden">
           <div className="divide-y divide-border/50">
-            {payouts.map(p => (
-              <div key={p._id} className="p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-sm text-foreground">{p.vendorName}</p>
-                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${payoutBadgeClass(p.status)}`}>{p.status}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {p.ordersIncluded.length} order{p.ordersIncluded.length !== 1 ? "s" : ""} · {new Date(p.createdAt).toLocaleDateString("en-IN")}
-                      {p.paidAt && ` · Paid ${new Date(p.paidAt).toLocaleDateString("en-IN")}`}
-                    </p>
-                    {p.notes && <p className="text-xs text-muted-foreground italic mt-0.5">"{p.notes}"</p>}
-                    {(p.orderTotal != null || p.commissionAmount != null) && (
-                      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+            {filteredPayouts.map(p => {
+              const scheduledStr = p.scheduledDate ? new Date(p.scheduledDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "3 Days from Order";
+              const isOverdue = p.status === "pending" && p.scheduledDate && new Date(p.scheduledDate).getTime() < Date.now();
+
+              return (
+                <div key={p._id} className="p-4 space-y-3 hover:bg-muted/20 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-sm text-foreground">{p.vendorName || "Shop Partner"}</p>
+                        <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${payoutBadgeClass(p.status)}`}>
+                          {p.status.toUpperCase()}
+                        </span>
+                        {p.earlyPayoutRequested && p.status !== "paid" && (
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300 border border-orange-300 flex items-center gap-1 animate-pulse">
+                            ⚡ Early Request: {p.earlyPayoutReason || "Instant"}
+                          </span>
+                        )}
+                        {p.orderNumber && (
+                          <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
+                            Order #{p.orderNumber}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
+                        <span>Created: {new Date(p.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                        <span className={`font-semibold ${isOverdue ? "text-red-500 font-bold" : "text-blue-600 dark:text-blue-400"}`}>
+                          📅 Scheduled Payout: {scheduledStr} {isOverdue ? "(Due Now)" : "(3 Days After Order)"}
+                        </span>
+                        {p.paidAt && <span className="text-emerald-600 font-semibold">✓ Paid on {new Date(p.paidAt).toLocaleDateString("en-IN")}</span>}
+                      </div>
+
+                      {/* Adjustment notes if any */}
+                      {p.adjustedReason && (
+                        <div className="mt-1.5 p-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-xs text-amber-800 dark:text-amber-200">
+                          <span className="font-bold">⚠️ Admin Adjustment Applied:</span> {p.adjustedReason}
+                          {p.deductionAmount ? ` (−${formatINR(p.deductionAmount)})` : ""}
+                        </div>
+                      )}
+
+                      {p.notes && <p className="text-xs text-muted-foreground italic mt-1">Notes: "{p.notes}"</p>}
+
+                      {/* Financial breakdown */}
+                      <div className="flex items-center gap-4 mt-2 flex-wrap text-xs text-muted-foreground">
                         {p.orderTotal != null && (
-                          <span className="text-xs text-muted-foreground">Order total: <span className="font-medium text-foreground">{formatINR(p.orderTotal)}</span></span>
+                          <span>Order Value: <span className="font-semibold text-foreground">{formatINR(p.orderTotal)}</span></span>
                         )}
                         {p.commissionAmount != null && (
-                          <span className="text-xs text-muted-foreground">Commission: <span className="font-medium text-destructive">−{formatINR(p.commissionAmount)}</span></span>
+                          <span>Commission: <span className="font-semibold text-destructive">−{formatINR(p.commissionAmount)}</span></span>
                         )}
-                        <span className="text-xs text-muted-foreground">Vendor payable: <span className="font-medium text-emerald-600">{formatINR(p.amount)}</span></span>
+                        {p.deductionAmount ? (
+                          <span>Deductions: <span className="font-semibold text-amber-600">−{formatINR(p.deductionAmount)}</span></span>
+                        ) : null}
+                        <span className="font-bold text-emerald-600 text-sm">Payable Amount: {formatINR(p.amount)}</span>
                       </div>
-                    )}
-                  </div>
-                  <p className="text-lg font-bold text-emerald-600 shrink-0">{formatINR(p.amount)}</p>
-                </div>
-                {p.status !== "paid" && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Input placeholder="Notes (optional)" value={notesMap[p._id] ?? ""} onChange={e => setNotesMap(m => ({ ...m, [p._id]: e.target.value }))}
-                      className="flex-1 h-8 text-xs bg-background neu-inset border-none min-w-[120px]" />
-                    {p.status === "pending" && (
-                      <Button size="sm" onClick={() => handleUpdateStatus(p._id, "processing")} disabled={updatingId === p._id} className="rounded-lg h-8 shadow-none">
-                        {updatingId === p._id ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Processing"}
+                    </div>
+
+                    <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                      <p className="text-xl font-extrabold text-emerald-600">{formatINR(p.amount)}</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openEditModal(p)}
+                        className="h-7 px-2.5 text-xs rounded-lg gap-1 border-border text-foreground hover:bg-muted"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        Edit / Adjust
                       </Button>
-                    )}
-                    <Button size="sm" onClick={() => handleUpdateStatus(p._id, "paid")} disabled={updatingId === p._id} className="rounded-lg h-8 bg-green-600 hover:bg-green-700 text-white shadow-none">
-                      {updatingId === p._id ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Mark Paid"}
-                    </Button>
-                    {p.status !== "failed" && (
-                      <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(p._id, "failed")} disabled={updatingId === p._id} className="rounded-lg h-8 text-destructive border-destructive/30 hover:bg-destructive/5 shadow-none">Fail</Button>
-                    )}
+                    </div>
                   </div>
-                )}
+
+                  {/* Actions row for pending/processing */}
+                  {p.status !== "paid" && (
+                    <div className="flex items-center gap-2 pt-2 border-t border-border/40 flex-wrap">
+                      <Input
+                        placeholder="Add payout reference or notes..."
+                        value={notesMap[p._id] ?? ""}
+                        onChange={e => setNotesMap(m => ({ ...m, [p._id]: e.target.value }))}
+                        className="flex-1 h-8 text-xs bg-background neu-inset border-none min-w-[140px] rounded-lg"
+                      />
+                      {p.status === "pending" && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleUpdateStatus(p._id, "processing")}
+                          disabled={updatingId === p._id}
+                          className="rounded-lg h-8 text-xs shadow-none font-semibold"
+                        >
+                          {updatingId === p._id ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Mark Processing"}
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        onClick={() => handleUpdateStatus(p._id, "paid")}
+                        disabled={updatingId === p._id}
+                        className="rounded-lg h-8 bg-green-600 hover:bg-green-700 text-white shadow-none text-xs font-bold gap-1"
+                      >
+                        {updatingId === p._id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                        {p.earlyPayoutRequested ? "Approve & Pay Now" : "Mark Paid"}
+                      </Button>
+                      {p.status !== "failed" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleUpdateStatus(p._id, "failed")}
+                          disabled={updatingId === p._id}
+                          className="rounded-lg h-8 text-destructive border-destructive/30 hover:bg-destructive/5 shadow-none text-xs"
+                        >
+                          Fail
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Edit & Adjust Payout Modal */}
+      {editingPayout && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-3xl neu-card max-w-lg w-full p-6 space-y-4 border border-border shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">Adjust Payout & Schedule</h2>
+                <p className="text-xs text-muted-foreground">{editingPayout.vendorName} • Order #{editingPayout.orderNumber || editingPayout._id.slice(-6)}</p>
               </div>
-            ))}
+              <button onClick={() => setEditingPayout(null)} className="p-1 rounded-full hover:bg-muted text-muted-foreground">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-foreground">Final Payable Amount (₹)</label>
+                <Input
+                  type="number"
+                  value={editAmount}
+                  onChange={e => setEditAmount(e.target.value)}
+                  placeholder="e.g. 450"
+                  className="mt-1 h-9 bg-background neu-inset border-none rounded-xl text-sm font-bold text-emerald-600"
+                />
+                <p className="text-[11px] text-muted-foreground mt-0.5">Original order total: {formatINR(editingPayout.orderTotal ?? editingPayout.amount)}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-foreground">Deduction Amount (₹)</label>
+                  <Input
+                    type="number"
+                    value={editDeduction}
+                    onChange={e => setEditDeduction(e.target.value)}
+                    placeholder="e.g. 50"
+                    className="mt-1 h-9 bg-background neu-inset border-none rounded-xl text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-foreground">Scheduled Release Date</label>
+                  <Input
+                    type="date"
+                    value={editDate}
+                    onChange={e => setEditDate(e.target.value)}
+                    className="mt-1 h-9 bg-background neu-inset border-none rounded-xl text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-foreground">Adjustment Reason / Explanation</label>
+                <Input
+                  value={editReason}
+                  onChange={e => setEditReason(e.target.value)}
+                  placeholder="e.g. Shop delivered incorrect items / missing item deduction"
+                  className="mt-1 h-9 bg-background neu-inset border-none rounded-xl text-xs"
+                />
+                <p className="text-[11px] text-muted-foreground mt-0.5">This explanation will be clearly visible to the seller in their app.</p>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-foreground">Internal Admin Notes</label>
+                <Textarea
+                  value={editNotes}
+                  onChange={e => setEditNotes(e.target.value)}
+                  placeholder="Internal notes for record keeping..."
+                  className="mt-1 bg-background neu-inset border-none rounded-xl text-xs"
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <Button variant="outline" onClick={() => setEditingPayout(null)} className="rounded-xl h-9 text-xs">
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={savingEdit} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-9 text-xs font-bold">
+                {savingEdit ? <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                Save & Sync to App
+              </Button>
+            </div>
           </div>
         </div>
       )}

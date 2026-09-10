@@ -18,6 +18,7 @@ import { SEO } from "@/components/SEO";
 import { isFoodCategory, calculateDeliveryFee } from "@/lib/deliveryEta";
 
 export default function Cart() {
+  const { user, openLoginModal } = useAuth();
   const { items, subtotal } = useCart();
   const { shops } = useShops();
 

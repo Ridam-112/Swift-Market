@@ -37,11 +37,11 @@ var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
-var __copyProps = (to, from, except, desc17) => {
+var __copyProps = (to, from, except, desc18) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
       if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc17 = __getOwnPropDesc(from, key)) || desc17.enumerable });
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc18 = __getOwnPropDesc(from, key)) || desc18.enumerable });
   }
   return to;
 };
@@ -217,18 +217,18 @@ var require_common = __commonJS({
           if (typeof args[0] !== "string") {
             args.unshift("%O");
           }
-          let index14 = 0;
+          let index16 = 0;
           args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
             if (match === "%%") {
               return "%";
             }
-            index14++;
+            index16++;
             const formatter = createDebug.formatters[format];
             if (typeof formatter === "function") {
-              const val = args[index14];
+              const val = args[index16];
               match = formatter.call(self2, val);
-              args.splice(index14, 1);
-              index14--;
+              args.splice(index16, 1);
+              index16--;
             }
             return match;
           });
@@ -463,15 +463,15 @@ var require_browser = __commonJS({
       }
       const c = "color: " + this.color;
       args.splice(1, 0, c, "color: inherit");
-      let index14 = 0;
+      let index16 = 0;
       let lastC = 0;
       args[0].replace(/%[a-zA-Z%]/g, (match) => {
         if (match === "%%") {
           return;
         }
-        index14++;
+        index16++;
         if (match === "%c") {
-          lastC = index14;
+          lastC = index16;
         }
       });
       args.splice(lastC, 0, c);
@@ -870,8 +870,8 @@ var require_depd = __commonJS({
       return typeName && callSite.getMethodName() ? typeName + "." + funcName : funcName;
     }
     function formatPlain(msg, caller, stack) {
-      var timestamp35 = (/* @__PURE__ */ new Date()).toUTCString();
-      var formatted = timestamp35 + " " + this._namespace + " deprecated " + msg;
+      var timestamp37 = (/* @__PURE__ */ new Date()).toUTCString();
+      var formatted = timestamp37 + " " + this._namespace + " deprecated " + msg;
       if (this._traced) {
         for (var i2 = 0; i2 < stack.length; i2++) {
           formatted += "\n    at " + stack[i2].toString();
@@ -1363,10 +1363,10 @@ var require_http_errors = __commonJS({
       return ServerError;
     }
     function nameFunc(func, name) {
-      var desc17 = Object.getOwnPropertyDescriptor(func, "name");
-      if (desc17 && desc17.configurable) {
-        desc17.value = name;
-        Object.defineProperty(func, "name", desc17);
+      var desc18 = Object.getOwnPropertyDescriptor(func, "name");
+      if (desc18 && desc18.configurable) {
+        desc18.value = name;
+        Object.defineProperty(func, "name", desc18);
       }
     }
     function populateConstructorExports(exports2, codes, HttpError) {
@@ -5694,22 +5694,22 @@ var require_content_type = __commonJS({
       if (typeof header !== "string") {
         throw new TypeError("argument string is required to be a string");
       }
-      var index14 = header.indexOf(";");
-      var type = index14 !== -1 ? header.slice(0, index14).trim() : header.trim();
+      var index16 = header.indexOf(";");
+      var type = index16 !== -1 ? header.slice(0, index16).trim() : header.trim();
       if (!TYPE_REGEXP.test(type)) {
         throw new TypeError("invalid media type");
       }
       var obj = new ContentType(type.toLowerCase());
-      if (index14 !== -1) {
+      if (index16 !== -1) {
         var key;
         var match;
         var value;
-        PARAM_REGEXP.lastIndex = index14;
+        PARAM_REGEXP.lastIndex = index16;
         while (match = PARAM_REGEXP.exec(header)) {
-          if (match.index !== index14) {
+          if (match.index !== index16) {
             throw new TypeError("invalid parameter format");
           }
-          index14 += match[0].length;
+          index16 += match[0].length;
           key = match[1].toLowerCase();
           value = match[2];
           if (value.charCodeAt(0) === 34) {
@@ -5720,7 +5720,7 @@ var require_content_type = __commonJS({
           }
           obj.parameters[key] = value;
         }
-        if (index14 !== header.length) {
+        if (index16 !== header.length) {
           throw new TypeError("invalid parameter format");
         }
       }
@@ -15315,10 +15315,10 @@ var require_media_typer = __commonJS({
       var type = match[1];
       var subtype = match[2];
       var suffix;
-      var index14 = subtype.lastIndexOf("+");
-      if (index14 !== -1) {
-        suffix = subtype.substr(index14 + 1);
-        subtype = subtype.substr(0, index14);
+      var index16 = subtype.lastIndexOf("+");
+      if (index16 !== -1) {
+        suffix = subtype.substr(index16 + 1);
+        subtype = subtype.substr(0, index16);
       }
       return new MediaType(type, subtype, suffix);
     }
@@ -15679,10 +15679,10 @@ var require_json = __commonJS({
       };
     }
     function createStrictSyntaxError(str, char) {
-      var index14 = str.indexOf(char);
+      var index16 = str.indexOf(char);
       var partial = "";
-      if (index14 !== -1) {
-        partial = str.substring(0, index14) + JSON_SYNTAX_CHAR.repeat(str.length - index14);
+      if (index16 !== -1) {
+        partial = str.substring(0, index16) + JSON_SYNTAX_CHAR.repeat(str.length - index16);
       }
       try {
         JSON.parse(partial);
@@ -15690,7 +15690,7 @@ var require_json = __commonJS({
       } catch (e2) {
         return normalizeJsonSyntaxError(e2, {
           message: e2.message.replace(JSON_SYNTAX_REGEXP, function(placeholder) {
-            return str.substring(index14, index14 + placeholder.length);
+            return str.substring(index16, index16 + placeholder.length);
           }),
           stack: e2.stack
         });
@@ -15744,8 +15744,8 @@ var require_text = __commonJS({
     var debug = require_src()("body-parser:text");
     var read = require_read();
     var { normalizeOptions, passthrough } = require_utils();
-    module.exports = text35;
-    function text35(options) {
+    module.exports = text37;
+    function text37(options) {
       const normalizedOptions = normalizeOptions(options, "text/plain");
       return function textParser(req, res, next) {
         read(req, res, next, passthrough, debug, normalizedOptions);
@@ -16811,14 +16811,14 @@ var require_get = __commonJS({
         throw e2;
       }
     }
-    var desc17 = !!hasProtoAccessor && gOPD && gOPD(
+    var desc18 = !!hasProtoAccessor && gOPD && gOPD(
       Object.prototype,
       /** @type {keyof typeof Object.prototype} */
       "__proto__"
     );
     var $Object = Object;
     var $getPrototypeOf = $Object.getPrototypeOf;
-    module.exports = desc17 && typeof desc17.get === "function" ? callBind([desc17.get]) : typeof $getPrototypeOf === "function" ? (
+    module.exports = desc18 && typeof desc18.get === "function" ? callBind([desc18.get]) : typeof $getPrototypeOf === "function" ? (
       /** @type {import('./get')} */
       function getDunder(value) {
         return $getPrototypeOf(value == null ? value : $Object(value));
@@ -17168,10 +17168,10 @@ var require_get_intrinsic = __commonJS({
             return void undefined2;
           }
           if ($gOPD && i2 + 1 >= parts.length) {
-            var desc17 = $gOPD(value, part);
-            isOwn = !!desc17;
-            if (isOwn && "get" in desc17 && !("originalValue" in desc17.get)) {
-              value = desc17.get;
+            var desc18 = $gOPD(value, part);
+            isOwn = !!desc18;
+            if (isOwn && "get" in desc18 && !("originalValue" in desc18.get)) {
+              value = desc18.get;
             } else {
               value = value[part];
             }
@@ -18113,18 +18113,18 @@ var require_parse = __commonJS({
           obj = options.plainObjects ? { __proto__: null } : {};
           var cleanRoot = root.charAt(0) === "[" && root.charAt(root.length - 1) === "]" ? root.slice(1, -1) : root;
           var decodedRoot = options.decodeDotInKeys ? cleanRoot.replace(/%2E/g, ".") : cleanRoot;
-          var index14 = parseInt(decodedRoot, 10);
-          var isValidArrayIndex = !isNaN(index14) && root !== decodedRoot && String(index14) === decodedRoot && index14 >= 0 && options.parseArrays;
+          var index16 = parseInt(decodedRoot, 10);
+          var isValidArrayIndex = !isNaN(index16) && root !== decodedRoot && String(index16) === decodedRoot && index16 >= 0 && options.parseArrays;
           if (!options.parseArrays && decodedRoot === "") {
             obj = { 0: leaf };
-          } else if (isValidArrayIndex && index14 < options.arrayLimit) {
+          } else if (isValidArrayIndex && index16 < options.arrayLimit) {
             obj = [];
-            obj[index14] = leaf;
+            obj[index16] = leaf;
           } else if (isValidArrayIndex && options.throwOnLimitExceeded) {
             throw new RangeError("Array limit exceeded. Only " + options.arrayLimit + " element" + (options.arrayLimit === 1 ? "" : "s") + " allowed in an array.");
           } else if (isValidArrayIndex) {
-            obj[index14] = leaf;
-            utils.markOverflow(obj, index14);
+            obj[index16] = leaf;
+            utils.markOverflow(obj, index16);
           } else if (decodedRoot !== "__proto__") {
             obj[decodedRoot] = leaf;
           }
@@ -18368,12 +18368,12 @@ var require_urlencoded = __commonJS({
     }
     function parameterCount(body, limit) {
       let count12 = 0;
-      let index14 = -1;
+      let index16 = -1;
       do {
         count12++;
         if (count12 > limit) return void 0;
-        index14 = body.indexOf("&", index14 + 1);
-      } while (index14 !== -1);
+        index16 = body.indexOf("&", index16 + 1);
+      } while (index16 !== -1);
       return count12;
     }
   }
@@ -18462,10 +18462,10 @@ var require_escape_html = __commonJS({
       }
       var escape2;
       var html = "";
-      var index14 = 0;
+      var index16 = 0;
       var lastIndex = 0;
-      for (index14 = match.index; index14 < str.length; index14++) {
-        switch (str.charCodeAt(index14)) {
+      for (index16 = match.index; index16 < str.length; index16++) {
+        switch (str.charCodeAt(index16)) {
           case 34:
             escape2 = "&quot;";
             break;
@@ -18484,13 +18484,13 @@ var require_escape_html = __commonJS({
           default:
             continue;
         }
-        if (lastIndex !== index14) {
-          html += str.substring(lastIndex, index14);
+        if (lastIndex !== index16) {
+          html += str.substring(lastIndex, index16);
         }
-        lastIndex = index14 + 1;
+        lastIndex = index16 + 1;
         html += escape2;
       }
-      return lastIndex !== index14 ? html + str.substring(lastIndex, index14) : html;
+      return lastIndex !== index16 ? html + str.substring(lastIndex, index16) : html;
     }
   }
 });
@@ -19694,25 +19694,25 @@ var require_utils3 = __commonJS({
     function acceptParams(str) {
       var length = str.length;
       var colonIndex = str.indexOf(";");
-      var index14 = colonIndex === -1 ? length : colonIndex;
-      var ret = { value: str.slice(0, index14).trim(), quality: 1, params: {} };
-      while (index14 < length) {
-        var splitIndex = str.indexOf("=", index14);
+      var index16 = colonIndex === -1 ? length : colonIndex;
+      var ret = { value: str.slice(0, index16).trim(), quality: 1, params: {} };
+      while (index16 < length) {
+        var splitIndex = str.indexOf("=", index16);
         if (splitIndex === -1) break;
-        var colonIndex = str.indexOf(";", index14);
+        var colonIndex = str.indexOf(";", index16);
         var endIndex = colonIndex === -1 ? length : colonIndex;
         if (splitIndex > endIndex) {
-          index14 = str.lastIndexOf(";", splitIndex - 1) + 1;
+          index16 = str.lastIndexOf(";", splitIndex - 1) + 1;
           continue;
         }
-        var key = str.slice(index14, splitIndex).trim();
+        var key = str.slice(index16, splitIndex).trim();
         var value = str.slice(splitIndex + 1, endIndex).trim();
         if (key === "q") {
           ret.quality = parseFloat(value);
         } else {
           ret.params[key] = value;
         }
-        index14 = endIndex + 1;
+        index16 = endIndex + 1;
       }
       return ret;
     }
@@ -19914,11 +19914,11 @@ var require_dist = __commonJS({
     exports.TokenData = TokenData;
     var PathError = class extends TypeError {
       constructor(message, originalPath) {
-        let text35 = message;
+        let text37 = message;
         if (originalPath)
-          text35 += `: ${originalPath}`;
-        text35 += `; visit https://git.new/pathToRegexpError for info`;
-        super(text35);
+          text37 += `: ${originalPath}`;
+        text37 += `; visit https://git.new/pathToRegexpError for info`;
+        super(text37);
         this.originalPath = originalPath;
       }
     };
@@ -19927,50 +19927,50 @@ var require_dist = __commonJS({
       const { encodePath = NOOP_VALUE } = options;
       const chars = [...str];
       const tokens = [];
-      let index14 = 0;
+      let index16 = 0;
       let pos = 0;
       function name() {
         let value = "";
-        if (ID_START.test(chars[index14])) {
+        if (ID_START.test(chars[index16])) {
           do {
-            value += chars[index14++];
-          } while (ID_CONTINUE.test(chars[index14]));
-        } else if (chars[index14] === '"') {
-          let quoteStart = index14;
-          while (index14 < chars.length) {
-            if (chars[++index14] === '"') {
-              index14++;
+            value += chars[index16++];
+          } while (ID_CONTINUE.test(chars[index16]));
+        } else if (chars[index16] === '"') {
+          let quoteStart = index16;
+          while (index16 < chars.length) {
+            if (chars[++index16] === '"') {
+              index16++;
               quoteStart = 0;
               break;
             }
-            if (chars[index14] === "\\")
-              index14++;
-            value += chars[index14];
+            if (chars[index16] === "\\")
+              index16++;
+            value += chars[index16];
           }
           if (quoteStart) {
             throw new PathError(`Unterminated quote at index ${quoteStart}`, str);
           }
         }
         if (!value) {
-          throw new PathError(`Missing parameter name at index ${index14}`, str);
+          throw new PathError(`Missing parameter name at index ${index16}`, str);
         }
         return value;
       }
-      while (index14 < chars.length) {
-        const value = chars[index14++];
+      while (index16 < chars.length) {
+        const value = chars[index16++];
         if (SIMPLE_TOKENS.includes(value)) {
-          tokens.push({ type: value, index: index14, value });
+          tokens.push({ type: value, index: index16, value });
         } else if (value === "\\") {
-          tokens.push({ type: "escape", index: index14, value: chars[index14++] });
+          tokens.push({ type: "escape", index: index16, value: chars[index16++] });
         } else if (value === ":") {
-          tokens.push({ type: "param", index: index14, value: name() });
+          tokens.push({ type: "param", index: index16, value: name() });
         } else if (value === "*") {
-          tokens.push({ type: "wildcard", index: index14, value: name() });
+          tokens.push({ type: "wildcard", index: index16, value: name() });
         } else {
-          tokens.push({ type: "char", index: index14, value });
+          tokens.push({ type: "char", index: index16, value });
         }
       }
-      tokens.push({ type: "end", index: index14, value: "" });
+      tokens.push({ type: "end", index: index16, value: "" });
       function consumeUntil(endType) {
         const output = [];
         while (true) {
@@ -20056,9 +20056,9 @@ var require_dist = __commonJS({
             throw new TypeError(`Expected "${token.name}" to be a non-empty array`);
           }
           return [
-            value.map((value2, index14) => {
+            value.map((value2, index16) => {
               if (typeof value2 !== "string") {
-                throw new TypeError(`Expected "${token.name}/${index14}" to be a string`);
+                throw new TypeError(`Expected "${token.name}/${index16}" to be a string`);
               }
               return encodeValue(value2);
             }).join(delimiter)
@@ -20135,8 +20135,8 @@ var require_dist = __commonJS({
       if (node.key)
         keys.push(node.key);
       const children = Object.keys(node.children);
-      const text35 = children.map((id) => toRegExp(node.children[id], keys)).join("|");
-      return node.source + (children.length < 2 ? text35 : `(?:${text35})`);
+      const text37 = children.map((id) => toRegExp(node.children[id], keys)).join("|");
+      return node.source + (children.length < 2 ? text37 : `(?:${text37})`);
     }
     var SourceNode = class _SourceNode {
       constructor(source, key) {
@@ -20150,11 +20150,11 @@ var require_dist = __commonJS({
         return (_a = this.children)[id] || (_a[id] = new _SourceNode(source, key));
       }
     };
-    function flatten(tokens, index14, result, callback) {
-      while (index14 < tokens.length) {
-        const token = tokens[index14++];
+    function flatten(tokens, index16, result, callback) {
+      while (index16 < tokens.length) {
+        const token = tokens[index16++];
         if (token.type === "group") {
-          flatten(token.tokens, 0, result.slice(), (seq) => flatten(tokens, index14, seq, callback));
+          flatten(token.tokens, 0, result.slice(), (seq) => flatten(tokens, index16, seq, callback));
           continue;
         }
         result.push(token);
@@ -20167,10 +20167,10 @@ var require_dist = __commonJS({
       let wildcardBacktrack = "";
       let prevCaptureType = 0;
       let hasSegmentCapture = 0;
-      let index14 = 0;
-      function hasInSegment(index15, type) {
-        while (index15 < tokens.length) {
-          const token = tokens[index15++];
+      let index16 = 0;
+      function hasInSegment(index17, type) {
+        while (index17 < tokens.length) {
+          const token = tokens[index17++];
           if (token.type === type)
             return true;
           if (token.type === "text") {
@@ -20180,18 +20180,18 @@ var require_dist = __commonJS({
         }
         return false;
       }
-      function peekText(index15) {
+      function peekText(index17) {
         let result2 = "";
-        while (index15 < tokens.length) {
-          const token = tokens[index15++];
+        while (index17 < tokens.length) {
+          const token = tokens[index17++];
           if (token.type !== "text")
             break;
           result2 += token.value;
         }
         return result2;
       }
-      while (index14 < tokens.length) {
-        const token = tokens[index14++];
+      while (index16 < tokens.length) {
+        const token = tokens[index16++];
         if (token.type === "text") {
           result.push({ source: escape2(token.value) });
           backtrack += token.value;
@@ -20207,7 +20207,7 @@ var require_dist = __commonJS({
           }
           if (token.type === "param") {
             result.push({
-              source: hasSegmentCapture ? `(${negate(delimiter, backtrack)}+?)` : hasInSegment(index14, "wildcard") ? `(${negate(delimiter, peekText(index14))}+?)` : `(${negate(delimiter, "")}+?)`,
+              source: hasSegmentCapture ? `(${negate(delimiter, backtrack)}+?)` : hasInSegment(index16, "wildcard") ? `(${negate(delimiter, peekText(index16))}+?)` : `(${negate(delimiter, "")}+?)`,
               key: token
             });
             hasSegmentCapture |= prevCaptureType = 1;
@@ -20237,10 +20237,10 @@ var require_dist = __commonJS({
         return `(?:(?!${escape2(a)})[^${escape2(b)}])`;
       return `[^${escape2(a + b)}]`;
     }
-    function stringifyTokens(tokens, index14) {
+    function stringifyTokens(tokens, index16) {
       let value = "";
-      while (index14 < tokens.length) {
-        const token = tokens[index14++];
+      while (index16 < tokens.length) {
+        const token = tokens[index16++];
         if (token.type === "text") {
           value += escapeText(token.value);
           continue;
@@ -20250,11 +20250,11 @@ var require_dist = __commonJS({
           continue;
         }
         if (token.type === "param") {
-          value += ":" + stringifyName(token.name, tokens[index14]);
+          value += ":" + stringifyName(token.name, tokens[index16]);
           continue;
         }
         if (token.type === "wildcard") {
-          value += "*" + stringifyName(token.name, tokens[index14]);
+          value += "*" + stringifyName(token.name, tokens[index16]);
           continue;
         }
         throw new TypeError(`Unknown token type: ${token.type}`);
@@ -21243,17 +21243,17 @@ var require_charset = __commonJS({
         i: i2
       };
     }
-    function getCharsetPriority(charset, accepted, index14) {
+    function getCharsetPriority(charset, accepted, index16) {
       var priority = { o: -1, q: 0, s: 0 };
       for (var i2 = 0; i2 < accepted.length; i2++) {
-        var spec = specify(charset, accepted[i2], index14);
+        var spec = specify(charset, accepted[i2], index16);
         if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
           priority = spec;
         }
       }
       return priority;
     }
-    function specify(charset, spec, index14) {
+    function specify(charset, spec, index16) {
       var s2 = 0;
       if (spec.charset.toLowerCase() === charset.toLowerCase()) {
         s2 |= 1;
@@ -21261,7 +21261,7 @@ var require_charset = __commonJS({
         return null;
       }
       return {
-        i: index14,
+        i: index16,
         o: spec.i,
         q: spec.q,
         s: s2
@@ -21272,8 +21272,8 @@ var require_charset = __commonJS({
       if (!provided) {
         return accepts.filter(isQuality).sort(compareSpecs).map(getFullCharset);
       }
-      var priorities = provided.map(function getPriority(type, index14) {
-        return getCharsetPriority(type, accepts, index14);
+      var priorities = provided.map(function getPriority(type, index16) {
+        return getCharsetPriority(type, accepts, index16);
       });
       return priorities.filter(isQuality).sort(compareSpecs).map(function getCharset(priority) {
         return provided[priorities.indexOf(priority)];
@@ -21341,17 +21341,17 @@ var require_encoding = __commonJS({
         i: i2
       };
     }
-    function getEncodingPriority(encoding, accepted, index14) {
+    function getEncodingPriority(encoding, accepted, index16) {
       var priority = { encoding, o: -1, q: 0, s: 0 };
       for (var i2 = 0; i2 < accepted.length; i2++) {
-        var spec = specify(encoding, accepted[i2], index14);
+        var spec = specify(encoding, accepted[i2], index16);
         if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
           priority = spec;
         }
       }
       return priority;
     }
-    function specify(encoding, spec, index14) {
+    function specify(encoding, spec, index16) {
       var s2 = 0;
       if (spec.encoding.toLowerCase() === encoding.toLowerCase()) {
         s2 |= 1;
@@ -21360,7 +21360,7 @@ var require_encoding = __commonJS({
       }
       return {
         encoding,
-        i: index14,
+        i: index16,
         o: spec.i,
         q: spec.q,
         s: s2
@@ -21385,8 +21385,8 @@ var require_encoding = __commonJS({
       if (!provided) {
         return accepts.filter(isQuality).sort(comparator).map(getFullEncoding);
       }
-      var priorities = provided.map(function getPriority(type, index14) {
-        return getEncodingPriority(type, accepts, index14);
+      var priorities = provided.map(function getPriority(type, index16) {
+        return getEncodingPriority(type, accepts, index16);
       });
       return priorities.filter(isQuality).sort(comparator).map(function getEncoding(priority) {
         return provided[priorities.indexOf(priority)];
@@ -21445,17 +21445,17 @@ var require_language = __commonJS({
         full
       };
     }
-    function getLanguagePriority(language, accepted, index14) {
+    function getLanguagePriority(language, accepted, index16) {
       var priority = { o: -1, q: 0, s: 0 };
       for (var i2 = 0; i2 < accepted.length; i2++) {
-        var spec = specify(language, accepted[i2], index14);
+        var spec = specify(language, accepted[i2], index16);
         if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
           priority = spec;
         }
       }
       return priority;
     }
-    function specify(language, spec, index14) {
+    function specify(language, spec, index16) {
       var p = parseLanguage(language);
       if (!p) return null;
       var s2 = 0;
@@ -21469,7 +21469,7 @@ var require_language = __commonJS({
         return null;
       }
       return {
-        i: index14,
+        i: index16,
         o: spec.i,
         q: spec.q,
         s: s2
@@ -21480,8 +21480,8 @@ var require_language = __commonJS({
       if (!provided) {
         return accepts.filter(isQuality).sort(compareSpecs).map(getFullLanguage);
       }
-      var priorities = provided.map(function getPriority(type, index14) {
-        return getLanguagePriority(type, accepts, index14);
+      var priorities = provided.map(function getPriority(type, index16) {
+        return getLanguagePriority(type, accepts, index16);
       });
       return priorities.filter(isQuality).sort(compareSpecs).map(function getLanguage(priority) {
         return provided[priorities.indexOf(priority)];
@@ -21546,17 +21546,17 @@ var require_mediaType = __commonJS({
         i: i2
       };
     }
-    function getMediaTypePriority(type, accepted, index14) {
+    function getMediaTypePriority(type, accepted, index16) {
       var priority = { o: -1, q: 0, s: 0 };
       for (var i2 = 0; i2 < accepted.length; i2++) {
-        var spec = specify(type, accepted[i2], index14);
+        var spec = specify(type, accepted[i2], index16);
         if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
           priority = spec;
         }
       }
       return priority;
     }
-    function specify(type, spec, index14) {
+    function specify(type, spec, index16) {
       var p = parseMediaType(type);
       var s2 = 0;
       if (!p) {
@@ -21583,7 +21583,7 @@ var require_mediaType = __commonJS({
         }
       }
       return {
-        i: index14,
+        i: index16,
         o: spec.i,
         q: spec.q,
         s: s2
@@ -21594,8 +21594,8 @@ var require_mediaType = __commonJS({
       if (!provided) {
         return accepts.filter(isQuality).sort(compareSpecs).map(getFullType);
       }
-      var priorities = provided.map(function getPriority(type, index14) {
-        return getMediaTypePriority(type, accepts, index14);
+      var priorities = provided.map(function getPriority(type, index16) {
+        return getMediaTypePriority(type, accepts, index16);
       });
       return priorities.filter(isQuality).sort(compareSpecs).map(function getType(priority) {
         return provided[priorities.indexOf(priority)];
@@ -21612,22 +21612,22 @@ var require_mediaType = __commonJS({
     }
     function quoteCount(string) {
       var count12 = 0;
-      var index14 = 0;
-      while ((index14 = string.indexOf('"', index14)) !== -1) {
+      var index16 = 0;
+      while ((index16 = string.indexOf('"', index16)) !== -1) {
         count12++;
-        index14++;
+        index16++;
       }
       return count12;
     }
     function splitKeyValuePair(str) {
-      var index14 = str.indexOf("=");
+      var index16 = str.indexOf("=");
       var key;
       var val;
-      if (index14 === -1) {
+      if (index16 === -1) {
         key = str;
       } else {
-        key = str.slice(0, index14);
-        val = str.slice(index14 + 1);
+        key = str.slice(0, index16);
+        val = str.slice(index16 + 1);
       }
       return [key, val];
     }
@@ -21841,8 +21841,8 @@ var require_fresh = __commonJS({
       return true;
     }
     function parseHttpDate(date) {
-      var timestamp35 = date && Date.parse(date);
-      return typeof timestamp35 === "number" ? timestamp35 : NaN;
+      var timestamp37 = date && Date.parse(date);
+      return typeof timestamp37 === "number" ? timestamp37 : NaN;
     }
     function parseTokenList(str) {
       var end = 0;
@@ -21879,13 +21879,13 @@ var require_range_parser = __commonJS({
       if (typeof str !== "string") {
         throw new TypeError("argument str must be a string");
       }
-      var index14 = str.indexOf("=");
-      if (index14 === -1) {
+      var index16 = str.indexOf("=");
+      if (index16 === -1) {
         return -2;
       }
-      var arr = str.slice(index14 + 1).split(",");
+      var arr = str.slice(index16 + 1).split(",");
       var ranges = [];
-      ranges.type = str.slice(0, index14);
+      ranges.type = str.slice(0, index16);
       for (var i2 = 0; i2 < arr.length; i2++) {
         var range = arr[i2].split("-");
         var start = parseInt(range[0], 10);
@@ -21929,11 +21929,11 @@ var require_range_parser = __commonJS({
       combined.type = ranges.type;
       return combined;
     }
-    function mapWithIndex(range, index14) {
+    function mapWithIndex(range, index16) {
       return {
         start: range.start,
         end: range.end,
-        index: index14
+        index: index16
       };
     }
     function mapWithoutIndex(range) {
@@ -22026,8 +22026,8 @@ var require_request = __commonJS({
         return proto;
       }
       var header = this.get("X-Forwarded-Proto") || proto;
-      var index14 = header.indexOf(",");
-      return index14 !== -1 ? header.substring(0, index14).trim() : header.trim();
+      var index16 = header.indexOf(",");
+      return index16 !== -1 ? header.substring(0, index16).trim() : header.trim();
     });
     defineGetter(req, "secure", function secure() {
       return this.protocol === "https";
@@ -22066,8 +22066,8 @@ var require_request = __commonJS({
       var host = this.host;
       if (!host) return;
       var offset = host[0] === "[" ? host.indexOf("]") + 1 : 0;
-      var index14 = host.indexOf(":", offset);
-      return index14 !== -1 ? host.substring(0, index14) : host;
+      var index16 = host.indexOf(":", offset);
+      return index16 !== -1 ? host.substring(0, index16) : host;
     });
     defineGetter(req, "fresh", function() {
       var method = this.method;
@@ -22203,18 +22203,18 @@ var require_content_disposition = __commonJS({
       if (!match) {
         throw new TypeError("invalid type format");
       }
-      var index14 = match[0].length;
+      var index16 = match[0].length;
       var type = match[1].toLowerCase();
       var key;
       var names = [];
       var params = {};
       var value;
-      index14 = PARAM_REGEXP.lastIndex = match[0].slice(-1) === ";" ? index14 - 1 : index14;
+      index16 = PARAM_REGEXP.lastIndex = match[0].slice(-1) === ";" ? index16 - 1 : index16;
       while (match = PARAM_REGEXP.exec(string)) {
-        if (match.index !== index14) {
+        if (match.index !== index16) {
           throw new TypeError("invalid parameter format");
         }
-        index14 += match[0].length;
+        index16 += match[0].length;
         key = match[1].toLowerCase();
         value = match[2];
         if (names.indexOf(key) !== -1) {
@@ -22235,7 +22235,7 @@ var require_content_disposition = __commonJS({
         }
         params[key] = value;
       }
-      if (index14 !== -1 && index14 !== string.length) {
+      if (index16 !== -1 && index16 !== string.length) {
         throw new TypeError("invalid parameter format");
       }
       return new ContentDisposition(type, params);
@@ -22300,20 +22300,20 @@ var require_cookie = __commonJS({
       var len = str.length;
       if (len < 2) return obj;
       var dec = opt && opt.decode || decode;
-      var index14 = 0;
+      var index16 = 0;
       var eqIdx = 0;
       var endIdx = 0;
       do {
-        eqIdx = str.indexOf("=", index14);
+        eqIdx = str.indexOf("=", index16);
         if (eqIdx === -1) break;
-        endIdx = str.indexOf(";", index14);
+        endIdx = str.indexOf(";", index16);
         if (endIdx === -1) {
           endIdx = len;
         } else if (eqIdx > endIdx) {
-          index14 = str.lastIndexOf(";", eqIdx - 1) + 1;
+          index16 = str.lastIndexOf(";", eqIdx - 1) + 1;
           continue;
         }
-        var keyStartIdx = startIndex(str, index14, eqIdx);
+        var keyStartIdx = startIndex(str, index16, eqIdx);
         var keyEndIdx = endIndex(str, eqIdx, keyStartIdx);
         var key = str.slice(keyStartIdx, keyEndIdx);
         if (!__hasOwnProperty.call(obj, key)) {
@@ -22326,21 +22326,21 @@ var require_cookie = __commonJS({
           var val = str.slice(valStartIdx, valEndIdx);
           obj[key] = tryDecode(val, dec);
         }
-        index14 = endIdx + 1;
-      } while (index14 < len);
+        index16 = endIdx + 1;
+      } while (index16 < len);
       return obj;
     }
-    function startIndex(str, index14, max) {
+    function startIndex(str, index16, max) {
       do {
-        var code = str.charCodeAt(index14);
-        if (code !== 32 && code !== 9) return index14;
-      } while (++index14 < max);
+        var code = str.charCodeAt(index16);
+        if (code !== 32 && code !== 9) return index16;
+      } while (++index16 < max);
       return max;
     }
-    function endIndex(str, index14, min) {
-      while (index14 > min) {
-        var code = str.charCodeAt(--index14);
-        if (code !== 32 && code !== 9) return index14 + 1;
+    function endIndex(str, index16, min) {
+      while (index16 > min) {
+        var code = str.charCodeAt(--index16);
+        if (code !== 32 && code !== 9) return index16 + 1;
       }
       return min;
     }
@@ -22889,8 +22889,8 @@ var require_send = __commonJS({
       return list;
     }
     function parseHttpDate(date) {
-      var timestamp35 = date && Date.parse(date);
-      return typeof timestamp35 === "number" ? timestamp35 : NaN;
+      var timestamp37 = date && Date.parse(date);
+      return typeof timestamp37 === "number" ? timestamp37 : NaN;
     }
     function parseTokenList(str) {
       var end = 0;
@@ -23663,17 +23663,17 @@ var require_charset2 = __commonJS({
         i: i2
       };
     }
-    function getCharsetPriority(charset, accepted, index14) {
+    function getCharsetPriority(charset, accepted, index16) {
       var priority = { o: -1, q: 0, s: 0 };
       for (var i2 = 0; i2 < accepted.length; i2++) {
-        var spec = specify(charset, accepted[i2], index14);
+        var spec = specify(charset, accepted[i2], index16);
         if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
           priority = spec;
         }
       }
       return priority;
     }
-    function specify(charset, spec, index14) {
+    function specify(charset, spec, index16) {
       var s2 = 0;
       if (spec.charset.toLowerCase() === charset.toLowerCase()) {
         s2 |= 1;
@@ -23681,7 +23681,7 @@ var require_charset2 = __commonJS({
         return null;
       }
       return {
-        i: index14,
+        i: index16,
         o: spec.i,
         q: spec.q,
         s: s2
@@ -23692,8 +23692,8 @@ var require_charset2 = __commonJS({
       if (!provided) {
         return accepts.filter(isQuality).sort(compareSpecs).map(getFullCharset);
       }
-      var priorities = provided.map(function getPriority(type, index14) {
-        return getCharsetPriority(type, accepts, index14);
+      var priorities = provided.map(function getPriority(type, index16) {
+        return getCharsetPriority(type, accepts, index16);
       });
       return priorities.filter(isQuality).sort(compareSpecs).map(function getCharset(priority) {
         return provided[priorities.indexOf(priority)];
@@ -23761,17 +23761,17 @@ var require_encoding2 = __commonJS({
         i: i2
       };
     }
-    function getEncodingPriority(encoding, accepted, index14) {
+    function getEncodingPriority(encoding, accepted, index16) {
       var priority = { encoding, o: -1, q: 0, s: 0 };
       for (var i2 = 0; i2 < accepted.length; i2++) {
-        var spec = specify(encoding, accepted[i2], index14);
+        var spec = specify(encoding, accepted[i2], index16);
         if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
           priority = spec;
         }
       }
       return priority;
     }
-    function specify(encoding, spec, index14) {
+    function specify(encoding, spec, index16) {
       var s2 = 0;
       if (spec.encoding.toLowerCase() === encoding.toLowerCase()) {
         s2 |= 1;
@@ -23780,7 +23780,7 @@ var require_encoding2 = __commonJS({
       }
       return {
         encoding,
-        i: index14,
+        i: index16,
         o: spec.i,
         q: spec.q,
         s: s2
@@ -23805,8 +23805,8 @@ var require_encoding2 = __commonJS({
       if (!provided) {
         return accepts.filter(isQuality).sort(comparator).map(getFullEncoding);
       }
-      var priorities = provided.map(function getPriority(type, index14) {
-        return getEncodingPriority(type, accepts, index14);
+      var priorities = provided.map(function getPriority(type, index16) {
+        return getEncodingPriority(type, accepts, index16);
       });
       return priorities.filter(isQuality).sort(comparator).map(function getEncoding(priority) {
         return provided[priorities.indexOf(priority)];
@@ -23865,17 +23865,17 @@ var require_language2 = __commonJS({
         full
       };
     }
-    function getLanguagePriority(language, accepted, index14) {
+    function getLanguagePriority(language, accepted, index16) {
       var priority = { o: -1, q: 0, s: 0 };
       for (var i2 = 0; i2 < accepted.length; i2++) {
-        var spec = specify(language, accepted[i2], index14);
+        var spec = specify(language, accepted[i2], index16);
         if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
           priority = spec;
         }
       }
       return priority;
     }
-    function specify(language, spec, index14) {
+    function specify(language, spec, index16) {
       var p = parseLanguage(language);
       if (!p) return null;
       var s2 = 0;
@@ -23889,7 +23889,7 @@ var require_language2 = __commonJS({
         return null;
       }
       return {
-        i: index14,
+        i: index16,
         o: spec.i,
         q: spec.q,
         s: s2
@@ -23900,8 +23900,8 @@ var require_language2 = __commonJS({
       if (!provided) {
         return accepts.filter(isQuality).sort(compareSpecs).map(getFullLanguage);
       }
-      var priorities = provided.map(function getPriority(type, index14) {
-        return getLanguagePriority(type, accepts, index14);
+      var priorities = provided.map(function getPriority(type, index16) {
+        return getLanguagePriority(type, accepts, index16);
       });
       return priorities.filter(isQuality).sort(compareSpecs).map(function getLanguage(priority) {
         return provided[priorities.indexOf(priority)];
@@ -23966,17 +23966,17 @@ var require_mediaType2 = __commonJS({
         i: i2
       };
     }
-    function getMediaTypePriority(type, accepted, index14) {
+    function getMediaTypePriority(type, accepted, index16) {
       var priority = { o: -1, q: 0, s: 0 };
       for (var i2 = 0; i2 < accepted.length; i2++) {
-        var spec = specify(type, accepted[i2], index14);
+        var spec = specify(type, accepted[i2], index16);
         if (spec && (priority.s - spec.s || priority.q - spec.q || priority.o - spec.o) < 0) {
           priority = spec;
         }
       }
       return priority;
     }
-    function specify(type, spec, index14) {
+    function specify(type, spec, index16) {
       var p = parseMediaType(type);
       var s2 = 0;
       if (!p) {
@@ -24003,7 +24003,7 @@ var require_mediaType2 = __commonJS({
         }
       }
       return {
-        i: index14,
+        i: index16,
         o: spec.i,
         q: spec.q,
         s: s2
@@ -24014,8 +24014,8 @@ var require_mediaType2 = __commonJS({
       if (!provided) {
         return accepts.filter(isQuality).sort(compareSpecs).map(getFullType);
       }
-      var priorities = provided.map(function getPriority(type, index14) {
-        return getMediaTypePriority(type, accepts, index14);
+      var priorities = provided.map(function getPriority(type, index16) {
+        return getMediaTypePriority(type, accepts, index16);
       });
       return priorities.filter(isQuality).sort(compareSpecs).map(function getType(priority) {
         return provided[priorities.indexOf(priority)];
@@ -24032,22 +24032,22 @@ var require_mediaType2 = __commonJS({
     }
     function quoteCount(string) {
       var count12 = 0;
-      var index14 = 0;
-      while ((index14 = string.indexOf('"', index14)) !== -1) {
+      var index16 = 0;
+      while ((index16 = string.indexOf('"', index16)) !== -1) {
         count12++;
-        index14++;
+        index16++;
       }
       return count12;
     }
     function splitKeyValuePair(str) {
-      var index14 = str.indexOf("=");
+      var index16 = str.indexOf("=");
       var key;
       var val;
-      if (index14 === -1) {
+      if (index16 === -1) {
         key = str;
       } else {
-        key = str.slice(0, index14);
-        val = str.slice(index14 + 1);
+        key = str.slice(0, index16);
+        val = str.slice(index16 + 1);
       }
       return [key, val];
     }
@@ -24358,16 +24358,16 @@ var require_debug = __commonJS({
         if ("string" !== typeof args[0]) {
           args.unshift("%O");
         }
-        var index14 = 0;
+        var index16 = 0;
         args[0] = args[0].replace(/%([a-zA-Z%])/g, function(match, format) {
           if (match === "%%") return match;
-          index14++;
+          index16++;
           var formatter = exports.formatters[format];
           if ("function" === typeof formatter) {
-            var val = args[index14];
+            var val = args[index16];
             match = formatter.call(self2, val);
-            args.splice(index14, 1);
-            index14--;
+            args.splice(index16, 1);
+            index16--;
           }
           return match;
         });
@@ -24465,13 +24465,13 @@ var require_browser2 = __commonJS({
       if (!useColors2) return;
       var c = "color: " + this.color;
       args.splice(1, 0, c, "color: inherit");
-      var index14 = 0;
+      var index16 = 0;
       var lastC = 0;
       args[0].replace(/%[a-zA-Z%]/g, function(match) {
         if ("%%" === match) return;
-        index14++;
+        index16++;
         if ("%c" === match) {
-          lastC = index14;
+          lastC = index16;
         }
       });
       args.splice(lastC, 0, c);
@@ -25840,8 +25840,8 @@ var require_redaction = __commonJS({
         if (o[ns] === null) {
           return o;
         }
-        const { index: index14 } = next;
-        const nextPath = `${str.substr(index14, str.length - 1)}`;
+        const { index: index16 } = next;
+        const nextPath = `${str.substr(index16, str.length - 1)}`;
         o[ns] = o[ns] || [];
         if (ns !== wildcardFirstSym && o[ns].length === 0) {
           o[ns].push(...o[wildcardFirstSym] || []);
@@ -25947,8 +25947,8 @@ var require_quick_format_unescaped = __commonJS({
         if (len === 1) return f3;
         var objects = new Array(len);
         objects[0] = ss(f3);
-        for (var index14 = 1; index14 < len; index14++) {
-          objects[index14] = ss(args[index14]);
+        for (var index16 = 1; index16 < len; index16++) {
+          objects[index16] = ss(args[index16]);
         }
         return objects.join(" ");
       }
@@ -26719,8 +26719,8 @@ var require_on_exit_leak_free = __commonJS({
     }
     function clear(ref) {
       for (const event of ["exit", "beforeExit"]) {
-        const index14 = refs[event].indexOf(ref);
-        refs[event].splice(index14, index14 + 1);
+        const index16 = refs[event].indexOf(ref);
+        refs[event].splice(index16, index16 + 1);
         uninstall(event);
       }
     }
@@ -26830,9 +26830,9 @@ var require_wait = __commonJS({
   "../../node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/wait.js"(exports, module) {
     "use strict";
     var MAX_TIMEOUT = 1e3;
-    function wait(state, index14, expected, timeout, done) {
+    function wait(state, index16, expected, timeout, done) {
       const max = Date.now() + timeout;
-      let current = Atomics.load(state, index14);
+      let current = Atomics.load(state, index16);
       if (current === expected) {
         done(null, "ok");
         return;
@@ -26844,7 +26844,7 @@ var require_wait = __commonJS({
         } else {
           setTimeout(() => {
             prior = current;
-            current = Atomics.load(state, index14);
+            current = Atomics.load(state, index16);
             if (current === prior) {
               check(backoff >= MAX_TIMEOUT ? MAX_TIMEOUT : backoff * 2);
             } else {
@@ -26856,9 +26856,9 @@ var require_wait = __commonJS({
       };
       check(1);
     }
-    function waitDiff(state, index14, expected, timeout, done) {
+    function waitDiff(state, index16, expected, timeout, done) {
       const max = Date.now() + timeout;
-      let current = Atomics.load(state, index14);
+      let current = Atomics.load(state, index16);
       if (current !== expected) {
         done(null, "ok");
         return;
@@ -26868,7 +26868,7 @@ var require_wait = __commonJS({
           done(null, "timed-out");
         } else {
           setTimeout(() => {
-            current = Atomics.load(state, index14);
+            current = Atomics.load(state, index16);
             if (current !== expected) {
               done(null, "ok");
             } else {
@@ -28952,9 +28952,9 @@ var require_multistream = __commonJS({
       }
       function remove(id) {
         const { streams } = this;
-        const index14 = streams.findIndex((s2) => s2.id === id);
-        if (index14 >= 0) {
-          streams.splice(index14, 1);
+        const index16 = streams.findIndex((s2) => s2.id === id);
+        if (index16 >= 0) {
+          streams.splice(index16, 1);
           streams.sort(compareByLevel);
           this.minLevel = streams.length > 0 ? streams[0].level : -1;
         }
@@ -29100,7 +29100,7 @@ var require_pino = __commonJS({
         redact,
         crlf,
         serializers: serializers2,
-        timestamp: timestamp35,
+        timestamp: timestamp37,
         messageKey,
         errorKey,
         nestedKey,
@@ -29150,7 +29150,7 @@ var require_pino = __commonJS({
           chindings = coreChindings(Object.assign({}, base, { name }));
         }
       }
-      const time2 = timestamp35 instanceof Function ? timestamp35 : timestamp35 ? epochTime : nullTime;
+      const time2 = timestamp37 instanceof Function ? timestamp37 : timestamp37 ? epochTime : nullTime;
       const timeSliceIndex = time2().indexOf(":") + 1;
       if (useOnlyCustomLevels && !customLevels) throw Error("customLevels is required if useOnlyCustomLevels is set true");
       if (mixin && typeof mixin !== "function") throw Error(`Unknown mixin type "${typeof mixin}" - expected "function"`);
@@ -30125,9 +30125,9 @@ function mergeValues(a, b) {
       return { valid: false };
     }
     const newArray = [];
-    for (let index14 = 0; index14 < a.length; index14++) {
-      const itemA = a[index14];
-      const itemB = b[index14];
+    for (let index16 = 0; index16 < a.length; index16++) {
+      const itemA = a[index16];
+      const itemB = b[index16];
       const sharedValue = mergeValues(itemA, itemB);
       if (!sharedValue.valid) {
         return { valid: false };
@@ -32074,10 +32074,10 @@ var init_types = __esm({
       //   }) as any;
       //   return merged;
       // }
-      catchall(index14) {
+      catchall(index16) {
         return new _ZodObject({
           ...this._def,
-          catchall: index14
+          catchall: index16
         });
       }
       pick(mask) {
@@ -32565,10 +32565,10 @@ var init_types = __esm({
         }
         const keyType = this._def.keyType;
         const valueType = this._def.valueType;
-        const pairs = [...ctx.data.entries()].map(([key, value], index14) => {
+        const pairs = [...ctx.data.entries()].map(([key, value], index16) => {
           return {
-            key: keyType._parse(new ParseInputLazyPath(ctx, key, ctx.path, [index14, "key"])),
-            value: valueType._parse(new ParseInputLazyPath(ctx, value, ctx.path, [index14, "value"]))
+            key: keyType._parse(new ParseInputLazyPath(ctx, key, ctx.path, [index16, "key"])),
+            value: valueType._parse(new ParseInputLazyPath(ctx, value, ctx.path, [index16, "value"]))
           };
         });
         if (ctx.common.async) {
@@ -34475,15 +34475,15 @@ var require_timespan = __commonJS({
   "../../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/timespan.js"(exports, module) {
     var ms = require_ms();
     module.exports = function(time, iat) {
-      var timestamp35 = iat || Math.floor(Date.now() / 1e3);
+      var timestamp37 = iat || Math.floor(Date.now() / 1e3);
       if (typeof time === "string") {
         var milliseconds = ms(time);
         if (typeof milliseconds === "undefined") {
           return;
         }
-        return Math.floor(timestamp35 + milliseconds / 1e3);
+        return Math.floor(timestamp37 + milliseconds / 1e3);
       } else if (typeof time === "number") {
-        return timestamp35 + time;
+        return timestamp37 + time;
       } else {
         return;
       }
@@ -34564,13 +34564,13 @@ var require_re = __commonJS({
     };
     var createToken = (name, value, isGlobal) => {
       const safe = makeSafeRegex(value);
-      const index14 = R++;
-      debug(name, index14, value);
-      t2[name] = index14;
-      src[index14] = value;
-      safeSrc[index14] = safe;
-      re[index14] = new RegExp(value, isGlobal ? "g" : void 0);
-      safeRe[index14] = new RegExp(safe, isGlobal ? "g" : void 0);
+      const index16 = R++;
+      debug(name, index16, value);
+      t2[name] = index16;
+      src[index16] = value;
+      safeSrc[index16] = safe;
+      re[index16] = new RegExp(value, isGlobal ? "g" : void 0);
+      safeRe[index16] = new RegExp(safe, isGlobal ? "g" : void 0);
     };
     createToken("NUMERICIDENTIFIER", "0|[1-9]\\d*");
     createToken("NUMERICIDENTIFIERLOOSE", "\\d+");
@@ -35192,8 +35192,8 @@ var require_eq = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.1/node_modules/semver/functions/eq.js"(exports, module) {
     "use strict";
     var compare = require_compare();
-    var eq37 = (a, b, loose) => compare(a, b, loose) === 0;
-    module.exports = eq37;
+    var eq38 = (a, b, loose) => compare(a, b, loose) === 0;
+    module.exports = eq38;
   }
 });
 
@@ -35231,7 +35231,7 @@ var require_lte = __commonJS({
 var require_cmp = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.1/node_modules/semver/functions/cmp.js"(exports, module) {
     "use strict";
-    var eq37 = require_eq();
+    var eq38 = require_eq();
     var neq = require_neq();
     var gt4 = require_gt();
     var gte6 = require_gte();
@@ -35258,7 +35258,7 @@ var require_cmp = __commonJS({
         case "":
         case "=":
         case "==":
-          return eq37(a, b, loose);
+          return eq38(a, b, loose);
         case "!=":
           return neq(a, b, loose);
         case ">":
@@ -36283,15 +36283,15 @@ var require_subset = __commonJS({
           return null;
         }
       }
-      for (const eq37 of eqSet) {
-        if (gt4 && !satisfies(eq37, String(gt4), options)) {
+      for (const eq38 of eqSet) {
+        if (gt4 && !satisfies(eq38, String(gt4), options)) {
           return null;
         }
-        if (lt2 && !satisfies(eq37, String(lt2), options)) {
+        if (lt2 && !satisfies(eq38, String(lt2), options)) {
           return null;
         }
         for (const c of dom) {
-          if (!satisfies(eq37, String(c), options)) {
+          if (!satisfies(eq38, String(c), options)) {
             return false;
           }
         }
@@ -36395,7 +36395,7 @@ var require_semver2 = __commonJS({
     var rsort = require_rsort();
     var gt4 = require_gt();
     var lt2 = require_lt();
-    var eq37 = require_eq();
+    var eq38 = require_eq();
     var neq = require_neq();
     var gte6 = require_gte();
     var lte = require_lte();
@@ -36434,7 +36434,7 @@ var require_semver2 = __commonJS({
       rsort,
       gt: gt4,
       lt: lt2,
-      eq: eq37,
+      eq: eq38,
       neq,
       gte: gte6,
       lte,
@@ -36778,17 +36778,17 @@ var require_lodash = __commonJS({
     var reIsUint = /^(?:0|[1-9]\d*)$/;
     var freeParseInt = parseInt;
     function arrayMap(array, iteratee) {
-      var index14 = -1, length = array ? array.length : 0, result = Array(length);
-      while (++index14 < length) {
-        result[index14] = iteratee(array[index14], index14, array);
+      var index16 = -1, length = array ? array.length : 0, result = Array(length);
+      while (++index16 < length) {
+        result[index16] = iteratee(array[index16], index16, array);
       }
       return result;
     }
     function baseFindIndex(array, predicate, fromIndex, fromRight) {
-      var length = array.length, index14 = fromIndex + (fromRight ? 1 : -1);
-      while (fromRight ? index14-- : ++index14 < length) {
-        if (predicate(array[index14], index14, array)) {
-          return index14;
+      var length = array.length, index16 = fromIndex + (fromRight ? 1 : -1);
+      while (fromRight ? index16-- : ++index16 < length) {
+        if (predicate(array[index16], index16, array)) {
+          return index16;
         }
       }
       return -1;
@@ -36797,10 +36797,10 @@ var require_lodash = __commonJS({
       if (value !== value) {
         return baseFindIndex(array, baseIsNaN, fromIndex);
       }
-      var index14 = fromIndex - 1, length = array.length;
-      while (++index14 < length) {
-        if (array[index14] === value) {
-          return index14;
+      var index16 = fromIndex - 1, length = array.length;
+      while (++index16 < length) {
+        if (array[index16] === value) {
+          return index16;
         }
       }
       return -1;
@@ -36809,9 +36809,9 @@ var require_lodash = __commonJS({
       return value !== value;
     }
     function baseTimes(n, iteratee) {
-      var index14 = -1, result = Array(n);
-      while (++index14 < n) {
-        result[index14] = iteratee(index14);
+      var index16 = -1, result = Array(n);
+      while (++index16 < n) {
+        result[index16] = iteratee(index16);
       }
       return result;
     }
@@ -37346,15 +37346,15 @@ var require_sign2 = __commonJS({
           return failure(error);
         }
       }
-      const timestamp35 = payload.iat || Math.floor(Date.now() / 1e3);
+      const timestamp37 = payload.iat || Math.floor(Date.now() / 1e3);
       if (options.noTimestamp) {
         delete payload.iat;
       } else if (isObjectPayload) {
-        payload.iat = timestamp35;
+        payload.iat = timestamp37;
       }
       if (typeof options.notBefore !== "undefined") {
         try {
-          payload.nbf = timespan(options.notBefore, timestamp35);
+          payload.nbf = timespan(options.notBefore, timestamp37);
         } catch (err) {
           return failure(err);
         }
@@ -37364,7 +37364,7 @@ var require_sign2 = __commonJS({
       }
       if (typeof options.expiresIn !== "undefined" && typeof payload === "object") {
         try {
-          payload.exp = timespan(options.expiresIn, timestamp35);
+          payload.exp = timespan(options.expiresIn, timestamp37);
         } catch (err) {
           return failure(err);
         }
@@ -39639,8 +39639,8 @@ var require_common2 = __commonJS({
       }
       function redactString(obj, key) {
         if (typeof obj === "object" && obj !== null && typeof obj[key] === "string") {
-          const text35 = obj[key];
-          if (/grant_type=/i.test(text35) || /assertion=/i.test(text35) || /secret/i.test(text35)) {
+          const text37 = obj[key];
+          if (/grant_type=/i.test(text37) || /assertion=/i.test(text37) || /secret/i.test(text37)) {
             obj[key] = REDACT;
           }
         }
@@ -39816,13 +39816,13 @@ var require_helpers = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
-        desc17 = { enumerable: true, get: function() {
+      var desc18 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc18 || ("get" in desc18 ? !m2.__esModule : desc18.writable || desc18.configurable)) {
+        desc18 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc17);
+      Object.defineProperty(o, k2, desc18);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -39886,13 +39886,13 @@ var require_dist2 = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
-        desc17 = { enumerable: true, get: function() {
+      var desc18 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc18 || ("get" in desc18 ? !m2.__esModule : desc18.writable || desc18.configurable)) {
+        desc18 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc17);
+      Object.defineProperty(o, k2, desc18);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -39966,9 +39966,9 @@ var require_dist2 = __commonJS({
           return;
         }
         const sockets = this.sockets[name];
-        const index14 = sockets.indexOf(socket);
-        if (index14 !== -1) {
-          sockets.splice(index14, 1);
+        const index16 = sockets.indexOf(socket);
+        if (index16 !== -1) {
+          sockets.splice(index16, 1);
           this.totalSocketCount--;
           if (sockets.length === 0) {
             delete this.sockets[name];
@@ -40138,13 +40138,13 @@ var require_dist3 = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
-        desc17 = { enumerable: true, get: function() {
+      var desc18 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc18 || ("get" in desc18 ? !m2.__esModule : desc18.writable || desc18.configurable)) {
+        desc18 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc17);
+      Object.defineProperty(o, k2, desc18);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -45297,7 +45297,7 @@ var init_multipart_parser = __esm({
         let i2 = 0;
         const length_ = data.length;
         let previousIndex = this.index;
-        let { lookbehind, boundary, boundaryChars, index: index14, state, flags } = this;
+        let { lookbehind, boundary, boundaryChars, index: index16, state, flags } = this;
         const boundaryLength = this.boundary.length;
         const boundaryEnd = boundaryLength - 1;
         const bufferLength = data.length;
@@ -45331,20 +45331,20 @@ var init_multipart_parser = __esm({
           c = data[i2];
           switch (state) {
             case S.START_BOUNDARY:
-              if (index14 === boundary.length - 2) {
+              if (index16 === boundary.length - 2) {
                 if (c === HYPHEN) {
                   flags |= F.LAST_BOUNDARY;
                 } else if (c !== CR) {
                   return;
                 }
-                index14++;
+                index16++;
                 break;
-              } else if (index14 - 1 === boundary.length - 2) {
+              } else if (index16 - 1 === boundary.length - 2) {
                 if (flags & F.LAST_BOUNDARY && c === HYPHEN) {
                   state = S.END;
                   flags = 0;
                 } else if (!(flags & F.LAST_BOUNDARY) && c === LF) {
-                  index14 = 0;
+                  index16 = 0;
                   callback("onPartBegin");
                   state = S.HEADER_FIELD_START;
                 } else {
@@ -45352,17 +45352,17 @@ var init_multipart_parser = __esm({
                 }
                 break;
               }
-              if (c !== boundary[index14 + 2]) {
-                index14 = -2;
+              if (c !== boundary[index16 + 2]) {
+                index16 = -2;
               }
-              if (c === boundary[index14 + 2]) {
-                index14++;
+              if (c === boundary[index16 + 2]) {
+                index16++;
               }
               break;
             case S.HEADER_FIELD_START:
               state = S.HEADER_FIELD;
               mark("onHeaderField");
-              index14 = 0;
+              index16 = 0;
             // falls through
             case S.HEADER_FIELD:
               if (c === CR) {
@@ -45370,12 +45370,12 @@ var init_multipart_parser = __esm({
                 state = S.HEADERS_ALMOST_DONE;
                 break;
               }
-              index14++;
+              index16++;
               if (c === HYPHEN) {
                 break;
               }
               if (c === COLON) {
-                if (index14 === 1) {
+                if (index16 === 1) {
                   return;
                 }
                 dataCallback("onHeaderField", true);
@@ -45419,8 +45419,8 @@ var init_multipart_parser = __esm({
               mark("onPartData");
             // falls through
             case S.PART_DATA:
-              previousIndex = index14;
-              if (index14 === 0) {
+              previousIndex = index16;
+              if (index16 === 0) {
                 i2 += boundaryEnd;
                 while (i2 < bufferLength && !(data[i2] in boundaryChars)) {
                   i2 += boundaryLength;
@@ -45428,27 +45428,27 @@ var init_multipart_parser = __esm({
                 i2 -= boundaryEnd;
                 c = data[i2];
               }
-              if (index14 < boundary.length) {
-                if (boundary[index14] === c) {
-                  if (index14 === 0) {
+              if (index16 < boundary.length) {
+                if (boundary[index16] === c) {
+                  if (index16 === 0) {
                     dataCallback("onPartData", true);
                   }
-                  index14++;
+                  index16++;
                 } else {
-                  index14 = 0;
+                  index16 = 0;
                 }
-              } else if (index14 === boundary.length) {
-                index14++;
+              } else if (index16 === boundary.length) {
+                index16++;
                 if (c === CR) {
                   flags |= F.PART_BOUNDARY;
                 } else if (c === HYPHEN) {
                   flags |= F.LAST_BOUNDARY;
                 } else {
-                  index14 = 0;
+                  index16 = 0;
                 }
-              } else if (index14 - 1 === boundary.length) {
+              } else if (index16 - 1 === boundary.length) {
                 if (flags & F.PART_BOUNDARY) {
-                  index14 = 0;
+                  index16 = 0;
                   if (c === LF) {
                     flags &= ~F.PART_BOUNDARY;
                     callback("onPartEnd");
@@ -45462,14 +45462,14 @@ var init_multipart_parser = __esm({
                     state = S.END;
                     flags = 0;
                   } else {
-                    index14 = 0;
+                    index16 = 0;
                   }
                 } else {
-                  index14 = 0;
+                  index16 = 0;
                 }
               }
-              if (index14 > 0) {
-                lookbehind[index14 - 1] = c;
+              if (index16 > 0) {
+                lookbehind[index16 - 1] = c;
               } else if (previousIndex > 0) {
                 const _lookbehind = new Uint8Array(lookbehind.buffer, lookbehind.byteOffset, lookbehind.byteLength);
                 callback("onPartData", 0, previousIndex, _lookbehind);
@@ -45487,7 +45487,7 @@ var init_multipart_parser = __esm({
         dataCallback("onHeaderField");
         dataCallback("onHeaderValue");
         dataCallback("onPartData");
-        this.index = index14;
+        this.index = index16;
         this.state = state;
         this.flags = flags;
       }
@@ -45649,8 +45649,8 @@ var init_body = __esm({
        * @return  Promise
        */
       async json() {
-        const text35 = await this.text();
-        return JSON.parse(text35);
+        const text37 = await this.text();
+        return JSON.parse(text37);
       }
       /**
        * Decode response as text
@@ -45765,9 +45765,9 @@ import { types as types2 } from "node:util";
 import http from "node:http";
 function fromRawHeaders(headers = []) {
   return new Headers2(
-    headers.reduce((result, value, index14, array) => {
-      if (index14 % 2 === 0) {
-        result.push(array.slice(index14, index14 + 2));
+    headers.reduce((result, value, index16, array) => {
+      if (index16 % 2 === 0) {
+        result.push(array.slice(index16, index16 + 2));
       }
       return result;
     }, []).filter(([name, value]) => {
@@ -47249,13 +47249,13 @@ var require_src3 = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
-        desc17 = { enumerable: true, get: function() {
+      var desc18 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc18 || ("get" in desc18 ? !m2.__esModule : desc18.writable || desc18.configurable)) {
+        desc18 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc17);
+      Object.defineProperty(o, k2, desc18);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -48802,18 +48802,18 @@ var require_parse3 = __commonJS({
         n: "\n",
         r: "\r",
         t: "	"
-      }, text35, error = function(m2) {
+      }, text37, error = function(m2) {
         throw {
           name: "SyntaxError",
           message: m2,
           at,
-          text: text35
+          text: text37
         };
       }, next = function(c) {
         if (c && c !== ch) {
           error("Expected '" + c + "' instead of '" + ch + "'");
         }
-        ch = text35.charAt(at);
+        ch = text37.charAt(at);
         at += 1;
         return ch;
       }, number = function() {
@@ -48860,12 +48860,12 @@ var require_parse3 = __commonJS({
           var startAt = at;
           while (next()) {
             if (ch === '"') {
-              if (at - 1 > startAt) string2 += text35.substring(startAt, at - 1);
+              if (at - 1 > startAt) string2 += text37.substring(startAt, at - 1);
               next();
               return string2;
             }
             if (ch === "\\") {
-              if (at - 1 > startAt) string2 += text35.substring(startAt, at - 1);
+              if (at - 1 > startAt) string2 += text37.substring(startAt, at - 1);
               next();
               if (ch === "u") {
                 uffff = 0;
@@ -48998,7 +48998,7 @@ var require_parse3 = __commonJS({
       };
       return function(source, reviver) {
         var result;
-        text35 = source + "";
+        text37 = source + "";
         at = 0;
         ch = " ";
         result = value();
@@ -49164,13 +49164,13 @@ var require_logging_utils = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
-        desc17 = { enumerable: true, get: function() {
+      var desc18 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc18 || ("get" in desc18 ? !m2.__esModule : desc18.writable || desc18.configurable)) {
+        desc18 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc17);
+      Object.defineProperty(o, k2, desc18);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -49453,13 +49453,13 @@ var require_src4 = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
-        desc17 = { enumerable: true, get: function() {
+      var desc18 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc18 || ("get" in desc18 ? !m2.__esModule : desc18.writable || desc18.configurable)) {
+        desc18 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc17);
+      Object.defineProperty(o, k2, desc18);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -49478,13 +49478,13 @@ var require_src5 = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
-        desc17 = { enumerable: true, get: function() {
+      var desc18 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc18 || ("get" in desc18 ? !m2.__esModule : desc18.writable || desc18.configurable)) {
+        desc18 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc17);
+      Object.defineProperty(o, k2, desc18);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -49900,8 +49900,8 @@ var require_crypto = __commonJS({
         const result = new TextDecoder().decode(uint8array);
         return result;
       }
-      encodeBase64StringUtf8(text35) {
-        const uint8array = new TextEncoder().encode(text35);
+      encodeBase64StringUtf8(text37) {
+        const uint8array = new TextEncoder().encode(text37);
         const result = base64js.fromByteArray(uint8array);
         return result;
       }
@@ -49969,8 +49969,8 @@ var require_crypto2 = __commonJS({
       decodeBase64StringUtf8(base64) {
         return Buffer.from(base64, "base64").toString("utf-8");
       }
-      encodeBase64StringUtf8(text35) {
-        return Buffer.from(text35, "utf-8").toString("base64");
+      encodeBase64StringUtf8(text37) {
+        return Buffer.from(text37, "utf-8").toString("base64");
       }
       /**
        * Computes the SHA-256 hash of the provided string.
@@ -50015,13 +50015,13 @@ var require_crypto3 = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
-        desc17 = { enumerable: true, get: function() {
+      var desc18 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc18 || ("get" in desc18 ? !m2.__esModule : desc18.writable || desc18.configurable)) {
+        desc18 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc17);
+      Object.defineProperty(o, k2, desc18);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -53510,12 +53510,12 @@ var require_certificatesubjecttokensupplier = __commonJS({
         try {
           const chainPems = await fs3.promises.readFile(this.trustChainPath, "utf8");
           const pemBlocks = chainPems.match(/-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----/g) ?? [];
-          const chainCerts = pemBlocks.map((pem, index14) => {
+          const chainCerts = pemBlocks.map((pem, index16) => {
             try {
               return new crypto_1.X509Certificate(pem);
             } catch (err) {
               const message = err instanceof Error ? err.message : String(err);
-              throw new InvalidConfigurationError(`Failed to parse certificate at index ${index14} in trust chain file ${this.trustChainPath}: ${message}`);
+              throw new InvalidConfigurationError(`Failed to parse certificate at index ${index16} in trust chain file ${this.trustChainPath}: ${message}`);
             }
           });
           const leafIndex = chainCerts.findIndex((chainCert) => leafCert.raw.equals(chainCert.raw));
@@ -55768,13 +55768,13 @@ var require_src6 = __commonJS({
     "use strict";
     var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
-      var desc17 = Object.getOwnPropertyDescriptor(m2, k);
-      if (!desc17 || ("get" in desc17 ? !m2.__esModule : desc17.writable || desc17.configurable)) {
-        desc17 = { enumerable: true, get: function() {
+      var desc18 = Object.getOwnPropertyDescriptor(m2, k);
+      if (!desc18 || ("get" in desc18 ? !m2.__esModule : desc18.writable || desc18.configurable)) {
+        desc18 = { enumerable: true, get: function() {
           return m2[k];
         } };
       }
-      Object.defineProperty(o, k2, desc17);
+      Object.defineProperty(o, k2, desc18);
     }) : (function(o, m2, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m2[k];
@@ -57061,12 +57061,12 @@ var require_utils_legacy = __commonJS({
       const outer = md5(Buffer.concat([Buffer.from(inner), salt]));
       return "md5" + outer;
     }
-    function sha256(text35) {
-      return nodeCrypto.createHash("sha256").update(text35).digest();
+    function sha256(text37) {
+      return nodeCrypto.createHash("sha256").update(text37).digest();
     }
-    function hashByName(hashName, text35) {
+    function hashByName(hashName, text37) {
       hashName = hashName.replace(/(\D)-/, "$1");
-      return nodeCrypto.createHash(hashName).update(text35).digest();
+      return nodeCrypto.createHash(hashName).update(text37).digest();
     }
     function hmacSha256(key, msg) {
       return nodeCrypto.createHmac("sha256", key).update(msg).digest();
@@ -57119,11 +57119,11 @@ var require_utils_webcrypto = __commonJS({
       const outer = await md5(Buffer.concat([Buffer.from(inner), salt]));
       return "md5" + outer;
     }
-    async function sha256(text35) {
-      return await subtleCrypto.digest("SHA-256", text35);
+    async function sha256(text37) {
+      return await subtleCrypto.digest("SHA-256", text37);
     }
-    async function hashByName(hashName, text35) {
-      return await subtleCrypto.digest(hashName, text35);
+    async function hashByName(hashName, text37) {
+      return await subtleCrypto.digest(hashName, text37);
     }
     async function hmacSha256(keyBuffer, msg) {
       const key = await subtleCrypto.importKey("raw", keyBuffer, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -57156,46 +57156,46 @@ var require_cert_signatures = __commonJS({
     function x509Error(msg, cert2) {
       return new Error("SASL channel binding: " + msg + " when parsing public certificate " + cert2.toString("base64"));
     }
-    function readASN1Length(data, index14) {
-      let length = data[index14++];
-      if (length < 128) return { length, index: index14 };
+    function readASN1Length(data, index16) {
+      let length = data[index16++];
+      if (length < 128) return { length, index: index16 };
       const lengthBytes = length & 127;
       if (lengthBytes > 4) throw x509Error("bad length", data);
       length = 0;
       for (let i2 = 0; i2 < lengthBytes; i2++) {
-        length = length << 8 | data[index14++];
+        length = length << 8 | data[index16++];
       }
-      return { length, index: index14 };
+      return { length, index: index16 };
     }
-    function readASN1OID(data, index14) {
-      if (data[index14++] !== 6) throw x509Error("non-OID data", data);
-      const { length: OIDLength, index: indexAfterOIDLength } = readASN1Length(data, index14);
-      index14 = indexAfterOIDLength;
-      const lastIndex = index14 + OIDLength;
-      const byte1 = data[index14++];
+    function readASN1OID(data, index16) {
+      if (data[index16++] !== 6) throw x509Error("non-OID data", data);
+      const { length: OIDLength, index: indexAfterOIDLength } = readASN1Length(data, index16);
+      index16 = indexAfterOIDLength;
+      const lastIndex = index16 + OIDLength;
+      const byte1 = data[index16++];
       let oid = (byte1 / 40 >> 0) + "." + byte1 % 40;
-      while (index14 < lastIndex) {
+      while (index16 < lastIndex) {
         let value = 0;
-        while (index14 < lastIndex) {
-          const nextByte = data[index14++];
+        while (index16 < lastIndex) {
+          const nextByte = data[index16++];
           value = value << 7 | nextByte & 127;
           if (nextByte < 128) break;
         }
         oid += "." + value;
       }
-      return { oid, index: index14 };
+      return { oid, index: index16 };
     }
-    function expectASN1Seq(data, index14) {
-      if (data[index14++] !== 48) throw x509Error("non-sequence data", data);
-      return readASN1Length(data, index14);
+    function expectASN1Seq(data, index16) {
+      if (data[index16++] !== 48) throw x509Error("non-sequence data", data);
+      return readASN1Length(data, index16);
     }
-    function signatureAlgorithmHashFromCertificate(data, index14) {
-      if (index14 === void 0) index14 = 0;
-      index14 = expectASN1Seq(data, index14).index;
-      const { length: certInfoLength, index: indexAfterCertInfoLength } = expectASN1Seq(data, index14);
-      index14 = indexAfterCertInfoLength + certInfoLength;
-      index14 = expectASN1Seq(data, index14).index;
-      const { oid, index: indexAfterOID } = readASN1OID(data, index14);
+    function signatureAlgorithmHashFromCertificate(data, index16) {
+      if (index16 === void 0) index16 = 0;
+      index16 = expectASN1Seq(data, index16).index;
+      const { length: certInfoLength, index: indexAfterCertInfoLength } = expectASN1Seq(data, index16);
+      index16 = indexAfterCertInfoLength + certInfoLength;
+      index16 = expectASN1Seq(data, index16).index;
+      const { oid, index: indexAfterOID } = readASN1OID(data, index16);
       switch (oid) {
         // RSA
         case "1.2.840.113549.1.1.4":
@@ -57227,12 +57227,12 @@ var require_cert_signatures = __commonJS({
           return "SHA-512";
         // RSASSA-PSS: hash is indicated separately
         case "1.2.840.113549.1.1.10": {
-          index14 = indexAfterOID;
-          index14 = expectASN1Seq(data, index14).index;
-          if (data[index14++] !== 160) throw x509Error("non-tag data", data);
-          index14 = readASN1Length(data, index14).index;
-          index14 = expectASN1Seq(data, index14).index;
-          const { oid: hashOID } = readASN1OID(data, index14);
+          index16 = indexAfterOID;
+          index16 = expectASN1Seq(data, index16).index;
+          if (data[index16++] !== 160) throw x509Error("non-tag data", data);
+          index16 = readASN1Length(data, index16).index;
+          index16 = expectASN1Seq(data, index16).index;
+          const { oid: hashOID } = readASN1OID(data, index16);
           switch (hashOID) {
             // standalone hash OIDs
             case "1.2.840.113549.2.5":
@@ -57344,21 +57344,21 @@ var require_sasl = __commonJS({
         throw new Error("SASL: SCRAM-SERVER-FINAL-MESSAGE: server signature does not match");
       }
     }
-    function isPrintableChars(text35) {
-      if (typeof text35 !== "string") {
+    function isPrintableChars(text37) {
+      if (typeof text37 !== "string") {
         throw new TypeError("SASL: text must be a string");
       }
-      return text35.split("").map((_, i2) => text35.charCodeAt(i2)).every((c) => c >= 33 && c <= 43 || c >= 45 && c <= 126);
+      return text37.split("").map((_, i2) => text37.charCodeAt(i2)).every((c) => c >= 33 && c <= 43 || c >= 45 && c <= 126);
     }
-    function isBase64(text35) {
-      return /^(?:[a-zA-Z0-9+/]{4})*(?:[a-zA-Z0-9+/]{2}==|[a-zA-Z0-9+/]{3}=)?$/.test(text35);
+    function isBase64(text37) {
+      return /^(?:[a-zA-Z0-9+/]{4})*(?:[a-zA-Z0-9+/]{2}==|[a-zA-Z0-9+/]{3}=)?$/.test(text37);
     }
-    function parseAttributePairs(text35) {
-      if (typeof text35 !== "string") {
+    function parseAttributePairs(text37) {
+      if (typeof text37 !== "string") {
         throw new TypeError("SASL: attribute pairs text must be a string");
       }
       return new Map(
-        text35.split(",").map((attrValue) => {
+        text37.split(",").map((attrValue) => {
           if (!/^.=/.test(attrValue)) {
             throw new Error("SASL: Invalid attribute pair entry");
           }
@@ -57867,12 +57867,12 @@ var require_result = __commonJS({
         }
         const row = {};
         for (let i2 = 0; i2 < fieldDescriptions.length; i2++) {
-          const desc17 = fieldDescriptions[i2];
-          row[desc17.name] = null;
+          const desc18 = fieldDescriptions[i2];
+          row[desc18.name] = null;
           if (this._types) {
-            this._parsers[i2] = this._types.getTypeParser(desc17.dataTypeID, desc17.format || "text");
+            this._parsers[i2] = this._types.getTypeParser(desc18.dataTypeID, desc18.format || "text");
           } else {
-            this._parsers[i2] = types4.getTypeParser(desc17.dataTypeID, desc17.format || "text");
+            this._parsers[i2] = types4.getTypeParser(desc18.dataTypeID, desc18.format || "text");
           }
         }
         this._prebuiltEmptyResultObject = { ...row };
@@ -58217,9 +58217,9 @@ var require_messages = __commonJS({
     };
     exports.ReadyForQueryMessage = ReadyForQueryMessage;
     var CommandCompleteMessage = class {
-      constructor(length, text35) {
+      constructor(length, text37) {
         this.length = length;
-        this.text = text35;
+        this.text = text37;
         this.name = "commandComplete";
       }
     };
@@ -58368,8 +58368,8 @@ var require_serializer = __commonJS({
         /* code.startup */
       );
     };
-    var query = (text35) => {
-      return writer.addCString(text35).flush(
+    var query = (text37) => {
+      return writer.addCString(text37).flush(
         81
         /* code.query */
       );
@@ -58489,8 +58489,8 @@ var require_serializer = __commonJS({
       return msg.name ? cstringMessage(68, `${msg.type}${msg.name || ""}`) : msg.type === "P" ? emptyDescribePortal : emptyDescribeStatement;
     };
     var close = (msg) => {
-      const text35 = `${msg.type}${msg.name || ""}`;
-      return cstringMessage(67, text35);
+      const text37 = `${msg.type}${msg.name || ""}`;
+      return cstringMessage(67, text37);
     };
     var copyData = (chunk) => {
       return writer.add(chunk).flush(
@@ -58762,8 +58762,8 @@ var require_parser = __commonJS({
       return new messages_1.ReadyForQueryMessage(LATEINIT_LENGTH, status);
     };
     var parseCommandCompleteMessage = (reader) => {
-      const text35 = reader.cstring();
-      return new messages_1.CommandCompleteMessage(LATEINIT_LENGTH, text35);
+      const text37 = reader.cstring();
+      return new messages_1.CommandCompleteMessage(LATEINIT_LENGTH, text37);
     };
     var parseCopyData = (reader, length) => {
       const chunk = reader.bytes(length - 4);
@@ -59130,8 +59130,8 @@ var require_connection = __commonJS({
         }
         return this.stream.write(buffer);
       }
-      query(text35) {
-        this._send(serialize.query(text35));
+      query(text37) {
+        this._send(serialize.query(text37));
       }
       // send parse message
       parse(query) {
@@ -60027,9 +60027,9 @@ var require_client = __commonJS({
             queryCallback(error);
             query.callback = () => {
             };
-            const index14 = this._queryQueue.indexOf(query);
-            if (index14 > -1) {
-              this._queryQueue.splice(index14, 1);
+            const index16 = this._queryQueue.indexOf(query);
+            if (index16 > -1) {
+              this._queryQueue.splice(index16, 1);
             }
             this._pulseQueryQueue();
           }, readTimeout);
@@ -60448,9 +60448,9 @@ var require_pg_pool = __commonJS({
         this._idle.push(new IdleItem(client, idleListener, tid));
         this._pulseQueue();
       }
-      query(text35, values, cb) {
-        if (typeof text35 === "function") {
-          const response2 = promisify2(this.Promise, text35);
+      query(text37, values, cb) {
+        if (typeof text37 === "function") {
+          const response2 = promisify2(this.Promise, text37);
           setImmediate(function() {
             return response2.callback(new Error("Passing a function as the first parameter to pool.query is not supported"));
           });
@@ -60478,7 +60478,7 @@ var require_pg_pool = __commonJS({
           client.once("error", onError);
           this.log("dispatching query");
           try {
-            client.query(text35, values, (err2, res) => {
+            client.query(text37, values, (err2, res) => {
               this.log("query dispatched");
               client.removeListener("error", onError);
               if (clientReleased) {
@@ -60819,9 +60819,9 @@ var require_client2 = __commonJS({
           queryCallback(error);
           query.callback = () => {
           };
-          const index14 = this._queryQueue.indexOf(query);
-          if (index14 > -1) {
-            this._queryQueue.splice(index14, 1);
+          const index16 = this._queryQueue.indexOf(query);
+          if (index16 > -1) {
+            this._queryQueue.splice(index16, 1);
           }
           this._pulseQueryQueue();
         }, readTimeout);
@@ -61725,8 +61725,8 @@ var require_dist5 = __commonJS({
         if (!msgSignature || !msgId || !msgTimestamp) {
           throw new WebhookVerificationError("Missing required headers");
         }
-        const timestamp35 = this.verifyTimestamp(msgTimestamp);
-        const computedSignature = this.sign(msgId, timestamp35, payload);
+        const timestamp37 = this.verifyTimestamp(msgTimestamp);
+        const computedSignature = this.sign(msgId, timestamp37, payload);
         const expectedSignature = computedSignature.split(",")[1];
         const passedSignatures = msgSignature.split(" ");
         const encoder = new globalThis.TextEncoder();
@@ -61741,7 +61741,7 @@ var require_dist5 = __commonJS({
         }
         throw new WebhookVerificationError("No matching signature found");
       }
-      sign(msgId, timestamp35, payload) {
+      sign(msgId, timestamp37, payload) {
         if (typeof payload === "string") {
         } else if (payload.constructor.name === "Buffer") {
           payload = payload.toString();
@@ -61749,24 +61749,24 @@ var require_dist5 = __commonJS({
           throw new Error("Expected payload to be of type string or Buffer.");
         }
         const encoder = new TextEncoder();
-        const timestampNumber = Math.floor(timestamp35.getTime() / 1e3);
+        const timestampNumber = Math.floor(timestamp37.getTime() / 1e3);
         const toSign = encoder.encode(`${msgId}.${timestampNumber}.${payload}`);
         const expectedSignature = base64.encode(sha256.hmac(this.key, toSign));
         return `v1,${expectedSignature}`;
       }
       verifyTimestamp(timestampHeader) {
         const now = Math.floor(Date.now() / 1e3);
-        const timestamp35 = parseInt(timestampHeader, 10);
-        if (isNaN(timestamp35)) {
+        const timestamp37 = parseInt(timestampHeader, 10);
+        if (isNaN(timestamp37)) {
           throw new WebhookVerificationError("Invalid Signature Headers");
         }
-        if (now - timestamp35 > WEBHOOK_TOLERANCE_IN_SECONDS) {
+        if (now - timestamp37 > WEBHOOK_TOLERANCE_IN_SECONDS) {
           throw new WebhookVerificationError("Message timestamp too old");
         }
-        if (timestamp35 > now + WEBHOOK_TOLERANCE_IN_SECONDS) {
+        if (timestamp37 > now + WEBHOOK_TOLERANCE_IN_SECONDS) {
           throw new WebhookVerificationError("Message timestamp too new");
         }
-        return new Date(timestamp35 * 1e3);
+        return new Date(timestamp37 * 1e3);
       }
     };
     exports.Webhook = Webhook2;
@@ -62133,17 +62133,17 @@ var require_lodash8 = __commonJS({
         return func.apply(thisArg, args);
       }
       function arrayAggregator(array, setter, iteratee, accumulator) {
-        var index14 = -1, length = array == null ? 0 : array.length;
-        while (++index14 < length) {
-          var value = array[index14];
+        var index16 = -1, length = array == null ? 0 : array.length;
+        while (++index16 < length) {
+          var value = array[index16];
           setter(accumulator, value, iteratee(value), array);
         }
         return accumulator;
       }
       function arrayEach(array, iteratee) {
-        var index14 = -1, length = array == null ? 0 : array.length;
-        while (++index14 < length) {
-          if (iteratee(array[index14], index14, array) === false) {
+        var index16 = -1, length = array == null ? 0 : array.length;
+        while (++index16 < length) {
+          if (iteratee(array[index16], index16, array) === false) {
             break;
           }
         }
@@ -62159,19 +62159,19 @@ var require_lodash8 = __commonJS({
         return array;
       }
       function arrayEvery(array, predicate) {
-        var index14 = -1, length = array == null ? 0 : array.length;
-        while (++index14 < length) {
-          if (!predicate(array[index14], index14, array)) {
+        var index16 = -1, length = array == null ? 0 : array.length;
+        while (++index16 < length) {
+          if (!predicate(array[index16], index16, array)) {
             return false;
           }
         }
         return true;
       }
       function arrayFilter(array, predicate) {
-        var index14 = -1, length = array == null ? 0 : array.length, resIndex = 0, result = [];
-        while (++index14 < length) {
-          var value = array[index14];
-          if (predicate(value, index14, array)) {
+        var index16 = -1, length = array == null ? 0 : array.length, resIndex = 0, result = [];
+        while (++index16 < length) {
+          var value = array[index16];
+          if (predicate(value, index16, array)) {
             result[resIndex++] = value;
           }
         }
@@ -62182,35 +62182,35 @@ var require_lodash8 = __commonJS({
         return !!length && baseIndexOf(array, value, 0) > -1;
       }
       function arrayIncludesWith(array, value, comparator) {
-        var index14 = -1, length = array == null ? 0 : array.length;
-        while (++index14 < length) {
-          if (comparator(value, array[index14])) {
+        var index16 = -1, length = array == null ? 0 : array.length;
+        while (++index16 < length) {
+          if (comparator(value, array[index16])) {
             return true;
           }
         }
         return false;
       }
       function arrayMap(array, iteratee) {
-        var index14 = -1, length = array == null ? 0 : array.length, result = Array(length);
-        while (++index14 < length) {
-          result[index14] = iteratee(array[index14], index14, array);
+        var index16 = -1, length = array == null ? 0 : array.length, result = Array(length);
+        while (++index16 < length) {
+          result[index16] = iteratee(array[index16], index16, array);
         }
         return result;
       }
       function arrayPush(array, values) {
-        var index14 = -1, length = values.length, offset = array.length;
-        while (++index14 < length) {
-          array[offset + index14] = values[index14];
+        var index16 = -1, length = values.length, offset = array.length;
+        while (++index16 < length) {
+          array[offset + index16] = values[index16];
         }
         return array;
       }
       function arrayReduce(array, iteratee, accumulator, initAccum) {
-        var index14 = -1, length = array == null ? 0 : array.length;
+        var index16 = -1, length = array == null ? 0 : array.length;
         if (initAccum && length) {
-          accumulator = array[++index14];
+          accumulator = array[++index16];
         }
-        while (++index14 < length) {
-          accumulator = iteratee(accumulator, array[index14], index14, array);
+        while (++index16 < length) {
+          accumulator = iteratee(accumulator, array[index16], index16, array);
         }
         return accumulator;
       }
@@ -62225,9 +62225,9 @@ var require_lodash8 = __commonJS({
         return accumulator;
       }
       function arraySome(array, predicate) {
-        var index14 = -1, length = array == null ? 0 : array.length;
-        while (++index14 < length) {
-          if (predicate(array[index14], index14, array)) {
+        var index16 = -1, length = array == null ? 0 : array.length;
+        while (++index16 < length) {
+          if (predicate(array[index16], index16, array)) {
             return true;
           }
         }
@@ -62251,10 +62251,10 @@ var require_lodash8 = __commonJS({
         return result;
       }
       function baseFindIndex(array, predicate, fromIndex, fromRight) {
-        var length = array.length, index14 = fromIndex + (fromRight ? 1 : -1);
-        while (fromRight ? index14-- : ++index14 < length) {
-          if (predicate(array[index14], index14, array)) {
-            return index14;
+        var length = array.length, index16 = fromIndex + (fromRight ? 1 : -1);
+        while (fromRight ? index16-- : ++index16 < length) {
+          if (predicate(array[index16], index16, array)) {
+            return index16;
           }
         }
         return -1;
@@ -62263,10 +62263,10 @@ var require_lodash8 = __commonJS({
         return value === value ? strictIndexOf(array, value, fromIndex) : baseFindIndex(array, baseIsNaN, fromIndex);
       }
       function baseIndexOfWith(array, value, fromIndex, comparator) {
-        var index14 = fromIndex - 1, length = array.length;
-        while (++index14 < length) {
-          if (comparator(array[index14], value)) {
-            return index14;
+        var index16 = fromIndex - 1, length = array.length;
+        while (++index16 < length) {
+          if (comparator(array[index16], value)) {
+            return index16;
           }
         }
         return -1;
@@ -62289,8 +62289,8 @@ var require_lodash8 = __commonJS({
         };
       }
       function baseReduce(collection, iteratee, accumulator, initAccum, eachFunc) {
-        eachFunc(collection, function(value, index14, collection2) {
-          accumulator = initAccum ? (initAccum = false, value) : iteratee(accumulator, value, index14, collection2);
+        eachFunc(collection, function(value, index16, collection2) {
+          accumulator = initAccum ? (initAccum = false, value) : iteratee(accumulator, value, index16, collection2);
         });
         return accumulator;
       }
@@ -62303,9 +62303,9 @@ var require_lodash8 = __commonJS({
         return array;
       }
       function baseSum(array, iteratee) {
-        var result, index14 = -1, length = array.length;
-        while (++index14 < length) {
-          var current = iteratee(array[index14]);
+        var result, index16 = -1, length = array.length;
+        while (++index16 < length) {
+          var current = iteratee(array[index16]);
           if (current !== undefined2) {
             result = result === undefined2 ? current : result + current;
           }
@@ -62313,9 +62313,9 @@ var require_lodash8 = __commonJS({
         return result;
       }
       function baseTimes(n, iteratee) {
-        var index14 = -1, result = Array(n);
-        while (++index14 < n) {
-          result[index14] = iteratee(index14);
+        var index16 = -1, result = Array(n);
+        while (++index16 < n) {
+          result[index16] = iteratee(index16);
         }
         return result;
       }
@@ -62341,16 +62341,16 @@ var require_lodash8 = __commonJS({
         return cache.has(key);
       }
       function charsStartIndex(strSymbols, chrSymbols) {
-        var index14 = -1, length = strSymbols.length;
-        while (++index14 < length && baseIndexOf(chrSymbols, strSymbols[index14], 0) > -1) {
+        var index16 = -1, length = strSymbols.length;
+        while (++index16 < length && baseIndexOf(chrSymbols, strSymbols[index16], 0) > -1) {
         }
-        return index14;
+        return index16;
       }
       function charsEndIndex(strSymbols, chrSymbols) {
-        var index14 = strSymbols.length;
-        while (index14-- && baseIndexOf(chrSymbols, strSymbols[index14], 0) > -1) {
+        var index16 = strSymbols.length;
+        while (index16-- && baseIndexOf(chrSymbols, strSymbols[index16], 0) > -1) {
         }
-        return index14;
+        return index16;
       }
       function countHolders(array, placeholder) {
         var length = array.length, result = 0;
@@ -62383,9 +62383,9 @@ var require_lodash8 = __commonJS({
         return result;
       }
       function mapToArray(map) {
-        var index14 = -1, result = Array(map.size);
+        var index16 = -1, result = Array(map.size);
         map.forEach(function(value, key) {
-          result[++index14] = [key, value];
+          result[++index16] = [key, value];
         });
         return result;
       }
@@ -62395,47 +62395,47 @@ var require_lodash8 = __commonJS({
         };
       }
       function replaceHolders(array, placeholder) {
-        var index14 = -1, length = array.length, resIndex = 0, result = [];
-        while (++index14 < length) {
-          var value = array[index14];
+        var index16 = -1, length = array.length, resIndex = 0, result = [];
+        while (++index16 < length) {
+          var value = array[index16];
           if (value === placeholder || value === PLACEHOLDER) {
-            array[index14] = PLACEHOLDER;
-            result[resIndex++] = index14;
+            array[index16] = PLACEHOLDER;
+            result[resIndex++] = index16;
           }
         }
         return result;
       }
       function setToArray(set) {
-        var index14 = -1, result = Array(set.size);
+        var index16 = -1, result = Array(set.size);
         set.forEach(function(value) {
-          result[++index14] = value;
+          result[++index16] = value;
         });
         return result;
       }
       function setToPairs(set) {
-        var index14 = -1, result = Array(set.size);
+        var index16 = -1, result = Array(set.size);
         set.forEach(function(value) {
-          result[++index14] = [value, value];
+          result[++index16] = [value, value];
         });
         return result;
       }
       function strictIndexOf(array, value, fromIndex) {
-        var index14 = fromIndex - 1, length = array.length;
-        while (++index14 < length) {
-          if (array[index14] === value) {
-            return index14;
+        var index16 = fromIndex - 1, length = array.length;
+        while (++index16 < length) {
+          if (array[index16] === value) {
+            return index16;
           }
         }
         return -1;
       }
       function strictLastIndexOf(array, value, fromIndex) {
-        var index14 = fromIndex + 1;
-        while (index14--) {
-          if (array[index14] === value) {
-            return index14;
+        var index16 = fromIndex + 1;
+        while (index16--) {
+          if (array[index16] === value) {
+            return index16;
           }
         }
-        return index14;
+        return index16;
       }
       function stringSize(string) {
         return hasUnicode(string) ? unicodeSize(string) : asciiSize(string);
@@ -62444,10 +62444,10 @@ var require_lodash8 = __commonJS({
         return hasUnicode(string) ? unicodeToArray(string) : asciiToArray(string);
       }
       function trimmedEndIndex(string) {
-        var index14 = string.length;
-        while (index14-- && reWhitespace.test(string.charAt(index14))) {
+        var index16 = string.length;
+        while (index16-- && reWhitespace.test(string.charAt(index16))) {
         }
-        return index14;
+        return index16;
       }
       var unescapeHtmlChar = basePropertyOf(htmlUnescapes);
       function unicodeSize(string) {
@@ -62613,15 +62613,15 @@ var require_lodash8 = __commonJS({
           return result2;
         }
         function lazyValue() {
-          var array = this.__wrapped__.value(), dir = this.__dir__, isArr = isArray(array), isRight = dir < 0, arrLength = isArr ? array.length : 0, view = getView(0, arrLength, this.__views__), start = view.start, end = view.end, length = end - start, index14 = isRight ? end : start - 1, iteratees = this.__iteratees__, iterLength = iteratees.length, resIndex = 0, takeCount = nativeMin(length, this.__takeCount__);
+          var array = this.__wrapped__.value(), dir = this.__dir__, isArr = isArray(array), isRight = dir < 0, arrLength = isArr ? array.length : 0, view = getView(0, arrLength, this.__views__), start = view.start, end = view.end, length = end - start, index16 = isRight ? end : start - 1, iteratees = this.__iteratees__, iterLength = iteratees.length, resIndex = 0, takeCount = nativeMin(length, this.__takeCount__);
           if (!isArr || !isRight && arrLength == length && takeCount == length) {
             return baseWrapperValue(array, this.__actions__);
           }
           var result2 = [];
           outer:
             while (length-- && resIndex < takeCount) {
-              index14 += dir;
-              var iterIndex = -1, value = array[index14];
+              index16 += dir;
+              var iterIndex = -1, value = array[index16];
               while (++iterIndex < iterLength) {
                 var data = iteratees[iterIndex], iteratee2 = data.iteratee, type = data.type, computed = iteratee2(value);
                 if (type == LAZY_MAP_FLAG) {
@@ -62641,10 +62641,10 @@ var require_lodash8 = __commonJS({
         LazyWrapper.prototype = baseCreate(baseLodash.prototype);
         LazyWrapper.prototype.constructor = LazyWrapper;
         function Hash(entries) {
-          var index14 = -1, length = entries == null ? 0 : entries.length;
+          var index16 = -1, length = entries == null ? 0 : entries.length;
           this.clear();
-          while (++index14 < length) {
-            var entry = entries[index14];
+          while (++index16 < length) {
+            var entry = entries[index16];
             this.set(entry[0], entry[1]);
           }
         }
@@ -62681,10 +62681,10 @@ var require_lodash8 = __commonJS({
         Hash.prototype.has = hashHas;
         Hash.prototype.set = hashSet;
         function ListCache(entries) {
-          var index14 = -1, length = entries == null ? 0 : entries.length;
+          var index16 = -1, length = entries == null ? 0 : entries.length;
           this.clear();
-          while (++index14 < length) {
-            var entry = entries[index14];
+          while (++index16 < length) {
+            var entry = entries[index16];
             this.set(entry[0], entry[1]);
           }
         }
@@ -62693,33 +62693,33 @@ var require_lodash8 = __commonJS({
           this.size = 0;
         }
         function listCacheDelete(key) {
-          var data = this.__data__, index14 = assocIndexOf(data, key);
-          if (index14 < 0) {
+          var data = this.__data__, index16 = assocIndexOf(data, key);
+          if (index16 < 0) {
             return false;
           }
           var lastIndex = data.length - 1;
-          if (index14 == lastIndex) {
+          if (index16 == lastIndex) {
             data.pop();
           } else {
-            splice.call(data, index14, 1);
+            splice.call(data, index16, 1);
           }
           --this.size;
           return true;
         }
         function listCacheGet(key) {
-          var data = this.__data__, index14 = assocIndexOf(data, key);
-          return index14 < 0 ? undefined2 : data[index14][1];
+          var data = this.__data__, index16 = assocIndexOf(data, key);
+          return index16 < 0 ? undefined2 : data[index16][1];
         }
         function listCacheHas(key) {
           return assocIndexOf(this.__data__, key) > -1;
         }
         function listCacheSet(key, value) {
-          var data = this.__data__, index14 = assocIndexOf(data, key);
-          if (index14 < 0) {
+          var data = this.__data__, index16 = assocIndexOf(data, key);
+          if (index16 < 0) {
             ++this.size;
             data.push([key, value]);
           } else {
-            data[index14][1] = value;
+            data[index16][1] = value;
           }
           return this;
         }
@@ -62729,10 +62729,10 @@ var require_lodash8 = __commonJS({
         ListCache.prototype.has = listCacheHas;
         ListCache.prototype.set = listCacheSet;
         function MapCache(entries) {
-          var index14 = -1, length = entries == null ? 0 : entries.length;
+          var index16 = -1, length = entries == null ? 0 : entries.length;
           this.clear();
-          while (++index14 < length) {
-            var entry = entries[index14];
+          while (++index16 < length) {
+            var entry = entries[index16];
             this.set(entry[0], entry[1]);
           }
         }
@@ -62767,10 +62767,10 @@ var require_lodash8 = __commonJS({
         MapCache.prototype.has = mapCacheHas;
         MapCache.prototype.set = mapCacheSet;
         function SetCache(values2) {
-          var index14 = -1, length = values2 == null ? 0 : values2.length;
+          var index16 = -1, length = values2 == null ? 0 : values2.length;
           this.__data__ = new MapCache();
-          while (++index14 < length) {
-            this.add(values2[index14]);
+          while (++index16 < length) {
+            this.add(values2[index16]);
           }
         }
         function setCacheAdd(value) {
@@ -62845,20 +62845,20 @@ var require_lodash8 = __commonJS({
           return shuffleSelf(copyArray(array));
         }
         function assignMergeValue(object, key, value) {
-          if (value !== undefined2 && !eq37(object[key], value) || value === undefined2 && !(key in object)) {
+          if (value !== undefined2 && !eq38(object[key], value) || value === undefined2 && !(key in object)) {
             baseAssignValue(object, key, value);
           }
         }
         function assignValue(object, key, value) {
           var objValue = object[key];
-          if (!(hasOwnProperty.call(object, key) && eq37(objValue, value)) || value === undefined2 && !(key in object)) {
+          if (!(hasOwnProperty.call(object, key) && eq38(objValue, value)) || value === undefined2 && !(key in object)) {
             baseAssignValue(object, key, value);
           }
         }
         function assocIndexOf(array, key) {
           var length = array.length;
           while (length--) {
-            if (eq37(array[length][0], key)) {
+            if (eq38(array[length][0], key)) {
               return length;
             }
           }
@@ -62889,9 +62889,9 @@ var require_lodash8 = __commonJS({
           }
         }
         function baseAt(object, paths) {
-          var index14 = -1, length = paths.length, result2 = Array2(length), skip = object == null;
-          while (++index14 < length) {
-            result2[index14] = skip ? undefined2 : get(object, paths[index14]);
+          var index16 = -1, length = paths.length, result2 = Array2(length), skip = object == null;
+          while (++index16 < length) {
+            result2[index16] = skip ? undefined2 : get(object, paths[index16]);
           }
           return result2;
         }
@@ -62995,7 +62995,7 @@ var require_lodash8 = __commonJS({
           }, wait);
         }
         function baseDifference(array, values2, iteratee2, comparator) {
-          var index14 = -1, includes2 = arrayIncludes, isCommon = true, length = array.length, result2 = [], valuesLength = values2.length;
+          var index16 = -1, includes2 = arrayIncludes, isCommon = true, length = array.length, result2 = [], valuesLength = values2.length;
           if (!length) {
             return result2;
           }
@@ -63011,8 +63011,8 @@ var require_lodash8 = __commonJS({
             values2 = new SetCache(values2);
           }
           outer:
-            while (++index14 < length) {
-              var value = array[index14], computed = iteratee2 == null ? value : iteratee2(value);
+            while (++index16 < length) {
+              var value = array[index16], computed = iteratee2 == null ? value : iteratee2(value);
               value = comparator || value !== 0 ? value : 0;
               if (isCommon && computed === computed) {
                 var valuesIndex = valuesLength;
@@ -63032,16 +63032,16 @@ var require_lodash8 = __commonJS({
         var baseEachRight = createBaseEach(baseForOwnRight, true);
         function baseEvery(collection, predicate) {
           var result2 = true;
-          baseEach(collection, function(value, index14, collection2) {
-            result2 = !!predicate(value, index14, collection2);
+          baseEach(collection, function(value, index16, collection2) {
+            result2 = !!predicate(value, index16, collection2);
             return result2;
           });
           return result2;
         }
         function baseExtremum(array, iteratee2, comparator) {
-          var index14 = -1, length = array.length;
-          while (++index14 < length) {
-            var value = array[index14], current = iteratee2(value);
+          var index16 = -1, length = array.length;
+          while (++index16 < length) {
+            var value = array[index16], current = iteratee2(value);
             if (current != null && (computed === undefined2 ? current === current && !isSymbol(current) : comparator(current, computed))) {
               var computed = current, result2 = value;
             }
@@ -63066,19 +63066,19 @@ var require_lodash8 = __commonJS({
         }
         function baseFilter(collection, predicate) {
           var result2 = [];
-          baseEach(collection, function(value, index14, collection2) {
-            if (predicate(value, index14, collection2)) {
+          baseEach(collection, function(value, index16, collection2) {
+            if (predicate(value, index16, collection2)) {
               result2.push(value);
             }
           });
           return result2;
         }
         function baseFlatten(array, depth, predicate, isStrict, result2) {
-          var index14 = -1, length = array.length;
+          var index16 = -1, length = array.length;
           predicate || (predicate = isFlattenable);
           result2 || (result2 = []);
-          while (++index14 < length) {
-            var value = array[index14];
+          while (++index16 < length) {
+            var value = array[index16];
             if (depth > 0 && predicate(value)) {
               if (depth > 1) {
                 baseFlatten(value, depth - 1, predicate, isStrict, result2);
@@ -63106,11 +63106,11 @@ var require_lodash8 = __commonJS({
         }
         function baseGet(object, path4) {
           path4 = castPath(path4, object);
-          var index14 = 0, length = path4.length;
-          while (object != null && index14 < length) {
-            object = object[toKey(path4[index14++])];
+          var index16 = 0, length = path4.length;
+          while (object != null && index16 < length) {
+            object = object[toKey(path4[index16++])];
           }
-          return index14 && index14 == length ? object : undefined2;
+          return index16 && index16 == length ? object : undefined2;
         }
         function baseGetAllKeys(object, keysFunc, symbolsFunc) {
           var result2 = keysFunc(object);
@@ -63145,10 +63145,10 @@ var require_lodash8 = __commonJS({
             caches[othIndex] = !comparator && (iteratee2 || length >= 120 && array.length >= 120) ? new SetCache(othIndex && array) : undefined2;
           }
           array = arrays[0];
-          var index14 = -1, seen = caches[0];
+          var index16 = -1, seen = caches[0];
           outer:
-            while (++index14 < length && result2.length < maxLength) {
-              var value = array[index14], computed = iteratee2 ? iteratee2(value) : value;
+            while (++index16 < length && result2.length < maxLength) {
+              var value = array[index16], computed = iteratee2 ? iteratee2(value) : value;
               value = comparator || value !== 0 ? value : 0;
               if (!(seen ? cacheHas(seen, computed) : includes2(result2, computed, comparator))) {
                 othIndex = othLength;
@@ -63230,19 +63230,19 @@ var require_lodash8 = __commonJS({
           return isObjectLike(value) && getTag(value) == mapTag;
         }
         function baseIsMatch(object, source, matchData, customizer) {
-          var index14 = matchData.length, length = index14, noCustomizer = !customizer;
+          var index16 = matchData.length, length = index16, noCustomizer = !customizer;
           if (object == null) {
             return !length;
           }
           object = Object2(object);
-          while (index14--) {
-            var data = matchData[index14];
+          while (index16--) {
+            var data = matchData[index16];
             if (noCustomizer && data[2] ? data[1] !== object[data[0]] : !(data[0] in object)) {
               return false;
             }
           }
-          while (++index14 < length) {
-            data = matchData[index14];
+          while (++index16 < length) {
+            data = matchData[index16];
             var key = data[0], objValue = object[key], srcValue = data[1];
             if (noCustomizer && data[2]) {
               if (objValue === undefined2 && !(key in object)) {
@@ -63316,9 +63316,9 @@ var require_lodash8 = __commonJS({
           return value < other;
         }
         function baseMap(collection, iteratee2) {
-          var index14 = -1, result2 = isArrayLike(collection) ? Array2(collection.length) : [];
+          var index16 = -1, result2 = isArrayLike(collection) ? Array2(collection.length) : [];
           baseEach(collection, function(value, key, collection2) {
-            result2[++index14] = iteratee2(value, key, collection2);
+            result2[++index16] = iteratee2(value, key, collection2);
           });
           return result2;
         }
@@ -63408,7 +63408,7 @@ var require_lodash8 = __commonJS({
           n += n < 0 ? length : 0;
           return isIndex(n, length) ? array[n] : undefined2;
         }
-        function baseOrderBy(collection, iteratees, orders3) {
+        function baseOrderBy(collection, iteratees, orders4) {
           if (iteratees.length) {
             iteratees = arrayMap(iteratees, function(iteratee2) {
               if (isArray(iteratee2)) {
@@ -63421,16 +63421,16 @@ var require_lodash8 = __commonJS({
           } else {
             iteratees = [identity];
           }
-          var index14 = -1;
+          var index16 = -1;
           iteratees = arrayMap(iteratees, baseUnary(getIteratee()));
           var result2 = baseMap(collection, function(value, key, collection2) {
             var criteria = arrayMap(iteratees, function(iteratee2) {
               return iteratee2(value);
             });
-            return { "criteria": criteria, "index": ++index14, "value": value };
+            return { "criteria": criteria, "index": ++index16, "value": value };
           });
           return baseSortBy(result2, function(object, other) {
-            return compareMultiple(object, other, orders3);
+            return compareMultiple(object, other, orders4);
           });
         }
         function basePick(object, paths) {
@@ -63439,9 +63439,9 @@ var require_lodash8 = __commonJS({
           });
         }
         function basePickBy(object, paths, predicate) {
-          var index14 = -1, length = paths.length, result2 = {};
-          while (++index14 < length) {
-            var path4 = paths[index14], value = baseGet(object, path4);
+          var index16 = -1, length = paths.length, result2 = {};
+          while (++index16 < length) {
+            var path4 = paths[index16], value = baseGet(object, path4);
             if (predicate(value, path4)) {
               baseSet(result2, castPath(path4, object), value);
             }
@@ -63454,15 +63454,15 @@ var require_lodash8 = __commonJS({
           };
         }
         function basePullAll(array, values2, iteratee2, comparator) {
-          var indexOf2 = comparator ? baseIndexOfWith : baseIndexOf, index14 = -1, length = values2.length, seen = array;
+          var indexOf2 = comparator ? baseIndexOfWith : baseIndexOf, index16 = -1, length = values2.length, seen = array;
           if (array === values2) {
             values2 = copyArray(values2);
           }
           if (iteratee2) {
             seen = arrayMap(array, baseUnary(iteratee2));
           }
-          while (++index14 < length) {
-            var fromIndex = 0, value = values2[index14], computed = iteratee2 ? iteratee2(value) : value;
+          while (++index16 < length) {
+            var fromIndex = 0, value = values2[index16], computed = iteratee2 ? iteratee2(value) : value;
             while ((fromIndex = indexOf2(seen, computed, fromIndex, comparator)) > -1) {
               if (seen !== array) {
                 splice.call(seen, fromIndex, 1);
@@ -63475,13 +63475,13 @@ var require_lodash8 = __commonJS({
         function basePullAt(array, indexes) {
           var length = array ? indexes.length : 0, lastIndex = length - 1;
           while (length--) {
-            var index14 = indexes[length];
-            if (length == lastIndex || index14 !== previous) {
-              var previous = index14;
-              if (isIndex(index14)) {
-                splice.call(array, index14, 1);
+            var index16 = indexes[length];
+            if (length == lastIndex || index16 !== previous) {
+              var previous = index16;
+              if (isIndex(index16)) {
+                splice.call(array, index16, 1);
               } else {
-                baseUnset(array, index14);
+                baseUnset(array, index16);
               }
             }
           }
@@ -63491,9 +63491,9 @@ var require_lodash8 = __commonJS({
           return lower2 + nativeFloor(nativeRandom() * (upper - lower2 + 1));
         }
         function baseRange(start, end, step, fromRight) {
-          var index14 = -1, length = nativeMax(nativeCeil((end - start) / (step || 1)), 0), result2 = Array2(length);
+          var index16 = -1, length = nativeMax(nativeCeil((end - start) / (step || 1)), 0), result2 = Array2(length);
           while (length--) {
-            result2[fromRight ? length : ++index14] = start;
+            result2[fromRight ? length : ++index16] = start;
             start += step;
           }
           return result2;
@@ -63529,17 +63529,17 @@ var require_lodash8 = __commonJS({
             return object;
           }
           path4 = castPath(path4, object);
-          var index14 = -1, length = path4.length, lastIndex = length - 1, nested = object;
-          while (nested != null && ++index14 < length) {
-            var key = toKey(path4[index14]), newValue = value;
+          var index16 = -1, length = path4.length, lastIndex = length - 1, nested = object;
+          while (nested != null && ++index16 < length) {
+            var key = toKey(path4[index16]), newValue = value;
             if (key === "__proto__" || key === "constructor" || key === "prototype") {
               return object;
             }
-            if (index14 != lastIndex) {
+            if (index16 != lastIndex) {
               var objValue = nested[key];
               newValue = customizer ? customizer(objValue, key, nested) : undefined2;
               if (newValue === undefined2) {
-                newValue = isObject(objValue) ? objValue : isIndex(path4[index14 + 1]) ? [] : {};
+                newValue = isObject(objValue) ? objValue : isIndex(path4[index16 + 1]) ? [] : {};
               }
             }
             assignValue(nested, key, newValue);
@@ -63563,7 +63563,7 @@ var require_lodash8 = __commonJS({
           return shuffleSelf(values(collection));
         }
         function baseSlice(array, start, end) {
-          var index14 = -1, length = array.length;
+          var index16 = -1, length = array.length;
           if (start < 0) {
             start = -start > length ? 0 : length + start;
           }
@@ -63574,15 +63574,15 @@ var require_lodash8 = __commonJS({
           length = start > end ? 0 : end - start >>> 0;
           start >>>= 0;
           var result2 = Array2(length);
-          while (++index14 < length) {
-            result2[index14] = array[index14 + start];
+          while (++index16 < length) {
+            result2[index16] = array[index16 + start];
           }
           return result2;
         }
         function baseSome(collection, predicate) {
           var result2;
-          baseEach(collection, function(value, index14, collection2) {
-            result2 = predicate(value, index14, collection2);
+          baseEach(collection, function(value, index16, collection2) {
+            result2 = predicate(value, index16, collection2);
             return !result2;
           });
           return !!result2;
@@ -63633,10 +63633,10 @@ var require_lodash8 = __commonJS({
           return nativeMin(high, MAX_ARRAY_INDEX);
         }
         function baseSortedUniq(array, iteratee2) {
-          var index14 = -1, length = array.length, resIndex = 0, result2 = [];
-          while (++index14 < length) {
-            var value = array[index14], computed = iteratee2 ? iteratee2(value) : value;
-            if (!index14 || !eq37(computed, seen)) {
+          var index16 = -1, length = array.length, resIndex = 0, result2 = [];
+          while (++index16 < length) {
+            var value = array[index16], computed = iteratee2 ? iteratee2(value) : value;
+            if (!index16 || !eq38(computed, seen)) {
               var seen = computed;
               result2[resIndex++] = value === 0 ? 0 : value;
             }
@@ -63666,7 +63666,7 @@ var require_lodash8 = __commonJS({
           return result2 == "0" && 1 / value == -INFINITY ? "-0" : result2;
         }
         function baseUniq(array, iteratee2, comparator) {
-          var index14 = -1, includes2 = arrayIncludes, length = array.length, isCommon = true, result2 = [], seen = result2;
+          var index16 = -1, includes2 = arrayIncludes, length = array.length, isCommon = true, result2 = [], seen = result2;
           if (comparator) {
             isCommon = false;
             includes2 = arrayIncludesWith;
@@ -63682,8 +63682,8 @@ var require_lodash8 = __commonJS({
             seen = iteratee2 ? [] : result2;
           }
           outer:
-            while (++index14 < length) {
-              var value = array[index14], computed = iteratee2 ? iteratee2(value) : value;
+            while (++index16 < length) {
+              var value = array[index16], computed = iteratee2 ? iteratee2(value) : value;
               value = comparator || value !== 0 ? value : 0;
               if (isCommon && computed === computed) {
                 var seenIndex = seen.length;
@@ -63707,16 +63707,16 @@ var require_lodash8 = __commonJS({
         }
         function baseUnset(object, path4) {
           path4 = castPath(path4, object);
-          var index14 = -1, length = path4.length;
+          var index16 = -1, length = path4.length;
           if (!length) {
             return true;
           }
-          while (++index14 < length) {
-            var key = toKey(path4[index14]);
+          while (++index16 < length) {
+            var key = toKey(path4[index16]);
             if (key === "__proto__" && !hasOwnProperty.call(object, "__proto__")) {
               return false;
             }
-            if ((key === "constructor" || key === "prototype") && index14 < length - 1) {
+            if ((key === "constructor" || key === "prototype") && index16 < length - 1) {
               return false;
             }
           }
@@ -63727,10 +63727,10 @@ var require_lodash8 = __commonJS({
           return baseSet(object, path4, updater(baseGet(object, path4)), customizer);
         }
         function baseWhile(array, predicate, isDrop, fromRight) {
-          var length = array.length, index14 = fromRight ? length : -1;
-          while ((fromRight ? index14-- : ++index14 < length) && predicate(array[index14], index14, array)) {
+          var length = array.length, index16 = fromRight ? length : -1;
+          while ((fromRight ? index16-- : ++index16 < length) && predicate(array[index16], index16, array)) {
           }
-          return isDrop ? baseSlice(array, fromRight ? 0 : index14, fromRight ? index14 + 1 : length) : baseSlice(array, fromRight ? index14 + 1 : 0, fromRight ? length : index14);
+          return isDrop ? baseSlice(array, fromRight ? 0 : index16, fromRight ? index16 + 1 : length) : baseSlice(array, fromRight ? index16 + 1 : 0, fromRight ? length : index16);
         }
         function baseWrapperValue(value, actions) {
           var result2 = value;
@@ -63746,22 +63746,22 @@ var require_lodash8 = __commonJS({
           if (length < 2) {
             return length ? baseUniq(arrays[0]) : [];
           }
-          var index14 = -1, result2 = Array2(length);
-          while (++index14 < length) {
-            var array = arrays[index14], othIndex = -1;
+          var index16 = -1, result2 = Array2(length);
+          while (++index16 < length) {
+            var array = arrays[index16], othIndex = -1;
             while (++othIndex < length) {
-              if (othIndex != index14) {
-                result2[index14] = baseDifference(result2[index14] || array, arrays[othIndex], iteratee2, comparator);
+              if (othIndex != index16) {
+                result2[index16] = baseDifference(result2[index16] || array, arrays[othIndex], iteratee2, comparator);
               }
             }
           }
           return baseUniq(baseFlatten(result2, 1), iteratee2, comparator);
         }
         function baseZipObject(props, values2, assignFunc) {
-          var index14 = -1, length = props.length, valsLength = values2.length, result2 = {};
-          while (++index14 < length) {
-            var value = index14 < valsLength ? values2[index14] : undefined2;
-            assignFunc(result2, props[index14], value);
+          var index16 = -1, length = props.length, valsLength = values2.length, result2 = {};
+          while (++index16 < length) {
+            var value = index16 < valsLength ? values2[index16] : undefined2;
+            assignFunc(result2, props[index16], value);
           }
           return result2;
         }
@@ -63828,15 +63828,15 @@ var require_lodash8 = __commonJS({
           }
           return 0;
         }
-        function compareMultiple(object, other, orders3) {
-          var index14 = -1, objCriteria = object.criteria, othCriteria = other.criteria, length = objCriteria.length, ordersLength = orders3.length;
-          while (++index14 < length) {
-            var result2 = compareAscending(objCriteria[index14], othCriteria[index14]);
+        function compareMultiple(object, other, orders4) {
+          var index16 = -1, objCriteria = object.criteria, othCriteria = other.criteria, length = objCriteria.length, ordersLength = orders4.length;
+          while (++index16 < length) {
+            var result2 = compareAscending(objCriteria[index16], othCriteria[index16]);
             if (result2) {
-              if (index14 >= ordersLength) {
+              if (index16 >= ordersLength) {
                 return result2;
               }
-              var order = orders3[index14];
+              var order = orders4[index16];
               return result2 * (order == "desc" ? -1 : 1);
             }
           }
@@ -63874,19 +63874,19 @@ var require_lodash8 = __commonJS({
           return result2;
         }
         function copyArray(source, array) {
-          var index14 = -1, length = source.length;
+          var index16 = -1, length = source.length;
           array || (array = Array2(length));
-          while (++index14 < length) {
-            array[index14] = source[index14];
+          while (++index16 < length) {
+            array[index16] = source[index16];
           }
           return array;
         }
         function copyObject(source, props, object, customizer) {
           var isNew = !object;
           object || (object = {});
-          var index14 = -1, length = props.length;
-          while (++index14 < length) {
-            var key = props[index14];
+          var index16 = -1, length = props.length;
+          while (++index16 < length) {
+            var key = props[index16];
             var newValue = customizer ? customizer(object[key], source[key], key, object, source) : undefined2;
             if (newValue === undefined2) {
               newValue = source[key];
@@ -63913,17 +63913,17 @@ var require_lodash8 = __commonJS({
         }
         function createAssigner(assigner) {
           return baseRest(function(object, sources) {
-            var index14 = -1, length = sources.length, customizer = length > 1 ? sources[length - 1] : undefined2, guard = length > 2 ? sources[2] : undefined2;
+            var index16 = -1, length = sources.length, customizer = length > 1 ? sources[length - 1] : undefined2, guard = length > 2 ? sources[2] : undefined2;
             customizer = assigner.length > 3 && typeof customizer == "function" ? (length--, customizer) : undefined2;
             if (guard && isIterateeCall(sources[0], sources[1], guard)) {
               customizer = length < 3 ? undefined2 : customizer;
               length = 1;
             }
             object = Object2(object);
-            while (++index14 < length) {
-              var source = sources[index14];
+            while (++index16 < length) {
+              var source = sources[index16];
               if (source) {
-                assigner(object, source, index14, customizer);
+                assigner(object, source, index16, customizer);
               }
             }
             return object;
@@ -63937,9 +63937,9 @@ var require_lodash8 = __commonJS({
             if (!isArrayLike(collection)) {
               return eachFunc(collection, iteratee2);
             }
-            var length = collection.length, index14 = fromRight ? length : -1, iterable = Object2(collection);
-            while (fromRight ? index14-- : ++index14 < length) {
-              if (iteratee2(iterable[index14], index14, iterable) === false) {
+            var length = collection.length, index16 = fromRight ? length : -1, iterable = Object2(collection);
+            while (fromRight ? index16-- : ++index16 < length) {
+              if (iteratee2(iterable[index16], index16, iterable) === false) {
                 break;
               }
             }
@@ -63948,9 +63948,9 @@ var require_lodash8 = __commonJS({
         }
         function createBaseFor(fromRight) {
           return function(object, iteratee2, keysFunc) {
-            var index14 = -1, iterable = Object2(object), props = keysFunc(object), length = props.length;
+            var index16 = -1, iterable = Object2(object), props = keysFunc(object), length = props.length;
             while (length--) {
-              var key = props[fromRight ? length : ++index14];
+              var key = props[fromRight ? length : ++index16];
               if (iteratee2(iterable[key], key, iterable) === false) {
                 break;
               }
@@ -64008,9 +64008,9 @@ var require_lodash8 = __commonJS({
         function createCurry(func, bitmask, arity) {
           var Ctor = createCtor(func);
           function wrapper() {
-            var length = arguments.length, args = Array2(length), index14 = length, placeholder = getHolder(wrapper);
-            while (index14--) {
-              args[index14] = arguments[index14];
+            var length = arguments.length, args = Array2(length), index16 = length, placeholder = getHolder(wrapper);
+            while (index16--) {
+              args[index16] = arguments[index16];
             }
             var holders = length < 3 && args[0] !== placeholder && args[length - 1] !== placeholder ? [] : replaceHolders(args, placeholder);
             length -= holders.length;
@@ -64043,18 +64043,18 @@ var require_lodash8 = __commonJS({
                 return iteratee2(iterable[key], key, iterable);
               };
             }
-            var index14 = findIndexFunc(collection, predicate, fromIndex);
-            return index14 > -1 ? iterable[iteratee2 ? collection[index14] : index14] : undefined2;
+            var index16 = findIndexFunc(collection, predicate, fromIndex);
+            return index16 > -1 ? iterable[iteratee2 ? collection[index16] : index16] : undefined2;
           };
         }
         function createFlow(fromRight) {
           return flatRest(function(funcs) {
-            var length = funcs.length, index14 = length, prereq = LodashWrapper.prototype.thru;
+            var length = funcs.length, index16 = length, prereq = LodashWrapper.prototype.thru;
             if (fromRight) {
               funcs.reverse();
             }
-            while (index14--) {
-              var func = funcs[index14];
+            while (index16--) {
+              var func = funcs[index16];
               if (typeof func != "function") {
                 throw new TypeError2(FUNC_ERROR_TEXT);
               }
@@ -64062,9 +64062,9 @@ var require_lodash8 = __commonJS({
                 var wrapper = new LodashWrapper([], true);
               }
             }
-            index14 = wrapper ? index14 : length;
-            while (++index14 < length) {
-              func = funcs[index14];
+            index16 = wrapper ? index16 : length;
+            while (++index16 < length) {
+              func = funcs[index16];
               var funcName = getFuncName(func), data = funcName == "wrapper" ? getData(func) : undefined2;
               if (data && isLaziable(data[0]) && data[1] == (WRAP_ARY_FLAG | WRAP_CURRY_FLAG | WRAP_PARTIAL_FLAG | WRAP_REARG_FLAG) && !data[4].length && data[9] == 1) {
                 wrapper = wrapper[getFuncName(data[0])].apply(wrapper, data[3]);
@@ -64077,9 +64077,9 @@ var require_lodash8 = __commonJS({
               if (wrapper && args.length == 1 && isArray(value)) {
                 return wrapper.plant(value).value();
               }
-              var index15 = 0, result2 = length ? funcs[index15].apply(this, args) : value;
-              while (++index15 < length) {
-                result2 = funcs[index15].call(this, result2);
+              var index17 = 0, result2 = length ? funcs[index17].apply(this, args) : value;
+              while (++index17 < length) {
+                result2 = funcs[index17].call(this, result2);
               }
               return result2;
             };
@@ -64088,9 +64088,9 @@ var require_lodash8 = __commonJS({
         function createHybrid(func, bitmask, thisArg, partials, holders, partialsRight, holdersRight, argPos, ary2, arity) {
           var isAry = bitmask & WRAP_ARY_FLAG, isBind = bitmask & WRAP_BIND_FLAG, isBindKey = bitmask & WRAP_BIND_KEY_FLAG, isCurried = bitmask & (WRAP_CURRY_FLAG | WRAP_CURRY_RIGHT_FLAG), isFlip = bitmask & WRAP_FLIP_FLAG, Ctor = isBindKey ? undefined2 : createCtor(func);
           function wrapper() {
-            var length = arguments.length, args = Array2(length), index14 = length;
-            while (index14--) {
-              args[index14] = arguments[index14];
+            var length = arguments.length, args = Array2(length), index16 = length;
+            while (index16--) {
+              args[index16] = arguments[index16];
             }
             if (isCurried) {
               var placeholder = getHolder(wrapper), holdersCount = countHolders(args, placeholder);
@@ -64332,7 +64332,7 @@ var require_lodash8 = __commonJS({
           return setWrapToString(setter(result2, newData), func, bitmask);
         }
         function customDefaultsAssignIn(objValue, srcValue, key, object) {
-          if (objValue === undefined2 || eq37(objValue, objectProto[key]) && !hasOwnProperty.call(object, key)) {
+          if (objValue === undefined2 || eq38(objValue, objectProto[key]) && !hasOwnProperty.call(object, key)) {
             return srcValue;
           }
           return objValue;
@@ -64358,13 +64358,13 @@ var require_lodash8 = __commonJS({
           if (arrStacked && othStacked) {
             return arrStacked == other && othStacked == array;
           }
-          var index14 = -1, result2 = true, seen = bitmask & COMPARE_UNORDERED_FLAG ? new SetCache() : undefined2;
+          var index16 = -1, result2 = true, seen = bitmask & COMPARE_UNORDERED_FLAG ? new SetCache() : undefined2;
           stack.set(array, other);
           stack.set(other, array);
-          while (++index14 < arrLength) {
-            var arrValue = array[index14], othValue = other[index14];
+          while (++index16 < arrLength) {
+            var arrValue = array[index16], othValue = other[index16];
             if (customizer) {
-              var compared = isPartial ? customizer(othValue, arrValue, index14, other, array, stack) : customizer(arrValue, othValue, index14, array, other, stack);
+              var compared = isPartial ? customizer(othValue, arrValue, index16, other, array, stack) : customizer(arrValue, othValue, index16, array, other, stack);
             }
             if (compared !== undefined2) {
               if (compared) {
@@ -64407,7 +64407,7 @@ var require_lodash8 = __commonJS({
             case boolTag:
             case dateTag:
             case numberTag:
-              return eq37(+object, +other);
+              return eq38(+object, +other);
             case errorTag:
               return object.name == other.name && object.message == other.message;
             case regexpTag:
@@ -64442,9 +64442,9 @@ var require_lodash8 = __commonJS({
           if (objLength != othLength && !isPartial) {
             return false;
           }
-          var index14 = objLength;
-          while (index14--) {
-            var key = objProps[index14];
+          var index16 = objLength;
+          while (index16--) {
+            var key = objProps[index16];
             if (!(isPartial ? key in other : hasOwnProperty.call(other, key))) {
               return false;
             }
@@ -64458,8 +64458,8 @@ var require_lodash8 = __commonJS({
           stack.set(object, other);
           stack.set(other, object);
           var skipCtor = isPartial;
-          while (++index14 < objLength) {
-            key = objProps[index14];
+          while (++index16 < objLength) {
+            key = objProps[index16];
             var objValue = object[key], othValue = other[key];
             if (customizer) {
               var compared = isPartial ? customizer(othValue, objValue, key, other, object, stack) : customizer(objValue, othValue, key, object, other, stack);
@@ -64583,9 +64583,9 @@ var require_lodash8 = __commonJS({
           };
         }
         function getView(start, end, transforms) {
-          var index14 = -1, length = transforms.length;
-          while (++index14 < length) {
-            var data = transforms[index14], size2 = data.size;
+          var index16 = -1, length = transforms.length;
+          while (++index16 < length) {
+            var data = transforms[index16], size2 = data.size;
             switch (data.type) {
               case "drop":
                 start += size2;
@@ -64609,15 +64609,15 @@ var require_lodash8 = __commonJS({
         }
         function hasPath(object, path4, hasFunc) {
           path4 = castPath(path4, object);
-          var index14 = -1, length = path4.length, result2 = false;
-          while (++index14 < length) {
-            var key = toKey(path4[index14]);
+          var index16 = -1, length = path4.length, result2 = false;
+          while (++index16 < length) {
+            var key = toKey(path4[index16]);
             if (!(result2 = object != null && hasFunc(object, key))) {
               break;
             }
             object = object[key];
           }
-          if (result2 || ++index14 != length) {
+          if (result2 || ++index16 != length) {
             return result2;
           }
           length = object == null ? 0 : object.length;
@@ -64685,13 +64685,13 @@ var require_lodash8 = __commonJS({
           length = length == null ? MAX_SAFE_INTEGER : length;
           return !!length && (type == "number" || type != "symbol" && reIsUint.test(value)) && (value > -1 && value % 1 == 0 && value < length);
         }
-        function isIterateeCall(value, index14, object) {
+        function isIterateeCall(value, index16, object) {
           if (!isObject(object)) {
             return false;
           }
-          var type = typeof index14;
-          if (type == "number" ? isArrayLike(object) && isIndex(index14, object.length) : type == "string" && index14 in object) {
-            return eq37(object[index14], value);
+          var type = typeof index16;
+          if (type == "number" ? isArrayLike(object) && isIndex(index16, object.length) : type == "string" && index16 in object) {
+            return eq38(object[index16], value);
           }
           return false;
         }
@@ -64800,14 +64800,14 @@ var require_lodash8 = __commonJS({
         function overRest(func, start, transform2) {
           start = nativeMax(start === undefined2 ? func.length - 1 : start, 0);
           return function() {
-            var args = arguments, index14 = -1, length = nativeMax(args.length - start, 0), array = Array2(length);
-            while (++index14 < length) {
-              array[index14] = args[start + index14];
+            var args = arguments, index16 = -1, length = nativeMax(args.length - start, 0), array = Array2(length);
+            while (++index16 < length) {
+              array[index16] = args[start + index16];
             }
-            index14 = -1;
+            index16 = -1;
             var otherArgs = Array2(start + 1);
-            while (++index14 < start) {
-              otherArgs[index14] = args[index14];
+            while (++index16 < start) {
+              otherArgs[index16] = args[index16];
             }
             otherArgs[start] = transform2(array);
             return apply(func, this, otherArgs);
@@ -64819,8 +64819,8 @@ var require_lodash8 = __commonJS({
         function reorder(array, indexes) {
           var arrLength = array.length, length = nativeMin(indexes.length, arrLength), oldArray = copyArray(array);
           while (length--) {
-            var index14 = indexes[length];
-            array[length] = isIndex(index14, arrLength) ? oldArray[index14] : undefined2;
+            var index16 = indexes[length];
+            array[length] = isIndex(index16, arrLength) ? oldArray[index16] : undefined2;
           }
           return array;
         }
@@ -64858,12 +64858,12 @@ var require_lodash8 = __commonJS({
           };
         }
         function shuffleSelf(array, size2) {
-          var index14 = -1, length = array.length, lastIndex = length - 1;
+          var index16 = -1, length = array.length, lastIndex = length - 1;
           size2 = size2 === undefined2 ? length : size2;
-          while (++index14 < size2) {
-            var rand = baseRandom(index14, lastIndex), value = array[rand];
-            array[rand] = array[index14];
-            array[index14] = value;
+          while (++index16 < size2) {
+            var rand = baseRandom(index16, lastIndex), value = array[rand];
+            array[rand] = array[index16];
+            array[index16] = value;
           }
           array.length = size2;
           return array;
@@ -64927,16 +64927,16 @@ var require_lodash8 = __commonJS({
           if (!length || size2 < 1) {
             return [];
           }
-          var index14 = 0, resIndex = 0, result2 = Array2(nativeCeil(length / size2));
-          while (index14 < length) {
-            result2[resIndex++] = baseSlice(array, index14, index14 += size2);
+          var index16 = 0, resIndex = 0, result2 = Array2(nativeCeil(length / size2));
+          while (index16 < length) {
+            result2[resIndex++] = baseSlice(array, index16, index16 += size2);
           }
           return result2;
         }
         function compact(array) {
-          var index14 = -1, length = array == null ? 0 : array.length, resIndex = 0, result2 = [];
-          while (++index14 < length) {
-            var value = array[index14];
+          var index16 = -1, length = array == null ? 0 : array.length, resIndex = 0, result2 = [];
+          while (++index16 < length) {
+            var value = array[index16];
             if (value) {
               result2[resIndex++] = value;
             }
@@ -64948,9 +64948,9 @@ var require_lodash8 = __commonJS({
           if (!length) {
             return [];
           }
-          var args = Array2(length - 1), array = arguments[0], index14 = length;
-          while (index14--) {
-            args[index14 - 1] = arguments[index14];
+          var args = Array2(length - 1), array = arguments[0], index16 = length;
+          while (index16--) {
+            args[index16 - 1] = arguments[index16];
           }
           return arrayPush(isArray(array) ? copyArray(array) : [array], baseFlatten(args, 1));
         }
@@ -65010,23 +65010,23 @@ var require_lodash8 = __commonJS({
           if (!length) {
             return -1;
           }
-          var index14 = fromIndex == null ? 0 : toInteger(fromIndex);
-          if (index14 < 0) {
-            index14 = nativeMax(length + index14, 0);
+          var index16 = fromIndex == null ? 0 : toInteger(fromIndex);
+          if (index16 < 0) {
+            index16 = nativeMax(length + index16, 0);
           }
-          return baseFindIndex(array, getIteratee(predicate, 3), index14);
+          return baseFindIndex(array, getIteratee(predicate, 3), index16);
         }
         function findLastIndex(array, predicate, fromIndex) {
           var length = array == null ? 0 : array.length;
           if (!length) {
             return -1;
           }
-          var index14 = length - 1;
+          var index16 = length - 1;
           if (fromIndex !== undefined2) {
-            index14 = toInteger(fromIndex);
-            index14 = fromIndex < 0 ? nativeMax(length + index14, 0) : nativeMin(index14, length - 1);
+            index16 = toInteger(fromIndex);
+            index16 = fromIndex < 0 ? nativeMax(length + index16, 0) : nativeMin(index16, length - 1);
           }
-          return baseFindIndex(array, getIteratee(predicate, 3), index14, true);
+          return baseFindIndex(array, getIteratee(predicate, 3), index16, true);
         }
         function flatten(array) {
           var length = array == null ? 0 : array.length;
@@ -65045,9 +65045,9 @@ var require_lodash8 = __commonJS({
           return baseFlatten(array, depth);
         }
         function fromPairs(pairs) {
-          var index14 = -1, length = pairs == null ? 0 : pairs.length, result2 = {};
-          while (++index14 < length) {
-            var pair = pairs[index14];
+          var index16 = -1, length = pairs == null ? 0 : pairs.length, result2 = {};
+          while (++index16 < length) {
+            var pair = pairs[index16];
             baseAssignValue(result2, pair[0], pair[1]);
           }
           return result2;
@@ -65060,11 +65060,11 @@ var require_lodash8 = __commonJS({
           if (!length) {
             return -1;
           }
-          var index14 = fromIndex == null ? 0 : toInteger(fromIndex);
-          if (index14 < 0) {
-            index14 = nativeMax(length + index14, 0);
+          var index16 = fromIndex == null ? 0 : toInteger(fromIndex);
+          if (index16 < 0) {
+            index16 = nativeMax(length + index16, 0);
           }
-          return baseIndexOf(array, value, index14);
+          return baseIndexOf(array, value, index16);
         }
         function initial(array) {
           var length = array == null ? 0 : array.length;
@@ -65103,12 +65103,12 @@ var require_lodash8 = __commonJS({
           if (!length) {
             return -1;
           }
-          var index14 = length;
+          var index16 = length;
           if (fromIndex !== undefined2) {
-            index14 = toInteger(fromIndex);
-            index14 = index14 < 0 ? nativeMax(length + index14, 0) : nativeMin(index14, length - 1);
+            index16 = toInteger(fromIndex);
+            index16 = index16 < 0 ? nativeMax(length + index16, 0) : nativeMin(index16, length - 1);
           }
-          return value === value ? strictLastIndexOf(array, value, index14) : baseFindIndex(array, baseIsNaN, index14, true);
+          return value === value ? strictLastIndexOf(array, value, index16) : baseFindIndex(array, baseIsNaN, index16, true);
         }
         function nth(array, n) {
           return array && array.length ? baseNth(array, toInteger(n)) : undefined2;
@@ -65125,8 +65125,8 @@ var require_lodash8 = __commonJS({
         }
         var pullAt = flatRest(function(array, indexes) {
           var length = array == null ? 0 : array.length, result2 = baseAt(array, indexes);
-          basePullAt(array, arrayMap(indexes, function(index14) {
-            return isIndex(index14, length) ? +index14 : index14;
+          basePullAt(array, arrayMap(indexes, function(index16) {
+            return isIndex(index16, length) ? +index16 : index16;
           }).sort(compareAscending));
           return result2;
         });
@@ -65135,13 +65135,13 @@ var require_lodash8 = __commonJS({
           if (!(array && array.length)) {
             return result2;
           }
-          var index14 = -1, indexes = [], length = array.length;
+          var index16 = -1, indexes = [], length = array.length;
           predicate = getIteratee(predicate, 3);
-          while (++index14 < length) {
-            var value = array[index14];
-            if (predicate(value, index14, array)) {
+          while (++index16 < length) {
+            var value = array[index16];
+            if (predicate(value, index16, array)) {
               result2.push(value);
-              indexes.push(index14);
+              indexes.push(index16);
             }
           }
           basePullAt(array, indexes);
@@ -65173,9 +65173,9 @@ var require_lodash8 = __commonJS({
         function sortedIndexOf(array, value) {
           var length = array == null ? 0 : array.length;
           if (length) {
-            var index14 = baseSortedIndex(array, value);
-            if (index14 < length && eq37(array[index14], value)) {
-              return index14;
+            var index16 = baseSortedIndex(array, value);
+            if (index16 < length && eq38(array[index16], value)) {
+              return index16;
             }
           }
           return -1;
@@ -65189,9 +65189,9 @@ var require_lodash8 = __commonJS({
         function sortedLastIndexOf(array, value) {
           var length = array == null ? 0 : array.length;
           if (length) {
-            var index14 = baseSortedIndex(array, value, true) - 1;
-            if (eq37(array[index14], value)) {
-              return index14;
+            var index16 = baseSortedIndex(array, value, true) - 1;
+            if (eq38(array[index16], value)) {
+              return index16;
             }
           }
           return -1;
@@ -65264,8 +65264,8 @@ var require_lodash8 = __commonJS({
               return true;
             }
           });
-          return baseTimes(length, function(index14) {
-            return arrayMap(array, baseProperty(index14));
+          return baseTimes(length, function(index16) {
+            return arrayMap(array, baseProperty(index16));
           });
         }
         function unzipWith(array, iteratee2) {
@@ -65450,9 +65450,9 @@ var require_lodash8 = __commonJS({
           return isString(collection) ? fromIndex <= length && collection.indexOf(value, fromIndex) > -1 : !!length && baseIndexOf(collection, value, fromIndex) > -1;
         }
         var invokeMap = baseRest(function(collection, path4, args) {
-          var index14 = -1, isFunc = typeof path4 == "function", result2 = isArrayLike(collection) ? Array2(collection.length) : [];
+          var index16 = -1, isFunc = typeof path4 == "function", result2 = isArrayLike(collection) ? Array2(collection.length) : [];
           baseEach(collection, function(value) {
-            result2[++index14] = isFunc ? apply(path4, value, args) : baseInvoke(value, path4, args);
+            result2[++index16] = isFunc ? apply(path4, value, args) : baseInvoke(value, path4, args);
           });
           return result2;
         });
@@ -65463,18 +65463,18 @@ var require_lodash8 = __commonJS({
           var func = isArray(collection) ? arrayMap : baseMap;
           return func(collection, getIteratee(iteratee2, 3));
         }
-        function orderBy(collection, iteratees, orders3, guard) {
+        function orderBy(collection, iteratees, orders4, guard) {
           if (collection == null) {
             return [];
           }
           if (!isArray(iteratees)) {
             iteratees = iteratees == null ? [] : [iteratees];
           }
-          orders3 = guard ? undefined2 : orders3;
-          if (!isArray(orders3)) {
-            orders3 = orders3 == null ? [] : [orders3];
+          orders4 = guard ? undefined2 : orders4;
+          if (!isArray(orders4)) {
+            orders4 = orders4 == null ? [] : [orders4];
           }
-          return baseOrderBy(collection, iteratees, orders3);
+          return baseOrderBy(collection, iteratees, orders4);
         }
         var partition = createAggregator(function(result2, value, key) {
           result2[key ? 0 : 1].push(value);
@@ -65738,9 +65738,9 @@ var require_lodash8 = __commonJS({
           transforms = transforms.length == 1 && isArray(transforms[0]) ? arrayMap(transforms[0], baseUnary(getIteratee())) : arrayMap(baseFlatten(transforms, 1), baseUnary(getIteratee()));
           var funcsLength = transforms.length;
           return baseRest(function(args) {
-            var index14 = -1, length = nativeMin(args.length, funcsLength);
-            while (++index14 < length) {
-              args[index14] = transforms[index14].call(this, args[index14]);
+            var index16 = -1, length = nativeMin(args.length, funcsLength);
+            while (++index16 < length) {
+              args[index16] = transforms[index16].call(this, args[index16]);
             }
             return apply(func, this, args);
           });
@@ -65821,7 +65821,7 @@ var require_lodash8 = __commonJS({
         function conformsTo(object, source) {
           return source == null || baseConformsTo(object, source, keys(source));
         }
-        function eq37(value, other) {
+        function eq38(value, other) {
           return value === other || value !== value && other !== other;
         }
         var gt4 = createRelationalOperation(baseGt);
@@ -66055,21 +66055,21 @@ var require_lodash8 = __commonJS({
         }
         var defaults2 = baseRest(function(object, sources) {
           object = Object2(object);
-          var index14 = -1;
+          var index16 = -1;
           var length = sources.length;
           var guard = length > 2 ? sources[2] : undefined2;
           if (guard && isIterateeCall(sources[0], sources[1], guard)) {
             length = 1;
           }
-          while (++index14 < length) {
-            var source = sources[index14];
+          while (++index16 < length) {
+            var source = sources[index16];
             var props = keysIn(source);
             var propsIndex = -1;
             var propsLength = props.length;
             while (++propsIndex < propsLength) {
               var key = props[propsIndex];
               var value = object[key];
-              if (value === undefined2 || eq37(value, objectProto[key]) && !hasOwnProperty.call(object, key)) {
+              if (value === undefined2 || eq38(value, objectProto[key]) && !hasOwnProperty.call(object, key)) {
                 object[key] = source[key];
               }
             }
@@ -66200,15 +66200,15 @@ var require_lodash8 = __commonJS({
         }
         function result(object, path4, defaultValue) {
           path4 = castPath(path4, object);
-          var index14 = -1, length = path4.length;
+          var index16 = -1, length = path4.length;
           if (!length) {
             length = 1;
             object = undefined2;
           }
-          while (++index14 < length) {
-            var value = object == null ? undefined2 : object[toKey(path4[index14])];
+          while (++index16 < length) {
+            var value = object == null ? undefined2 : object[toKey(path4[index16])];
             if (value === undefined2) {
-              index14 = length;
+              index16 = length;
               value = defaultValue;
             }
             object = isFunction(value) ? value.call(object) : value;
@@ -66237,8 +66237,8 @@ var require_lodash8 = __commonJS({
               accumulator = {};
             }
           }
-          (isArrLike ? arrayEach : baseForOwn)(object, function(value, index14, object2) {
-            return iteratee2(accumulator, value, index14, object2);
+          (isArrLike ? arrayEach : baseForOwn)(object, function(value, index16, object2) {
+            return iteratee2(accumulator, value, index16, object2);
           });
           return accumulator;
         }
@@ -66320,9 +66320,9 @@ var require_lodash8 = __commonJS({
           }
           return baseRandom(lower2, upper);
         }
-        var camelCase = createCompounder(function(result2, word, index14) {
+        var camelCase = createCompounder(function(result2, word, index16) {
           word = word.toLowerCase();
-          return result2 + (index14 ? capitalize(word) : word);
+          return result2 + (index16 ? capitalize(word) : word);
         });
         function capitalize(string) {
           return upperFirst(toString(string).toLowerCase());
@@ -66348,11 +66348,11 @@ var require_lodash8 = __commonJS({
           string = toString(string);
           return string && reHasRegExpChar.test(string) ? string.replace(reRegExpChar, "\\$&") : string;
         }
-        var kebabCase = createCompounder(function(result2, word, index14) {
-          return result2 + (index14 ? "-" : "") + word.toLowerCase();
+        var kebabCase = createCompounder(function(result2, word, index16) {
+          return result2 + (index16 ? "-" : "") + word.toLowerCase();
         });
-        var lowerCase = createCompounder(function(result2, word, index14) {
-          return result2 + (index14 ? " " : "") + word.toLowerCase();
+        var lowerCase = createCompounder(function(result2, word, index16) {
+          return result2 + (index16 ? " " : "") + word.toLowerCase();
         });
         var lowerFirst = createCaseFirst("toLowerCase");
         function pad(string, length, chars) {
@@ -66397,8 +66397,8 @@ var require_lodash8 = __commonJS({
           var args = arguments, string = toString(args[0]);
           return args.length < 3 ? string : string.replace(args[1], args[2]);
         }
-        var snakeCase = createCompounder(function(result2, word, index14) {
-          return result2 + (index14 ? "_" : "") + word.toLowerCase();
+        var snakeCase = createCompounder(function(result2, word, index16) {
+          return result2 + (index16 ? "_" : "") + word.toLowerCase();
         });
         function split(string, separator, limit) {
           if (limit && typeof limit != "number" && isIterateeCall(string, separator, limit)) {
@@ -66417,8 +66417,8 @@ var require_lodash8 = __commonJS({
           }
           return string.split(separator, limit);
         }
-        var startCase = createCompounder(function(result2, word, index14) {
-          return result2 + (index14 ? " " : "") + upperFirst(word);
+        var startCase = createCompounder(function(result2, word, index16) {
+          return result2 + (index16 ? " " : "") + upperFirst(word);
         });
         function startsWith(string, target, position) {
           string = toString(string);
@@ -66439,7 +66439,7 @@ var require_lodash8 = __commonJS({
               throw new Error2(INVALID_TEMPL_IMPORTS_ERROR_TEXT);
             }
           });
-          var isEscaping, isEvaluating, index14 = 0, interpolate = options.interpolate || reNoMatch, source = "__p += '";
+          var isEscaping, isEvaluating, index16 = 0, interpolate = options.interpolate || reNoMatch, source = "__p += '";
           var reDelimiters = RegExp2(
             (options.escape || reNoMatch).source + "|" + interpolate.source + "|" + (interpolate === reInterpolate ? reEsTemplate : reNoMatch).source + "|" + (options.evaluate || reNoMatch).source + "|$",
             "g"
@@ -66447,7 +66447,7 @@ var require_lodash8 = __commonJS({
           var sourceURL = "//# sourceURL=" + (hasOwnProperty.call(options, "sourceURL") ? (options.sourceURL + "").replace(/\s/g, " ") : "lodash.templateSources[" + ++templateCounter + "]") + "\n";
           string.replace(reDelimiters, function(match, escapeValue, interpolateValue, esTemplateValue, evaluateValue, offset) {
             interpolateValue || (interpolateValue = esTemplateValue);
-            source += string.slice(index14, offset).replace(reUnescapedString, escapeStringChar);
+            source += string.slice(index16, offset).replace(reUnescapedString, escapeStringChar);
             if (escapeValue) {
               isEscaping = true;
               source += "' +\n__e(" + escapeValue + ") +\n'";
@@ -66459,7 +66459,7 @@ var require_lodash8 = __commonJS({
             if (interpolateValue) {
               source += "' +\n((__t = (" + interpolateValue + ")) == null ? '' : __t) +\n'";
             }
-            index14 = offset + match.length;
+            index16 = offset + match.length;
             return match;
           });
           source += "';\n";
@@ -66559,9 +66559,9 @@ var require_lodash8 = __commonJS({
               result2 = result2.slice(0, newEnd === undefined2 ? end : newEnd);
             }
           } else if (string.indexOf(baseToString(separator), end) != end) {
-            var index14 = result2.lastIndexOf(separator);
-            if (index14 > -1) {
-              result2 = result2.slice(0, index14);
+            var index16 = result2.lastIndexOf(separator);
+            if (index16 > -1) {
+              result2 = result2.slice(0, index16);
             }
           }
           return result2 + omission;
@@ -66570,8 +66570,8 @@ var require_lodash8 = __commonJS({
           string = toString(string);
           return string && reHasEscapedHtml.test(string) ? string.replace(reEscapedHtml, unescapeHtmlChar) : string;
         }
-        var upperCase = createCompounder(function(result2, word, index14) {
-          return result2 + (index14 ? " " : "") + word.toUpperCase();
+        var upperCase = createCompounder(function(result2, word, index16) {
+          return result2 + (index16 ? " " : "") + word.toUpperCase();
         });
         var upperFirst = createCaseFirst("toUpperCase");
         function words(string, pattern, guard) {
@@ -66605,9 +66605,9 @@ var require_lodash8 = __commonJS({
             return [toIteratee(pair[0]), pair[1]];
           });
           return baseRest(function(args) {
-            var index14 = -1;
-            while (++index14 < length) {
-              var pair = pairs[index14];
+            var index16 = -1;
+            while (++index16 < length) {
+              var pair = pairs[index16];
               if (apply(pair[0], this, args)) {
                 return apply(pair[1], this, args);
               }
@@ -66723,12 +66723,12 @@ var require_lodash8 = __commonJS({
           if (n < 1 || n > MAX_SAFE_INTEGER) {
             return [];
           }
-          var index14 = MAX_ARRAY_LENGTH, length = nativeMin(n, MAX_ARRAY_LENGTH);
+          var index16 = MAX_ARRAY_LENGTH, length = nativeMin(n, MAX_ARRAY_LENGTH);
           iteratee2 = getIteratee(iteratee2);
           n -= MAX_ARRAY_LENGTH;
           var result2 = baseTimes(length, iteratee2);
-          while (++index14 < n) {
-            iteratee2(index14);
+          while (++index16 < n) {
+            iteratee2(index16);
           }
           return result2;
         }
@@ -66950,7 +66950,7 @@ var require_lodash8 = __commonJS({
         lodash.defaultTo = defaultTo;
         lodash.divide = divide;
         lodash.endsWith = endsWith;
-        lodash.eq = eq37;
+        lodash.eq = eq38;
         lodash.escape = escape2;
         lodash.escapeRegExp = escapeRegExp;
         lodash.every = every;
@@ -67100,10 +67100,10 @@ var require_lodash8 = __commonJS({
         arrayEach(["bind", "bindKey", "curry", "curryRight", "partial", "partialRight"], function(methodName) {
           lodash[methodName].placeholder = lodash;
         });
-        arrayEach(["drop", "take"], function(methodName, index14) {
+        arrayEach(["drop", "take"], function(methodName, index16) {
           LazyWrapper.prototype[methodName] = function(n) {
             n = n === undefined2 ? 1 : nativeMax(toInteger(n), 0);
-            var result2 = this.__filtered__ && !index14 ? new LazyWrapper(this) : this.clone();
+            var result2 = this.__filtered__ && !index16 ? new LazyWrapper(this) : this.clone();
             if (result2.__filtered__) {
               result2.__takeCount__ = nativeMin(n, result2.__takeCount__);
             } else {
@@ -67118,8 +67118,8 @@ var require_lodash8 = __commonJS({
             return this.reverse()[methodName](n).reverse();
           };
         });
-        arrayEach(["filter", "map", "takeWhile"], function(methodName, index14) {
-          var type = index14 + 1, isFilter = type == LAZY_FILTER_FLAG || type == LAZY_WHILE_FLAG;
+        arrayEach(["filter", "map", "takeWhile"], function(methodName, index16) {
+          var type = index16 + 1, isFilter = type == LAZY_FILTER_FLAG || type == LAZY_WHILE_FLAG;
           LazyWrapper.prototype[methodName] = function(iteratee2) {
             var result2 = this.clone();
             result2.__iteratees__.push({
@@ -67130,14 +67130,14 @@ var require_lodash8 = __commonJS({
             return result2;
           };
         });
-        arrayEach(["head", "last"], function(methodName, index14) {
-          var takeName = "take" + (index14 ? "Right" : "");
+        arrayEach(["head", "last"], function(methodName, index16) {
+          var takeName = "take" + (index16 ? "Right" : "");
           LazyWrapper.prototype[methodName] = function() {
             return this[takeName](1).value()[0];
           };
         });
-        arrayEach(["initial", "tail"], function(methodName, index14) {
-          var dropName = "drop" + (index14 ? "" : "Right");
+        arrayEach(["initial", "tail"], function(methodName, index16) {
+          var dropName = "drop" + (index16 ? "" : "Right");
           LazyWrapper.prototype[methodName] = function() {
             return this.__filtered__ ? new LazyWrapper(this) : this[dropName](1);
           };
@@ -78763,10 +78763,10 @@ var require_axios = __commonJS({
             value = JSON.stringify(value);
           } else if (utils$1.isArray(value) && isFlatArray(value) || (utils$1.isFileList(value) || utils$1.endsWith(key, "[]")) && (arr = utils$1.toArray(value))) {
             key = removeBrackets(key);
-            arr.forEach(function each(el, index14) {
+            arr.forEach(function each(el, index16) {
               !(utils$1.isUndefined(el) || el === null) && formData.append(
                 // eslint-disable-next-line no-nested-ternary
-                indexes === true ? renderKey([key], index14, dots) : indexes === null ? key : key + "[]",
+                indexes === true ? renderKey([key], index16, dots) : indexes === null ? key : key + "[]",
                 convertValue(el)
               );
             });
@@ -79013,11 +79013,11 @@ var require_axios = __commonJS({
       return obj;
     }
     function formDataToJSON(formData) {
-      function buildPath(path5, value, target, index14) {
-        let name = path5[index14++];
+      function buildPath(path5, value, target, index16) {
+        let name = path5[index16++];
         if (name === "__proto__") return true;
         const isNumericKey = Number.isFinite(+name);
-        const isLast = index14 >= path5.length;
+        const isLast = index16 >= path5.length;
         name = !name && utils$1.isArray(target) ? target.length : name;
         if (isLast) {
           if (utils$1.hasOwnProp(target, name)) {
@@ -79030,7 +79030,7 @@ var require_axios = __commonJS({
         if (!utils$1.hasOwnProp(target, name) || !utils$1.isObject(target[name])) {
           target[name] = [];
         }
-        const result = buildPath(path5, value, target[name], index14);
+        const result = buildPath(path5, value, target[name], index16);
         if (result && utils$1.isArray(target[name])) {
           target[name] = arrayToObject(target[name]);
         }
@@ -79703,12 +79703,12 @@ var require_axios = __commonJS({
       };
     }
     function throttle(fn, freq) {
-      let timestamp35 = 0;
+      let timestamp37 = 0;
       let threshold = 1e3 / freq;
       let lastArgs;
       let timer;
       const invoke = (args, now = Date.now()) => {
-        timestamp35 = now;
+        timestamp37 = now;
         lastArgs = null;
         if (timer) {
           clearTimeout(timer);
@@ -79718,7 +79718,7 @@ var require_axios = __commonJS({
       };
       const throttled = (...args) => {
         const now = Date.now();
-        const passed = now - timestamp35;
+        const passed = now - timestamp37;
         if (passed >= threshold) {
           invoke(args, now);
         } else {
@@ -80680,9 +80680,9 @@ var require_axios = __commonJS({
           const cookies2 = document.cookie.split(";");
           for (let i2 = 0; i2 < cookies2.length; i2++) {
             const cookie = cookies2[i2].replace(/^\s+/, "");
-            const eq37 = cookie.indexOf("=");
-            if (eq37 !== -1 && cookie.slice(0, eq37) === name) {
-              return decodeURIComponent(cookie.slice(eq37 + 1));
+            const eq38 = cookie.indexOf("=");
+            if (eq38 !== -1 && cookie.slice(0, eq38) === name) {
+              return decodeURIComponent(cookie.slice(eq38 + 1));
             }
           }
           return null;
@@ -81481,8 +81481,8 @@ var require_axios = __commonJS({
     });
     var deprecatedWarnings = {};
     validators$1.transitional = function transitional(validator2, version2, message) {
-      function formatMessage(opt, desc17) {
-        return "[Axios v" + VERSION + "] Transitional option '" + opt + "'" + desc17 + (message ? ". " + message : "");
+      function formatMessage(opt, desc18) {
+        return "[Axios v" + VERSION + "] Transitional option '" + opt + "'" + desc18 + (message ? ". " + message : "");
       }
       return (value, opt, opts) => {
         if (validator2 === false) {
@@ -81780,9 +81780,9 @@ var require_axios = __commonJS({
         if (!this._listeners) {
           return;
         }
-        const index14 = this._listeners.indexOf(listener);
-        if (index14 !== -1) {
-          this._listeners.splice(index14, 1);
+        const index16 = this._listeners.indexOf(listener);
+        if (index16 !== -1) {
+          this._listeners.splice(index16, 1);
         }
       }
       toAbortSignal() {
@@ -83416,8 +83416,8 @@ var require_webhook_signature = __commonJS({
       if (timestampString === void 0) {
         throw new Error(errorMessages_1.default.VERIFY_WEBHOOK_EVENT_TIMESTAMP_MISSING.message);
       }
-      var timestamp35 = parseInt(timestampString, 10);
-      if ((0, lodash_1.isNaN)(timestamp35) || timestamp35 < 0) {
+      var timestamp37 = parseInt(timestampString, 10);
+      if ((0, lodash_1.isNaN)(timestamp37) || timestamp37 < 0) {
         throw new Error(errorMessages_1.default.VERIFY_WEBHOOK_EVENT_TIMESTAMP_INVALID.message);
       }
       var v1 = (_b = itemMap.find(function(_a2) {
@@ -83427,17 +83427,17 @@ var require_webhook_signature = __commonJS({
       if (v1 === void 0) {
         throw new Error(errorMessages_1.default.VERIFY_WEBHOOK_EVENT_SIGNATURE_MISSING.message);
       }
-      return { timestamp: timestamp35, v1 };
+      return { timestamp: timestamp37, v1 };
     };
     var verify = function(payload, signature, secret) {
-      var _a = deserializeSignature(signature), timestamp35 = _a.timestamp, v1 = _a.v1;
+      var _a = deserializeSignature(signature), timestamp37 = _a.timestamp, v1 = _a.v1;
       var payloadAsString = typeof payload === "string" ? payload : Buffer.from(payload).toString("utf8");
-      var computedHmac = computeHmac(new Date(timestamp35), payloadAsString, secret);
+      var computedHmac = computeHmac(new Date(timestamp37), payloadAsString, secret);
       if (v1 !== computedHmac) {
         throw new Error(errorMessages_1.default.VERIFY_WEBHOOK_EVENT_SIGNATURE_INCORRECT.message);
       }
       return {
-        timestamp: timestamp35,
+        timestamp: timestamp37,
         event: JSON.parse(payloadAsString)
       };
     };
@@ -86915,11 +86915,11 @@ var require_decodeText = __commonJS({
         return typeof data === "string" ? data : data.toString();
       }
     };
-    function decodeText(text35, sourceEncoding, destEncoding) {
-      if (text35) {
-        return getDecoder2(destEncoding)(text35, sourceEncoding);
+    function decodeText(text37, sourceEncoding, destEncoding) {
+      if (text37) {
+        return getDecoder2(destEncoding)(text37, sourceEncoding);
       }
-      return text35;
+      return text37;
     }
     module.exports = decodeText;
   }
@@ -89505,7 +89505,7 @@ var require_messaging = __commonJS({
         errors: []
       };
       if ("results" in response) {
-        response.results.forEach((tokenManagementResult, index14) => {
+        response.results.forEach((tokenManagementResult, index16) => {
           if ("error" in tokenManagementResult) {
             result.failureCount += 1;
             const newError = error_1.FirebaseMessagingError.fromTopicManagementServerError(
@@ -89515,7 +89515,7 @@ var require_messaging = __commonJS({
               tokenManagementResult.error
             );
             result.errors.push({
-              index: index14,
+              index: index16,
               error: newError
             });
           } else {
@@ -89820,9 +89820,9 @@ var require_messaging = __commonJS({
           if (registrationTokenOrTokens.length > 1e3) {
             throw new error_1.FirebaseMessagingError(errorInfo, `Too many registration tokens provided in a single request to ${methodName}(). Batch your requests to contain no more than 1,000 registration tokens per request.`);
           }
-          registrationTokenOrTokens.forEach((registrationToken, index14) => {
+          registrationTokenOrTokens.forEach((registrationToken, index16) => {
             if (!validator.isNonEmptyString(registrationToken)) {
-              throw new error_1.FirebaseMessagingError(errorInfo, `Registration token provided to ${methodName}() at index ${index14} must be a non-empty string.`);
+              throw new error_1.FirebaseMessagingError(errorInfo, `Registration token provided to ${methodName}() at index ${index16} must be a non-empty string.`);
             }
           });
         }
@@ -93582,7 +93582,7 @@ var require_defaults2 = __commonJS({
     function isNil(value) {
       return value == null;
     }
-    function eq37(value, other) {
+    function eq38(value, other) {
       return value === other || Number.isNaN(value) && Number.isNaN(other);
     }
     function isLength(value) {
@@ -93604,12 +93604,12 @@ var require_defaults2 = __commonJS({
           return IS_UNSIGNED_INTEGER.test(value);
       }
     }
-    function isIterateeCall(value, index14, object) {
+    function isIterateeCall(value, index16, object) {
       if (!isObject(object)) {
         return false;
       }
-      if (typeof index14 === "number" && isArrayLike(object) && isIndex(index14) && index14 < object.length || typeof index14 === "string" && index14 in object) {
-        return eq37(object[index14], value);
+      if (typeof index16 === "number" && isArrayLike(object) && isIndex(index16) && index16 < object.length || typeof index16 === "string" && index16 in object) {
+        return eq38(object[index16], value);
       }
       return false;
     }
@@ -93628,7 +93628,7 @@ var require_defaults2 = __commonJS({
         const source = sources[i2];
         for (const key in source) {
           const value = object[key];
-          if (value === void 0 || !objectProto.hasOwnProperty.call(object, key) && eq37(value, objectProto[key])) {
+          if (value === void 0 || !objectProto.hasOwnProperty.call(object, key) && eq38(value, objectProto[key])) {
             object[key] = source[key];
           }
         }
@@ -94139,9 +94139,9 @@ var require_utils8 = __commonJS({
     function shuffle(array) {
       let counter = array.length;
       while (counter > 0) {
-        const index14 = Math.floor(Math.random() * counter);
+        const index16 = Math.floor(Math.random() * counter);
         counter--;
-        [array[counter], array[index14]] = [array[index14], array[counter]];
+        [array[counter], array[index16]] = [array[index16], array[counter]];
       }
       return array;
     }
@@ -94149,8 +94149,8 @@ var require_utils8 = __commonJS({
     exports.CONNECTION_CLOSED_ERROR_MSG = "Connection is closed.";
     function zipMap(keys, values) {
       const map = /* @__PURE__ */ new Map();
-      keys.forEach((key, index14) => {
-        map.set(key, values[index14]);
+      keys.forEach((key, index16) => {
+        map.set(key, values[index16]);
       });
       return map;
     }
@@ -94495,9 +94495,9 @@ var require_Command = __commonJS({
             const keyIndexes = (0, commands_1.getKeyIndexes)(this.name, this.args, {
               nameCaseInsensitive: true
             });
-            for (const index14 of keyIndexes) {
-              this.args[index14] = transform(this.args[index14]);
-              this.keys.push(this.args[index14]);
+            for (const index16 of keyIndexes) {
+              this.args[index16] = transform(this.args[index16]);
+              this.keys.push(this.args[index16]);
             }
           }
         }
@@ -96028,8 +96028,8 @@ var require_denque = __commonJS({
         this._list = new Array(4);
       }
     }
-    Denque.prototype.peekAt = function peekAt(index14) {
-      var i2 = index14;
+    Denque.prototype.peekAt = function peekAt(index16) {
+      var i2 = index16;
       if (i2 !== (i2 | 0)) {
         return void 0;
       }
@@ -96105,8 +96105,8 @@ var require_denque = __commonJS({
       if (this._head < 2 && tail > 1e4 && tail <= len >>> 2) this._shrinkArray();
       return item;
     };
-    Denque.prototype.removeOne = function removeOne(index14) {
-      var i2 = index14;
+    Denque.prototype.removeOne = function removeOne(index16) {
+      var i2 = index16;
       if (i2 !== (i2 | 0)) {
         return void 0;
       }
@@ -96118,14 +96118,14 @@ var require_denque = __commonJS({
       i2 = this._head + i2 & this._capacityMask;
       var item = this._list[i2];
       var k;
-      if (index14 < size / 2) {
-        for (k = index14; k > 0; k--) {
+      if (index16 < size / 2) {
+        for (k = index16; k > 0; k--) {
           this._list[i2] = this._list[i2 = i2 - 1 + len & this._capacityMask];
         }
         this._list[i2] = void 0;
         this._head = this._head + 1 + len & this._capacityMask;
       } else {
-        for (k = size - 1 - index14; k > 0; k--) {
+        for (k = size - 1 - index16; k > 0; k--) {
           this._list[i2] = this._list[i2 = i2 + 1 + len & this._capacityMask];
         }
         this._list[i2] = void 0;
@@ -96133,8 +96133,8 @@ var require_denque = __commonJS({
       }
       return item;
     };
-    Denque.prototype.remove = function remove(index14, count12) {
-      var i2 = index14;
+    Denque.prototype.remove = function remove(index16, count12) {
+      var i2 = index16;
       var removed;
       var del_count = count12;
       if (i2 !== (i2 | 0)) {
@@ -96162,14 +96162,14 @@ var require_denque = __commonJS({
         removed[k] = this._list[this._head + i2 + k & this._capacityMask];
       }
       i2 = this._head + i2 & this._capacityMask;
-      if (index14 + count12 === size) {
+      if (index16 + count12 === size) {
         this._tail = this._tail - count12 + len & this._capacityMask;
         for (k = count12; k > 0; k--) {
           this._list[i2 = i2 + 1 + len & this._capacityMask] = void 0;
         }
         return removed;
       }
-      if (index14 === 0) {
+      if (index16 === 0) {
         this._head = this._head + count12 + len & this._capacityMask;
         for (k = count12 - 1; k > 0; k--) {
           this._list[i2 = i2 + 1 + len & this._capacityMask] = void 0;
@@ -96177,8 +96177,8 @@ var require_denque = __commonJS({
         return removed;
       }
       if (i2 < size / 2) {
-        this._head = this._head + index14 + count12 + len & this._capacityMask;
-        for (k = index14; k > 0; k--) {
+        this._head = this._head + index16 + count12 + len & this._capacityMask;
+        for (k = index16; k > 0; k--) {
           this.unshift(this._list[i2 = i2 - 1 + len & this._capacityMask]);
         }
         i2 = this._head - 1 + len & this._capacityMask;
@@ -96186,11 +96186,11 @@ var require_denque = __commonJS({
           this._list[i2 = i2 - 1 + len & this._capacityMask] = void 0;
           del_count--;
         }
-        if (index14 < 0) this._tail = i2;
+        if (index16 < 0) this._tail = i2;
       } else {
         this._tail = i2;
         i2 = i2 + count12 + len & this._capacityMask;
-        for (k = size - (count12 + index14); k > 0; k--) {
+        for (k = size - (count12 + index16); k > 0; k--) {
           this.push(this._list[i2++]);
         }
         i2 = this._tail;
@@ -96202,8 +96202,8 @@ var require_denque = __commonJS({
       if (this._head < 2 && this._tail > 1e4 && this._tail <= len >>> 2) this._shrinkArray();
       return removed;
     };
-    Denque.prototype.splice = function splice(index14, count12) {
-      var i2 = index14;
+    Denque.prototype.splice = function splice(index16, count12) {
+      var i2 = index16;
       if (i2 !== (i2 | 0)) {
         return void 0;
       }
@@ -97138,12 +97138,12 @@ var require_cluster = __commonJS({
         };
         const nodes = (0, utils_1.shuffle)(this.connectionPool.getNodes());
         let lastNodeError = null;
-        function tryNode(index14) {
-          if (index14 === nodes.length) {
+        function tryNode(index16) {
+          if (index16 === nodes.length) {
             const error = new ClusterAllFailedError_1.default(ClusterAllFailedError_1.default.defaultMessage, lastNodeError);
             return wrapper(error);
           }
-          const node = nodes[index14];
+          const node = nodes[index16];
           const key = `${node.options.host}:${node.options.port}`;
           debug("getting slot cache from %s", key);
           _this.getInfoFromNode(node, function(err) {
@@ -97157,7 +97157,7 @@ var require_cluster = __commonJS({
             if (err) {
               _this.emit("node error", err, key);
               lastNodeError = err;
-              tryNode(index14 + 1);
+              tryNode(index16 + 1);
             } else {
               _this.emit("refresh");
               wrapper();
@@ -98800,11 +98800,11 @@ var require_DataHandler = __commonJS({
           return false;
         }
         const len = replyStr.indexOf(" ");
-        const timestamp35 = replyStr.slice(0, len);
+        const timestamp37 = replyStr.slice(0, len);
         const argIndex = replyStr.indexOf('"');
         const args = replyStr.slice(argIndex + 1, -1).split('" "').map((elem) => elem.replace(/\\"/g, '"'));
         const dbAndSource = replyStr.slice(len + 2, argIndex - 2).split(" ");
-        this.redis.emit("monitor", timestamp35, args, dbAndSource[1], dbAndSource[0]);
+        this.redis.emit("monitor", timestamp37, args, dbAndSource[1], dbAndSource[0]);
         return true;
       }
       shiftCommand(reply) {
@@ -102426,19 +102426,19 @@ var require_media_typer2 = __commonJS({
       if (typeof string !== "string") {
         throw new TypeError("argument string is required to be a string");
       }
-      var index14 = string.indexOf(";");
-      var type = index14 !== -1 ? string.substr(0, index14) : string;
+      var index16 = string.indexOf(";");
+      var type = index16 !== -1 ? string.substr(0, index16) : string;
       var key;
       var match;
       var obj = splitType(type);
       var params = {};
       var value;
-      paramRegExp.lastIndex = index14;
+      paramRegExp.lastIndex = index16;
       while (match = paramRegExp.exec(string)) {
-        if (match.index !== index14) {
+        if (match.index !== index16) {
           throw new TypeError("invalid parameter format");
         }
-        index14 += match[0].length;
+        index16 += match[0].length;
         key = match[1].toLowerCase();
         value = match[2];
         if (value[0] === '"') {
@@ -102446,7 +102446,7 @@ var require_media_typer2 = __commonJS({
         }
         params[key] = value;
       }
-      if (index14 !== -1 && index14 !== string.length) {
+      if (index16 !== -1 && index16 !== string.length) {
         throw new TypeError("invalid parameter format");
       }
       obj.parameters = params;
@@ -102478,10 +102478,10 @@ var require_media_typer2 = __commonJS({
       var type = match[1];
       var subtype = match[2];
       var suffix;
-      var index14 = subtype.lastIndexOf("+");
-      if (index14 !== -1) {
-        suffix = subtype.substr(index14 + 1);
-        subtype = subtype.substr(0, index14);
+      var index16 = subtype.lastIndexOf("+");
+      if (index16 !== -1) {
+        suffix = subtype.substr(index16 + 1);
+        subtype = subtype.substr(0, index16);
       }
       var obj = {
         type,
@@ -109052,9 +109052,9 @@ var require_stream_readable = __commonJS({
         });
         return this;
       }
-      var index14 = indexOf(state.pipes, dest);
-      if (index14 === -1) return this;
-      state.pipes.splice(index14, 1);
+      var index16 = indexOf(state.pipes, dest);
+      if (index16 === -1) return this;
+      state.pipes.splice(index16, 1);
       state.pipesCount -= 1;
       if (state.pipesCount === 1) state.pipes = state.pipes[0];
       dest.emit("unpipe", this, unpipeInfo);
@@ -109631,16 +109631,16 @@ var require_typedarray = __commonJS({
     })()) {
       defineProp = Object.defineProperty;
     } else {
-      defineProp = function(o, p, desc17) {
+      defineProp = function(o, p, desc18) {
         if (!o === Object(o)) throw new TypeError("Object.defineProperty called on non-object");
-        if (ECMAScript.HasProperty(desc17, "get") && Object.prototype.__defineGetter__) {
-          Object.prototype.__defineGetter__.call(o, p, desc17.get);
+        if (ECMAScript.HasProperty(desc18, "get") && Object.prototype.__defineGetter__) {
+          Object.prototype.__defineGetter__.call(o, p, desc18.get);
         }
-        if (ECMAScript.HasProperty(desc17, "set") && Object.prototype.__defineSetter__) {
-          Object.prototype.__defineSetter__.call(o, p, desc17.set);
+        if (ECMAScript.HasProperty(desc18, "set") && Object.prototype.__defineSetter__) {
+          Object.prototype.__defineSetter__.call(o, p, desc18.set);
         }
-        if (ECMAScript.HasProperty(desc17, "value")) {
-          o[p] = desc17.value;
+        if (ECMAScript.HasProperty(desc18, "value")) {
+          o[p] = desc18.value;
         }
         return o;
       };
@@ -109660,13 +109660,13 @@ var require_typedarray = __commonJS({
         return;
       }
       if (obj.length > MAX_ARRAY_LENGTH) throw new RangeError("Array too large for polyfill");
-      function makeArrayAccessor(index14) {
-        defineProp(obj, index14, {
+      function makeArrayAccessor(index16) {
+        defineProp(obj, index16, {
           "get": function() {
-            return obj._getter(index14);
+            return obj._getter(index16);
           },
           "set": function(v) {
-            obj._setter(index14, v);
+            obj._setter(index16, v);
           },
           enumerable: true,
           configurable: false
@@ -109904,31 +109904,31 @@ var require_typedarray = __commonJS({
         ctor.prototype._pack = pack;
         ctor.prototype._unpack = unpack;
         ctor.BYTES_PER_ELEMENT = bytesPerElement;
-        ctor.prototype._getter = function(index14) {
+        ctor.prototype._getter = function(index16) {
           if (arguments.length < 1) throw new SyntaxError("Not enough arguments");
-          index14 = ECMAScript.ToUint32(index14);
-          if (index14 >= this.length) {
+          index16 = ECMAScript.ToUint32(index16);
+          if (index16 >= this.length) {
             return undefined2;
           }
           var bytes = [], i2, o;
-          for (i2 = 0, o = this.byteOffset + index14 * this.BYTES_PER_ELEMENT; i2 < this.BYTES_PER_ELEMENT; i2 += 1, o += 1) {
+          for (i2 = 0, o = this.byteOffset + index16 * this.BYTES_PER_ELEMENT; i2 < this.BYTES_PER_ELEMENT; i2 += 1, o += 1) {
             bytes.push(this.buffer._bytes[o]);
           }
           return this._unpack(bytes);
         };
         ctor.prototype.get = ctor.prototype._getter;
-        ctor.prototype._setter = function(index14, value) {
+        ctor.prototype._setter = function(index16, value) {
           if (arguments.length < 2) throw new SyntaxError("Not enough arguments");
-          index14 = ECMAScript.ToUint32(index14);
-          if (index14 >= this.length) {
+          index16 = ECMAScript.ToUint32(index16);
+          if (index16 >= this.length) {
             return undefined2;
           }
           var bytes = this._pack(value), i2, o;
-          for (i2 = 0, o = this.byteOffset + index14 * this.BYTES_PER_ELEMENT; i2 < this.BYTES_PER_ELEMENT; i2 += 1, o += 1) {
+          for (i2 = 0, o = this.byteOffset + index16 * this.BYTES_PER_ELEMENT; i2 < this.BYTES_PER_ELEMENT; i2 += 1, o += 1) {
             this.buffer._bytes[o] = bytes[i2];
           }
         };
-        ctor.prototype.set = function(index14, value) {
+        ctor.prototype.set = function(index16, value) {
           if (arguments.length < 1) throw new SyntaxError("Not enough arguments");
           var array, sequence, offset, len, i2, s2, d, byteOffset, byteLength, tmp;
           if (typeof arguments[0] === "object" && arguments[0].constructor === this.constructor) {
@@ -110019,8 +110019,8 @@ var require_typedarray = __commonJS({
       exports.Float64Array = exports.Float64Array || Float64Array2;
     })();
     (function() {
-      function r2(array, index14) {
-        return ECMAScript.IsCallable(array.get) ? array.get(index14) : array[index14];
+      function r2(array, index16) {
+        return ECMAScript.IsCallable(array.get) ? array.get(index16) : array[index16];
       }
       var IS_BIG_ENDIAN = (function() {
         var u16array = new exports.Uint16Array([4660]), u8array = new exports.Uint8Array(u16array.buffer);
@@ -110505,8 +110505,8 @@ var require_bn = __commonJS({
         }
         return this.strip();
       };
-      function parseHex4Bits(string, index14) {
-        var c = string.charCodeAt(index14);
+      function parseHex4Bits(string, index16) {
+        var c = string.charCodeAt(index16);
         if (c >= 65 && c <= 70) {
           return c - 55;
         } else if (c >= 97 && c <= 102) {
@@ -110515,10 +110515,10 @@ var require_bn = __commonJS({
           return c - 48 & 15;
         }
       }
-      function parseHexByte(string, lowerBound, index14) {
-        var r2 = parseHex4Bits(string, index14);
-        if (index14 - 1 >= lowerBound) {
-          r2 |= parseHex4Bits(string, index14 - 1) << 4;
+      function parseHexByte(string, lowerBound, index16) {
+        var r2 = parseHex4Bits(string, index16);
+        if (index16 - 1 >= lowerBound) {
+          r2 |= parseHex4Bits(string, index16 - 1) << 4;
         }
         return r2;
       }
@@ -110982,7 +110982,7 @@ var require_bn = __commonJS({
         assert((this.negative | num.negative) === 0);
         return this.iuor(num);
       };
-      BN.prototype.or = function or8(num) {
+      BN.prototype.or = function or10(num) {
         if (this.length > num.length) return this.clone().ior(num);
         return num.clone().ior(this);
       };
@@ -112677,7 +112677,7 @@ var require_bn = __commonJS({
       BN.prototype.eqn = function eqn(num) {
         return this.cmpn(num) === 0;
       };
-      BN.prototype.eq = function eq37(num) {
+      BN.prototype.eq = function eq38(num) {
         return this.cmp(num) === 0;
       };
       BN.red = function red(num) {
@@ -113190,13 +113190,13 @@ var require_reporter = __commonJS({
     Reporter.prototype.enterKey = function enterKey(key) {
       return this._reporterState.path.push(key);
     };
-    Reporter.prototype.exitKey = function exitKey(index14) {
+    Reporter.prototype.exitKey = function exitKey(index16) {
       const state = this._reporterState;
-      state.path = state.path.slice(0, index14 - 1);
+      state.path = state.path.slice(0, index16 - 1);
     };
-    Reporter.prototype.leaveKey = function leaveKey(index14, key, value) {
+    Reporter.prototype.leaveKey = function leaveKey(index16, key, value) {
       const state = this._reporterState;
-      this.exitKey(index14);
+      this.exitKey(index16);
       if (state.obj !== null)
         state.obj[key] = value;
     };
@@ -116361,12 +116361,14 @@ __export(schema_exports, {
   homepageSections: () => homepageSections,
   managerActivityLogs: () => managerActivityLogs,
   managerCities: () => managerCities,
+  masterProducts: () => masterProducts,
   notifications: () => notifications,
   orders: () => orders,
   otpSessions: () => otpSessions,
   payouts: () => payouts,
   pickupScanLogs: () => pickupScanLogs,
   pickupVerificationSessions: () => pickupVerificationSessions,
+  productWrongReports: () => productWrongReports,
   products: () => products,
   pushSubscriptions: () => pushSubscriptions,
   reports: () => reports,
@@ -116551,12 +116553,17 @@ var products = pgTable7("products", {
   images: jsonb5("images").notNull().default([]),
   stock: integer5("stock").notNull().default(0),
   sku: text7("sku"),
+  barcode: text7("barcode"),
+  brand: text7("brand"),
+  masterProductId: text7("master_product_id"),
   unit: text7("unit"),
   rating: doublePrecision4("rating").default(0),
   commissionRate: doublePrecision4("commission_rate"),
   status: text7("status").notNull().default("pending"),
   rejectionReason: text7("rejection_reason"),
   trending: boolean5("trending").default(false),
+  source: text7("source").default("MANUAL"),
+  verificationStatus: text7("verification_status").default("VERIFIED"),
   colors: jsonb5("colors"),
   sizes: jsonb5("sizes"),
   colorImages: jsonb5("color_images"),
@@ -116571,467 +116578,532 @@ var products = pgTable7("products", {
   index3("products_shop_id_status_idx").on(t2.shopId, t2.status)
 ]);
 
-// ../../lib/db/dist/schema/orders.js
-import { pgTable as pgTable8, text as text8, timestamp as timestamp8, doublePrecision as doublePrecision5, integer as integer6, jsonb as jsonb6, index as index4 } from "drizzle-orm/pg-core";
-var orders = pgTable8("orders", {
+// ../../lib/db/dist/schema/masterProducts.js
+import { pgTable as pgTable8, text as text8, timestamp as timestamp8, doublePrecision as doublePrecision5, jsonb as jsonb6, index as index4 } from "drizzle-orm/pg-core";
+var masterProducts = pgTable8("master_products", {
   id: text8("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  customerId: text8("customer_id").notNull(),
-  customerName: text8("customer_name").notNull().default(""),
-  customerPhone: text8("customer_phone").notNull().default(""),
-  shopId: text8("shop_id").notNull(),
-  shopName: text8("shop_name").notNull().default(""),
-  cityId: text8("city_id"),
-  items: jsonb6("items").notNull().default([]),
-  subtotal: doublePrecision5("subtotal").notNull().default(0),
-  deliveryCharge: doublePrecision5("delivery_charge").notNull().default(0),
-  packagingFee: doublePrecision5("packaging_fee").notNull().default(0),
-  gstAmount: doublePrecision5("gst_amount").notNull().default(0),
-  couponDiscount: doublePrecision5("coupon_discount").notNull().default(0),
-  netAmount: doublePrecision5("net_amount").notNull().default(0),
-  commissionRate: doublePrecision5("commission_rate").notNull().default(0),
-  commissionAmount: doublePrecision5("commission_amount").notNull().default(0),
-  vendorPayable: doublePrecision5("vendor_payable").notNull().default(0),
-  platformRevenue: doublePrecision5("platform_revenue").notNull().default(0),
-  status: text8("status").notNull().default("placed"),
-  paymentMethod: text8("payment_method").notNull().default("COD"),
-  paymentStatus: text8("payment_status").notNull().default("pending"),
-  deliveryType: text8("delivery_type").notNull().default("instant"),
-  deliveryPartnerId: text8("delivery_partner_id"),
-  address: jsonb6("address").notNull().default({}),
-  couponCode: text8("coupon_code"),
-  razorpayOrderId: text8("razorpay_order_id"),
-  razorpayPaymentId: text8("razorpay_payment_id"),
-  refundedAt: timestamp8("refunded_at"),
-  cancelReason: text8("cancel_reason"),
-  deliveryOtp: text8("delivery_otp"),
-  substitutePreference: text8("substitute_preference").default("best_match"),
-  swiftCoinsEarned: integer6("swift_coins_earned").default(10),
-  swiftCoinsRedeemed: integer6("swift_coins_redeemed").default(0),
+  barcode: text8("barcode").unique(),
+  // Normalized unique barcode (EAN-13, EAN-8, UPC-A, UPC-E, GTIN-14)
+  gtin: text8("gtin"),
+  name: text8("name").notNull(),
+  brand: text8("brand"),
+  category: text8("category").notNull(),
+  subcategory: text8("subcategory"),
+  variant: text8("variant"),
+  netQuantity: text8("net_quantity"),
+  unit: text8("unit"),
+  mrp: doublePrecision5("mrp").default(0),
+  description: text8("description"),
+  primaryImage: text8("primary_image"),
+  images: jsonb6("images").notNull().default([]),
+  manufacturer: text8("manufacturer"),
+  countryOfOrigin: text8("country_of_origin").default("India"),
+  source: text8("source").notNull().default("MANUAL"),
+  // SWIFTMART, EXTERNAL, MANUAL
+  verificationStatus: text8("verification_status").notNull().default("VERIFIED"),
+  // VERIFIED, PENDING_REVIEW, UNVERIFIED
+  productType: text8("product_type").notNull().default("PACKAGED"),
+  // PACKAGED, LOOSE, FOOD, STORE_ITEM
+  createdBy: text8("created_by"),
+  verifiedBy: text8("verified_by"),
   createdAt: timestamp8("created_at").notNull().defaultNow(),
   updatedAt: timestamp8("updated_at").notNull().defaultNow()
 }, (t2) => [
-  index4("orders_customer_id_idx").on(t2.customerId),
-  index4("orders_shop_id_idx").on(t2.shopId),
-  index4("orders_status_idx").on(t2.status),
-  index4("orders_payment_status_idx").on(t2.paymentStatus),
-  index4("orders_created_at_idx").on(t2.createdAt)
+  index4("master_products_barcode_idx").on(t2.barcode),
+  index4("master_products_name_idx").on(t2.name),
+  index4("master_products_category_idx").on(t2.category)
 ]);
 
-// ../../lib/db/dist/schema/otpSessions.js
-import { pgTable as pgTable9, text as text9, timestamp as timestamp9, boolean as boolean6, integer as integer7, index as index5 } from "drizzle-orm/pg-core";
-var otpSessions = pgTable9("otp_sessions", {
+// ../../lib/db/dist/schema/productWrongReports.js
+import { pgTable as pgTable9, text as text9, timestamp as timestamp9, index as index5 } from "drizzle-orm/pg-core";
+var productWrongReports = pgTable9("product_wrong_reports", {
   id: text9("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  phone: text9("phone").notNull(),
-  otp: text9("otp").notNull(),
-  expiresAt: timestamp9("expires_at").notNull(),
-  verified: boolean6("verified").notNull().default(false),
-  attempts: integer7("attempts").notNull().default(0),
+  barcode: text9("barcode").notNull(),
+  reportedBy: text9("reported_by"),
+  shopId: text9("shop_id"),
+  actualName: text9("actual_name"),
+  photoUrl: text9("photo_url"),
+  note: text9("note"),
+  status: text9("status").notNull().default("pending"),
+  // pending, resolved, dismissed
+  resolvedBy: text9("resolved_by"),
+  resolvedAt: timestamp9("resolved_at"),
   createdAt: timestamp9("created_at").notNull().defaultNow()
 }, (t2) => [
-  index5("otp_sessions_phone_idx").on(t2.phone),
-  index5("otp_sessions_expires_at_idx").on(t2.expiresAt)
+  index5("product_wrong_reports_barcode_idx").on(t2.barcode),
+  index5("product_wrong_reports_status_idx").on(t2.status)
 ]);
 
-// ../../lib/db/dist/schema/payouts.js
-import { pgTable as pgTable10, text as text10, timestamp as timestamp10, doublePrecision as doublePrecision6, jsonb as jsonb7, index as index6 } from "drizzle-orm/pg-core";
-var payouts = pgTable10("payouts", {
+// ../../lib/db/dist/schema/orders.js
+import { pgTable as pgTable10, text as text10, timestamp as timestamp10, doublePrecision as doublePrecision6, integer as integer6, jsonb as jsonb7, index as index6 } from "drizzle-orm/pg-core";
+var orders = pgTable10("orders", {
   id: text10("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  vendorId: text10("vendor_id").notNull(),
-  vendorName: text10("vendor_name").notNull().default(""),
+  customerId: text10("customer_id").notNull(),
+  customerName: text10("customer_name").notNull().default(""),
+  customerPhone: text10("customer_phone").notNull().default(""),
   shopId: text10("shop_id").notNull(),
+  shopName: text10("shop_name").notNull().default(""),
   cityId: text10("city_id"),
-  amount: doublePrecision6("amount").notNull().default(0),
-  orderTotal: doublePrecision6("order_total").notNull().default(0),
+  items: jsonb7("items").notNull().default([]),
+  subtotal: doublePrecision6("subtotal").notNull().default(0),
+  deliveryCharge: doublePrecision6("delivery_charge").notNull().default(0),
+  packagingFee: doublePrecision6("packaging_fee").notNull().default(0),
+  gstAmount: doublePrecision6("gst_amount").notNull().default(0),
+  couponDiscount: doublePrecision6("coupon_discount").notNull().default(0),
+  netAmount: doublePrecision6("net_amount").notNull().default(0),
+  commissionRate: doublePrecision6("commission_rate").notNull().default(0),
   commissionAmount: doublePrecision6("commission_amount").notNull().default(0),
-  status: text10("status").notNull().default("pending"),
-  ordersIncluded: jsonb7("orders_included").notNull().default([]),
-  paidAt: timestamp10("paid_at"),
-  notes: text10("notes"),
+  vendorPayable: doublePrecision6("vendor_payable").notNull().default(0),
+  platformRevenue: doublePrecision6("platform_revenue").notNull().default(0),
+  status: text10("status").notNull().default("placed"),
+  paymentMethod: text10("payment_method").notNull().default("COD"),
+  paymentStatus: text10("payment_status").notNull().default("pending"),
+  deliveryType: text10("delivery_type").notNull().default("instant"),
+  deliveryPartnerId: text10("delivery_partner_id"),
+  address: jsonb7("address").notNull().default({}),
+  couponCode: text10("coupon_code"),
+  razorpayOrderId: text10("razorpay_order_id"),
+  razorpayPaymentId: text10("razorpay_payment_id"),
+  refundedAt: timestamp10("refunded_at"),
+  cancelReason: text10("cancel_reason"),
+  deliveryOtp: text10("delivery_otp"),
+  substitutePreference: text10("substitute_preference").default("best_match"),
+  swiftCoinsEarned: integer6("swift_coins_earned").default(10),
+  swiftCoinsRedeemed: integer6("swift_coins_redeemed").default(0),
   createdAt: timestamp10("created_at").notNull().defaultNow(),
   updatedAt: timestamp10("updated_at").notNull().defaultNow()
 }, (t2) => [
-  index6("payouts_vendor_id_idx").on(t2.vendorId),
-  index6("payouts_shop_id_idx").on(t2.shopId),
-  index6("payouts_status_idx").on(t2.status)
+  index6("orders_customer_id_idx").on(t2.customerId),
+  index6("orders_shop_id_idx").on(t2.shopId),
+  index6("orders_status_idx").on(t2.status),
+  index6("orders_payment_status_idx").on(t2.paymentStatus),
+  index6("orders_created_at_idx").on(t2.createdAt)
+]);
+
+// ../../lib/db/dist/schema/otpSessions.js
+import { pgTable as pgTable11, text as text11, timestamp as timestamp11, boolean as boolean6, integer as integer7, index as index7 } from "drizzle-orm/pg-core";
+var otpSessions = pgTable11("otp_sessions", {
+  id: text11("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  phone: text11("phone").notNull(),
+  otp: text11("otp").notNull(),
+  expiresAt: timestamp11("expires_at").notNull(),
+  verified: boolean6("verified").notNull().default(false),
+  attempts: integer7("attempts").notNull().default(0),
+  createdAt: timestamp11("created_at").notNull().defaultNow()
+}, (t2) => [
+  index7("otp_sessions_phone_idx").on(t2.phone),
+  index7("otp_sessions_expires_at_idx").on(t2.expiresAt)
+]);
+
+// ../../lib/db/dist/schema/payouts.js
+import { pgTable as pgTable12, text as text12, timestamp as timestamp12, doublePrecision as doublePrecision7, jsonb as jsonb8, boolean as boolean7, index as index8 } from "drizzle-orm/pg-core";
+var payouts = pgTable12("payouts", {
+  id: text12("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  vendorId: text12("vendor_id").notNull(),
+  vendorName: text12("vendor_name").notNull().default(""),
+  shopId: text12("shop_id").notNull(),
+  cityId: text12("city_id"),
+  orderId: text12("order_id"),
+  orderNumber: text12("order_number"),
+  amount: doublePrecision7("amount").notNull().default(0),
+  orderTotal: doublePrecision7("order_total").notNull().default(0),
+  commissionAmount: doublePrecision7("commission_amount").notNull().default(0),
+  deductionAmount: doublePrecision7("deduction_amount").notNull().default(0),
+  adjustedReason: text12("adjusted_reason"),
+  status: text12("status").notNull().default("pending"),
+  ordersIncluded: jsonb8("orders_included").notNull().default([]),
+  scheduledDate: timestamp12("scheduled_date"),
+  earlyPayoutRequested: boolean7("early_payout_requested").notNull().default(false),
+  earlyPayoutRequestedAt: timestamp12("early_payout_requested_at"),
+  earlyPayoutReason: text12("early_payout_reason"),
+  paidAt: timestamp12("paid_at"),
+  notes: text12("notes"),
+  createdAt: timestamp12("created_at").notNull().defaultNow(),
+  updatedAt: timestamp12("updated_at").notNull().defaultNow()
+}, (t2) => [
+  index8("payouts_vendor_id_idx").on(t2.vendorId),
+  index8("payouts_shop_id_idx").on(t2.shopId),
+  index8("payouts_status_idx").on(t2.status),
+  index8("payouts_early_requested_idx").on(t2.earlyPayoutRequested)
 ]);
 
 // ../../lib/db/dist/schema/coupons.js
-import { pgTable as pgTable11, text as text11, timestamp as timestamp11, boolean as boolean7, doublePrecision as doublePrecision7, integer as integer8 } from "drizzle-orm/pg-core";
-var coupons = pgTable11("coupons", {
-  id: text11("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  code: text11("code").notNull().unique(),
-  cityId: text11("city_id"),
-  type: text11("type").notNull().default("percentage"),
-  value: doublePrecision7("value").notNull().default(0),
-  minimumOrder: doublePrecision7("minimum_order").notNull().default(0),
-  maximumDiscount: doublePrecision7("maximum_discount"),
-  expiryDate: timestamp11("expiry_date").notNull(),
+import { pgTable as pgTable13, text as text13, timestamp as timestamp13, boolean as boolean8, doublePrecision as doublePrecision8, integer as integer8 } from "drizzle-orm/pg-core";
+var coupons = pgTable13("coupons", {
+  id: text13("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  code: text13("code").notNull().unique(),
+  cityId: text13("city_id"),
+  type: text13("type").notNull().default("percentage"),
+  value: doublePrecision8("value").notNull().default(0),
+  minimumOrder: doublePrecision8("minimum_order").notNull().default(0),
+  maximumDiscount: doublePrecision8("maximum_discount"),
+  expiryDate: timestamp13("expiry_date").notNull(),
   usageLimit: integer8("usage_limit").notNull().default(0),
   perUserLimit: integer8("per_user_limit").notNull().default(0),
   usedCount: integer8("used_count").notNull().default(0),
-  isActive: boolean7("is_active").notNull().default(true),
-  appliesTo: text11("applies_to").notNull().default("all"),
-  targetId: text11("target_id"),
-  createdAt: timestamp11("created_at").notNull().defaultNow(),
-  updatedAt: timestamp11("updated_at").notNull().defaultNow()
-});
-
-// ../../lib/db/dist/schema/commissionRules.js
-import { pgTable as pgTable12, text as text12, timestamp as timestamp12, boolean as boolean8, doublePrecision as doublePrecision8 } from "drizzle-orm/pg-core";
-var commissionRules = pgTable12("commission_rules", {
-  id: text12("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  level: text12("level").notNull(),
-  type: text12("type").notNull().default("percentage"),
-  targetId: text12("target_id"),
-  targetName: text12("target_name"),
-  rate: doublePrecision8("rate").notNull().default(5),
   isActive: boolean8("is_active").notNull().default(true),
-  createdAt: timestamp12("created_at").notNull().defaultNow(),
-  updatedAt: timestamp12("updated_at").notNull().defaultNow()
-});
-
-// ../../lib/db/dist/schema/reports.js
-import { pgTable as pgTable13, text as text13, timestamp as timestamp13 } from "drizzle-orm/pg-core";
-var reports = pgTable13("reports", {
-  id: text13("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  type: text13("type").notNull(),
-  targetId: text13("target_id").notNull(),
-  targetName: text13("target_name").notNull().default(""),
-  reportedBy: text13("reported_by").notNull(),
-  reporterPhone: text13("reporter_phone").notNull().default(""),
-  reason: text13("reason").notNull(),
-  description: text13("description"),
-  status: text13("status").notNull().default("open"),
-  resolvedBy: text13("resolved_by"),
+  appliesTo: text13("applies_to").notNull().default("all"),
+  targetId: text13("target_id"),
   createdAt: timestamp13("created_at").notNull().defaultNow(),
   updatedAt: timestamp13("updated_at").notNull().defaultNow()
 });
 
-// ../../lib/db/dist/schema/notifications.js
-import { pgTable as pgTable14, text as text14, timestamp as timestamp14, boolean as boolean9, jsonb as jsonb8, index as index7 } from "drizzle-orm/pg-core";
-var notifications = pgTable14("notifications", {
+// ../../lib/db/dist/schema/commissionRules.js
+import { pgTable as pgTable14, text as text14, timestamp as timestamp14, boolean as boolean9, doublePrecision as doublePrecision9 } from "drizzle-orm/pg-core";
+var commissionRules = pgTable14("commission_rules", {
   id: text14("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text14("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  type: text14("type").notNull().default("system"),
-  title: text14("title").notNull(),
-  message: text14("message").notNull(),
-  isRead: boolean9("is_read").notNull().default(false),
-  data: jsonb8("data").default({}),
-  createdAt: timestamp14("created_at").notNull().defaultNow()
+  level: text14("level").notNull(),
+  type: text14("type").notNull().default("percentage"),
+  targetId: text14("target_id"),
+  targetName: text14("target_name"),
+  rate: doublePrecision9("rate").notNull().default(5),
+  isActive: boolean9("is_active").notNull().default(true),
+  createdAt: timestamp14("created_at").notNull().defaultNow(),
+  updatedAt: timestamp14("updated_at").notNull().defaultNow()
+});
+
+// ../../lib/db/dist/schema/reports.js
+import { pgTable as pgTable15, text as text15, timestamp as timestamp15 } from "drizzle-orm/pg-core";
+var reports = pgTable15("reports", {
+  id: text15("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  type: text15("type").notNull(),
+  targetId: text15("target_id").notNull(),
+  targetName: text15("target_name").notNull().default(""),
+  reportedBy: text15("reported_by").notNull(),
+  reporterPhone: text15("reporter_phone").notNull().default(""),
+  reason: text15("reason").notNull(),
+  description: text15("description"),
+  status: text15("status").notNull().default("open"),
+  resolvedBy: text15("resolved_by"),
+  createdAt: timestamp15("created_at").notNull().defaultNow(),
+  updatedAt: timestamp15("updated_at").notNull().defaultNow()
+});
+
+// ../../lib/db/dist/schema/notifications.js
+import { pgTable as pgTable16, text as text16, timestamp as timestamp16, boolean as boolean10, jsonb as jsonb9, index as index9 } from "drizzle-orm/pg-core";
+var notifications = pgTable16("notifications", {
+  id: text16("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text16("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: text16("type").notNull().default("system"),
+  title: text16("title").notNull(),
+  message: text16("message").notNull(),
+  isRead: boolean10("is_read").notNull().default(false),
+  data: jsonb9("data").default({}),
+  createdAt: timestamp16("created_at").notNull().defaultNow()
 }, (t2) => [
-  index7("notifications_user_id_idx").on(t2.userId),
-  index7("notifications_user_id_is_read_idx").on(t2.userId, t2.isRead)
+  index9("notifications_user_id_idx").on(t2.userId),
+  index9("notifications_user_id_is_read_idx").on(t2.userId, t2.isRead)
 ]);
 
 // ../../lib/db/dist/schema/pushSubscriptions.js
-import { pgTable as pgTable15, text as text15, timestamp as timestamp15, jsonb as jsonb9 } from "drizzle-orm/pg-core";
-var pushSubscriptions = pgTable15("push_subscriptions", {
-  id: text15("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text15("user_id").notNull(),
-  endpoint: text15("endpoint").notNull(),
-  keys: jsonb9("keys").notNull().default({}),
-  createdAt: timestamp15("created_at").notNull().defaultNow()
+import { pgTable as pgTable17, text as text17, timestamp as timestamp17, jsonb as jsonb10 } from "drizzle-orm/pg-core";
+var pushSubscriptions = pgTable17("push_subscriptions", {
+  id: text17("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text17("user_id").notNull(),
+  endpoint: text17("endpoint").notNull(),
+  keys: jsonb10("keys").notNull().default({}),
+  createdAt: timestamp17("created_at").notNull().defaultNow()
 });
 
 // ../../lib/db/dist/schema/heroBanners.js
-import { pgTable as pgTable16, text as text16, timestamp as timestamp16, boolean as boolean10, integer as integer9 } from "drizzle-orm/pg-core";
-var heroBanners = pgTable16("hero_banners", {
-  id: text16("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  imageUrl: text16("image_url").notNull(),
-  title: text16("title"),
-  subtitle: text16("subtitle"),
-  buttonText: text16("button_text"),
-  redirectType: text16("redirect_type"),
-  redirectValue: text16("redirect_value"),
-  accentColor: text16("accent_color"),
-  isActive: boolean10("is_active").notNull().default(true),
+import { pgTable as pgTable18, text as text18, timestamp as timestamp18, boolean as boolean11, integer as integer9 } from "drizzle-orm/pg-core";
+var heroBanners = pgTable18("hero_banners", {
+  id: text18("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  imageUrl: text18("image_url").notNull(),
+  title: text18("title"),
+  subtitle: text18("subtitle"),
+  buttonText: text18("button_text"),
+  redirectType: text18("redirect_type"),
+  redirectValue: text18("redirect_value"),
+  accentColor: text18("accent_color"),
+  isActive: boolean11("is_active").notNull().default(true),
   displayOrder: integer9("display_order").notNull().default(0),
   views: integer9("views").notNull().default(0),
   clicks: integer9("clicks").notNull().default(0),
-  createdAt: timestamp16("created_at").notNull().defaultNow(),
-  updatedAt: timestamp16("updated_at").notNull().defaultNow()
-});
-
-// ../../lib/db/dist/schema/deliveryPartners.js
-import { pgTable as pgTable17, text as text17, timestamp as timestamp17, boolean as boolean11, doublePrecision as doublePrecision9, integer as integer10, jsonb as jsonb10, index as index8 } from "drizzle-orm/pg-core";
-var deliveryPartners = pgTable17("delivery_partners", {
-  id: text17("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  name: text17("name").notNull(),
-  phone: text17("phone").notNull().unique(),
-  userId: text17("user_id").references(() => users.id, { onDelete: "set null" }),
-  cityId: text17("city_id"),
-  vehicle: text17("vehicle"),
-  applicationStatus: text17("application_status").notNull().default("approved"),
-  // "pending" | "approved" | "rejected"
-  fcmToken: text17("fcm_token"),
-  panNumber: text17("pan_number"),
-  dlNumber: text17("dl_number"),
-  rcNumber: text17("rc_number"),
-  documents: jsonb10("documents").default({}),
-  rejectionReason: text17("rejection_reason"),
-  isAvailable: boolean11("is_available").notNull().default(true),
-  status: text17("status").notNull().default("active"),
-  totalEarnings: doublePrecision9("total_earnings").notNull().default(0),
-  ordersDelivered: integer10("orders_delivered").notNull().default(0),
-  currentOrderId: text17("current_order_id"),
-  currentLat: doublePrecision9("current_lat"),
-  currentLon: doublePrecision9("current_lon"),
-  locationUpdatedAt: timestamp17("location_updated_at"),
-  createdAt: timestamp17("created_at").notNull().defaultNow(),
-  updatedAt: timestamp17("updated_at").notNull().defaultNow()
-}, (t2) => [
-  index8("delivery_partners_user_id_idx").on(t2.userId),
-  index8("delivery_partners_status_available_idx").on(t2.status, t2.isAvailable)
-]);
-
-// ../../lib/db/dist/schema/deliveryCharges.js
-import { pgTable as pgTable18, text as text18, timestamp as timestamp18, doublePrecision as doublePrecision10 } from "drizzle-orm/pg-core";
-var deliveryChargeRules = pgTable18("delivery_charge_rules", {
-  id: text18("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  fromPincode: text18("from_pincode").notNull(),
-  toPincode: text18("to_pincode").notNull(),
-  baseCharge: doublePrecision10("base_charge").notNull().default(0),
-  rainSurcharge: doublePrecision10("rain_surcharge").notNull().default(0),
-  label: text18("label"),
   createdAt: timestamp18("created_at").notNull().defaultNow(),
   updatedAt: timestamp18("updated_at").notNull().defaultNow()
 });
-var deliverySettings = pgTable18("delivery_settings", {
-  id: text18("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  key: text18("key").notNull().unique(),
-  value: text18("value").notNull(),
-  updatedAt: timestamp18("updated_at").notNull().defaultNow()
+
+// ../../lib/db/dist/schema/deliveryPartners.js
+import { pgTable as pgTable19, text as text19, timestamp as timestamp19, boolean as boolean12, doublePrecision as doublePrecision10, integer as integer10, jsonb as jsonb11, index as index10 } from "drizzle-orm/pg-core";
+var deliveryPartners = pgTable19("delivery_partners", {
+  id: text19("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text19("name").notNull(),
+  phone: text19("phone").notNull().unique(),
+  userId: text19("user_id").references(() => users.id, { onDelete: "set null" }),
+  cityId: text19("city_id"),
+  vehicle: text19("vehicle"),
+  applicationStatus: text19("application_status").notNull().default("approved"),
+  // "pending" | "approved" | "rejected"
+  fcmToken: text19("fcm_token"),
+  panNumber: text19("pan_number"),
+  dlNumber: text19("dl_number"),
+  rcNumber: text19("rc_number"),
+  documents: jsonb11("documents").default({}),
+  rejectionReason: text19("rejection_reason"),
+  isAvailable: boolean12("is_available").notNull().default(true),
+  status: text19("status").notNull().default("active"),
+  totalEarnings: doublePrecision10("total_earnings").notNull().default(0),
+  ordersDelivered: integer10("orders_delivered").notNull().default(0),
+  currentOrderId: text19("current_order_id"),
+  currentLat: doublePrecision10("current_lat"),
+  currentLon: doublePrecision10("current_lon"),
+  locationUpdatedAt: timestamp19("location_updated_at"),
+  createdAt: timestamp19("created_at").notNull().defaultNow(),
+  updatedAt: timestamp19("updated_at").notNull().defaultNow()
+}, (t2) => [
+  index10("delivery_partners_user_id_idx").on(t2.userId),
+  index10("delivery_partners_status_available_idx").on(t2.status, t2.isAvailable)
+]);
+
+// ../../lib/db/dist/schema/deliveryCharges.js
+import { pgTable as pgTable20, text as text20, timestamp as timestamp20, doublePrecision as doublePrecision11 } from "drizzle-orm/pg-core";
+var deliveryChargeRules = pgTable20("delivery_charge_rules", {
+  id: text20("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  fromPincode: text20("from_pincode").notNull(),
+  toPincode: text20("to_pincode").notNull(),
+  baseCharge: doublePrecision11("base_charge").notNull().default(0),
+  rainSurcharge: doublePrecision11("rain_surcharge").notNull().default(0),
+  label: text20("label"),
+  createdAt: timestamp20("created_at").notNull().defaultNow(),
+  updatedAt: timestamp20("updated_at").notNull().defaultNow()
+});
+var deliverySettings = pgTable20("delivery_settings", {
+  id: text20("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  key: text20("key").notNull().unique(),
+  value: text20("value").notNull(),
+  updatedAt: timestamp20("updated_at").notNull().defaultNow()
 });
 
 // ../../lib/db/dist/schema/supportTickets.js
-import { pgTable as pgTable19, text as text19, timestamp as timestamp19 } from "drizzle-orm/pg-core";
-var supportTickets = pgTable19("support_tickets", {
-  id: text19("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text19("user_id").notNull(),
-  cityId: text19("city_id"),
-  userPhone: text19("user_phone").notNull().default(""),
-  userName: text19("user_name").notNull().default(""),
-  category: text19("category").notNull().default("general"),
-  subject: text19("subject").notNull(),
-  message: text19("message").notNull(),
-  status: text19("status").notNull().default("open"),
-  adminNote: text19("admin_note"),
-  resolvedBy: text19("resolved_by"),
-  createdAt: timestamp19("created_at").notNull().defaultNow(),
-  updatedAt: timestamp19("updated_at").notNull().defaultNow()
-});
-
-// ../../lib/db/dist/schema/fcmTokens.js
-import { pgTable as pgTable20, text as text20, timestamp as timestamp20, boolean as boolean12, index as index9 } from "drizzle-orm/pg-core";
-var fcmTokens = pgTable20("fcm_tokens", {
-  id: text20("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text20("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  token: text20("token").notNull().unique(),
-  platform: text20("platform").notNull().default("web"),
-  role: text20("role").notNull().default("customer"),
-  userAgent: text20("user_agent"),
-  isActive: boolean12("is_active").notNull().default(true),
-  lastSeenAt: timestamp20("last_seen_at").notNull().defaultNow(),
-  createdAt: timestamp20("created_at").notNull().defaultNow(),
-  updatedAt: timestamp20("updated_at").notNull().defaultNow()
-}, (t2) => [
-  index9("fcm_tokens_user_id_idx").on(t2.userId),
-  index9("fcm_tokens_user_id_role_active_idx").on(t2.userId, t2.role, t2.isActive)
-]);
-
-// ../../lib/db/dist/schema/homepageSections.js
-import { pgTable as pgTable21, text as text21, timestamp as timestamp21, boolean as boolean13, integer as integer11, jsonb as jsonb11 } from "drizzle-orm/pg-core";
-var homepageSections = pgTable21("homepage_sections", {
+import { pgTable as pgTable21, text as text21, timestamp as timestamp21 } from "drizzle-orm/pg-core";
+var supportTickets = pgTable21("support_tickets", {
   id: text21("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  title: text21("title").notNull(),
-  type: text21("type").notNull().default("trending"),
-  enabled: boolean13("enabled").notNull().default(true),
-  sortOrder: integer11("sort_order").notNull().default(0),
-  config: jsonb11("config").notNull().default({}),
+  userId: text21("user_id").notNull(),
+  cityId: text21("city_id"),
+  userPhone: text21("user_phone").notNull().default(""),
+  userName: text21("user_name").notNull().default(""),
+  category: text21("category").notNull().default("general"),
+  subject: text21("subject").notNull(),
+  message: text21("message").notNull(),
+  status: text21("status").notNull().default("open"),
+  adminNote: text21("admin_note"),
+  resolvedBy: text21("resolved_by"),
   createdAt: timestamp21("created_at").notNull().defaultNow(),
   updatedAt: timestamp21("updated_at").notNull().defaultNow()
 });
 
-// ../../lib/db/dist/schema/servicePincodes.js
-import { pgTable as pgTable22, text as text22, timestamp as timestamp22, boolean as boolean14 } from "drizzle-orm/pg-core";
-var servicePincodes = pgTable22("service_pincodes", {
-  pincode: text22("pincode").primaryKey(),
-  area: text22("area").notNull(),
-  state: text22("state").notNull().default("West Bengal"),
-  isActive: boolean14("is_active").notNull().default(true),
+// ../../lib/db/dist/schema/fcmTokens.js
+import { pgTable as pgTable22, text as text22, timestamp as timestamp22, boolean as boolean13, index as index11 } from "drizzle-orm/pg-core";
+var fcmTokens = pgTable22("fcm_tokens", {
+  id: text22("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text22("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: text22("token").notNull().unique(),
+  platform: text22("platform").notNull().default("web"),
+  role: text22("role").notNull().default("customer"),
+  userAgent: text22("user_agent"),
+  isActive: boolean13("is_active").notNull().default(true),
+  lastSeenAt: timestamp22("last_seen_at").notNull().defaultNow(),
   createdAt: timestamp22("created_at").notNull().defaultNow(),
   updatedAt: timestamp22("updated_at").notNull().defaultNow()
-});
+}, (t2) => [
+  index11("fcm_tokens_user_id_idx").on(t2.userId),
+  index11("fcm_tokens_user_id_role_active_idx").on(t2.userId, t2.role, t2.isActive)
+]);
 
-// ../../lib/db/dist/schema/buckets.js
-import { pgTable as pgTable23, text as text23, timestamp as timestamp23, boolean as boolean15, integer as integer12, jsonb as jsonb12 } from "drizzle-orm/pg-core";
-var buckets = pgTable23("buckets", {
+// ../../lib/db/dist/schema/homepageSections.js
+import { pgTable as pgTable23, text as text23, timestamp as timestamp23, boolean as boolean14, integer as integer11, jsonb as jsonb12 } from "drizzle-orm/pg-core";
+var homepageSections = pgTable23("homepage_sections", {
   id: text23("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   title: text23("title").notNull(),
-  subtitle: text23("subtitle").notNull().default(""),
-  badgeText: text23("badge_text").notNull().default("\u{1F525} Hot Pick"),
-  accentColor: text23("accent_color").notNull().default("#FF6B35"),
-  productIds: jsonb12("product_ids").notNull().default([]),
-  comboPrice: integer12("combo_price"),
-  showOnHomepage: boolean15("show_on_homepage").notNull().default(true),
-  showAsAddon: boolean15("show_as_addon").notNull().default(true),
-  isActive: boolean15("is_active").notNull().default(true),
-  maxQtyPerCart: integer12("max_qty_per_cart"),
-  sortOrder: integer12("sort_order").notNull().default(0),
+  type: text23("type").notNull().default("trending"),
+  enabled: boolean14("enabled").notNull().default(true),
+  sortOrder: integer11("sort_order").notNull().default(0),
+  config: jsonb12("config").notNull().default({}),
   createdAt: timestamp23("created_at").notNull().defaultNow(),
   updatedAt: timestamp23("updated_at").notNull().defaultNow()
 });
 
+// ../../lib/db/dist/schema/servicePincodes.js
+import { pgTable as pgTable24, text as text24, timestamp as timestamp24, boolean as boolean15 } from "drizzle-orm/pg-core";
+var servicePincodes = pgTable24("service_pincodes", {
+  pincode: text24("pincode").primaryKey(),
+  area: text24("area").notNull(),
+  state: text24("state").notNull().default("West Bengal"),
+  isActive: boolean15("is_active").notNull().default(true),
+  createdAt: timestamp24("created_at").notNull().defaultNow(),
+  updatedAt: timestamp24("updated_at").notNull().defaultNow()
+});
+
+// ../../lib/db/dist/schema/buckets.js
+import { pgTable as pgTable25, text as text25, timestamp as timestamp25, boolean as boolean16, integer as integer12, jsonb as jsonb13 } from "drizzle-orm/pg-core";
+var buckets = pgTable25("buckets", {
+  id: text25("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  title: text25("title").notNull(),
+  subtitle: text25("subtitle").notNull().default(""),
+  badgeText: text25("badge_text").notNull().default("\u{1F525} Hot Pick"),
+  accentColor: text25("accent_color").notNull().default("#FF6B35"),
+  productIds: jsonb13("product_ids").notNull().default([]),
+  comboPrice: integer12("combo_price"),
+  showOnHomepage: boolean16("show_on_homepage").notNull().default(true),
+  showAsAddon: boolean16("show_as_addon").notNull().default(true),
+  isActive: boolean16("is_active").notNull().default(true),
+  maxQtyPerCart: integer12("max_qty_per_cart"),
+  sortOrder: integer12("sort_order").notNull().default(0),
+  createdAt: timestamp25("created_at").notNull().defaultNow(),
+  updatedAt: timestamp25("updated_at").notNull().defaultNow()
+});
+
 // ../../lib/db/dist/schema/usersMapping.js
-import { pgTable as pgTable24, text as text24, integer as integer13, timestamp as timestamp24, index as index10, uniqueIndex } from "drizzle-orm/pg-core";
-var usersMapping = pgTable24("users_mapping", {
-  id: text24("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text24("user_id").notNull(),
+import { pgTable as pgTable26, text as text26, integer as integer13, timestamp as timestamp26, index as index12, uniqueIndex } from "drizzle-orm/pg-core";
+var usersMapping = pgTable26("users_mapping", {
+  id: text26("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text26("user_id").notNull(),
   databaseNo: integer13("database_no").notNull(),
   // 2 | 3 | 4 | 5
-  createdAt: timestamp24("created_at").notNull().defaultNow()
+  createdAt: timestamp26("created_at").notNull().defaultNow()
 }, (t2) => [
   uniqueIndex("users_mapping_user_id_idx").on(t2.userId),
-  index10("users_mapping_database_no_idx").on(t2.databaseNo)
+  index12("users_mapping_database_no_idx").on(t2.databaseNo)
 ]);
 
 // ../../lib/db/dist/schema/shopsMapping.js
-import { pgTable as pgTable25, text as text25, integer as integer14, timestamp as timestamp25, index as index11, uniqueIndex as uniqueIndex2 } from "drizzle-orm/pg-core";
-var shopsMapping = pgTable25("shops_mapping", {
-  id: text25("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  shopId: text25("shop_id").notNull(),
+import { pgTable as pgTable27, text as text27, integer as integer14, timestamp as timestamp27, index as index13, uniqueIndex as uniqueIndex2 } from "drizzle-orm/pg-core";
+var shopsMapping = pgTable27("shops_mapping", {
+  id: text27("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  shopId: text27("shop_id").notNull(),
   databaseNo: integer14("database_no").notNull(),
   // 2 | 3 | 4 | 5
-  createdAt: timestamp25("created_at").notNull().defaultNow()
+  createdAt: timestamp27("created_at").notNull().defaultNow()
 }, (t2) => [
   uniqueIndex2("shops_mapping_shop_id_idx").on(t2.shopId),
-  index11("shops_mapping_database_no_idx").on(t2.databaseNo)
+  index13("shops_mapping_database_no_idx").on(t2.databaseNo)
 ]);
 
 // ../../lib/db/dist/schema/cities.js
-import { pgTable as pgTable26, text as text26, timestamp as timestamp26, boolean as boolean16 } from "drizzle-orm/pg-core";
-var cities = pgTable26("cities", {
-  id: text26("id").primaryKey(),
+import { pgTable as pgTable28, text as text28, timestamp as timestamp28, boolean as boolean17 } from "drizzle-orm/pg-core";
+var cities = pgTable28("cities", {
+  id: text28("id").primaryKey(),
   // slug like 'balurghat', 'malda'
-  name: text26("name").notNull().unique(),
-  isActive: boolean16("is_active").notNull().default(true),
-  createdAt: timestamp26("created_at").notNull().defaultNow(),
-  updatedAt: timestamp26("updated_at").notNull().defaultNow()
+  name: text28("name").notNull().unique(),
+  isActive: boolean17("is_active").notNull().default(true),
+  createdAt: timestamp28("created_at").notNull().defaultNow(),
+  updatedAt: timestamp28("updated_at").notNull().defaultNow()
 });
 
 // ../../lib/db/dist/schema/managerCities.js
-import { pgTable as pgTable27, text as text27, timestamp as timestamp27 } from "drizzle-orm/pg-core";
-var managerCities = pgTable27("manager_cities", {
-  id: text27("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  managerId: text27("manager_id").notNull(),
-  cityId: text27("city_id").notNull(),
-  assignedAt: timestamp27("assigned_at").notNull().defaultNow()
+import { pgTable as pgTable29, text as text29, timestamp as timestamp29 } from "drizzle-orm/pg-core";
+var managerCities = pgTable29("manager_cities", {
+  id: text29("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  managerId: text29("manager_id").notNull(),
+  cityId: text29("city_id").notNull(),
+  assignedAt: timestamp29("assigned_at").notNull().defaultNow()
 });
 
 // ../../lib/db/dist/schema/managerActivityLogs.js
-import { pgTable as pgTable28, text as text28, timestamp as timestamp28 } from "drizzle-orm/pg-core";
-var managerActivityLogs = pgTable28("manager_activity_logs", {
-  id: text28("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  managerId: text28("manager_id").notNull(),
-  managerName: text28("manager_name").notNull(),
-  cityId: text28("city_id"),
-  action: text28("action").notNull(),
-  details: text28("details").notNull().default(""),
-  ipAddress: text28("ip_address"),
-  createdAt: timestamp28("created_at").notNull().defaultNow()
+import { pgTable as pgTable30, text as text30, timestamp as timestamp30 } from "drizzle-orm/pg-core";
+var managerActivityLogs = pgTable30("manager_activity_logs", {
+  id: text30("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  managerId: text30("manager_id").notNull(),
+  managerName: text30("manager_name").notNull(),
+  cityId: text30("city_id"),
+  action: text30("action").notNull(),
+  details: text30("details").notNull().default(""),
+  ipAddress: text30("ip_address"),
+  createdAt: timestamp30("created_at").notNull().defaultNow()
 });
 
 // ../../lib/db/dist/schema/seasonalCampaign.js
-import { pgTable as pgTable29, text as text29, timestamp as timestamp29, boolean as boolean17, jsonb as jsonb13 } from "drizzle-orm/pg-core";
-var seasonalCampaign = pgTable29("seasonal_campaign", {
-  id: text29("id").primaryKey().$defaultFn(() => "default_campaign"),
-  isActive: boolean17("is_active").notNull().default(false),
-  tabName: text29("tab_name").notNull().default("Festive Store"),
-  theme: jsonb13("theme").notNull().default({
-    backgroundColor: "#FFF8F0",
-    textColor: "#8A252C",
-    accentColor: "#F3A738"
-  }),
-  layoutBlocks: jsonb13("layout_blocks").notNull().default([]),
-  updatedAt: timestamp29("updated_at").notNull().defaultNow()
-});
-
-// ../../lib/db/dist/schema/cafePageConfig.js
-import { pgTable as pgTable30, text as text30, timestamp as timestamp30, boolean as boolean18, jsonb as jsonb14 } from "drizzle-orm/pg-core";
-var cafePageConfig = pgTable30("cafe_page_config", {
-  id: text30("id").primaryKey().$defaultFn(() => "default_cafe_page"),
+import { pgTable as pgTable31, text as text31, timestamp as timestamp31, boolean as boolean18, jsonb as jsonb14 } from "drizzle-orm/pg-core";
+var seasonalCampaign = pgTable31("seasonal_campaign", {
+  id: text31("id").primaryKey().$defaultFn(() => "default_campaign"),
   isActive: boolean18("is_active").notNull().default(false),
+  tabName: text31("tab_name").notNull().default("Festive Store"),
   theme: jsonb14("theme").notNull().default({
     backgroundColor: "#FFF8F0",
     textColor: "#8A252C",
     accentColor: "#F3A738"
   }),
   layoutBlocks: jsonb14("layout_blocks").notNull().default([]),
-  updatedAt: timestamp30("updated_at").notNull().defaultNow()
-});
-
-// ../../lib/db/dist/schema/appThemeConfig.js
-import { pgTable as pgTable31, text as text31, integer as integer15, timestamp as timestamp31, jsonb as jsonb15 } from "drizzle-orm/pg-core";
-var appThemeConfig = pgTable31("app_theme_config", {
-  id: text31("id").primaryKey().$defaultFn(() => "global_theme"),
-  primaryColor: text31("primary_color").notNull().default("#E23744"),
-  secondaryColor: text31("secondary_color").notNull().default("#000000"),
-  borderRadius: integer15("border_radius").notNull().default(12),
-  fontFamily: text31("font_family").notNull().default("Outfit"),
-  customTokens: jsonb15("custom_tokens").$type().notNull().default({}),
   updatedAt: timestamp31("updated_at").notNull().defaultNow()
 });
 
-// ../../lib/db/dist/schema/appLayouts.js
-import { pgTable as pgTable32, text as text32, timestamp as timestamp32, jsonb as jsonb16 } from "drizzle-orm/pg-core";
-var appLayouts = pgTable32("app_layouts", {
-  id: text32("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  pageName: text32("page_name").notNull().unique(),
-  blocks: jsonb16("blocks").$type().notNull().default([]),
+// ../../lib/db/dist/schema/cafePageConfig.js
+import { pgTable as pgTable32, text as text32, timestamp as timestamp32, boolean as boolean19, jsonb as jsonb15 } from "drizzle-orm/pg-core";
+var cafePageConfig = pgTable32("cafe_page_config", {
+  id: text32("id").primaryKey().$defaultFn(() => "default_cafe_page"),
+  isActive: boolean19("is_active").notNull().default(false),
+  theme: jsonb15("theme").notNull().default({
+    backgroundColor: "#FFF8F0",
+    textColor: "#8A252C",
+    accentColor: "#F3A738"
+  }),
+  layoutBlocks: jsonb15("layout_blocks").notNull().default([]),
   updatedAt: timestamp32("updated_at").notNull().defaultNow()
 });
 
-// ../../lib/db/dist/schema/pickupVerificationSessions.js
-import { pgTable as pgTable33, text as text33, timestamp as timestamp33, doublePrecision as doublePrecision11, index as index12 } from "drizzle-orm/pg-core";
-var pickupVerificationSessions = pgTable33("pickup_verification_sessions", {
-  id: text33("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  riderId: text33("rider_id").notNull().references(() => deliveryPartners.id, { onDelete: "cascade" }),
-  storeId: text33("store_id").notNull().references(() => shops.id, { onDelete: "cascade" }),
-  token: text33("token").notNull(),
-  verifiedAt: timestamp33("verified_at").notNull().defaultNow(),
-  expiresAt: timestamp33("expires_at").notNull(),
-  riderLat: doublePrecision11("rider_lat"),
-  riderLon: doublePrecision11("rider_lon"),
-  status: text33("status").notNull().default("active"),
-  // "active" | "completed" | "expired"
-  createdAt: timestamp33("created_at").notNull().defaultNow(),
+// ../../lib/db/dist/schema/appThemeConfig.js
+import { pgTable as pgTable33, text as text33, integer as integer15, timestamp as timestamp33, jsonb as jsonb16 } from "drizzle-orm/pg-core";
+var appThemeConfig = pgTable33("app_theme_config", {
+  id: text33("id").primaryKey().$defaultFn(() => "global_theme"),
+  primaryColor: text33("primary_color").notNull().default("#E23744"),
+  secondaryColor: text33("secondary_color").notNull().default("#000000"),
+  borderRadius: integer15("border_radius").notNull().default(12),
+  fontFamily: text33("font_family").notNull().default("Outfit"),
+  customTokens: jsonb16("custom_tokens").$type().notNull().default({}),
   updatedAt: timestamp33("updated_at").notNull().defaultNow()
+});
+
+// ../../lib/db/dist/schema/appLayouts.js
+import { pgTable as pgTable34, text as text34, timestamp as timestamp34, jsonb as jsonb17 } from "drizzle-orm/pg-core";
+var appLayouts = pgTable34("app_layouts", {
+  id: text34("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  pageName: text34("page_name").notNull().unique(),
+  blocks: jsonb17("blocks").$type().notNull().default([]),
+  updatedAt: timestamp34("updated_at").notNull().defaultNow()
+});
+
+// ../../lib/db/dist/schema/pickupVerificationSessions.js
+import { pgTable as pgTable35, text as text35, timestamp as timestamp35, doublePrecision as doublePrecision12, index as index14 } from "drizzle-orm/pg-core";
+var pickupVerificationSessions = pgTable35("pickup_verification_sessions", {
+  id: text35("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  riderId: text35("rider_id").notNull().references(() => deliveryPartners.id, { onDelete: "cascade" }),
+  storeId: text35("store_id").notNull().references(() => shops.id, { onDelete: "cascade" }),
+  token: text35("token").notNull(),
+  verifiedAt: timestamp35("verified_at").notNull().defaultNow(),
+  expiresAt: timestamp35("expires_at").notNull(),
+  riderLat: doublePrecision12("rider_lat"),
+  riderLon: doublePrecision12("rider_lon"),
+  status: text35("status").notNull().default("active"),
+  // "active" | "completed" | "expired"
+  createdAt: timestamp35("created_at").notNull().defaultNow(),
+  updatedAt: timestamp35("updated_at").notNull().defaultNow()
 }, (t2) => [
-  index12("pickup_sessions_rider_store_idx").on(t2.riderId, t2.storeId),
-  index12("pickup_sessions_status_expires_idx").on(t2.status, t2.expiresAt)
+  index14("pickup_sessions_rider_store_idx").on(t2.riderId, t2.storeId),
+  index14("pickup_sessions_status_expires_idx").on(t2.status, t2.expiresAt)
 ]);
 
 // ../../lib/db/dist/schema/pickupScanLogs.js
-import { pgTable as pgTable34, text as text34, timestamp as timestamp34, doublePrecision as doublePrecision12, index as index13 } from "drizzle-orm/pg-core";
-var pickupScanLogs = pgTable34("pickup_scan_logs", {
-  id: text34("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  riderId: text34("rider_id").notNull(),
-  riderName: text34("rider_name"),
-  storeId: text34("store_id"),
-  storeName: text34("store_name"),
-  orderId: text34("order_id"),
-  scannedToken: text34("scanned_token"),
-  scanResult: text34("scan_result").notNull(),
+import { pgTable as pgTable36, text as text36, timestamp as timestamp36, doublePrecision as doublePrecision13, index as index15 } from "drizzle-orm/pg-core";
+var pickupScanLogs = pgTable36("pickup_scan_logs", {
+  id: text36("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  riderId: text36("rider_id").notNull(),
+  riderName: text36("rider_name"),
+  storeId: text36("store_id"),
+  storeName: text36("store_name"),
+  orderId: text36("order_id"),
+  scannedToken: text36("scanned_token"),
+  scanResult: text36("scan_result").notNull(),
   // "SUCCESS" | "WRONG_STORE" | "INVALID_QR" | "EXPIRED_QR" | "NO_ACTIVE_PICKUP" | "RIDER_NOT_ASSIGNED" | "ALREADY_PICKED_UP" | "TOO_FAR_FROM_STORE"
-  reason: text34("reason"),
-  riderLat: doublePrecision12("rider_lat"),
-  riderLon: doublePrecision12("rider_lon"),
-  distanceMeters: doublePrecision12("distance_meters"),
-  createdAt: timestamp34("created_at").notNull().defaultNow()
+  reason: text36("reason"),
+  riderLat: doublePrecision13("rider_lat"),
+  riderLon: doublePrecision13("rider_lon"),
+  distanceMeters: doublePrecision13("distance_meters"),
+  createdAt: timestamp36("created_at").notNull().defaultNow()
 }, (t2) => [
-  index13("pickup_logs_store_id_idx").on(t2.storeId),
-  index13("pickup_logs_rider_id_idx").on(t2.riderId),
-  index13("pickup_logs_created_at_idx").on(t2.createdAt)
+  index15("pickup_logs_store_id_idx").on(t2.storeId),
+  index15("pickup_logs_rider_id_idx").on(t2.riderId),
+  index15("pickup_logs_created_at_idx").on(t2.createdAt)
 ]);
 
 // ../../lib/db/dist/index.js
@@ -117206,7 +117278,7 @@ function decodeWords(str) {
       }
     ).replace(/(\?=)?__\x00JOIN\x00__(=\?([^?]+)\?[QqBb]\?)?/g, "").replace(/(=\?[^?]+\?[QqBb]\?[^?]*\?=)\s+(?==\?[^?]+\?[QqBb]\?[^?]*\?=)/g, "$1").replace(
       /=\?([\w_\-*]+)\?([QqBb])\?([^?]*)\?=/g,
-      (m2, charset, encoding, text35) => decodeWord(charset, encoding, text35)
+      (m2, charset, encoding, text37) => decodeWord(charset, encoding, text37)
     );
     if (joinString && result.indexOf("\uFFFD") >= 0) {
       joinString = false;
@@ -121670,7 +121742,7 @@ var Receiving = class {
     });
   }
   async forwardWrapped(email, options) {
-    const { to, from, subject: subject2, text: text35, html } = options;
+    const { to, from, subject: subject2, text: text37, html } = options;
     if (!email.raw?.download_url) return {
       data: null,
       error: {
@@ -121695,7 +121767,7 @@ var Receiving = class {
       from,
       to,
       subject: subject2,
-      text: text35,
+      text: text37,
       html,
       attachments: [{
         filename: "forwarded_message.eml",
@@ -124680,9 +124752,15 @@ router5.post("/", authenticate, async (req, res) => {
     phone: z.string().regex(/^[6-9]\d{9}$/, "Valid 10-digit mobile number required"),
     address: z.object({
       line1: z.string().min(1).max(200).nullish(),
+      line2: z.string().max(200).nullish(),
       city: z.string().min(1).max(100).nullish(),
-      pincode: z.string().regex(/^\d{6}$/).nullish()
-    }).nullish(),
+      state: z.string().max(100).nullish(),
+      pincode: z.string().regex(/^\d{6}$/).nullish(),
+      lat: z.number().nullish(),
+      lng: z.number().nullish(),
+      latitude: z.number().nullish(),
+      longitude: z.number().nullish()
+    }).passthrough().nullish(),
     shopType: z.string().max(50).nullish(),
     category: z.string().max(50).nullish(),
     subcategory: z.string().max(50).nullish(),
@@ -124797,11 +124875,24 @@ router5.post("/:id/reject-certificate", authenticate, A4, async (req, res) => {
 });
 var RESTAURANT_SHOP_TYPES = /* @__PURE__ */ new Set(["restaurant", "fast-food", "cloud-kitchen"]);
 router5.patch("/my/profile", authenticate, async (req, res) => {
-  const body = req.body;
-  const allowed = ["shopName", "description", "image", "banner", "address", "shopType", "category", "timings"];
+  const allowed = ["shopName", "description", "image", "banner", "shopType", "category", "timings", "address"];
   const update = {};
+  const body = req.body;
   for (const key of allowed) {
-    if (body[key] !== void 0) update[key] = body[key];
+    if (key !== "address" && body[key] !== void 0) update[key] = body[key];
+  }
+  if (body["address"] !== void 0 && typeof body["address"] === "object" && body["address"] !== null) {
+    const newAddr = body["address"];
+    const [existingShop] = await db.select({ address: shops.address }).from(shops).where(eq7(shops.ownerId, req.user.userId)).limit(1);
+    const oldAddr = existingShop?.address || {};
+    update["address"] = {
+      ...oldAddr,
+      ...newAddr,
+      lat: newAddr["lat"] ?? newAddr["latitude"] ?? oldAddr["lat"] ?? oldAddr["latitude"],
+      lng: newAddr["lng"] ?? newAddr["longitude"] ?? oldAddr["lng"] ?? oldAddr["longitude"],
+      latitude: newAddr["latitude"] ?? newAddr["lat"] ?? oldAddr["latitude"] ?? oldAddr["lat"],
+      longitude: newAddr["longitude"] ?? newAddr["lng"] ?? oldAddr["longitude"] ?? oldAddr["lng"]
+    };
   }
   if (body["gstEnabled"] !== void 0) update["gstEnabled"] = Boolean(body["gstEnabled"]);
   if (body["gstRate"] !== void 0) {
@@ -125318,7 +125409,195 @@ var categories_default = router7;
 
 // src/routes/v1/products.ts
 var import_express8 = __toESM(require_express2(), 1);
-import { eq as eq10, and as and5, ilike as ilike3, inArray as inArray4, desc as desc4, count as count5, gte as gte2, sql as sql2, or as or4 } from "drizzle-orm";
+import { eq as eq11, and as and5, ilike as ilike3, inArray as inArray4, desc as desc5, count as count5, gte as gte2, sql as sql2, or as or5 } from "drizzle-orm";
+
+// src/services/productLookupService.ts
+import { eq as eq10, or as or4, desc as desc4 } from "drizzle-orm";
+var ProductLookupService = class {
+  /**
+   * Normalize barcode: removes spaces, newlines, non-alphanumeric chars.
+   */
+  static normalizeBarcode(raw) {
+    if (!raw) return "";
+    return raw.trim().replace(/[\r\n\s\t-]/g, "");
+  }
+  /**
+   * Validate if barcode is valid retail barcode (EAN-13, EAN-8, UPC-A, UPC-E, GTIN-14, Code-128, etc.)
+   */
+  static isValidBarcode(barcode) {
+    if (!barcode) return false;
+    return /^[A-Za-z0-9]{4,30}$/.test(barcode);
+  }
+  /**
+   * Main Barcode Lookup function
+   */
+  static async lookupByBarcode(rawBarcode) {
+    const barcode = this.normalizeBarcode(rawBarcode);
+    if (!this.isValidBarcode(barcode)) {
+      return {
+        status: "INVALID_BARCODE",
+        barcode
+      };
+    }
+    try {
+      const [master] = await db.select().from(masterProducts).where(eq10(masterProducts.barcode, barcode)).limit(1);
+      if (master && master.name && master.name.trim().length > 0) {
+        return {
+          status: "FOUND",
+          source: "SWIFTMART",
+          requiresVerification: false,
+          barcode,
+          product: {
+            id: master.id,
+            barcode: master.barcode,
+            name: master.name,
+            brand: master.brand ?? void 0,
+            category: master.category,
+            subcategory: master.subcategory ?? void 0,
+            variant: master.variant ?? void 0,
+            netQuantity: master.netQuantity ?? void 0,
+            unit: master.unit ?? void 0,
+            mrp: Number(master.mrp ?? 0),
+            description: master.description ?? void 0,
+            primaryImage: master.primaryImage ?? void 0,
+            images: Array.isArray(master.images) ? master.images : [],
+            source: master.source,
+            verificationStatus: master.verificationStatus,
+            productType: master.productType
+          }
+        };
+      }
+    } catch (err) {
+      logger.warn({ err, barcode }, "[ProductLookupService] Error querying master_products");
+    }
+    try {
+      const [existing] = await db.select().from(products).where(or4(eq10(products.barcode, barcode), eq10(products.sku, barcode))).orderBy(desc4(products.createdAt)).limit(1);
+      if (existing && existing.name && existing.name.trim().length > 0 && !existing.name.toLowerCase().startsWith("product (")) {
+        const primaryImage = Array.isArray(existing.images) && existing.images.length > 0 ? String(existing.images[0]) : void 0;
+        return {
+          status: "FOUND",
+          source: "SWIFTMART",
+          requiresVerification: false,
+          barcode,
+          product: {
+            id: existing.id,
+            barcode,
+            name: existing.name,
+            brand: existing.brand ?? void 0,
+            category: existing.category ?? "Grocery",
+            subcategory: existing.subcategory ?? void 0,
+            unit: existing.unit ?? void 0,
+            mrp: Number(existing.price ?? 0),
+            description: existing.description ?? void 0,
+            primaryImage,
+            images: Array.isArray(existing.images) ? existing.images : [],
+            source: "SWIFTMART",
+            verificationStatus: "VERIFIED"
+          }
+        };
+      }
+    } catch (err) {
+      logger.warn({ err, barcode }, "[ProductLookupService] Error querying products");
+    }
+    try {
+      const externalMatch = await this.fetchFromExternalDatabase(barcode);
+      if (externalMatch) {
+        return {
+          status: "FOUND",
+          source: "EXTERNAL",
+          requiresVerification: true,
+          barcode,
+          product: externalMatch
+        };
+      }
+    } catch (err) {
+      logger.warn({ err, barcode }, "[ProductLookupService] External API lookup failed");
+    }
+    return {
+      status: "NOT_FOUND",
+      barcode
+    };
+  }
+  /**
+   * Query Open Food Facts API strictly by exact barcode
+   */
+  static async fetchFromExternalDatabase(barcode) {
+    const urls = [
+      `https://in.openfoodfacts.org/api/v0/product/${barcode}.json`,
+      `https://world.openfoodfacts.org/api/v2/product/${barcode}.json`
+    ];
+    for (const url of urls) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4e3);
+        const res = await fetch(url, {
+          headers: {
+            "User-Agent": "SwiftMart-API/1.0 (contact: swiftmart144@gmail.com)",
+            "Accept": "application/json"
+          },
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (data["status"] === 1 && data["product"] && typeof data["product"] === "object") {
+          const p = data["product"];
+          const rawName = String(p["product_name_en"] || p["product_name"] || p["generic_name_en"] || p["generic_name"] || "").trim();
+          const brand = p["brands"] ? String(p["brands"]).trim() : void 0;
+          let fullName = rawName;
+          if (!fullName && brand) {
+            fullName = brand;
+          } else if (brand && fullName && !fullName.toLowerCase().includes(brand.toLowerCase())) {
+            fullName = `${brand} ${fullName}`;
+          }
+          if (!fullName || fullName.length < 2) {
+            continue;
+          }
+          const quantity = p["quantity"] ? String(p["quantity"]).trim() : void 0;
+          const imageUrl = String(p["image_front_url"] || p["image_url"] || p["image_front_small_url"] || "");
+          const description = p["generic_name_en"] || p["ingredients_text_en"] || p["ingredients_text"] ? String(p["generic_name_en"] || p["ingredients_text_en"] || p["ingredients_text"]) : void 0;
+          let category = "Grocery";
+          const categoriesStr = `${String(p["categories"] || "")} ${String(p["categories_tags"] || "")}`.toLowerCase();
+          if (categoriesStr.includes("beverage") || categoriesStr.includes("drink") || categoriesStr.includes("tea") || categoriesStr.includes("coffee") || categoriesStr.includes("juice")) {
+            category = "Cold Drinks & Juices";
+          } else if (categoriesStr.includes("snack") || categoriesStr.includes("biscuit") || categoriesStr.includes("cookie") || categoriesStr.includes("chip") || categoriesStr.includes("namkeen")) {
+            category = "Biscuits & Cookies";
+          } else if (categoriesStr.includes("dairy") || categoriesStr.includes("milk") || categoriesStr.includes("cheese") || categoriesStr.includes("butter") || categoriesStr.includes("curd") || categoriesStr.includes("paneer")) {
+            category = "Dairy, Bread & Eggs";
+          } else if (categoriesStr.includes("spice") || categoriesStr.includes("masala") || categoriesStr.includes("oil") || categoriesStr.includes("ghee")) {
+            category = "Spices & Dry Fruits";
+          } else if (categoriesStr.includes("noodle") || categoriesStr.includes("pasta") || categoriesStr.includes("sauce") || categoriesStr.includes("jam") || categoriesStr.includes("ketchup")) {
+            category = "Breakfast & Sauces";
+          } else if (categoriesStr.includes("sweet") || categoriesStr.includes("chocolate") || categoriesStr.includes("ice cream")) {
+            category = "Sweets & Chocolates";
+          } else if (categoriesStr.includes("personal") || categoriesStr.includes("soap") || categoriesStr.includes("shampoo") || categoriesStr.includes("beauty")) {
+            category = "Personal Care";
+          } else if (categoriesStr.includes("clean") || categoriesStr.includes("detergent") || categoriesStr.includes("household")) {
+            category = "Cleaning & Household";
+          }
+          return {
+            barcode,
+            name: fullName,
+            brand,
+            category,
+            unit: quantity || "1 unit",
+            netQuantity: quantity,
+            mrp: 0,
+            description,
+            primaryImage: imageUrl || void 0,
+            images: imageUrl ? [imageUrl] : [],
+            source: "EXTERNAL",
+            verificationStatus: "PENDING_REVIEW"
+          };
+        }
+      } catch (_e) {
+      }
+    }
+    return null;
+  }
+};
+
+// src/routes/v1/products.ts
 var router8 = (0, import_express8.Router)();
 var A7 = requireRole("admin", "super_admin");
 var V = requireRole("vendor", "admin", "super_admin");
@@ -125370,33 +125649,33 @@ router8.get("/", optionalAuth, async (req, res) => {
     const conditions = [];
     if (status !== "all") {
       if (status === "active") {
-        conditions.push(or4(eq10(products.status, "active"), eq10(products.status, "approved")));
+        conditions.push(or5(eq11(products.status, "active"), eq11(products.status, "approved")));
         conditions.push(gte2(products.stock, 0));
       } else {
-        conditions.push(eq10(products.status, status));
+        conditions.push(eq11(products.status, status));
       }
     }
     if (category) {
       const catLower = category.toLowerCase().trim();
       if (catLower === "fruits-vegetables") {
-        conditions.push(or4(
-          eq10(products.category, "fruits-vegetables"),
-          eq10(products.category, "vegetables"),
-          eq10(products.category, "fruits")
+        conditions.push(or5(
+          eq11(products.category, "fruits-vegetables"),
+          eq11(products.category, "vegetables"),
+          eq11(products.category, "fruits")
         ));
       } else if (catLower === "vegetables") {
-        conditions.push(or4(
-          eq10(products.category, "vegetables"),
-          eq10(products.category, "fruits-vegetables")
+        conditions.push(or5(
+          eq11(products.category, "vegetables"),
+          eq11(products.category, "fruits-vegetables")
         ));
       } else {
-        conditions.push(eq10(products.category, category));
+        conditions.push(eq11(products.category, category));
       }
     }
     if (search) conditions.push(ilike3(products.name, `%${search}%`));
-    if (trending === "true") conditions.push(eq10(products.trending, true));
+    if (trending === "true") conditions.push(eq11(products.trending, true));
     if (status === "active" && category) {
-      const activeCats = await db.select({ slug: categories.slug }).from(categories).where(eq10(categories.isActive, true));
+      const activeCats = await db.select({ slug: categories.slug }).from(categories).where(eq11(categories.isActive, true));
       const activeSlugs = activeCats.map((c) => c.slug);
       const catLower = category.toLowerCase().trim();
       const isAllowed = activeSlugs.includes(category) || catLower === "vegetables" && activeSlugs.includes("fruits-vegetables") || catLower === "fruits" && activeSlugs.includes("fruits-vegetables") || catLower === "fruits-vegetables" && activeSlugs.includes("vegetables");
@@ -125408,7 +125687,7 @@ router8.get("/", optionalAuth, async (req, res) => {
     if (pincode) {
       const pincodeShops = await db.select({ id: shops.id }).from(shops).where(and5(
         sql2`${shops.address}->>'pincode' = ${pincode}`,
-        or4(eq10(shops.status, "approved"), eq10(shops.status, "active"))
+        or5(eq11(shops.status, "approved"), eq11(shops.status, "active"))
       ));
       if (pincodeShops.length === 0) {
         res.json({ success: true, products: [], total: 0, page: pg2, pages: 0 });
@@ -125421,12 +125700,12 @@ router8.get("/", optionalAuth, async (req, res) => {
       if (parsedShopIds.length > 0) {
         if (status === "all") {
           if (parsedShopIds.length === 1) {
-            conditions.push(eq10(products.shopId, parsedShopIds[0]));
+            conditions.push(eq11(products.shopId, parsedShopIds[0]));
           } else {
             conditions.push(inArray4(products.shopId, parsedShopIds));
           }
         } else {
-          const validShops = await db.select({ id: shops.id }).from(shops).where(and5(inArray4(shops.id, parsedShopIds), or4(eq10(shops.status, "approved"), eq10(shops.status, "active"))));
+          const validShops = await db.select({ id: shops.id }).from(shops).where(and5(inArray4(shops.id, parsedShopIds), or5(eq11(shops.status, "approved"), eq11(shops.status, "active"))));
           if (validShops.length === 0) {
             res.json({ success: true, products: [], total: 0, page: pg2, pages: 0 });
             return;
@@ -125438,14 +125717,14 @@ router8.get("/", optionalAuth, async (req, res) => {
       conditions.push(
         inArray4(
           products.shopId,
-          db.select({ id: shops.id }).from(shops).where(or4(eq10(shops.status, "approved"), eq10(shops.status, "active")))
+          db.select({ id: shops.id }).from(shops).where(or5(eq11(shops.status, "approved"), eq11(shops.status, "active")))
         )
       );
     }
     const where = conditions.length ? and5(...conditions) : void 0;
     const skip = (pg2 - 1) * lm;
     const [result, [{ total }]] = await Promise.all([
-      db.select().from(products).where(where).orderBy(desc4(products.createdAt)).offset(skip).limit(lm),
+      db.select().from(products).where(where).orderBy(desc5(products.createdAt)).offset(skip).limit(lm),
       db.select({ total: count5() }).from(products).where(where)
     ]);
     let shopMap = {};
@@ -125478,10 +125757,10 @@ router8.get("/", optionalAuth, async (req, res) => {
 router8.get("/admin-review", authenticate, A7, async (req, res) => {
   const { status = "pending", page = "1", limit = "50" } = req.query;
   const pg2 = parseInt(page), lm = parseInt(limit);
-  const where = status !== "all" ? eq10(products.status, status) : void 0;
+  const where = status !== "all" ? eq11(products.status, status) : void 0;
   const skip = (pg2 - 1) * lm;
   const [result, [{ total }]] = await Promise.all([
-    db.select().from(products).where(where).orderBy(desc4(products.createdAt)).offset(skip).limit(lm),
+    db.select().from(products).where(where).orderBy(desc5(products.createdAt)).offset(skip).limit(lm),
     db.select({ total: count5() }).from(products).where(where)
   ]);
   const shopIds = [...new Set(result.map((p) => p.shopId))];
@@ -125492,8 +125771,8 @@ router8.get("/admin-review", authenticate, A7, async (req, res) => {
 });
 router8.get("/trending-manager", authenticate, A7, async (req, res) => {
   const { status } = req.query;
-  const where = status && status !== "all" ? eq10(products.status, status) : void 0;
-  const allProducts = await db.select().from(products).where(where).orderBy(desc4(products.createdAt)).limit(2e3);
+  const where = status && status !== "all" ? eq11(products.status, status) : void 0;
+  const allProducts = await db.select().from(products).where(where).orderBy(desc5(products.createdAt)).limit(2e3);
   const salesRows = await db.execute(sql2`
     SELECT
       item->>'productId' AS product_id,
@@ -125517,11 +125796,174 @@ router8.get("/trending-manager", authenticate, A7, async (req, res) => {
   }));
   res.json({ success: true, products: enriched });
 });
+router8.get("/barcode/:barcode", optionalAuth, async (req, res) => {
+  try {
+    const rawBarcode = String(req.params["barcode"] || "").trim();
+    if (!rawBarcode) {
+      res.status(400).json({ success: false, status: "INVALID_BARCODE", message: "Barcode is required" });
+      return;
+    }
+    const result = await ProductLookupService.lookupByBarcode(rawBarcode);
+    res.json({
+      success: result.status === "FOUND",
+      ...result
+    });
+  } catch (_err) {
+    res.status(500).json({ success: false, status: "NOT_FOUND", message: "Failed to lookup barcode" });
+  }
+});
+router8.get("/master-catalog", optionalAuth, async (req, res) => {
+  try {
+    const { search, category, limit = "30" } = req.query;
+    const lm = Math.min(100, Math.max(1, parseInt(limit) || 30));
+    const conditions = [];
+    if (search && search.trim().length > 0) {
+      const q = search.trim();
+      conditions.push(or5(
+        ilike3(masterProducts.name, `%${q}%`),
+        ilike3(masterProducts.brand, `%${q}%`),
+        eq11(masterProducts.barcode, q)
+      ));
+    }
+    if (category && category !== "All") {
+      conditions.push(eq11(masterProducts.category, category));
+    }
+    const where = conditions.length ? and5(...conditions) : void 0;
+    const list = await db.select().from(masterProducts).where(where).orderBy(desc5(masterProducts.createdAt)).limit(lm);
+    res.json({ success: true, count: list.length, products: list.map(mi) });
+  } catch (_err) {
+    res.status(500).json({ success: false, message: "Failed to search master catalog" });
+  }
+});
+router8.post("/master", authenticate, async (req, res) => {
+  try {
+    const body = req.body;
+    const rawBarcode = ProductLookupService.normalizeBarcode(String(body["barcode"] || ""));
+    const name = String(body["name"] || "").trim();
+    const category = String(body["category"] || "Grocery").trim();
+    if (!name || name.length < 2) {
+      res.status(400).json({ success: false, message: "Product name is required" });
+      return;
+    }
+    if (rawBarcode) {
+      const [existing] = await db.select().from(masterProducts).where(eq11(masterProducts.barcode, rawBarcode)).limit(1);
+      if (existing) {
+        res.json({ success: true, masterProduct: mi(existing), isExisting: true });
+        return;
+      }
+    }
+    const images = sanitizeImages(body["images"] || (body["primaryImage"] ? [body["primaryImage"]] : []));
+    const primaryImage = images.length > 0 ? images[0] : body["primaryImage"] ? String(body["primaryImage"]) : void 0;
+    const [created] = await db.insert(masterProducts).values({
+      barcode: rawBarcode || void 0,
+      gtin: body["gtin"] ? String(body["gtin"]) : void 0,
+      name,
+      brand: body["brand"] ? String(body["brand"]).trim() : void 0,
+      category,
+      subcategory: body["subcategory"] ? String(body["subcategory"]).trim() : void 0,
+      variant: body["variant"] ? String(body["variant"]).trim() : void 0,
+      netQuantity: body["netQuantity"] ? String(body["netQuantity"]).trim() : void 0,
+      unit: body["unit"] ? String(body["unit"]).trim() : "1 unit",
+      mrp: Math.max(0, Number(body["mrp"] ?? 0) || 0),
+      description: body["description"] ? String(body["description"]).trim() : void 0,
+      primaryImage,
+      images,
+      manufacturer: body["manufacturer"] ? String(body["manufacturer"]).trim() : void 0,
+      countryOfOrigin: body["countryOfOrigin"] ? String(body["countryOfOrigin"]).trim() : "India",
+      source: body["source"] ? String(body["source"]) : "MANUAL",
+      verificationStatus: req.user?.role === "admin" || req.user?.role === "super_admin" ? "VERIFIED" : "PENDING_REVIEW",
+      productType: body["productType"] ? String(body["productType"]) : rawBarcode ? "PACKAGED" : "STORE_ITEM",
+      createdBy: req.user?.userId
+    }).returning();
+    res.status(201).json({ success: true, masterProduct: mi(created) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message: "Failed to save master product", error: msg });
+  }
+});
+router8.post("/link-master", authenticate, vendorWriteLimiter, async (req, res) => {
+  try {
+    const body = req.body;
+    const masterProductId = String(body["masterProductId"] || "");
+    const sellingPrice = Math.max(0, Number(body["sellingPrice"] ?? body["price"] ?? 0) || 0);
+    const stock = Math.max(0, Number(body["stock"] ?? 10) || 0);
+    const inStock = body["inStock"] !== false && stock > 0;
+    const [master] = await db.select().from(masterProducts).where(eq11(masterProducts.id, masterProductId)).limit(1);
+    if (!master) {
+      res.status(404).json({ success: false, message: "Master product not found" });
+      return;
+    }
+    const [shop] = await db.select({ id: shops.id }).from(shops).where(eq11(shops.ownerId, req.user.userId)).limit(1);
+    const targetShopId = shop?.id || String(body["shopId"] || "");
+    if (!targetShopId) {
+      res.status(400).json({ success: false, message: "No approved shop found for this vendor" });
+      return;
+    }
+    const [existingListing] = await db.select().from(products).where(and5(eq11(products.shopId, targetShopId), eq11(products.masterProductId, master.id))).limit(1);
+    if (existingListing) {
+      const [updated] = await db.update(products).set({
+        price: master.mrp && master.mrp > 0 ? master.mrp : sellingPrice,
+        discountedPrice: master.mrp && master.mrp > sellingPrice ? sellingPrice : void 0,
+        stock,
+        status: inStock ? "active" : "out_of_stock"
+      }).where(eq11(products.id, existingListing.id)).returning();
+      void invalidateProductCaches();
+      res.json({ success: true, product: mi(updated), isUpdate: true });
+      return;
+    }
+    const [newListing] = await db.insert(products).values({
+      name: master.name,
+      description: master.description ?? void 0,
+      brand: master.brand ?? void 0,
+      barcode: master.barcode ?? void 0,
+      sku: master.barcode ?? body["sellerSku"]?.toString(),
+      masterProductId: master.id,
+      price: master.mrp && master.mrp > 0 ? master.mrp : sellingPrice,
+      discountedPrice: master.mrp && master.mrp > sellingPrice ? sellingPrice : void 0,
+      category: master.category,
+      subcategory: master.subcategory ?? void 0,
+      shopId: targetShopId,
+      images: Array.isArray(master.images) && master.images.length > 0 ? master.images : master.primaryImage ? [master.primaryImage] : [],
+      stock,
+      unit: master.unit ?? "1 unit",
+      status: "active",
+      source: "SWIFTMART",
+      verificationStatus: master.verificationStatus
+    }).returning();
+    void invalidateProductCaches();
+    res.status(201).json({ success: true, product: mi(newListing) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message: "Failed to link product to store", error: msg });
+  }
+});
+router8.post("/report-wrong", authenticate, async (req, res) => {
+  try {
+    const body = req.body;
+    const barcode = ProductLookupService.normalizeBarcode(String(body["barcode"] || ""));
+    if (!barcode) {
+      res.status(400).json({ success: false, message: "Barcode is required" });
+      return;
+    }
+    await db.insert(productWrongReports).values({
+      barcode,
+      reportedBy: req.user?.userId,
+      shopId: body["shopId"] ? String(body["shopId"]) : void 0,
+      actualName: body["actualName"] ? String(body["actualName"]).trim() : void 0,
+      photoUrl: body["photoUrl"] ? String(body["photoUrl"]).trim() : void 0,
+      note: body["note"] ? String(body["note"]).trim() : void 0,
+      status: "pending"
+    });
+    res.json({ success: true, message: "Report submitted to admin for review. Thank you for keeping catalog accurate!" });
+  } catch (_err) {
+    res.status(500).json({ success: false, message: "Failed to submit report" });
+  }
+});
 router8.get("/:id", optionalAuth, async (req, res) => {
   try {
     const authReq = req;
     const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
-    const [product] = await db.select().from(products).where(eq10(products.id, req.params["id"])).limit(1);
+    const [product] = await db.select().from(products).where(eq11(products.id, req.params["id"])).limit(1);
     if (!product) {
       res.status(404).json({ success: false, message: "Not found" });
       return;
@@ -125540,9 +125982,9 @@ router8.post("/", authenticate, vendorWriteLimiter, async (req, res) => {
   const body = req.body;
   const VENDOR_ROLES = /* @__PURE__ */ new Set(["vendor", "admin", "super_admin"]);
   if (!VENDOR_ROLES.has(req.user.role)) {
-    const [ownedShop] = await db.select({ id: shops.id }).from(shops).where(and5(eq10(shops.ownerId, req.user.userId), eq10(shops.status, "approved"))).limit(1);
+    const [ownedShop] = await db.select({ id: shops.id }).from(shops).where(and5(eq11(shops.ownerId, req.user.userId), eq11(shops.status, "approved"))).limit(1);
     if (ownedShop) {
-      await db.update(users).set({ role: "vendor", vendorStatus: "approved" }).where(eq10(users.id, req.user.userId));
+      await db.update(users).set({ role: "vendor", vendorStatus: "approved" }).where(eq11(users.id, req.user.userId));
       req.user.role = "vendor";
     } else {
       res.status(403).json({ success: false, message: "Forbidden: insufficient role" });
@@ -125551,7 +125993,7 @@ router8.post("/", authenticate, vendorWriteLimiter, async (req, res) => {
   }
   const isAdmin = req.user.role === "admin" || req.user.role === "super_admin";
   if (isAdmin && body["shopId"]) {
-    const [shopExists] = await db.select({ id: shops.id }).from(shops).where(eq10(shops.id, String(body["shopId"]))).limit(1);
+    const [shopExists] = await db.select({ id: shops.id }).from(shops).where(eq11(shops.id, String(body["shopId"]))).limit(1);
     if (!shopExists) {
       res.status(400).json({ success: false, message: "Shop not found" });
       return;
@@ -125587,7 +126029,7 @@ router8.post("/", authenticate, vendorWriteLimiter, async (req, res) => {
     res.status(201).json({ success: true, product: mi(product2) });
     return;
   }
-  const [shop] = await db.select({ id: shops.id }).from(shops).where(eq10(shops.ownerId, req.user.userId)).limit(1);
+  const [shop] = await db.select({ id: shops.id }).from(shops).where(eq11(shops.ownerId, req.user.userId)).limit(1);
   if (!shop) {
     res.status(400).json({ success: false, message: "No approved shop found for this vendor" });
     return;
@@ -125621,7 +126063,7 @@ router8.post("/", authenticate, vendorWriteLimiter, async (req, res) => {
     fomoTag: safeBody["fomoTag"] ? String(safeBody["fomoTag"]) : void 0
   }).returning();
   try {
-    const adminUsers = await db.select({ id: users.id }).from(users).where(or4(eq10(users.role, "admin"), eq10(users.role, "super_admin")));
+    const adminUsers = await db.select({ id: users.id }).from(users).where(or5(eq11(users.role, "admin"), eq11(users.role, "super_admin")));
     await Promise.all(
       adminUsers.map(
         (admin) => createNotificationLimited(admin.id, {
@@ -125637,6 +126079,182 @@ router8.post("/", authenticate, vendorWriteLimiter, async (req, res) => {
   void invalidateProductCaches();
   res.status(201).json({ success: true, product: mi(product) });
 });
+router8.post("/bulk", authenticate, vendorWriteLimiter, async (req, res) => {
+  try {
+    const body = req.body;
+    const rawItems = Array.isArray(body) ? body : Array.isArray(body.items) ? body.items : [];
+    if (rawItems.length === 0) {
+      res.status(400).json({ success: false, message: "No products provided in bulk payload" });
+      return;
+    }
+    if (rawItems.length > 100) {
+      res.status(400).json({ success: false, message: "Maximum 100 products allowed per batch" });
+      return;
+    }
+    const VENDOR_ROLES = /* @__PURE__ */ new Set(["vendor", "admin", "super_admin"]);
+    if (!VENDOR_ROLES.has(req.user.role)) {
+      const [ownedShop] = await db.select({ id: shops.id }).from(shops).where(and5(eq11(shops.ownerId, req.user.userId), eq11(shops.status, "approved"))).limit(1);
+      if (ownedShop) {
+        await db.update(users).set({ role: "vendor", vendorStatus: "approved" }).where(eq11(users.id, req.user.userId));
+        req.user.role = "vendor";
+      } else {
+        res.status(403).json({ success: false, message: "Forbidden: insufficient role" });
+        return;
+      }
+    }
+    const [shop] = await db.select({ id: shops.id }).from(shops).where(eq11(shops.ownerId, req.user.userId)).limit(1);
+    const targetShopId = shop?.id || req.body["shopId"]?.toString();
+    if (!targetShopId) {
+      res.status(400).json({ success: false, message: "Shop ID is required" });
+      return;
+    }
+    const insertedProducts = [];
+    for (const item of rawItems) {
+      const price = Math.max(0, Number(item["price"] ?? item["mrp"] ?? 0) || 0);
+      const discountedPrice = item["discountedPrice"] != null ? Number(item["discountedPrice"]) : item["price"] != null && item["mrp"] != null && Number(item["price"]) < Number(item["mrp"]) ? Number(item["price"]) : void 0;
+      const [newProd] = await db.insert(products).values({
+        name: String(item["name"] || "Untitled Product").trim(),
+        description: item["description"] ? String(item["description"]) : void 0,
+        price,
+        discountedPrice: discountedPrice && discountedPrice < price ? discountedPrice : void 0,
+        category: String(item["category"] || "Grocery").trim(),
+        subcategory: item["subcategory"] ? String(item["subcategory"]) : void 0,
+        shopId: targetShopId,
+        images: sanitizeImages(item["images"] || (item["imageUrl"] ? [item["imageUrl"]] : item["image"] ? [item["image"]] : [])),
+        stock: Math.max(0, Number(item["stock"] ?? 10) || 10),
+        sku: item["sku"] ? String(item["sku"]) : item["barcode"] ? String(item["barcode"]) : void 0,
+        unit: item["unit"] ? String(item["unit"]) : "1 unit",
+        status: "pending"
+      }).returning();
+      if (newProd) insertedProducts.push(mi(newProd));
+    }
+    void invalidateProductCaches();
+    res.status(201).json({
+      success: true,
+      count: insertedProducts.length,
+      products: insertedProducts,
+      message: `Successfully created ${insertedProducts.length} products.`
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message: "Failed to bulk create products", error: msg });
+  }
+});
+router8.post("/bulk-import-csv", authenticate, vendorWriteLimiter, async (req, res) => {
+  try {
+    const { rows, shopId: reqShopId } = req.body;
+    if (!Array.isArray(rows) || rows.length === 0) {
+      res.status(400).json({ success: false, message: "No rows provided for import" });
+      return;
+    }
+    if (rows.length > 500) {
+      res.status(400).json({ success: false, message: "Maximum 500 rows allowed per import batch" });
+      return;
+    }
+    const [shop] = await db.select({ id: shops.id }).from(shops).where(eq11(shops.ownerId, req.user.userId)).limit(1);
+    const targetShopId = shop?.id || reqShopId;
+    if (!targetShopId) {
+      res.status(400).json({ success: false, message: "Shop ID is required" });
+      return;
+    }
+    let matchedExisting = 0;
+    let newProductsCreated = 0;
+    const errors = [];
+    const seenBarcodes = /* @__PURE__ */ new Set();
+    let duplicateBarcodes = 0;
+    for (let i2 = 0; i2 < rows.length; i2++) {
+      const row = rows[i2];
+      const rawBarcode = ProductLookupService.normalizeBarcode(String(row["barcode"] || row["Barcode"] || row["sku"] || row["SKU"] || ""));
+      const rawName = String(row["name"] || row["productName"] || row["Product Name"] || "").trim();
+      const rawPrice = Math.max(0, Number(row["sellingPrice"] ?? row["Selling Price"] ?? row["price"] ?? row["Price"] ?? 0) || 0);
+      const rawMrp = Math.max(0, Number(row["mrp"] ?? row["MRP"] ?? rawPrice) || 0);
+      const rawStock = Math.max(0, Number(row["stock"] ?? row["Stock"] ?? 10) || 0);
+      const rawCategory = String(row["category"] || row["Category"] || "Grocery").trim();
+      const rawUnit = String(row["unit"] || row["Unit"] || row["size"] || row["Size"] || "1 unit").trim();
+      const brand = String(row["brand"] || row["Brand"] || "").trim() || void 0;
+      if (rawBarcode) {
+        if (seenBarcodes.has(rawBarcode)) {
+          duplicateBarcodes++;
+          continue;
+        }
+        seenBarcodes.add(rawBarcode);
+        const [master] = await db.select().from(masterProducts).where(eq11(masterProducts.barcode, rawBarcode)).limit(1);
+        if (master) {
+          await db.insert(products).values({
+            name: master.name,
+            description: master.description ?? void 0,
+            brand: master.brand ?? void 0,
+            barcode: master.barcode ?? void 0,
+            sku: master.barcode ?? void 0,
+            masterProductId: master.id,
+            price: master.mrp && master.mrp > 0 ? master.mrp : rawPrice,
+            discountedPrice: master.mrp && master.mrp > rawPrice ? rawPrice : void 0,
+            category: master.category,
+            subcategory: master.subcategory ?? void 0,
+            shopId: targetShopId,
+            images: Array.isArray(master.images) && master.images.length > 0 ? master.images : master.primaryImage ? [master.primaryImage] : [],
+            stock: rawStock,
+            unit: master.unit ?? rawUnit,
+            status: "active",
+            source: "SWIFTMART"
+          });
+          matchedExisting++;
+          continue;
+        }
+      }
+      if (!rawName || rawName.length < 2) {
+        errors.push({ row: i2 + 1, reason: "Product Name is required" });
+        continue;
+      }
+      let createdMasterId;
+      if (rawBarcode) {
+        const [newMaster] = await db.insert(masterProducts).values({
+          barcode: rawBarcode,
+          name: rawName,
+          brand,
+          category: rawCategory,
+          unit: rawUnit,
+          mrp: rawMrp > 0 ? rawMrp : rawPrice,
+          source: "MANUAL",
+          verificationStatus: "PENDING_REVIEW",
+          createdBy: req.user?.userId
+        }).onConflictDoNothing().returning();
+        if (newMaster) createdMasterId = newMaster.id;
+      }
+      await db.insert(products).values({
+        name: rawName,
+        brand,
+        barcode: rawBarcode || void 0,
+        sku: rawBarcode || void 0,
+        masterProductId: createdMasterId,
+        price: rawMrp > 0 ? rawMrp : rawPrice,
+        discountedPrice: rawPrice > 0 && rawPrice < rawMrp ? rawPrice : void 0,
+        category: rawCategory,
+        shopId: targetShopId,
+        stock: rawStock,
+        unit: rawUnit,
+        status: "active",
+        source: "MANUAL"
+      });
+      newProductsCreated++;
+    }
+    void invalidateProductCaches();
+    res.json({
+      success: true,
+      summary: {
+        totalRows: rows.length,
+        matchedExisting,
+        newProductsCreated,
+        duplicateBarcodes,
+        errorCount: errors.length,
+        errors: errors.slice(0, 20)
+      }
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message: "Failed to process bulk import", error: msg });
+  }
+});
 router8.patch("/:id/approval", authenticate, A7, async (req, res) => {
   const { action, rejectionReason } = req.body;
   if (action !== "approve" && action !== "reject") {
@@ -125648,14 +126266,14 @@ router8.patch("/:id/approval", authenticate, A7, async (req, res) => {
     return;
   }
   const updatePayload = action === "approve" ? { status: "active", rejectionReason: null } : { status: "rejected", rejectionReason: rejectionReason.trim() };
-  const [product] = await db.update(products).set(updatePayload).where(eq10(products.id, req.params["id"])).returning();
+  const [product] = await db.update(products).set(updatePayload).where(eq11(products.id, req.params["id"])).returning();
   if (!product) {
     res.status(404).json({ success: false, message: "Product not found" });
     return;
   }
   void invalidateProductCaches();
   try {
-    const [shop] = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq10(shops.id, product.shopId)).limit(1);
+    const [shop] = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq11(shops.id, product.shopId)).limit(1);
     if (shop?.ownerId) {
       if (action === "approve") {
         await createNotificationLimited(shop.ownerId, {
@@ -125683,13 +126301,13 @@ ${rejectionReason}`,
 router8.patch("/:id", authenticate, V, vendorWriteLimiter, async (req, res) => {
   const isAdmin = req.user.role === "admin" || req.user.role === "super_admin";
   const body = req.body;
-  const [existing] = await db.select({ shopId: products.shopId, images: products.images }).from(products).where(eq10(products.id, req.params["id"])).limit(1);
+  const [existing] = await db.select({ shopId: products.shopId, images: products.images }).from(products).where(eq11(products.id, req.params["id"])).limit(1);
   if (!existing) {
     res.status(404).json({ success: false, message: "Not found" });
     return;
   }
   if (!isAdmin) {
-    const [shop] = await db.select({ id: shops.id }).from(shops).where(eq10(shops.ownerId, req.user.userId)).limit(1);
+    const [shop] = await db.select({ id: shops.id }).from(shops).where(eq11(shops.ownerId, req.user.userId)).limit(1);
     if (!shop || shop.id !== existing.shopId) {
       res.status(403).json({ success: false, message: "Forbidden" });
       return;
@@ -125719,12 +126337,15 @@ router8.patch("/:id", authenticate, V, vendorWriteLimiter, async (req, res) => {
       updateData[key] = val;
     }
   }
-  if (!isAdmin) {
+  const isStockOnlyUpdate = Object.keys(body).every((k) => k === "stock" || k === "inStock" || k === "status");
+  if (!isAdmin && !isStockOnlyUpdate) {
     updateData["status"] = "pending";
     delete updateData["rejectionReason"];
+  } else if (body["status"]) {
+    updateData["status"] = body["status"];
   }
   if ("discountedPrice" in updateData && updateData["discountedPrice"] != null) {
-    const updatedMrp = "price" in updateData ? Number(updateData["price"]) : (await db.select({ price: products.price }).from(products).where(eq10(products.id, req.params["id"])).limit(1))[0]?.price ?? 0;
+    const updatedMrp = "price" in updateData ? Number(updateData["price"]) : (await db.select({ price: products.price }).from(products).where(eq11(products.id, req.params["id"])).limit(1))[0]?.price ?? 0;
     const updatedSale = Number(updateData["discountedPrice"]);
     if (updatedSale >= updatedMrp) {
       res.status(400).json({ success: false, message: "Sale price must be less than MRP" });
@@ -125737,7 +126358,7 @@ router8.patch("/:id", authenticate, V, vendorWriteLimiter, async (req, res) => {
   if ("variants" in updateData) {
     updateData["variants"] = sanitizeVariants(updateData["variants"]);
   }
-  const [product] = await db.update(products).set(updateData).where(eq10(products.id, req.params["id"])).returning();
+  const [product] = await db.update(products).set(updateData).where(eq11(products.id, req.params["id"])).returning();
   if (!product) {
     res.status(404).json({ success: false, message: "Not found" });
     return;
@@ -125753,14 +126374,26 @@ router8.patch("/:id", authenticate, V, vendorWriteLimiter, async (req, res) => {
   }
   res.json({ success: true, product: mi(product) });
 });
-router8.delete("/:id", authenticate, A7, async (req, res) => {
-  const [product] = await db.select({ images: products.images }).from(products).where(eq10(products.id, req.params["id"])).limit(1);
-  if (product?.images && product.images.length > 0) {
+router8.delete("/:id", authenticate, V, async (req, res) => {
+  const isAdmin = req.user.role === "admin" || req.user.role === "super_admin";
+  const [product] = await db.select({ id: products.id, shopId: products.shopId, images: products.images }).from(products).where(eq11(products.id, req.params["id"])).limit(1);
+  if (!product) {
+    res.status(404).json({ success: false, message: "Product not found" });
+    return;
+  }
+  if (!isAdmin) {
+    const [shop] = await db.select({ id: shops.id }).from(shops).where(eq11(shops.ownerId, req.user.userId)).limit(1);
+    if (!shop || shop.id !== product.shopId) {
+      res.status(403).json({ success: false, message: "Forbidden: You can only delete products from your own store" });
+      return;
+    }
+  }
+  if (product.images && product.images.length > 0) {
     await Promise.all(product.images.map((url) => deleteFromImageKit(url)));
   }
-  await db.delete(products).where(eq10(products.id, req.params["id"]));
+  await db.delete(products).where(eq11(products.id, req.params["id"]));
   void invalidateProductCaches();
-  res.json({ success: true, message: "Deleted" });
+  res.json({ success: true, message: "Product deleted successfully" });
 });
 var products_default = router8;
 
@@ -125768,12 +126401,12 @@ var products_default = router8;
 var import_express9 = __toESM(require_express2(), 1);
 var import_razorpay = __toESM(require_razorpay(), 1);
 init_zod();
-import { eq as eq12, and as and6, ilike as ilike4, or as or5, gte as gte3, ne, desc as desc5, count as count6, sql as sql3, inArray as inArray5 } from "drizzle-orm";
+import { eq as eq13, and as and6, ilike as ilike4, or as or6, gte as gte3, ne, desc as desc6, count as count6, sql as sql3, inArray as inArray5 } from "drizzle-orm";
 
 // src/utils/commission.ts
-import { eq as eq11 } from "drizzle-orm";
+import { eq as eq12 } from "drizzle-orm";
 async function resolveCommission(opts) {
-  const rules = await db.select().from(commissionRules).where(eq11(commissionRules.isActive, true));
+  const rules = await db.select().from(commissionRules).where(eq12(commissionRules.isActive, true));
   const find = (level, targetId) => rules.find((r2) => r2.level === level && (!targetId || r2.targetId === targetId));
   if (opts.productId) {
     const r2 = find("product", opts.productId);
@@ -125786,7 +126419,7 @@ async function resolveCommission(opts) {
   if (opts.categorySlug) {
     const r2 = find("category", opts.categorySlug);
     if (r2) return { rate: r2.rate, type: r2.type ?? "percentage", level: "category" };
-    const [cat] = await db.select({ commissionRate: categories.commissionRate }).from(categories).where(eq11(categories.slug, opts.categorySlug)).limit(1);
+    const [cat] = await db.select({ commissionRate: categories.commissionRate }).from(categories).where(eq12(categories.slug, opts.categorySlug)).limit(1);
     if (cat?.commissionRate != null) {
       return { rate: cat.commissionRate, type: "percentage", level: "category" };
     }
@@ -125794,7 +126427,7 @@ async function resolveCommission(opts) {
   if (opts.shopTypeSlug) {
     const r2 = find("shop_type", opts.shopTypeSlug);
     if (r2) return { rate: r2.rate, type: r2.type ?? "percentage", level: "shop_type" };
-    const [st] = await db.select({ commissionRate: shopTypes.commissionRate }).from(shopTypes).where(eq11(shopTypes.slug, opts.shopTypeSlug)).limit(1);
+    const [st] = await db.select({ commissionRate: shopTypes.commissionRate }).from(shopTypes).where(eq12(shopTypes.slug, opts.shopTypeSlug)).limit(1);
     if (st?.commissionRate != null) {
       return { rate: st.commissionRate, type: "percentage", level: "shop_type" };
     }
@@ -125900,9 +126533,9 @@ var VALID_STATUSES = /* @__PURE__ */ new Set([
 ]);
 async function restoreStock(items) {
   await Promise.all(items.map(async (item) => {
-    const [updated] = await db.update(products).set({ stock: sql3`${products.stock} + ${item.qty}` }).where(eq12(products.id, item.productId)).returning({ stock: products.stock, status: products.status });
+    const [updated] = await db.update(products).set({ stock: sql3`${products.stock} + ${item.qty}` }).where(eq13(products.id, item.productId)).returning({ stock: products.stock, status: products.status });
     if (updated && updated.stock > 0 && updated.status === "out_of_stock") {
-      await db.update(products).set({ status: "active" }).where(eq12(products.id, item.productId));
+      await db.update(products).set({ status: "active" }).where(eq13(products.id, item.productId));
     }
   })).catch((err) => {
     logger.error({ err }, "restoreStock: one or more product stock updates failed (non-fatal)");
@@ -125913,7 +126546,7 @@ async function reverseOrderFinancials(order) {
     logger.error({ err, orderId: order.id }, "reverseOrderFinancials: failed to cancel payout");
   });
   if (order.couponCode) {
-    await db.update(coupons).set({ usedCount: sql3`GREATEST(${coupons.usedCount} - 1, 0)` }).where(eq12(coupons.code, order.couponCode)).catch((err) => {
+    await db.update(coupons).set({ usedCount: sql3`GREATEST(${coupons.usedCount} - 1, 0)` }).where(eq13(coupons.code, order.couponCode)).catch((err) => {
       logger.error({ err, couponCode: order.couponCode, orderId: order.id }, "reverseOrderFinancials: failed to decrement coupon");
     });
   }
@@ -125924,9 +126557,9 @@ router9.get("/", authenticate, async (req, res) => {
   const conditions = [];
   const role = req.user.role;
   if (role === "customer") {
-    conditions.push(eq12(orders.customerId, req.user.userId));
+    conditions.push(eq13(orders.customerId, req.user.userId));
   } else if (role === "vendor") {
-    const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq12(shops.ownerId, req.user.userId));
+    const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq13(shops.ownerId, req.user.userId));
     const vendorShopIds = vendorShops.map((s2) => s2.id);
     if (vendorShopIds.length === 0) {
       res.json({ success: true, orders: [], total: 0, page: pg2, pages: 0 });
@@ -125937,16 +126570,16 @@ router9.get("/", authenticate, async (req, res) => {
         res.status(403).json({ success: false, message: "Forbidden: you do not own this shop" });
         return;
       }
-      conditions.push(eq12(orders.shopId, shopId));
+      conditions.push(eq13(orders.shopId, shopId));
     } else {
       conditions.push(inArray5(orders.shopId, vendorShopIds));
     }
   } else {
-    if (shopId) conditions.push(eq12(orders.shopId, shopId));
+    if (shopId) conditions.push(eq13(orders.shopId, shopId));
   }
-  if (status) conditions.push(eq12(orders.status, status));
+  if (status) conditions.push(eq13(orders.status, status));
   if (search) {
-    conditions.push(or5(
+    conditions.push(or6(
       ilike4(orders.customerName, `%${search}%`),
       ilike4(orders.shopName, `%${search}%`)
     ));
@@ -125954,7 +126587,7 @@ router9.get("/", authenticate, async (req, res) => {
   const where = conditions.length ? and6(...conditions) : void 0;
   const skip = (pg2 - 1) * lm;
   const [orderRows, [{ total }]] = await Promise.all([
-    db.select().from(orders).where(where).orderBy(desc5(orders.createdAt)).offset(skip).limit(lm),
+    db.select().from(orders).where(where).orderBy(desc6(orders.createdAt)).offset(skip).limit(lm),
     db.select({ total: count6() }).from(orders).where(where)
   ]);
   const partnerIds = Array.from(new Set(orderRows.map((o) => o.deliveryPartnerId).filter(Boolean)));
@@ -125983,7 +126616,7 @@ router9.get("/", authenticate, async (req, res) => {
   res.json({ success: true, orders: mappedOrders, total: Number(total), page: pg2, pages: Math.ceil(Number(total) / lm) });
 });
 router9.get("/:id", authenticate, validateUuidParams("id"), async (req, res) => {
-  const [order] = await db.select().from(orders).where(eq12(orders.id, req.params["id"])).limit(1);
+  const [order] = await db.select().from(orders).where(eq13(orders.id, req.params["id"])).limit(1);
   if (!order) {
     res.status(404).json({ success: false, message: "Not found" });
     return;
@@ -125997,7 +126630,7 @@ router9.get("/:id", authenticate, validateUuidParams("id"), async (req, res) => 
         return;
       }
     } else if (role === "vendor") {
-      const [shop] = await db.select({ id: shops.id }).from(shops).where(eq12(shops.ownerId, uid)).limit(1);
+      const [shop] = await db.select({ id: shops.id }).from(shops).where(eq13(shops.ownerId, uid)).limit(1);
       if (!shop || order.shopId !== shop.id) {
         res.status(403).json({ success: false, message: "Forbidden" });
         return;
@@ -126021,7 +126654,7 @@ router9.get("/:id", authenticate, validateUuidParams("id"), async (req, res) => 
       vehicle: deliveryPartners.vehicle,
       currentLat: deliveryPartners.currentLat,
       currentLon: deliveryPartners.currentLon
-    }).from(deliveryPartners).where(eq12(deliveryPartners.id, order.deliveryPartnerId)).limit(1);
+    }).from(deliveryPartners).where(eq13(deliveryPartners.id, order.deliveryPartnerId)).limit(1);
     if (dp) deliveryPartnerInfo = mi(dp);
   }
   res.json({
@@ -126034,7 +126667,7 @@ router9.get("/:id", authenticate, validateUuidParams("id"), async (req, res) => 
 });
 router9.get("/:id/delivery-pin", authenticate, validateUuidParams("id"), async (req, res) => {
   const orderId = req.params["id"];
-  const [order] = await db.select().from(orders).where(eq12(orders.id, orderId)).limit(1);
+  const [order] = await db.select().from(orders).where(eq13(orders.id, orderId)).limit(1);
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
@@ -126049,7 +126682,7 @@ router9.post("/:id/cancel", authenticate, validateUuidParams("id"), async (req, 
   const orderId = req.params["id"];
   const { reason } = req.body;
   const userId = req.user.userId;
-  const [order] = await db.select().from(orders).where(eq12(orders.id, orderId)).limit(1);
+  const [order] = await db.select().from(orders).where(eq13(orders.id, orderId)).limit(1);
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
@@ -126062,14 +126695,14 @@ router9.post("/:id/cancel", authenticate, validateUuidParams("id"), async (req, 
     res.status(400).json({ success: false, message: `Cannot cancel order in status '${order.status}'` });
     return;
   }
-  const [updatedOrder] = await db.update(orders).set({ status: "cancelled", cancelReason: reason ?? "Cancelled by customer", updatedAt: /* @__PURE__ */ new Date() }).where(eq12(orders.id, orderId)).returning();
+  const [updatedOrder] = await db.update(orders).set({ status: "cancelled", cancelReason: reason ?? "Cancelled by customer", updatedAt: /* @__PURE__ */ new Date() }).where(eq13(orders.id, orderId)).returning();
   if (Array.isArray(order.items) && order.items.length) {
     await restoreStock(order.items).catch(() => {
     });
   }
   if (order.deliveryPartnerId) {
     try {
-      const [partner] = await db.select().from(deliveryPartners).where(eq12(deliveryPartners.id, order.deliveryPartnerId)).limit(1);
+      const [partner] = await db.select().from(deliveryPartners).where(eq13(deliveryPartners.id, order.deliveryPartnerId)).limit(1);
       if (partner?.userId) {
         await createNotificationLimited(partner.userId, {
           type: "order_cancelled",
@@ -126085,7 +126718,7 @@ router9.post("/:id/cancel", authenticate, validateUuidParams("id"), async (req, 
 });
 router9.get("/:id/rider-location", authenticate, validateUuidParams("id"), async (req, res) => {
   const orderId = req.params["id"];
-  const [order] = await db.select().from(orders).where(eq12(orders.id, orderId)).limit(1);
+  const [order] = await db.select().from(orders).where(eq13(orders.id, orderId)).limit(1);
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
@@ -126105,7 +126738,7 @@ router9.get("/:id/rider-location", authenticate, validateUuidParams("id"), async
     currentLat: deliveryPartners.currentLat,
     currentLon: deliveryPartners.currentLon,
     locationUpdatedAt: deliveryPartners.locationUpdatedAt
-  }).from(deliveryPartners).where(eq12(deliveryPartners.id, order.deliveryPartnerId)).limit(1);
+  }).from(deliveryPartners).where(eq13(deliveryPartners.id, order.deliveryPartnerId)).limit(1);
   if (!partner) {
     res.json({ success: true, location: null });
     return;
@@ -126125,7 +126758,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
   const body = req.body;
   const items = parsed.data.items;
   const shopId = String(body["shopId"] ?? "");
-  const [shop] = await db.select({ id: shops.id, ownerId: shops.ownerId, shopType: shops.shopType, ownerName: shops.ownerName, shopName: shops.shopName, packagingCharge: shops.packagingCharge, gstEnabled: shops.gstEnabled, gstRate: shops.gstRate }).from(shops).where(eq12(shops.id, shopId)).limit(1);
+  const [shop] = await db.select({ id: shops.id, ownerId: shops.ownerId, shopType: shops.shopType, ownerName: shops.ownerName, shopName: shops.shopName, packagingCharge: shops.packagingCharge, gstEnabled: shops.gstEnabled, gstRate: shops.gstRate }).from(shops).where(eq13(shops.id, shopId)).limit(1);
   const vendorId = shop ? shop.ownerId : shopId;
   const isRestaurantType = RESTAURANT_SHOP_TYPES2.has(shop?.shopType ?? "");
   let packagingFee = 0;
@@ -126133,7 +126766,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
     if (isRestaurantType) {
       packagingFee = shop.packagingCharge ?? 2;
     } else {
-      const [cat] = await db.select({ packagingCharge: categories.packagingCharge }).from(categories).where(eq12(categories.slug, shop.shopType ?? "")).limit(1);
+      const [cat] = await db.select({ packagingCharge: categories.packagingCharge }).from(categories).where(eq13(categories.slug, shop.shopType ?? "")).limit(1);
       packagingFee = cat?.packagingCharge ?? 2;
     }
   }
@@ -126145,7 +126778,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
       for (const item of items) {
         productQtys[item.productId] = (productQtys[item.productId] || 0) + item.qty;
       }
-      const activeBuckets = await tx.select().from(buckets).where(eq12(buckets.isActive, true));
+      const activeBuckets = await tx.select().from(buckets).where(eq13(buckets.isActive, true));
       for (const item of items) {
         const totalQty = productQtys[item.productId] || item.qty;
         const matchingBuckets = activeBuckets.filter((b) => {
@@ -126165,7 +126798,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
       const reducedProducts = [];
       for (const item of items) {
         const [updated] = await tx.update(products).set({ stock: sql3`${products.stock} - ${item.qty}` }).where(and6(
-          eq12(products.id, item.productId),
+          eq13(products.id, item.productId),
           gte3(products.stock, item.qty),
           ne(products.status, "inactive")
         )).returning({ id: products.id, price: products.price, discountedPrice: products.discountedPrice, stock: products.stock, unit: products.unit });
@@ -126209,7 +126842,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
           ...item.selectedVariantId ? { selectedVariantId: item.selectedVariantId } : {}
         });
         if (updated.stock === 0) {
-          await tx.update(products).set({ status: "out_of_stock" }).where(eq12(products.id, item.productId));
+          await tx.update(products).set({ status: "out_of_stock" }).where(eq13(products.id, item.productId));
         }
       }
       const subtotal = +reducedProducts.reduce((sum5, r2) => sum5 + r2.dbPrice * r2.qty, 0).toFixed(2);
@@ -126221,8 +126854,8 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
       }
       let totalCommissionAmount = 0;
       const enrichedItems = [];
-      for (const [index14, item] of items.entries()) {
-        const resolvedLine = reducedProducts[index14];
+      for (const [index16, item] of items.entries()) {
+        const resolvedLine = reducedProducts[index16];
         const dbPrice = resolvedLine?.dbPrice ?? 0;
         const lineTotal = resolvedLine?.totalPrice ?? 0;
         const itemResolved = await resolveCommission({
@@ -126257,7 +126890,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
       const vendorPayable = +(netAmount - commissionAmount - packagingFee).toFixed(2);
       const avgRate = enrichedItems.length > 0 ? +(enrichedItems.reduce((s2, it) => s2 + it.commissionRate, 0) / enrichedItems.length).toFixed(2) : 0;
       if (couponCode) {
-        const [coupon] = await tx.select().from(coupons).where(eq12(coupons.code, couponCode)).limit(1);
+        const [coupon] = await tx.select().from(coupons).where(eq13(coupons.code, couponCode)).limit(1);
         if (!coupon || !coupon.isActive) {
           throw Object.assign(new Error("Coupon is no longer valid."), { statusCode: 400 });
         }
@@ -126269,8 +126902,8 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
         }
         if (coupon.perUserLimit > 0) {
           const [{ uses }] = await tx.select({ uses: count6() }).from(orders).where(and6(
-            eq12(orders.customerId, req.user.userId),
-            eq12(orders.couponCode, couponCode),
+            eq13(orders.customerId, req.user.userId),
+            eq13(orders.couponCode, couponCode),
             ne(orders.status, "cancelled"),
             ne(orders.status, "refunded")
           ));
@@ -126313,19 +126946,25 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
         swiftCoinsRedeemed: parsed.data.swiftCoinsRedeemed ?? 0
       }).returning();
       if (shopId && vendorPayable > 0 && shop) {
+        const scheduledDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1e3);
         await tx.insert(payouts).values({
           vendorId: shop.ownerId,
           vendorName: shop.ownerName ?? String(body["shopName"] ?? ""),
           shopId,
+          orderId: order.id,
+          orderNumber: order.id.slice(-6).toUpperCase(),
           amount: vendorPayable,
           orderTotal: netAmount,
           commissionAmount,
+          deductionAmount: 0,
           status: "pending",
-          ordersIncluded: [order.id]
+          ordersIncluded: [order.id],
+          scheduledDate,
+          earlyPayoutRequested: false
         });
       }
       if (couponCode) {
-        await tx.update(coupons).set({ usedCount: sql3`${coupons.usedCount} + 1` }).where(eq12(coupons.code, couponCode));
+        await tx.update(coupons).set({ usedCount: sql3`${coupons.usedCount} + 1` }).where(eq13(coupons.code, couponCode));
       }
       return order;
     });
@@ -126346,7 +126985,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
   });
   try {
     if (shop?.ownerId) {
-      const [vendor] = await db.select({ id: users.id }).from(users).where(eq12(users.id, shop.ownerId)).limit(1);
+      const [vendor] = await db.select({ id: users.id }).from(users).where(eq13(users.id, shop.ownerId)).limit(1);
       if (vendor) {
         await createNotificationLimited(vendor.id, {
           type: "order_update",
@@ -126359,7 +126998,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
   } catch {
   }
   try {
-    const adminUsers = await db.select({ id: users.id }).from(users).where(or5(eq12(users.role, "admin"), eq12(users.role, "super_admin")));
+    const adminUsers = await db.select({ id: users.id }).from(users).where(or6(eq13(users.role, "admin"), eq13(users.role, "super_admin")));
     const shortId = createdOrder.id.slice(-6).toUpperCase();
     const shopName = shop?.shopName ?? "a shop";
     await Promise.all(
@@ -126391,7 +127030,7 @@ router9.patch("/:id/status", authenticate, validateUuidParams("id"), async (req,
       res.status(403).json({ success: false, message: "Customers can only cancel orders" });
       return;
     }
-    const [customerOrder] = await db.select({ customerId: orders.customerId }).from(orders).where(eq12(orders.id, orderId)).limit(1);
+    const [customerOrder] = await db.select({ customerId: orders.customerId }).from(orders).where(eq13(orders.id, orderId)).limit(1);
     if (!customerOrder) {
       res.status(404).json({ success: false, message: "Not found" });
       return;
@@ -126405,9 +127044,9 @@ router9.patch("/:id/status", authenticate, validateUuidParams("id"), async (req,
       res.status(403).json({ success: false, message: "Only admins can issue refunds" });
       return;
     }
-    const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq12(shops.ownerId, userId));
+    const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq13(shops.ownerId, userId));
     const vendorShopIds = new Set(vendorShops.map((s2) => s2.id));
-    const [vendorOrder] = await db.select({ shopId: orders.shopId }).from(orders).where(eq12(orders.id, orderId)).limit(1);
+    const [vendorOrder] = await db.select({ shopId: orders.shopId }).from(orders).where(eq13(orders.id, orderId)).limit(1);
     if (!vendorOrder) {
       res.status(404).json({ success: false, message: "Not found" });
       return;
@@ -126417,14 +127056,14 @@ router9.patch("/:id/status", authenticate, validateUuidParams("id"), async (req,
       return;
     }
   }
-  const [current] = await db.select({ status: orders.status, couponCode: orders.couponCode }).from(orders).where(eq12(orders.id, orderId)).limit(1);
+  const [current] = await db.select({ status: orders.status, couponCode: orders.couponCode }).from(orders).where(eq13(orders.id, orderId)).limit(1);
   if (!current) {
     res.status(404).json({ success: false, message: "Not found" });
     return;
   }
   const update = { status };
   if (cancelReason) update["cancelReason"] = cancelReason;
-  const [order] = await db.update(orders).set(update).where(eq12(orders.id, orderId)).returning();
+  const [order] = await db.update(orders).set(update).where(eq13(orders.id, orderId)).returning();
   if (!order) {
     res.status(404).json({ success: false, message: "Not found" });
     return;
@@ -126452,7 +127091,7 @@ router9.patch("/:id/status", authenticate, validateUuidParams("id"), async (req,
 });
 router9.post("/:id/refund", authenticate, A8, validateUuidParams("id"), async (req, res) => {
   const orderId = req.params["id"];
-  const [current] = await db.select().from(orders).where(eq12(orders.id, orderId)).limit(1);
+  const [current] = await db.select().from(orders).where(eq13(orders.id, orderId)).limit(1);
   if (!current) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
@@ -126475,7 +127114,7 @@ router9.post("/:id/refund", authenticate, A8, validateUuidParams("id"), async (r
       razorpayWarning = "Razorpay credentials not configured \u2014 order marked refunded in DB but you must issue the payment refund manually.";
     }
   }
-  const [order] = await db.update(orders).set({ status: "refunded", paymentStatus: "refunded", refundedAt: /* @__PURE__ */ new Date() }).where(eq12(orders.id, orderId)).returning();
+  const [order] = await db.update(orders).set({ status: "refunded", paymentStatus: "refunded", refundedAt: /* @__PURE__ */ new Date() }).where(eq13(orders.id, orderId)).returning();
   if (!order) {
     res.status(404).json({ success: false, message: "Not found" });
     return;
@@ -126503,16 +127142,16 @@ router9.post("/:id/refund", authenticate, A8, validateUuidParams("id"), async (r
 router9.patch("/:id/assign-partner", authenticate, A8, validateUuidParams("id"), async (req, res) => {
   const orderId = req.params["id"];
   const { deliveryPartnerId } = req.body;
-  const [order] = await db.select().from(orders).where(eq12(orders.id, orderId)).limit(1);
+  const [order] = await db.select().from(orders).where(eq13(orders.id, orderId)).limit(1);
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
   }
   if (order.deliveryPartnerId && order.deliveryPartnerId !== deliveryPartnerId) {
-    await db.update(deliveryPartners).set({ currentOrderId: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq12(deliveryPartners.id, order.deliveryPartnerId));
+    await db.update(deliveryPartners).set({ currentOrderId: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq13(deliveryPartners.id, order.deliveryPartnerId));
   }
   if (deliveryPartnerId) {
-    const [partner] = await db.select().from(deliveryPartners).where(eq12(deliveryPartners.id, deliveryPartnerId)).limit(1);
+    const [partner] = await db.select().from(deliveryPartners).where(eq13(deliveryPartners.id, deliveryPartnerId)).limit(1);
     if (!partner) {
       res.status(404).json({ success: false, message: "Delivery partner not found" });
       return;
@@ -126521,12 +127160,12 @@ router9.patch("/:id/assign-partner", authenticate, A8, validateUuidParams("id"),
       res.status(400).json({ success: false, message: "Partner is not active" });
       return;
     }
-    await db.update(deliveryPartners).set({ currentOrderId: orderId, updatedAt: /* @__PURE__ */ new Date() }).where(eq12(deliveryPartners.id, deliveryPartnerId));
+    await db.update(deliveryPartners).set({ currentOrderId: orderId, updatedAt: /* @__PURE__ */ new Date() }).where(eq13(deliveryPartners.id, deliveryPartnerId));
   }
-  const [updated] = await db.update(orders).set({ deliveryPartnerId: deliveryPartnerId ?? null, updatedAt: /* @__PURE__ */ new Date() }).where(eq12(orders.id, orderId)).returning();
+  const [updated] = await db.update(orders).set({ deliveryPartnerId: deliveryPartnerId ?? null, updatedAt: /* @__PURE__ */ new Date() }).where(eq13(orders.id, orderId)).returning();
   if (deliveryPartnerId) {
     try {
-      const [partner] = await db.select({ userId: deliveryPartners.userId, name: deliveryPartners.name }).from(deliveryPartners).where(eq12(deliveryPartners.id, deliveryPartnerId)).limit(1);
+      const [partner] = await db.select({ userId: deliveryPartners.userId, name: deliveryPartners.name }).from(deliveryPartners).where(eq13(deliveryPartners.id, deliveryPartnerId)).limit(1);
       if (partner?.userId) {
         await createNotificationLimited(partner.userId, {
           type: "delivery_update",
@@ -126552,14 +127191,14 @@ router9.post("/admin", authenticate, requireRole("admin", "super_admin"), async 
     return;
   }
   try {
-    const [shop] = await db.select().from(shops).where(eq12(shops.id, shopId)).limit(1);
+    const [shop] = await db.select().from(shops).where(eq13(shops.id, shopId)).limit(1);
     if (!shop) {
       res.status(404).json({ success: false, message: "Shop not found" });
       return;
     }
     const newOrder = await db.transaction(async (tx) => {
       let customerId;
-      const [existingUser] = await tx.select().from(users).where(eq12(users.phone, customerPhone)).limit(1);
+      const [existingUser] = await tx.select().from(users).where(eq13(users.phone, customerPhone)).limit(1);
       if (existingUser) {
         customerId = existingUser.id;
       } else {
@@ -126635,16 +127274,16 @@ var orders_default = router9;
 
 // src/routes/v1/coupons.ts
 var import_express10 = __toESM(require_express2(), 1);
-import { eq as eq13, and as and7, desc as desc6, count as count7, ne as ne2 } from "drizzle-orm";
+import { eq as eq14, and as and7, desc as desc7, count as count7, ne as ne2 } from "drizzle-orm";
 var router10 = (0, import_express10.Router)();
 var A9 = requireRole("admin", "super_admin");
 router10.get("/", authenticate, A9, async (_req, res) => {
-  const rows = await db.select().from(coupons).orderBy(desc6(coupons.createdAt));
+  const rows = await db.select().from(coupons).orderBy(desc7(coupons.createdAt));
   res.json({ success: true, coupons: miArr(rows) });
 });
 router10.post("/validate", authenticate, couponValidateLimiter, async (req, res) => {
   const { code, orderTotal, shopId, categories: cartCategories } = req.body;
-  const [coupon] = await db.select().from(coupons).where(and7(eq13(coupons.code, code.toUpperCase()), eq13(coupons.isActive, true))).limit(1);
+  const [coupon] = await db.select().from(coupons).where(and7(eq14(coupons.code, code.toUpperCase()), eq14(coupons.isActive, true))).limit(1);
   if (!coupon) {
     res.status(404).json({ success: false, message: "Invalid coupon code" });
     return;
@@ -126677,8 +127316,8 @@ router10.post("/validate", authenticate, couponValidateLimiter, async (req, res)
   if (coupon.perUserLimit > 0) {
     const userId = req.user.userId;
     const [{ uses }] = await db.select({ uses: count7() }).from(orders).where(and7(
-      eq13(orders.customerId, userId),
-      eq13(orders.couponCode, coupon.code),
+      eq14(orders.customerId, userId),
+      eq14(orders.couponCode, coupon.code),
       ne2(orders.status, "cancelled"),
       ne2(orders.status, "refunded")
     ));
@@ -126735,7 +127374,7 @@ router10.post("/", authenticate, A9, async (req, res) => {
   res.status(201).json({ success: true, coupon: mi(coupon) });
 });
 router10.patch("/:id", authenticate, A9, async (req, res) => {
-  const [coupon] = await db.update(coupons).set(req.body).where(eq13(coupons.id, req.params["id"])).returning();
+  const [coupon] = await db.update(coupons).set(req.body).where(eq14(coupons.id, req.params["id"])).returning();
   if (!coupon) {
     res.status(404).json({ success: false, message: "Not found" });
     return;
@@ -126743,22 +127382,22 @@ router10.patch("/:id", authenticate, A9, async (req, res) => {
   res.json({ success: true, coupon: mi(coupon) });
 });
 router10.delete("/:id", authenticate, A9, async (req, res) => {
-  await db.delete(coupons).where(eq13(coupons.id, req.params["id"]));
+  await db.delete(coupons).where(eq14(coupons.id, req.params["id"]));
   res.json({ success: true, message: "Deleted" });
 });
 var coupons_default = router10;
 
 // src/routes/v1/commissions.ts
 var import_express11 = __toESM(require_express2(), 1);
-import { eq as eq14, and as and8, asc as asc4 } from "drizzle-orm";
+import { eq as eq15, and as and8, asc as asc4 } from "drizzle-orm";
 var router11 = (0, import_express11.Router)();
 var A10 = requireRole("admin", "super_admin");
 var VALID_LEVELS = /* @__PURE__ */ new Set(["product", "vendor", "category", "shopType", "global"]);
 var VALID_TYPES = /* @__PURE__ */ new Set(["percentage", "fixed"]);
 router11.get("/", authenticate, A10, async (req, res) => {
   const conditions = [];
-  if (req.query["level"]) conditions.push(eq14(commissionRules.level, String(req.query["level"])));
-  if (req.query["targetId"]) conditions.push(eq14(commissionRules.targetId, String(req.query["targetId"])));
+  if (req.query["level"]) conditions.push(eq15(commissionRules.level, String(req.query["level"])));
+  if (req.query["targetId"]) conditions.push(eq15(commissionRules.targetId, String(req.query["targetId"])));
   const where = conditions.length ? and8(...conditions) : void 0;
   const rules = await db.select().from(commissionRules).where(where).orderBy(asc4(commissionRules.level));
   res.json({ success: true, rules: miArr(rules) });
@@ -126813,7 +127452,7 @@ router11.patch("/:id", authenticate, A10, async (req, res) => {
   if (body["targetId"] !== void 0) update["targetId"] = body["targetId"] ? String(body["targetId"]) : null;
   if (body["targetName"] !== void 0) update["targetName"] = body["targetName"] ? String(body["targetName"]) : null;
   if (body["isActive"] !== void 0) update["isActive"] = Boolean(body["isActive"]);
-  const [rule] = await db.update(commissionRules).set(update).where(eq14(commissionRules.id, req.params["id"])).returning();
+  const [rule] = await db.update(commissionRules).set(update).where(eq15(commissionRules.id, req.params["id"])).returning();
   if (!rule) {
     res.status(404).json({ success: false, message: "Not found" });
     return;
@@ -126821,18 +127460,18 @@ router11.patch("/:id", authenticate, A10, async (req, res) => {
   res.json({ success: true, rule: mi(rule) });
 });
 router11.delete("/:id", authenticate, A10, async (req, res) => {
-  await db.delete(commissionRules).where(eq14(commissionRules.id, req.params["id"]));
+  await db.delete(commissionRules).where(eq15(commissionRules.id, req.params["id"]));
   res.json({ success: true, message: "Deleted" });
 });
 var commissions_default = router11;
 
 // src/routes/v1/delivery.ts
 var import_express12 = __toESM(require_express2(), 1);
-import { eq as eq15, desc as desc7, and as and9, or as or6, inArray as inArray6 } from "drizzle-orm";
+import { eq as eq16, desc as desc8, and as and9, or as or7, inArray as inArray6 } from "drizzle-orm";
 var router12 = (0, import_express12.Router)();
 var A11 = requireRole("admin", "super_admin");
 router12.get("/", authenticate, A11, async (_req, res) => {
-  const partners = await db.select().from(deliveryPartners).orderBy(desc7(deliveryPartners.createdAt));
+  const partners = await db.select().from(deliveryPartners).orderBy(desc8(deliveryPartners.createdAt));
   res.json({ success: true, partners: miArr(partners) });
 });
 router12.post("/", authenticate, A11, async (req, res) => {
@@ -126840,7 +127479,7 @@ router12.post("/", authenticate, A11, async (req, res) => {
   const phone = String(body["phone"] ?? "");
   let resolvedUserId = body["userId"] ? String(body["userId"]) : void 0;
   if (!resolvedUserId && phone) {
-    const [linked] = await db.select({ id: users.id }).from(users).where(eq15(users.phone, phone)).limit(1);
+    const [linked] = await db.select({ id: users.id }).from(users).where(eq16(users.phone, phone)).limit(1);
     if (linked) resolvedUserId = linked.id;
   }
   const [partner] = await db.insert(deliveryPartners).values({
@@ -126858,7 +127497,7 @@ router12.patch("/:id", authenticate, A11, async (req, res) => {
   if (!id.match(/^[0-9a-f-]{36}$/i)) {
     return;
   }
-  const [partner] = await db.update(deliveryPartners).set(req.body).where(eq15(deliveryPartners.id, id)).returning();
+  const [partner] = await db.update(deliveryPartners).set(req.body).where(eq16(deliveryPartners.id, id)).returning();
   if (!partner) {
     res.status(404).json({ success: false, message: "Not found" });
     return;
@@ -126870,28 +127509,28 @@ router12.delete("/:id", authenticate, A11, async (req, res) => {
   if (!id.match(/^[0-9a-f-]{36}$/i)) {
     return;
   }
-  await db.delete(deliveryPartners).where(eq15(deliveryPartners.id, id));
+  await db.delete(deliveryPartners).where(eq16(deliveryPartners.id, id));
   res.json({ success: true, message: "Deleted" });
 });
 router12.post("/:id/link-user", authenticate, A11, validateUuidParams("id"), async (req, res) => {
   const id = req.params["id"];
-  const [p] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.id, id)).limit(1);
+  const [p] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.id, id)).limit(1);
   if (!p) {
     res.status(404).json({ success: false, message: "Partner not found" });
     return;
   }
-  const [userRow] = await db.select({ id: users.id }).from(users).where(eq15(users.phone, p.phone)).limit(1);
+  const [userRow] = await db.select({ id: users.id }).from(users).where(eq16(users.phone, p.phone)).limit(1);
   if (!userRow) {
     res.status(404).json({ success: false, message: `No user account found with phone ${p.phone}. Ask the partner to sign up first.` });
     return;
   }
-  const [updated] = await db.update(deliveryPartners).set({ userId: userRow.id, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, id)).returning();
+  const [updated] = await db.update(deliveryPartners).set({ userId: userRow.id, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, id)).returning();
   res.json({ success: true, partner: mi(updated), message: "User account linked successfully" });
 });
 router12.get("/charges", async (_req, res) => {
   const [rules, settingRow] = await Promise.all([
-    db.select().from(deliveryChargeRules).orderBy(desc7(deliveryChargeRules.createdAt)),
-    db.select().from(deliverySettings).where(eq15(deliverySettings.key, "rain_mode_active"))
+    db.select().from(deliveryChargeRules).orderBy(desc8(deliveryChargeRules.createdAt)),
+    db.select().from(deliverySettings).where(eq16(deliverySettings.key, "rain_mode_active"))
   ]);
   const rainModeActive = settingRow[0]?.value === "true";
   res.json({ success: true, rules: miArr(rules), rainModeActive });
@@ -126906,11 +127545,11 @@ router12.get("/charges/calculate", async (req, res) => {
   const [ruleRows, settingRow] = await Promise.all([
     db.select().from(deliveryChargeRules).where(
       and9(
-        eq15(deliveryChargeRules.fromPincode, shopPincode),
-        eq15(deliveryChargeRules.toPincode, userPincode)
+        eq16(deliveryChargeRules.fromPincode, shopPincode),
+        eq16(deliveryChargeRules.toPincode, userPincode)
       )
     ).limit(1),
-    db.select().from(deliverySettings).where(eq15(deliverySettings.key, "rain_mode_active"))
+    db.select().from(deliverySettings).where(eq16(deliverySettings.key, "rain_mode_active"))
   ]);
   const rule = ruleRows[0];
   const rainModeActive = settingRow[0]?.value === "true";
@@ -126944,7 +127583,7 @@ router12.patch("/charges/:id", authenticate, A11, async (req, res) => {
     rainSurcharge: body["rainSurcharge"] != null ? Number(body["rainSurcharge"]) : void 0,
     label: body["label"] != null ? String(body["label"]) : void 0,
     updatedAt: /* @__PURE__ */ new Date()
-  }).where(eq15(deliveryChargeRules.id, req.params["id"])).returning();
+  }).where(eq16(deliveryChargeRules.id, req.params["id"])).returning();
   if (!rule) {
     res.status(404).json({ success: false, message: "Rule not found" });
     return;
@@ -126952,15 +127591,15 @@ router12.patch("/charges/:id", authenticate, A11, async (req, res) => {
   res.json({ success: true, rule: mi(rule) });
 });
 router12.delete("/charges/:id", authenticate, A11, async (req, res) => {
-  await db.delete(deliveryChargeRules).where(eq15(deliveryChargeRules.id, req.params["id"]));
+  await db.delete(deliveryChargeRules).where(eq16(deliveryChargeRules.id, req.params["id"]));
   res.json({ success: true, message: "Rule deleted" });
 });
 router12.post("/rain-mode", authenticate, A11, async (req, res) => {
   const body = req.body;
   const active = Boolean(body["active"]);
-  const existing = await db.select().from(deliverySettings).where(eq15(deliverySettings.key, "rain_mode_active"));
+  const existing = await db.select().from(deliverySettings).where(eq16(deliverySettings.key, "rain_mode_active"));
   if (existing.length > 0) {
-    await db.update(deliverySettings).set({ value: active ? "true" : "false", updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliverySettings.key, "rain_mode_active"));
+    await db.update(deliverySettings).set({ value: active ? "true" : "false", updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliverySettings.key, "rain_mode_active"));
   } else {
     await db.insert(deliverySettings).values({
       key: "rain_mode_active",
@@ -126980,14 +127619,14 @@ router12.get("/fleet", authenticate, A11, async (_req, res) => {
     currentLat: deliveryPartners.currentLat,
     currentLon: deliveryPartners.currentLon,
     locationUpdatedAt: deliveryPartners.locationUpdatedAt
-  }).from(deliveryPartners).orderBy(desc7(deliveryPartners.locationUpdatedAt));
+  }).from(deliveryPartners).orderBy(desc8(deliveryPartners.locationUpdatedAt));
   const activeOrders = await db.select({
     id: orders.id,
     deliveryPartnerId: orders.deliveryPartnerId,
     status: orders.status,
     netAmount: orders.netAmount,
     address: orders.address
-  }).from(orders).where(eq15(orders.status, "out_for_delivery"));
+  }).from(orders).where(eq16(orders.status, "out_for_delivery"));
   const orderByPartner = /* @__PURE__ */ new Map();
   for (const o of activeOrders) {
     if (o.deliveryPartnerId) orderByPartner.set(o.deliveryPartnerId, o);
@@ -127000,13 +127639,13 @@ router12.get("/fleet", authenticate, A11, async (_req, res) => {
 });
 router12.get("/me", authenticate, async (req, res) => {
   const userId = req.user.userId;
-  let [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  let [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!partner) {
-    const [userRow] = await db.select({ phone: users.phone }).from(users).where(eq15(users.id, userId)).limit(1);
+    const [userRow] = await db.select({ phone: users.phone }).from(users).where(eq16(users.id, userId)).limit(1);
     if (userRow?.phone) {
-      [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.phone, userRow.phone)).limit(1);
+      [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.phone, userRow.phone)).limit(1);
       if (partner && !partner.userId) {
-        await db.update(deliveryPartners).set({ userId, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, partner.id));
+        await db.update(deliveryPartners).set({ userId, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, partner.id));
         partner = { ...partner, userId };
       }
     }
@@ -127024,17 +127663,17 @@ router12.patch("/me/location", authenticate, async (req, res) => {
     res.status(400).json({ success: false, message: "lat and lon required" });
     return;
   }
-  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  const [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!partner) {
     res.status(404).json({ success: false, message: "Not a delivery partner" });
     return;
   }
-  await db.update(deliveryPartners).set({ currentLat: lat, currentLon: lon, locationUpdatedAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, partner.id));
+  await db.update(deliveryPartners).set({ currentLat: lat, currentLon: lon, locationUpdatedAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, partner.id));
   res.json({ success: true });
 });
 router12.patch("/me/availability", authenticate, async (req, res) => {
   const userId = req.user.userId;
-  const [existing] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  const [existing] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!existing) {
     res.status(404).json({ success: false, message: "Not a delivery partner" });
     return;
@@ -127043,28 +127682,35 @@ router12.patch("/me/availability", authenticate, async (req, res) => {
     res.status(403).json({ success: false, message: "Account is not active" });
     return;
   }
-  const [partner] = await db.update(deliveryPartners).set({ isAvailable: !existing.isAvailable, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.userId, userId)).returning();
+  const [partner] = await db.update(deliveryPartners).set({ isAvailable: !existing.isAvailable, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.userId, userId)).returning();
   res.json({ success: true, partner: mi(partner) });
 });
 router12.get("/me/orders", authenticate, async (req, res) => {
   const userId = req.user.userId;
-  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  const [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!partner) {
     res.status(404).json({ success: false, message: "Not a delivery partner" });
     return;
   }
-  const rows = await db.select({ order: orders, shopAddress: shops.address }).from(orders).leftJoin(shops, eq15(orders.shopId, shops.id)).where(eq15(orders.deliveryPartnerId, partner.id)).orderBy(desc7(orders.createdAt));
-  const result = rows.map(({ order, shopAddress }) => ({
-    ...mi(order),
-    shopAddress: shopAddress ?? {}
-  }));
+  const rows = await db.select({ order: orders, shopAddress: shops.address }).from(orders).leftJoin(shops, eq16(orders.shopId, shops.id)).where(eq16(orders.deliveryPartnerId, partner.id)).orderBy(desc8(orders.createdAt));
+  const result = rows.map(({ order, shopAddress }) => {
+    const sAddr = shopAddress ?? {};
+    const sLat = typeof sAddr.lat === "number" ? sAddr.lat : typeof sAddr.latitude === "number" ? sAddr.latitude : void 0;
+    const sLon = typeof sAddr.lng === "number" ? sAddr.lng : typeof sAddr.longitude === "number" ? sAddr.longitude : typeof sAddr.lon === "number" ? sAddr.lon : void 0;
+    return {
+      ...mi(order),
+      shopAddress: sAddr,
+      shopLat: sLat,
+      shopLon: sLon
+    };
+  });
   res.json({ success: true, orders: result, partner: mi(partner) });
 });
 router12.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("orderId"), async (req, res) => {
   const userId = req.user.userId;
   const orderId = req.params["orderId"];
   const { status, confirmCash } = req.body;
-  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  const [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!partner) {
     res.status(403).json({ success: false, message: "Not a delivery partner" });
     return;
@@ -127078,7 +127724,7 @@ router12.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("o
     });
     return;
   }
-  const [order] = await db.select().from(orders).where(eq15(orders.id, orderId)).limit(1);
+  const [order] = await db.select().from(orders).where(eq16(orders.id, orderId)).limit(1);
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
@@ -127094,15 +127740,15 @@ router12.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("o
       totalEarnings: partner.totalEarnings + (order.deliveryCharge ?? 0),
       currentOrderId: null,
       updatedAt: /* @__PURE__ */ new Date()
-    }).where(eq15(deliveryPartners.id, partner.id));
+    }).where(eq16(deliveryPartners.id, partner.id));
   } else if (targetStatus === "out_for_delivery") {
     await db.update(deliveryPartners).set({
       currentOrderId: order.id,
       updatedAt: /* @__PURE__ */ new Date()
-    }).where(eq15(deliveryPartners.id, partner.id));
+    }).where(eq16(deliveryPartners.id, partner.id));
   }
   const paymentStatusUpdate = targetStatus === "delivered" && isCod && confirmCash ? { paymentStatus: "paid" } : {};
-  const [updated] = await db.update(orders).set({ status: targetStatus, ...paymentStatusUpdate, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(orders.id, orderId)).returning();
+  const [updated] = await db.update(orders).set({ status: targetStatus, ...paymentStatusUpdate, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(orders.id, orderId)).returning();
   const STATUS_MESSAGES2 = {
     out_for_delivery: { title: "Your order is on the way! \u{1F69A}", body: `Order #${orderId.slice(-6).toUpperCase()} has been picked up and is out for delivery.` },
     delivered: { title: "Order Delivered! \u2705", body: `Order #${orderId.slice(-6).toUpperCase()} has been delivered. Enjoy!` }
@@ -127125,12 +127771,12 @@ router12.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams
   const userId = req.user.userId;
   const orderId = req.params["orderId"];
   const { otp, confirmCash } = req.body;
-  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  const [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!partner) {
     res.status(403).json({ success: false, message: "Not a delivery partner" });
     return;
   }
-  const [order] = await db.select().from(orders).where(eq15(orders.id, orderId)).limit(1);
+  const [order] = await db.select().from(orders).where(eq16(orders.id, orderId)).limit(1);
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
@@ -127154,8 +127800,8 @@ router12.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams
     totalEarnings: partner.totalEarnings + (order.deliveryCharge ?? 0),
     currentOrderId: null,
     updatedAt: /* @__PURE__ */ new Date()
-  }).where(eq15(deliveryPartners.id, partner.id));
-  const [updated] = await db.update(orders).set({ status: "delivered", ...paymentStatusUpdate, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(orders.id, orderId)).returning();
+  }).where(eq16(deliveryPartners.id, partner.id));
+  const [updated] = await db.update(orders).set({ status: "delivered", ...paymentStatusUpdate, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(orders.id, orderId)).returning();
   try {
     await createNotificationLimited(order.customerId, {
       type: "order_update",
@@ -127170,12 +127816,12 @@ router12.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams
 router12.patch("/me/orders/:orderId/confirm-payment", authenticate, validateUuidParams("orderId"), async (req, res) => {
   const userId = req.user.userId;
   const orderId = req.params["orderId"];
-  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  const [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!partner) {
     res.status(403).json({ success: false, message: "Not a delivery partner" });
     return;
   }
-  const [order] = await db.select().from(orders).where(eq15(orders.id, orderId)).limit(1);
+  const [order] = await db.select().from(orders).where(eq16(orders.id, orderId)).limit(1);
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
@@ -127192,23 +127838,23 @@ router12.patch("/me/orders/:orderId/confirm-payment", authenticate, validateUuid
     res.json({ success: true, order: mi(order), message: "Payment already confirmed" });
     return;
   }
-  const [updated] = await db.update(orders).set({ paymentStatus: "paid", updatedAt: /* @__PURE__ */ new Date() }).where(eq15(orders.id, orderId)).returning();
+  const [updated] = await db.update(orders).set({ paymentStatus: "paid", updatedAt: /* @__PURE__ */ new Date() }).where(eq16(orders.id, orderId)).returning();
   res.json({ success: true, order: mi(updated) });
 });
 router12.get("/available-orders", authenticate, async (req, res) => {
   const userId = req.user.userId;
-  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  const [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!partner || !partner.isAvailable || partner.status !== "active") {
     res.json({ success: true, orders: [] });
     return;
   }
   const cityId = partner.cityId;
-  const unassignedOrders = await db.select({ order: orders, shopName: shops.shopName, shopAddress: shops.address }).from(orders).leftJoin(shops, eq15(orders.shopId, shops.id)).where(
+  const unassignedOrders = await db.select({ order: orders, shopName: shops.shopName, shopAddress: shops.address }).from(orders).leftJoin(shops, eq16(orders.shopId, shops.id)).where(
     and9(
-      eq15(orders.deliveryPartnerId, null),
-      or6(eq15(orders.status, "placed"), eq15(orders.status, "packed"), eq15(orders.status, "accepted"))
+      eq16(orders.deliveryPartnerId, null),
+      or7(eq16(orders.status, "placed"), eq16(orders.status, "packed"), eq16(orders.status, "accepted"))
     )
-  ).orderBy(desc7(orders.createdAt)).limit(20);
+  ).orderBy(desc8(orders.createdAt)).limit(20);
   const filtered = unassignedOrders.filter(({ order, shopAddress }) => {
     if (!cityId) return true;
     const orderCity = order.cityId || shopAddress?.cityId;
@@ -127216,17 +127862,24 @@ router12.get("/available-orders", authenticate, async (req, res) => {
   });
   res.json({
     success: true,
-    orders: filtered.map(({ order, shopName, shopAddress }) => ({
-      ...mi(order),
-      shopName: shopName ?? "Shop",
-      shopAddress: shopAddress ?? {}
-    }))
+    orders: filtered.map(({ order, shopName, shopAddress }) => {
+      const sAddr = shopAddress ?? {};
+      const sLat = typeof sAddr.lat === "number" ? sAddr.lat : typeof sAddr.latitude === "number" ? sAddr.latitude : void 0;
+      const sLon = typeof sAddr.lng === "number" ? sAddr.lng : typeof sAddr.longitude === "number" ? sAddr.longitude : typeof sAddr.lon === "number" ? sAddr.lon : void 0;
+      return {
+        ...mi(order),
+        shopName: shopName ?? "Shop",
+        shopAddress: sAddr,
+        shopLat: sLat,
+        shopLon: sLon
+      };
+    })
   });
 });
 router12.post("/orders/:id/accept", authenticate, validateUuidParams("id"), async (req, res) => {
   const userId = req.user.userId;
   const orderId = req.params["id"];
-  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  const [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!partner || partner.status !== "active") {
     res.status(403).json({ success: false, message: "Not an active delivery partner" });
     return;
@@ -127234,13 +127887,13 @@ router12.post("/orders/:id/accept", authenticate, validateUuidParams("id"), asyn
   const updatedRows = await db.update(orders).set({
     deliveryPartnerId: partner.id,
     updatedAt: /* @__PURE__ */ new Date()
-  }).where(and9(eq15(orders.id, orderId), eq15(orders.deliveryPartnerId, null))).returning();
+  }).where(and9(eq16(orders.id, orderId), eq16(orders.deliveryPartnerId, null))).returning();
   if (updatedRows.length === 0) {
     res.status(409).json({ success: false, message: "Order already accepted by another rider!" });
     return;
   }
   const [updatedOrder] = updatedRows;
-  await db.update(deliveryPartners).set({ currentOrderId: orderId, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, partner.id));
+  await db.update(deliveryPartners).set({ currentOrderId: orderId, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, partner.id));
   if (updatedOrder.customerId) {
     try {
       await createNotificationLimited(updatedOrder.customerId, {
@@ -127260,12 +127913,12 @@ router12.post("/orders/:id/reject", authenticate, validateUuidParams("id"), asyn
 router12.post("/orders/:id/transfer", authenticate, validateUuidParams("id"), async (req, res) => {
   const userId = req.user.userId;
   const orderId = req.params["id"];
-  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  const [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!partner) {
     res.status(403).json({ success: false, message: "Not a delivery partner" });
     return;
   }
-  const [order] = await db.select().from(orders).where(eq15(orders.id, orderId)).limit(1);
+  const [order] = await db.select().from(orders).where(eq16(orders.id, orderId)).limit(1);
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
@@ -127274,13 +127927,13 @@ router12.post("/orders/:id/transfer", authenticate, validateUuidParams("id"), as
     res.status(403).json({ success: false, message: "This order is not assigned to you" });
     return;
   }
-  const [updatedOrder] = await db.update(orders).set({ deliveryPartnerId: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(orders.id, orderId)).returning();
-  await db.update(deliveryPartners).set({ currentOrderId: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, partner.id));
+  const [updatedOrder] = await db.update(orders).set({ deliveryPartnerId: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(orders.id, orderId)).returning();
+  await db.update(deliveryPartners).set({ currentOrderId: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, partner.id));
   res.json({ success: true, message: "Order transferred and re-broadcasted", order: mi(updatedOrder) });
 });
 router12.post("/orders/:id/re-broadcast", authenticate, A11, validateUuidParams("id"), async (req, res) => {
   const orderId = req.params["id"];
-  const [order] = await db.select().from(orders).where(eq15(orders.id, orderId)).limit(1);
+  const [order] = await db.select().from(orders).where(eq16(orders.id, orderId)).limit(1);
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
@@ -127290,22 +127943,22 @@ router12.post("/orders/:id/re-broadcast", authenticate, A11, validateUuidParams(
 router12.post("/me/fcm-token", authenticate, async (req, res) => {
   const userId = req.user.userId;
   const { fcmToken } = req.body;
-  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  const [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!partner) {
     res.status(404).json({ success: false, message: "Not a delivery partner" });
     return;
   }
-  await db.update(deliveryPartners).set({ fcmToken, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, partner.id));
+  await db.update(deliveryPartners).set({ fcmToken, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, partner.id));
   res.json({ success: true, message: "FCM token registered successfully" });
 });
 router12.delete("/me/fcm-token", authenticate, async (req, res) => {
   const userId = req.user.userId;
-  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  const [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!partner) {
     res.status(404).json({ success: false, message: "Not a delivery partner" });
     return;
   }
-  await db.update(deliveryPartners).set({ fcmToken: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, partner.id));
+  await db.update(deliveryPartners).set({ fcmToken: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, partner.id));
   res.json({ success: true, message: "FCM token cleared successfully" });
 });
 router12.post("/apply", optionalAuth, async (req, res) => {
@@ -127314,11 +127967,11 @@ router12.post("/apply", optionalAuth, async (req, res) => {
   let userId = req.user?.userId || null;
   let user = null;
   if (userId) {
-    const [u] = await db.select().from(users).where(eq15(users.id, userId)).limit(1);
+    const [u] = await db.select().from(users).where(eq16(users.id, userId)).limit(1);
     user = u ?? null;
   }
   if (!user && applicantPhone) {
-    const [u] = await db.select().from(users).where(eq15(users.phone, applicantPhone)).limit(1);
+    const [u] = await db.select().from(users).where(eq16(users.phone, applicantPhone)).limit(1);
     user = u ?? null;
     if (user) {
       userId = user.id;
@@ -127337,11 +127990,11 @@ router12.post("/apply", optionalAuth, async (req, res) => {
   }
   let existing = null;
   if (userId) {
-    const [byUser] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+    const [byUser] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
     existing = byUser;
   }
   if (!existing && applicantPhone) {
-    const [byPhone] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.phone, applicantPhone)).limit(1);
+    const [byPhone] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.phone, applicantPhone)).limit(1);
     existing = byPhone;
   }
   if (existing) {
@@ -127356,7 +128009,7 @@ router12.post("/apply", optionalAuth, async (req, res) => {
       documents: body["documents"] ?? existing.documents,
       applicationStatus: "pending",
       updatedAt: /* @__PURE__ */ new Date()
-    }).where(eq15(deliveryPartners.id, existing.id)).returning();
+    }).where(eq16(deliveryPartners.id, existing.id)).returning();
     res.json({ success: true, partner: mi(updated), applicationStatus: "pending" });
     return;
   }
@@ -127378,7 +128031,7 @@ router12.post("/apply", optionalAuth, async (req, res) => {
 });
 router12.post("/me/orders/:orderId/generate-upi-qr", authenticate, validateUuidParams("orderId"), async (req, res) => {
   const orderId = req.params["orderId"];
-  const [order] = await db.select().from(orders).where(eq15(orders.id, orderId)).limit(1);
+  const [order] = await db.select().from(orders).where(eq16(orders.id, orderId)).limit(1);
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
@@ -127397,7 +128050,7 @@ router12.post("/me/orders/:orderId/generate-upi-qr", authenticate, validateUuidP
 });
 router12.get("/me/orders/:orderId/payment-status", authenticate, validateUuidParams("orderId"), async (req, res) => {
   const orderId = req.params["orderId"];
-  const [order] = await db.select().from(orders).where(eq15(orders.id, orderId)).limit(1);
+  const [order] = await db.select().from(orders).where(eq16(orders.id, orderId)).limit(1);
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
@@ -127405,12 +128058,12 @@ router12.get("/me/orders/:orderId/payment-status", authenticate, validateUuidPar
   res.json({ success: true, status: order.paymentStatus === "paid" ? "received" : "pending" });
 });
 router12.get("/admin/applications", authenticate, A11, async (_req, res) => {
-  const pending = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.applicationStatus, "pending")).orderBy(desc7(deliveryPartners.createdAt));
+  const pending = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.applicationStatus, "pending")).orderBy(desc8(deliveryPartners.createdAt));
   res.json({ success: true, applications: miArr(pending) });
 });
 router12.post("/admin/:id/approve", authenticate, A11, validateUuidParams("id"), async (req, res) => {
   const id = req.params["id"];
-  const [updated] = await db.update(deliveryPartners).set({ applicationStatus: "approved", status: "active", updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, id)).returning();
+  const [updated] = await db.update(deliveryPartners).set({ applicationStatus: "approved", status: "active", updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, id)).returning();
   if (!updated) {
     res.status(404).json({ success: false, message: "Partner not found" });
     return;
@@ -127420,7 +128073,7 @@ router12.post("/admin/:id/approve", authenticate, A11, validateUuidParams("id"),
 router12.post("/admin/:id/reject", authenticate, A11, validateUuidParams("id"), async (req, res) => {
   const id = req.params["id"];
   const { reason } = req.body;
-  const [updated] = await db.update(deliveryPartners).set({ applicationStatus: "rejected", status: "inactive", rejectionReason: reason ?? "Application rejected by admin", updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, id)).returning();
+  const [updated] = await db.update(deliveryPartners).set({ applicationStatus: "rejected", status: "inactive", rejectionReason: reason ?? "Application rejected by admin", updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, id)).returning();
   if (!updated) {
     res.status(404).json({ success: false, message: "Partner not found" });
     return;
@@ -127453,7 +128106,7 @@ router12.post("/pickup/verify-store", authenticate, async (req, res) => {
   const { qrToken, qrPayload, scannedToken, lat, lon, orderId } = req.body;
   const rawToken = qrToken || qrPayload || scannedToken || "";
   const token = parsePickupQrToken(rawToken);
-  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  const [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!partner) {
     res.status(403).json({ success: false, storeVerified: false, message: "Not an authorized delivery partner" });
     return;
@@ -127462,7 +128115,7 @@ router12.post("/pickup/verify-store", authenticate, async (req, res) => {
     res.status(400).json({ success: false, storeVerified: false, reason: "INVALID_QR", message: "QR token missing in request" });
     return;
   }
-  const [store2] = await db.select().from(shops).where(eq15(shops.pickupQrToken, token)).limit(1);
+  const [store2] = await db.select().from(shops).where(eq16(shops.pickupQrToken, token)).limit(1);
   if (!store2) {
     await db.insert(pickupScanLogs).values({
       riderId: partner.id,
@@ -127537,27 +128190,27 @@ router12.post("/pickup/verify-store", authenticate, async (req, res) => {
   }
   const storeOrders = await db.select().from(orders).where(
     and9(
-      eq15(orders.deliveryPartnerId, partner.id),
-      eq15(orders.shopId, store2.id),
-      or6(
-        eq15(orders.status, "accepted"),
-        eq15(orders.status, "preparing"),
-        eq15(orders.status, "packed"),
-        eq15(orders.status, "ready"),
-        eq15(orders.status, "placed")
+      eq16(orders.deliveryPartnerId, partner.id),
+      eq16(orders.shopId, store2.id),
+      or7(
+        eq16(orders.status, "accepted"),
+        eq16(orders.status, "preparing"),
+        eq16(orders.status, "packed"),
+        eq16(orders.status, "ready"),
+        eq16(orders.status, "placed")
       )
     )
-  ).orderBy(desc7(orders.createdAt));
+  ).orderBy(desc8(orders.createdAt));
   if (storeOrders.length === 0) {
     const [otherOrder] = await db.select({ id: orders.id, shopName: orders.shopName, shopId: orders.shopId }).from(orders).where(
       and9(
-        eq15(orders.deliveryPartnerId, partner.id),
-        or6(
-          eq15(orders.status, "accepted"),
-          eq15(orders.status, "preparing"),
-          eq15(orders.status, "packed"),
-          eq15(orders.status, "ready"),
-          eq15(orders.status, "placed")
+        eq16(orders.deliveryPartnerId, partner.id),
+        or7(
+          eq16(orders.status, "accepted"),
+          eq16(orders.status, "preparing"),
+          eq16(orders.status, "packed"),
+          eq16(orders.status, "ready"),
+          eq16(orders.status, "placed")
         )
       )
     ).limit(1);
@@ -127622,7 +128275,7 @@ router12.post("/pickup/verify-store", authenticate, async (req, res) => {
     riderLon: typeof lon === "number" ? lon : null,
     status: "active"
   }).returning();
-  await db.update(shops).set({ lastQrScanAt: /* @__PURE__ */ new Date() }).where(eq15(shops.id, store2.id));
+  await db.update(shops).set({ lastQrScanAt: /* @__PURE__ */ new Date() }).where(eq16(shops.id, store2.id));
   await db.insert(pickupScanLogs).values({
     riderId: partner.id,
     riderName: partner.name,
@@ -127655,7 +128308,7 @@ router12.post("/pickup/verify-store", authenticate, async (req, res) => {
 router12.post("/pickup/confirm", authenticate, async (req, res) => {
   const userId = req.user.userId;
   const { verificationId, orderId, orderIds } = req.body;
-  const [partner] = await db.select().from(deliveryPartners).where(eq15(deliveryPartners.userId, userId)).limit(1);
+  const [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!partner) {
     res.status(403).json({ success: false, message: "Not an authorized delivery partner" });
     return;
@@ -127664,7 +128317,7 @@ router12.post("/pickup/confirm", authenticate, async (req, res) => {
     res.status(400).json({ success: false, message: "Verification session ID required. Please scan the store QR code." });
     return;
   }
-  const [session] = await db.select().from(pickupVerificationSessions).where(and9(eq15(pickupVerificationSessions.id, verificationId), eq15(pickupVerificationSessions.riderId, partner.id))).limit(1);
+  const [session] = await db.select().from(pickupVerificationSessions).where(and9(eq16(pickupVerificationSessions.id, verificationId), eq16(pickupVerificationSessions.riderId, partner.id))).limit(1);
   if (!session) {
     res.status(404).json({ success: false, message: "Invalid verification session. Please scan the store QR code again." });
     return;
@@ -127683,7 +128336,7 @@ router12.post("/pickup/confirm", authenticate, async (req, res) => {
     targetIds.push(String(orderId));
   }
   if (targetIds.length === 0) {
-    const allStoreOrders = await db.select({ id: orders.id }).from(orders).where(and9(eq15(orders.deliveryPartnerId, partner.id), eq15(orders.shopId, session.storeId)));
+    const allStoreOrders = await db.select({ id: orders.id }).from(orders).where(and9(eq16(orders.deliveryPartnerId, partner.id), eq16(orders.shopId, session.storeId)));
     targetIds.push(...allStoreOrders.map((o) => o.id));
   }
   if (targetIds.length === 0) {
@@ -127696,12 +128349,12 @@ router12.post("/pickup/confirm", authenticate, async (req, res) => {
   }).where(
     and9(
       inArray6(orders.id, targetIds),
-      eq15(orders.deliveryPartnerId, partner.id),
-      eq15(orders.shopId, session.storeId)
+      eq16(orders.deliveryPartnerId, partner.id),
+      eq16(orders.shopId, session.storeId)
     )
   ).returning();
-  await db.update(pickupVerificationSessions).set({ status: "completed", updatedAt: /* @__PURE__ */ new Date() }).where(eq15(pickupVerificationSessions.id, session.id));
-  await db.update(deliveryPartners).set({ currentOrderId: targetIds[0], updatedAt: /* @__PURE__ */ new Date() }).where(eq15(deliveryPartners.id, partner.id));
+  await db.update(pickupVerificationSessions).set({ status: "completed", updatedAt: /* @__PURE__ */ new Date() }).where(eq16(pickupVerificationSessions.id, session.id));
+  await db.update(deliveryPartners).set({ currentOrderId: targetIds[0], updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, partner.id));
   for (const o of updatedOrders) {
     if (o.customerId) {
       try {
@@ -127723,7 +128376,7 @@ router12.post("/pickup/confirm", authenticate, async (req, res) => {
 });
 router12.get("/store/:id/qr", optionalAuth, async (req, res) => {
   const shopId = req.params["id"];
-  const [shop] = await db.select().from(shops).where(eq15(shops.id, shopId)).limit(1);
+  const [shop] = await db.select().from(shops).where(eq16(shops.id, shopId)).limit(1);
   if (!shop) {
     res.status(404).json({ success: false, message: "Shop not found" });
     return;
@@ -127733,7 +128386,7 @@ router12.get("/store/:id/qr", optionalAuth, async (req, res) => {
   if (!storeCode || !pickupQrToken) {
     storeCode = storeCode || `SW-BLG-${shop.id.slice(0, 4).toUpperCase()}`;
     pickupQrToken = pickupQrToken || crypto.randomUUID();
-    await db.update(shops).set({ storeCode, pickupQrToken }).where(eq15(shops.id, shop.id));
+    await db.update(shops).set({ storeCode, pickupQrToken }).where(eq16(shops.id, shop.id));
   }
   const qrPayload = `SWIFTMART_PICKUP:${pickupQrToken}`;
   const pickupUrl = `https://swiftmart.space/pickup/store/${pickupQrToken}`;
@@ -127758,7 +128411,7 @@ router12.get("/store/:id/qr", optionalAuth, async (req, res) => {
 });
 router12.post("/store/:id/qr/regenerate", authenticate, async (req, res) => {
   const shopId = req.params["id"];
-  const [shop] = await db.select().from(shops).where(eq15(shops.id, shopId)).limit(1);
+  const [shop] = await db.select().from(shops).where(eq16(shops.id, shopId)).limit(1);
   if (!shop) {
     res.status(404).json({ success: false, message: "Shop not found" });
     return;
@@ -127769,8 +128422,8 @@ router12.post("/store/:id/qr/regenerate", authenticate, async (req, res) => {
     qrStatus: "active",
     qrRegeneratedAt: /* @__PURE__ */ new Date(),
     updatedAt: /* @__PURE__ */ new Date()
-  }).where(eq15(shops.id, shopId)).returning();
-  await db.update(pickupVerificationSessions).set({ status: "expired", updatedAt: /* @__PURE__ */ new Date() }).where(and9(eq15(pickupVerificationSessions.storeId, shopId), eq15(pickupVerificationSessions.status, "active")));
+  }).where(eq16(shops.id, shopId)).returning();
+  await db.update(pickupVerificationSessions).set({ status: "expired", updatedAt: /* @__PURE__ */ new Date() }).where(and9(eq16(pickupVerificationSessions.storeId, shopId), eq16(pickupVerificationSessions.status, "active")));
   res.json({
     success: true,
     message: "Store Pickup QR regenerated successfully! Old QR code is now invalid.",
@@ -127792,7 +128445,7 @@ router12.patch("/store/:id/qr/status", authenticate, async (req, res) => {
   if (typeof pickupGpsEnforced === "boolean") {
     updateData["pickupGpsEnforced"] = pickupGpsEnforced;
   }
-  const [updated] = await db.update(shops).set(updateData).where(eq15(shops.id, shopId)).returning();
+  const [updated] = await db.update(shops).set(updateData).where(eq16(shops.id, shopId)).returning();
   if (!updated) {
     res.status(404).json({ success: false, message: "Shop not found" });
     return;
@@ -127804,62 +128457,179 @@ router12.get("/admin/pickup-logs", authenticate, A11, async (req, res) => {
   const riderId = req.query["riderId"];
   const limit = Math.min(Number(req.query["limit"] || 50), 200);
   const conditions = [];
-  if (storeId) conditions.push(eq15(pickupScanLogs.storeId, storeId));
-  if (riderId) conditions.push(eq15(pickupScanLogs.riderId, riderId));
+  if (storeId) conditions.push(eq16(pickupScanLogs.storeId, storeId));
+  if (riderId) conditions.push(eq16(pickupScanLogs.riderId, riderId));
   const whereClause = conditions.length ? and9(...conditions) : void 0;
-  const logs = await db.select().from(pickupScanLogs).where(whereClause).orderBy(desc7(pickupScanLogs.createdAt)).limit(limit);
+  const logs = await db.select().from(pickupScanLogs).where(whereClause).orderBy(desc8(pickupScanLogs.createdAt)).limit(limit);
   res.json({ success: true, logs: miArr(logs) });
 });
 var delivery_default = router12;
 
 // src/routes/v1/payouts.ts
 var import_express13 = __toESM(require_express2(), 1);
-import { eq as eq16, and as and10, inArray as inArray7, desc as desc8 } from "drizzle-orm";
+import { eq as eq17, and as and10, inArray as inArray7, desc as desc9, or as or8 } from "drizzle-orm";
 var router13 = (0, import_express13.Router)();
 var A12 = requireRole("admin", "super_admin");
+function getScheduledDate(createdAt, scheduledDate) {
+  if (scheduledDate) return new Date(scheduledDate);
+  return new Date(new Date(createdAt).getTime() + 3 * 24 * 60 * 60 * 1e3);
+}
 router13.get("/", authenticate, A12, async (req, res) => {
-  const { status } = req.query;
-  const where = status ? eq16(payouts.status, status) : void 0;
-  const rows = await db.select().from(payouts).where(where).orderBy(desc8(payouts.createdAt));
-  res.json({ success: true, payouts: miArr(rows) });
+  const { status, earlyRequested, shopId } = req.query;
+  const conditions = [];
+  if (status && status !== "all") {
+    conditions.push(eq17(payouts.status, status));
+  }
+  if (earlyRequested === "true") {
+    conditions.push(eq17(payouts.earlyPayoutRequested, true));
+  }
+  if (shopId) {
+    conditions.push(eq17(payouts.shopId, shopId));
+  }
+  const where = conditions.length > 0 ? and10(...conditions) : void 0;
+  const rows = await db.select().from(payouts).where(where).orderBy(desc9(payouts.createdAt));
+  const enriched = rows.map((r2) => ({
+    ...r2,
+    scheduledDate: getScheduledDate(r2.createdAt, r2.scheduledDate)
+  }));
+  res.json({ success: true, payouts: miArr(enriched) });
 });
 router13.get("/my", authenticate, async (req, res) => {
   const { status } = req.query;
-  const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq16(shops.ownerId, req.user.userId));
+  const vendorShops = await db.select({ id: shops.id, shopName: shops.shopName }).from(shops).where(eq17(shops.ownerId, req.user.userId));
   if (vendorShops.length === 0) {
-    res.json({ success: true, payouts: [], totalEarned: 0, pendingAmount: 0 });
+    res.json({ success: true, payouts: [], totalEarned: 0, pendingAmount: 0, nextScheduledDate: null });
     return;
   }
   const shopIds = vendorShops.map((s2) => s2.id);
   const conditions = [inArray7(payouts.shopId, shopIds)];
-  if (status) conditions.push(eq16(payouts.status, status));
-  const rows = await db.select().from(payouts).where(and10(...conditions)).orderBy(desc8(payouts.createdAt));
+  if (status && status !== "all") conditions.push(eq17(payouts.status, status));
+  const rows = await db.select().from(payouts).where(and10(...conditions)).orderBy(desc9(payouts.createdAt));
   const totalEarned = rows.filter((r2) => r2.status === "paid").reduce((s2, r2) => s2 + (r2.amount ?? 0), 0);
-  const pendingAmount = rows.filter((r2) => r2.status === "pending").reduce((s2, r2) => s2 + (r2.amount ?? 0), 0);
-  res.json({ success: true, payouts: miArr(rows), totalEarned, pendingAmount });
+  const pendingAmount = rows.filter((r2) => r2.status === "pending" || r2.status === "processing").reduce((s2, r2) => s2 + (r2.amount ?? 0), 0);
+  const enriched = rows.map((r2) => ({
+    ...r2,
+    scheduledDate: getScheduledDate(r2.createdAt, r2.scheduledDate)
+  }));
+  const pendingRows = enriched.filter((r2) => r2.status === "pending" && r2.scheduledDate);
+  pendingRows.sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
+  const nextScheduledDate = pendingRows.length > 0 ? pendingRows[0].scheduledDate : null;
+  res.json({
+    success: true,
+    payouts: miArr(enriched),
+    totalEarned,
+    pendingAmount,
+    nextScheduledDate
+  });
+});
+router13.post("/mark-all-paid", authenticate, A12, async (_req, res) => {
+  const result = await db.update(payouts).set({
+    status: "paid",
+    paidAt: /* @__PURE__ */ new Date(),
+    earlyPayoutRequested: false,
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(or8(eq17(payouts.status, "pending"), eq17(payouts.status, "processing"))).returning();
+  res.json({
+    success: true,
+    message: `Marked ${result.length} payouts as paid.`,
+    updatedCount: result.length
+  });
+});
+router13.post("/request-early", authenticate, async (req, res) => {
+  const { payoutId, reason } = req.body;
+  const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq17(shops.ownerId, req.user.userId));
+  if (vendorShops.length === 0) {
+    res.status(403).json({ success: false, message: "No shop registered for this vendor" });
+    return;
+  }
+  const shopIds = vendorShops.map((s2) => s2.id);
+  if (payoutId) {
+    const [existing] = await db.select().from(payouts).where(and10(eq17(payouts.id, payoutId), inArray7(payouts.shopId, shopIds))).limit(1);
+    if (!existing) {
+      res.status(404).json({ success: false, message: "Payout record not found" });
+      return;
+    }
+    const [updated] = await db.update(payouts).set({
+      earlyPayoutRequested: true,
+      earlyPayoutRequestedAt: /* @__PURE__ */ new Date(),
+      earlyPayoutReason: reason || "Vendor requested instant early payout",
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq17(payouts.id, payoutId)).returning();
+    res.json({ success: true, message: "Early payout request submitted to admin for review", payout: mi(updated) });
+    return;
+  }
+  const updatedList = await db.update(payouts).set({
+    earlyPayoutRequested: true,
+    earlyPayoutRequestedAt: /* @__PURE__ */ new Date(),
+    earlyPayoutReason: reason || "Vendor requested instant early payout",
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(and10(inArray7(payouts.shopId, shopIds), eq17(payouts.status, "pending"))).returning();
+  res.json({
+    success: true,
+    message: `Early payout request for ${updatedList.length} records submitted to admin for review`,
+    count: updatedList.length
+  });
+});
+router13.patch("/:id", authenticate, A12, async (req, res) => {
+  const { amount, deductionAmount, adjustedReason, scheduledDate, status, notes, earlyPayoutRequested } = req.body;
+  const updatePayload = { updatedAt: /* @__PURE__ */ new Date() };
+  if (typeof amount === "number") updatePayload["amount"] = amount;
+  if (typeof deductionAmount === "number") updatePayload["deductionAmount"] = deductionAmount;
+  if (typeof adjustedReason === "string") updatePayload["adjustedReason"] = adjustedReason;
+  if (scheduledDate) updatePayload["scheduledDate"] = new Date(scheduledDate);
+  if (status) {
+    updatePayload["status"] = status;
+    if (status === "paid") {
+      updatePayload["paidAt"] = /* @__PURE__ */ new Date();
+      updatePayload["earlyPayoutRequested"] = false;
+    }
+  }
+  if (notes !== void 0) updatePayload["notes"] = notes;
+  if (earlyPayoutRequested !== void 0) updatePayload["earlyPayoutRequested"] = earlyPayoutRequested;
+  const [payout] = await db.update(payouts).set(updatePayload).where(eq17(payouts.id, req.params["id"])).returning();
+  if (!payout) {
+    res.status(404).json({ success: false, message: "Payout not found" });
+    return;
+  }
+  res.json({
+    success: true,
+    payout: mi({
+      ...payout,
+      scheduledDate: getScheduledDate(payout.createdAt, payout.scheduledDate)
+    })
+  });
 });
 router13.patch("/:id/status", authenticate, A12, async (req, res) => {
   const { status, notes } = req.body;
-  const updatePayload = { status, notes };
-  if (status === "paid") updatePayload["paidAt"] = /* @__PURE__ */ new Date();
-  const [payout] = await db.update(payouts).set(updatePayload).where(eq16(payouts.id, req.params["id"])).returning();
+  const updatePayload = { status, notes, updatedAt: /* @__PURE__ */ new Date() };
+  if (status === "paid") {
+    updatePayload["paidAt"] = /* @__PURE__ */ new Date();
+    updatePayload["earlyPayoutRequested"] = false;
+  }
+  const [payout] = await db.update(payouts).set(updatePayload).where(eq17(payouts.id, req.params["id"])).returning();
   if (!payout) {
     res.status(404).json({ success: false, message: "Not found" });
     return;
   }
-  res.json({ success: true, payout: mi(payout) });
+  res.json({
+    success: true,
+    payout: mi({
+      ...payout,
+      scheduledDate: getScheduledDate(payout.createdAt, payout.scheduledDate)
+    })
+  });
 });
 var payouts_default = router13;
 
 // src/routes/v1/reports.ts
 var import_express14 = __toESM(require_express2(), 1);
-import { eq as eq17, desc as desc9 } from "drizzle-orm";
+import { eq as eq18, desc as desc10 } from "drizzle-orm";
 var router14 = (0, import_express14.Router)();
 var A13 = requireRole("admin", "super_admin");
 router14.get("/", authenticate, A13, async (req, res) => {
   const { status } = req.query;
-  const where = status ? eq17(reports.status, status) : void 0;
-  const rows = await db.select().from(reports).where(where).orderBy(desc9(reports.createdAt));
+  const where = status ? eq18(reports.status, status) : void 0;
+  const rows = await db.select().from(reports).where(where).orderBy(desc10(reports.createdAt));
   res.json({ success: true, reports: miArr(rows) });
 });
 router14.post("/", authenticate, async (req, res) => {
@@ -127877,7 +128647,7 @@ router14.post("/", authenticate, async (req, res) => {
   res.status(201).json({ success: true, report: mi(report) });
 });
 router14.patch("/:id/resolve", authenticate, A13, async (req, res) => {
-  const [report] = await db.update(reports).set({ status: "resolved", resolvedBy: req.user.userId }).where(eq17(reports.id, req.params["id"])).returning();
+  const [report] = await db.update(reports).set({ status: "resolved", resolvedBy: req.user.userId }).where(eq18(reports.id, req.params["id"])).returning();
   if (!report) {
     res.status(404).json({ success: false, message: "Not found" });
     return;
@@ -127885,7 +128655,7 @@ router14.patch("/:id/resolve", authenticate, A13, async (req, res) => {
   res.json({ success: true, report: mi(report) });
 });
 router14.patch("/:id/ignore", authenticate, A13, async (req, res) => {
-  const [report] = await db.update(reports).set({ status: "ignored", resolvedBy: req.user.userId }).where(eq17(reports.id, req.params["id"])).returning();
+  const [report] = await db.update(reports).set({ status: "ignored", resolvedBy: req.user.userId }).where(eq18(reports.id, req.params["id"])).returning();
   if (!report) {
     res.status(404).json({ success: false, message: "Not found" });
     return;
@@ -127896,7 +128666,7 @@ var reports_default = router14;
 
 // src/routes/v1/notifications.ts
 var import_express15 = __toESM(require_express2(), 1);
-import { eq as eq18, and as and11, desc as desc10, count as count8, sql as sql5 } from "drizzle-orm";
+import { eq as eq19, and as and11, desc as desc11, count as count8, sql as sql6 } from "drizzle-orm";
 var router15 = (0, import_express15.Router)();
 var A14 = requireRole("admin", "super_admin");
 router15.get("/", authenticate, async (req, res) => {
@@ -127905,9 +128675,9 @@ router15.get("/", authenticate, async (req, res) => {
   const page = Math.max(parseInt(req.query["page"] ?? "1"), 1);
   const offset = (page - 1) * limit;
   const [rows, [{ unread }], [{ total }]] = await Promise.all([
-    db.select().from(notifications).where(eq18(notifications.userId, uid)).orderBy(desc10(notifications.createdAt)).limit(limit).offset(offset),
-    db.select({ unread: count8() }).from(notifications).where(and11(eq18(notifications.userId, uid), eq18(notifications.isRead, false))),
-    db.select({ total: count8() }).from(notifications).where(eq18(notifications.userId, uid))
+    db.select().from(notifications).where(eq19(notifications.userId, uid)).orderBy(desc11(notifications.createdAt)).limit(limit).offset(offset),
+    db.select({ unread: count8() }).from(notifications).where(and11(eq19(notifications.userId, uid), eq19(notifications.isRead, false))),
+    db.select({ total: count8() }).from(notifications).where(eq19(notifications.userId, uid))
   ]);
   res.json({
     success: true,
@@ -127919,11 +128689,11 @@ router15.get("/", authenticate, async (req, res) => {
   });
 });
 router15.patch("/read-all", authenticate, async (req, res) => {
-  await db.update(notifications).set({ isRead: true }).where(and11(eq18(notifications.userId, req.user.userId), eq18(notifications.isRead, false)));
+  await db.update(notifications).set({ isRead: true }).where(and11(eq19(notifications.userId, req.user.userId), eq19(notifications.isRead, false)));
   res.json({ success: true, message: "All notifications marked as read" });
 });
 router15.patch("/:id/read", authenticate, async (req, res) => {
-  await db.update(notifications).set({ isRead: true }).where(and11(eq18(notifications.id, req.params["id"]), eq18(notifications.userId, req.user.userId)));
+  await db.update(notifications).set({ isRead: true }).where(and11(eq19(notifications.id, req.params["id"]), eq19(notifications.userId, req.user.userId)));
   res.json({ success: true });
 });
 router15.post("/broadcast", authenticate, A14, async (req, res) => {
@@ -127940,10 +128710,10 @@ router15.post("/broadcast", authenticate, A14, async (req, res) => {
     }
     recipientIds = [targetUserId];
   } else if (targetAudience === "customers") {
-    const rows = await db.select({ id: users.id }).from(users).where(eq18(users.role, "customer"));
+    const rows = await db.select({ id: users.id }).from(users).where(eq19(users.role, "customer"));
     recipientIds = rows.map((r2) => r2.id);
   } else if (targetAudience === "vendors") {
-    const rows = await db.select({ id: users.id }).from(users).where(eq18(users.role, "vendor"));
+    const rows = await db.select({ id: users.id }).from(users).where(eq19(users.role, "vendor"));
     recipientIds = rows.map((r2) => r2.id);
   } else {
     const rows = await db.select({ id: users.id }).from(users);
@@ -127977,7 +128747,7 @@ router15.post("/broadcast", authenticate, A14, async (req, res) => {
   res.json({ success: true, sentCount: recipientIds.length, pushSent, pushFailed });
 });
 router15.get("/broadcasts", authenticate, A14, async (_req, res) => {
-  const broadcasts = await db.select().from(adminBroadcasts).orderBy(desc10(adminBroadcasts.createdAt)).limit(50);
+  const broadcasts = await db.select().from(adminBroadcasts).orderBy(desc11(adminBroadcasts.createdAt)).limit(50);
   res.json({ success: true, broadcasts: miArr(broadcasts) });
 });
 router15.post("/send-custom", authenticate, A14, async (req, res) => {
@@ -127992,17 +128762,17 @@ router15.post("/send-custom", authenticate, A14, async (req, res) => {
       res.status(400).json({ success: false, message: "targetUserId is required for target='specific'" });
       return;
     }
-    const [userExists] = await db.select({ id: users.id }).from(users).where(eq18(users.id, targetUserId)).limit(1);
+    const [userExists] = await db.select({ id: users.id }).from(users).where(eq19(users.id, targetUserId)).limit(1);
     if (!userExists) {
       res.status(400).json({ success: false, message: "Specified user ID does not exist" });
       return;
     }
     recipientIds = [targetUserId];
   } else if (target === "customers") {
-    const rows = await db.select({ id: users.id }).from(users).where(eq18(users.role, "customer"));
+    const rows = await db.select({ id: users.id }).from(users).where(eq19(users.role, "customer"));
     recipientIds = rows.map((r2) => r2.id);
   } else if (target === "vendors") {
-    const rows = await db.select({ id: users.id }).from(users).where(eq18(users.role, "vendor"));
+    const rows = await db.select({ id: users.id }).from(users).where(eq19(users.role, "vendor"));
     recipientIds = rows.map((r2) => r2.id);
   } else {
     const allUsers = await db.select({ id: users.id }).from(users);
@@ -128066,7 +128836,7 @@ router15.post("/send-custom", authenticate, A14, async (req, res) => {
 });
 router15.post("/admin/cleanup", authenticate, A14, async (_req, res) => {
   try {
-    const allUsers = await db.select({ userId: notifications.userId, cnt: count8() }).from(notifications).groupBy(notifications.userId).having(({ cnt }) => sql5`${cnt} > 10`);
+    const allUsers = await db.select({ userId: notifications.userId, cnt: count8() }).from(notifications).groupBy(notifications.userId).having(({ cnt }) => sql6`${cnt} > 10`);
     if (allUsers.length === 0) {
       res.json({ success: true, message: "All users already within the 10-notification limit.", trimmed: 0 });
       return;
@@ -128281,7 +129051,7 @@ var upload_default = router16;
 
 // src/routes/v1/hero-banners.ts
 var import_express17 = __toESM(require_express2(), 1);
-import { eq as eq19, inArray as inArray8, asc as asc5, sql as sql6 } from "drizzle-orm";
+import { eq as eq20, inArray as inArray8, asc as asc5, sql as sql7 } from "drizzle-orm";
 var viewedRecently = /* @__PURE__ */ new Set();
 var clickedRecently = /* @__PURE__ */ new Set();
 function scheduleCleanup(set, key, ttlMs) {
@@ -128308,7 +129078,7 @@ router17.get("/", async (_req, res) => {
     res.json(hit);
     return;
   }
-  const banners = await db.select().from(heroBanners).where(eq19(heroBanners.isActive, true)).orderBy(asc5(heroBanners.displayOrder));
+  const banners = await db.select().from(heroBanners).where(eq20(heroBanners.isActive, true)).orderBy(asc5(heroBanners.displayOrder));
   const payload = { success: true, banners: miArr(banners) };
   setBannerCache(payload);
   res.json(payload);
@@ -128351,7 +129121,7 @@ router17.post("/batch-view", async (req, res) => {
     return true;
   });
   if (newIds.length > 0) {
-    await db.update(heroBanners).set({ views: sql6`${heroBanners.views} + 1` }).where(inArray8(heroBanners.id, newIds));
+    await db.update(heroBanners).set({ views: sql7`${heroBanners.views} + 1` }).where(inArray8(heroBanners.id, newIds));
   }
   res.json({ success: true });
 });
@@ -128362,13 +129132,13 @@ router17.post("/:id/click", async (req, res) => {
   if (!clickedRecently.has(key)) {
     clickedRecently.add(key);
     scheduleCleanup(clickedRecently, key, 60 * 60 * 1e3);
-    await db.update(heroBanners).set({ clicks: sql6`${heroBanners.clicks} + 1` }).where(eq19(heroBanners.id, id));
+    await db.update(heroBanners).set({ clicks: sql7`${heroBanners.clicks} + 1` }).where(eq20(heroBanners.id, id));
   }
   res.json({ success: true });
 });
 router17.patch("/:id", authenticate, A15, async (req, res) => {
   const body = req.body;
-  const [oldBanner] = await db.select({ imageUrl: heroBanners.imageUrl }).from(heroBanners).where(eq19(heroBanners.id, req.params["id"])).limit(1);
+  const [oldBanner] = await db.select({ imageUrl: heroBanners.imageUrl }).from(heroBanners).where(eq20(heroBanners.id, req.params["id"])).limit(1);
   const updates = { updatedAt: /* @__PURE__ */ new Date() };
   if ("imageUrl" in body) updates.imageUrl = String(body["imageUrl"]);
   if ("title" in body) updates.title = body["title"] ? String(body["title"]) : null;
@@ -128379,7 +129149,7 @@ router17.patch("/:id", authenticate, A15, async (req, res) => {
   if ("accentColor" in body) updates.accentColor = body["accentColor"] ? String(body["accentColor"]) : null;
   if ("isActive" in body) updates.isActive = Boolean(body["isActive"]);
   if ("displayOrder" in body) updates.displayOrder = Number(body["displayOrder"]);
-  const [banner] = await db.update(heroBanners).set(updates).where(eq19(heroBanners.id, req.params["id"])).returning();
+  const [banner] = await db.update(heroBanners).set(updates).where(eq20(heroBanners.id, req.params["id"])).returning();
   if (!banner) {
     res.status(404).json({ success: false, message: "Banner not found" });
     return;
@@ -128391,8 +129161,8 @@ router17.patch("/:id", authenticate, A15, async (req, res) => {
   res.json({ success: true, banner: mi(banner) });
 });
 router17.delete("/:id", authenticate, A15, async (req, res) => {
-  const [banner] = await db.select({ imageUrl: heroBanners.imageUrl }).from(heroBanners).where(eq19(heroBanners.id, req.params["id"])).limit(1);
-  await db.delete(heroBanners).where(eq19(heroBanners.id, req.params["id"]));
+  const [banner] = await db.select({ imageUrl: heroBanners.imageUrl }).from(heroBanners).where(eq20(heroBanners.id, req.params["id"])).limit(1);
+  await db.delete(heroBanners).where(eq20(heroBanners.id, req.params["id"]));
   invalidateBannerCache();
   if (banner?.imageUrl) {
     deleteFromImageKit(banner.imageUrl).catch(() => {
@@ -128407,27 +129177,27 @@ var import_express18 = __toESM(require_express2(), 1);
 var import_razorpay2 = __toESM(require_razorpay(), 1);
 init_zod();
 import crypto3 from "crypto";
-import { eq as eq21, inArray as inArray9, and as and13 } from "drizzle-orm";
+import { eq as eq22, inArray as inArray9, and as and13 } from "drizzle-orm";
 
 // src/utils/orderCleanup.ts
-import { eq as eq20, sql as sql7 } from "drizzle-orm";
+import { eq as eq21, sql as sql8 } from "drizzle-orm";
 async function cancelOrderAndRestoreStock(orderId, reason) {
-  const [current] = await db.select().from(orders).where(eq20(orders.id, orderId)).limit(1);
+  const [current] = await db.select().from(orders).where(eq21(orders.id, orderId)).limit(1);
   if (!current) return;
   if (current.status === "cancelled" || current.status === "refunded") return;
   await db.transaction(async (tx) => {
-    await tx.update(orders).set({ status: "cancelled", cancelReason: reason, paymentStatus: "failed" }).where(eq20(orders.id, orderId));
+    await tx.update(orders).set({ status: "cancelled", cancelReason: reason, paymentStatus: "failed" }).where(eq21(orders.id, orderId));
     if (Array.isArray(current.items) && current.items.length > 0) {
       await Promise.all(current.items.map(async (item) => {
-        const [updated] = await tx.update(products).set({ stock: sql7`${products.stock} + ${item.qty}` }).where(eq20(products.id, item.productId)).returning({ stock: products.stock, status: products.status });
+        const [updated] = await tx.update(products).set({ stock: sql8`${products.stock} + ${item.qty}` }).where(eq21(products.id, item.productId)).returning({ stock: products.stock, status: products.status });
         if (updated && updated.stock > 0 && updated.status === "out_of_stock") {
-          await tx.update(products).set({ status: "active" }).where(eq20(products.id, item.productId));
+          await tx.update(products).set({ status: "active" }).where(eq21(products.id, item.productId));
         }
       }));
     }
-    await tx.update(payouts).set({ status: "cancelled" }).where(sql7`${payouts.ordersIncluded} @> ${JSON.stringify([orderId])}::jsonb`);
+    await tx.update(payouts).set({ status: "cancelled" }).where(sql8`${payouts.ordersIncluded} @> ${JSON.stringify([orderId])}::jsonb`);
     if (current.couponCode) {
-      await tx.update(coupons).set({ usedCount: sql7`GREATEST(${coupons.usedCount} - 1, 0)` }).where(eq20(coupons.code, current.couponCode));
+      await tx.update(coupons).set({ usedCount: sql8`GREATEST(${coupons.usedCount} - 1, 0)` }).where(eq21(coupons.code, current.couponCode));
     }
   });
   if (current.customerId) {
@@ -128513,10 +129283,10 @@ router18.post("/create-order", authenticate, async (req, res) => {
       }
       return basePrice;
     });
-    const subtotal = items.reduce((sum5, item, index14) => sum5 + linePrices[index14] * item.qty, 0);
+    const subtotal = items.reduce((sum5, item, index16) => sum5 + linePrices[index16] * item.qty, 0);
     let couponDiscount = 0;
     if (couponCode) {
-      const [coupon] = await db.select().from(coupons).where(and13(eq21(coupons.code, couponCode.toUpperCase()), eq21(coupons.isActive, true))).limit(1);
+      const [coupon] = await db.select().from(coupons).where(and13(eq22(coupons.code, couponCode.toUpperCase()), eq22(coupons.isActive, true))).limit(1);
       if (coupon && coupon.expiryDate >= /* @__PURE__ */ new Date() && (coupon.usageLimit === 0 || coupon.usedCount < coupon.usageLimit)) {
         const orderTotal = subtotal + Number(deliveryCharge);
         if (orderTotal >= coupon.minimumOrder) {
@@ -128559,7 +129329,7 @@ router18.post("/verify", authenticate, async (req, res) => {
     return;
   }
   try {
-    const [existing] = await db.select({ id: orders.id, customerId: orders.customerId }).from(orders).where(eq21(orders.id, orderId)).limit(1);
+    const [existing] = await db.select({ id: orders.id, customerId: orders.customerId }).from(orders).where(eq22(orders.id, orderId)).limit(1);
     if (!existing) {
       res.status(404).json({ success: false, message: "Order not found" });
       return;
@@ -128573,7 +129343,7 @@ router18.post("/verify", authenticate, async (req, res) => {
       paymentStatus: "success",
       razorpayOrderId: razorpay_order_id,
       razorpayPaymentId: razorpay_payment_id
-    }).where(eq21(orders.id, orderId)).returning();
+    }).where(eq22(orders.id, orderId)).returning();
     if (!order) {
       res.status(404).json({ success: false, message: "Order not found" });
       return;
@@ -128610,7 +129380,7 @@ router18.post("/webhook", async (req, res) => {
     const razorpayOrderId = event.payload?.payment?.entity?.order_id;
     const razorpayPaymentId = event.payload?.payment?.entity?.id;
     if (razorpayOrderId) {
-      await db.update(orders).set({ paymentStatus: "success", razorpayPaymentId }).where(eq21(orders.razorpayOrderId, razorpayOrderId)).catch((err) => {
+      await db.update(orders).set({ paymentStatus: "success", razorpayPaymentId }).where(eq22(orders.razorpayOrderId, razorpayOrderId)).catch((err) => {
         logger.error({ err, razorpayOrderId }, "Webhook: failed to update order on payment.captured");
       });
     }
@@ -128618,7 +129388,7 @@ router18.post("/webhook", async (req, res) => {
   if (event.event === "payment.failed") {
     const razorpayOrderId = event.payload?.payment?.entity?.order_id;
     if (razorpayOrderId) {
-      const [affected] = await db.select({ id: orders.id }).from(orders).where(eq21(orders.razorpayOrderId, razorpayOrderId)).limit(1).catch((err) => {
+      const [affected] = await db.select({ id: orders.id }).from(orders).where(eq22(orders.razorpayOrderId, razorpayOrderId)).limit(1).catch((err) => {
         logger.error({ err, razorpayOrderId }, "Webhook: failed to fetch order on payment.failed");
         return [];
       });
@@ -128635,7 +129405,7 @@ var payments_default = router18;
 
 // src/routes/v1/push.ts
 var import_express19 = __toESM(require_express2(), 1);
-import { eq as eq22, and as and14, count as count9, sum as sum2, desc as desc11 } from "drizzle-orm";
+import { eq as eq23, and as and14, count as count9, sum as sum2, desc as desc12 } from "drizzle-orm";
 
 // src/lib/webpush.ts
 var import_web_push = __toESM(require_src8(), 1);
@@ -128663,7 +129433,7 @@ router19.post("/subscribe", authenticate, async (req, res) => {
     return;
   }
   await db.delete(pushSubscriptions).where(
-    and14(eq22(pushSubscriptions.userId, req.user.userId), eq22(pushSubscriptions.endpoint, endpoint))
+    and14(eq23(pushSubscriptions.userId, req.user.userId), eq23(pushSubscriptions.endpoint, endpoint))
   );
   await db.insert(pushSubscriptions).values({
     userId: req.user.userId,
@@ -128677,14 +129447,14 @@ router19.post("/unsubscribe", authenticate, async (req, res) => {
   const { endpoint } = req.body;
   if (endpoint) {
     await db.delete(pushSubscriptions).where(
-      and14(eq22(pushSubscriptions.userId, req.user.userId), eq22(pushSubscriptions.endpoint, endpoint))
+      and14(eq23(pushSubscriptions.userId, req.user.userId), eq23(pushSubscriptions.endpoint, endpoint))
     );
   }
   res.json({ success: true });
 });
 router19.post("/test", authenticate, async (req, res) => {
   const userId = req.user.userId;
-  const subs = await db.select().from(pushSubscriptions).where(eq22(pushSubscriptions.userId, userId));
+  const subs = await db.select().from(pushSubscriptions).where(eq23(pushSubscriptions.userId, userId));
   if (subs.length === 0) {
     res.status(404).json({
       success: false,
@@ -128721,7 +129491,7 @@ router19.post("/test", authenticate, async (req, res) => {
       const e2 = err;
       console.error("[Push] Test send failed:", { status: e2.statusCode, message: e2.message });
       if (e2.statusCode === 404 || e2.statusCode === 410) {
-        await db.delete(pushSubscriptions).where(eq22(pushSubscriptions.id, sub.id));
+        await db.delete(pushSubscriptions).where(eq23(pushSubscriptions.id, sub.id));
       }
     }
   }
@@ -128741,9 +129511,9 @@ router19.get("/diagnostics", authenticate, A16, async (_req, res) => {
     db.select({ totalUsers: count9() }).from(users),
     db.select({ totalSubs: count9() }).from(pushSubscriptions),
     // Subscriptions per role — join push_subscriptions → users
-    db.select({ role: users.role, cnt: count9() }).from(pushSubscriptions).innerJoin(users, eq22(pushSubscriptions.userId, users.id)).groupBy(users.role),
+    db.select({ role: users.role, cnt: count9() }).from(pushSubscriptions).innerJoin(users, eq23(pushSubscriptions.userId, users.id)).groupBy(users.role),
     // Last broadcast
-    db.select().from(adminBroadcasts).orderBy(desc11(adminBroadcasts.createdAt)).limit(1)
+    db.select().from(adminBroadcasts).orderBy(desc12(adminBroadcasts.createdAt)).limit(1)
   ]);
   let allTimePushSent = 0;
   let allTimePushFailed = 0;
@@ -128781,7 +129551,7 @@ var push_default = router19;
 
 // src/routes/v1/fcm.ts
 var import_express20 = __toESM(require_express2(), 1);
-import { eq as eq23, and as and15, count as count10, sum as sum3, desc as desc12, inArray as inArray11 } from "drizzle-orm";
+import { eq as eq24, and as and15, count as count10, sum as sum3, desc as desc13, inArray as inArray11 } from "drizzle-orm";
 var router20 = (0, import_express20.Router)();
 var A17 = requireRole("admin", "super_admin");
 router20.get("/config", (_req, res) => {
@@ -128804,9 +129574,9 @@ router20.post("/register-token", authenticate, async (req, res) => {
   const role = req.user.role;
   const userAgent = req.headers["user-agent"] ?? null;
   try {
-    const existing = await db.select({ id: fcmTokens.id }).from(fcmTokens).where(eq23(fcmTokens.token, token)).limit(1);
+    const existing = await db.select({ id: fcmTokens.id }).from(fcmTokens).where(eq24(fcmTokens.token, token)).limit(1);
     if (existing.length > 0) {
-      await db.update(fcmTokens).set({ userId, role, platform, userAgent, isActive: true, lastSeenAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() }).where(eq23(fcmTokens.token, token));
+      await db.update(fcmTokens).set({ userId, role, platform, userAgent, isActive: true, lastSeenAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() }).where(eq24(fcmTokens.token, token));
     } else {
       await db.insert(fcmTokens).values({ userId, token, platform, role, userAgent, isActive: true });
     }
@@ -128821,7 +129591,7 @@ router20.post("/unregister-token", authenticate, async (req, res) => {
   const { token } = req.body;
   try {
     if (token) {
-      await db.update(fcmTokens).set({ isActive: false, updatedAt: /* @__PURE__ */ new Date() }).where(and15(eq23(fcmTokens.token, token), eq23(fcmTokens.userId, req.user.userId)));
+      await db.update(fcmTokens).set({ isActive: false, updatedAt: /* @__PURE__ */ new Date() }).where(and15(eq24(fcmTokens.token, token), eq24(fcmTokens.userId, req.user.userId)));
     }
     res.json({ success: true });
   } catch (err) {
@@ -128832,7 +129602,7 @@ router20.post("/unregister-token", authenticate, async (req, res) => {
 router20.post("/unregister-all", authenticate, async (req, res) => {
   const userId = req.user.userId;
   try {
-    await db.update(fcmTokens).set({ isActive: false, updatedAt: /* @__PURE__ */ new Date() }).where(and15(eq23(fcmTokens.userId, userId), eq23(fcmTokens.isActive, true)));
+    await db.update(fcmTokens).set({ isActive: false, updatedAt: /* @__PURE__ */ new Date() }).where(and15(eq24(fcmTokens.userId, userId), eq24(fcmTokens.isActive, true)));
     logger.info({ userId }, "[FCM] unregister-all");
     res.json({ success: true });
   } catch (err) {
@@ -128843,7 +129613,7 @@ router20.post("/unregister-all", authenticate, async (req, res) => {
 router20.get("/my-token", authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const rows = await db.select({ token: fcmTokens.token, platform: fcmTokens.platform, lastSeenAt: fcmTokens.lastSeenAt, isActive: fcmTokens.isActive }).from(fcmTokens).where(and15(eq23(fcmTokens.userId, userId), eq23(fcmTokens.isActive, true))).limit(5);
+    const rows = await db.select({ token: fcmTokens.token, platform: fcmTokens.platform, lastSeenAt: fcmTokens.lastSeenAt, isActive: fcmTokens.isActive }).from(fcmTokens).where(and15(eq24(fcmTokens.userId, userId), eq24(fcmTokens.isActive, true))).limit(5);
     res.json({
       success: true,
       hasToken: rows.length > 0,
@@ -128862,7 +129632,7 @@ router20.get("/my-token", authenticate, async (req, res) => {
 router20.post("/test", authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const allTokens = await db.select({ token: fcmTokens.token, isActive: fcmTokens.isActive, platform: fcmTokens.platform, updatedAt: fcmTokens.updatedAt }).from(fcmTokens).where(eq23(fcmTokens.userId, userId));
+    const allTokens = await db.select({ token: fcmTokens.token, isActive: fcmTokens.isActive, platform: fcmTokens.platform, updatedAt: fcmTokens.updatedAt }).from(fcmTokens).where(eq24(fcmTokens.userId, userId));
     const activeTokens = allTokens.filter((t2) => t2.isActive);
     logger.info({ userId, totalTokens: allTokens.length, activeTokens: activeTokens.length }, "[FCM] /test");
     if (activeTokens.length === 0) {
@@ -128958,10 +129728,10 @@ router20.get("/diagnostics", authenticate, A17, async (_req, res) => {
       lastBroadcastRows
     ] = await Promise.all([
       db.select({ totalUsers: count10() }).from(users),
-      db.select({ activeTokens: count10() }).from(fcmTokens).where(eq23(fcmTokens.isActive, true)),
-      db.select({ role: fcmTokens.role, cnt: count10() }).from(fcmTokens).where(eq23(fcmTokens.isActive, true)).groupBy(fcmTokens.role),
-      db.select({ platform: fcmTokens.platform, cnt: count10() }).from(fcmTokens).where(eq23(fcmTokens.isActive, true)).groupBy(fcmTokens.platform),
-      db.select().from(adminBroadcasts).orderBy(desc12(adminBroadcasts.createdAt)).limit(1)
+      db.select({ activeTokens: count10() }).from(fcmTokens).where(eq24(fcmTokens.isActive, true)),
+      db.select({ role: fcmTokens.role, cnt: count10() }).from(fcmTokens).where(eq24(fcmTokens.isActive, true)).groupBy(fcmTokens.role),
+      db.select({ platform: fcmTokens.platform, cnt: count10() }).from(fcmTokens).where(eq24(fcmTokens.isActive, true)).groupBy(fcmTokens.platform),
+      db.select().from(adminBroadcasts).orderBy(desc13(adminBroadcasts.createdAt)).limit(1)
     ]);
     let allTimePushSent = 0;
     let allTimePushFailed = 0;
@@ -129004,7 +129774,7 @@ var fcm_default = router20;
 
 // src/routes/v1/support.ts
 var import_express21 = __toESM(require_express2(), 1);
-import { eq as eq24, desc as desc13 } from "drizzle-orm";
+import { eq as eq25, desc as desc14 } from "drizzle-orm";
 var router21 = (0, import_express21.Router)();
 var A18 = requireRole("admin", "super_admin");
 router21.post("/", authenticate, async (req, res) => {
@@ -129028,16 +129798,16 @@ router21.post("/", authenticate, async (req, res) => {
   res.status(201).json({ success: true, ticket: mi(ticket) });
 });
 router21.get("/mine", authenticate, async (req, res) => {
-  const rows = await db.select().from(supportTickets).where(eq24(supportTickets.userId, req.user.userId)).orderBy(desc13(supportTickets.createdAt));
+  const rows = await db.select().from(supportTickets).where(eq25(supportTickets.userId, req.user.userId)).orderBy(desc14(supportTickets.createdAt));
   res.json({ success: true, tickets: miArr(rows) });
 });
 router21.get("/", authenticate, A18, async (_req, res) => {
-  const rows = await db.select().from(supportTickets).orderBy(desc13(supportTickets.createdAt));
+  const rows = await db.select().from(supportTickets).orderBy(desc14(supportTickets.createdAt));
   res.json({ success: true, tickets: miArr(rows) });
 });
 router21.patch("/:id/resolve", authenticate, A18, async (req, res) => {
   const { adminNote } = req.body;
-  const [ticket] = await db.update(supportTickets).set({ status: "resolved", resolvedBy: req.user.userId, adminNote: adminNote ?? null, updatedAt: /* @__PURE__ */ new Date() }).where(eq24(supportTickets.id, req.params["id"])).returning();
+  const [ticket] = await db.update(supportTickets).set({ status: "resolved", resolvedBy: req.user.userId, adminNote: adminNote ?? null, updatedAt: /* @__PURE__ */ new Date() }).where(eq25(supportTickets.id, req.params["id"])).returning();
   if (!ticket) {
     res.status(404).json({ success: false, message: "Ticket not found" });
     return;
@@ -129045,7 +129815,7 @@ router21.patch("/:id/resolve", authenticate, A18, async (req, res) => {
   res.json({ success: true, ticket: mi(ticket) });
 });
 router21.patch("/:id/close", authenticate, A18, async (req, res) => {
-  const [ticket] = await db.update(supportTickets).set({ status: "closed", resolvedBy: req.user.userId, updatedAt: /* @__PURE__ */ new Date() }).where(eq24(supportTickets.id, req.params["id"])).returning();
+  const [ticket] = await db.update(supportTickets).set({ status: "closed", resolvedBy: req.user.userId, updatedAt: /* @__PURE__ */ new Date() }).where(eq25(supportTickets.id, req.params["id"])).returning();
   if (!ticket) {
     res.status(404).json({ success: false, message: "Ticket not found" });
     return;
@@ -129056,7 +129826,7 @@ var support_default = router21;
 
 // src/routes/v1/analytics.ts
 var import_express22 = __toESM(require_express2(), 1);
-import { sql as sql8 } from "drizzle-orm";
+import { sql as sql9 } from "drizzle-orm";
 var router22 = (0, import_express22.Router)();
 var A19 = requireRole("admin", "super_admin");
 function periodConfig(period) {
@@ -129082,7 +129852,7 @@ router22.get("/", authenticate, A19, async (req, res) => {
   try {
     [orderRows, userRows, topProductRows, topShopRows] = await Promise.all([
       // Revenue + orders grouped by truncated period
-      db.execute(sql8`
+      db.execute(sql9`
       SELECT
         DATE_TRUNC(${cfg.truncUnit}, created_at) AS bucket,
         COALESCE(SUM(net_amount), 0)::float AS revenue,
@@ -129093,7 +129863,7 @@ router22.get("/", authenticate, A19, async (req, res) => {
       ORDER BY bucket ASC
     `),
       // New customer signups grouped by period
-      db.execute(sql8`
+      db.execute(sql9`
       SELECT
         DATE_TRUNC(${cfg.truncUnit}, created_at) AS bucket,
         COUNT(*)::int AS new_users
@@ -129103,7 +129873,7 @@ router22.get("/", authenticate, A19, async (req, res) => {
       ORDER BY bucket ASC
     `),
       // Top products by units sold — unnest the items JSONB array
-      db.execute(sql8`
+      db.execute(sql9`
       SELECT
         item->>'productName' AS name,
         COALESCE(item->>'category', 'other') AS category,
@@ -129117,7 +129887,7 @@ router22.get("/", authenticate, A19, async (req, res) => {
       LIMIT 10
     `),
       // Top shops by revenue
-      db.execute(sql8`
+      db.execute(sql9`
       SELECT
         shop_id,
         shop_name,
@@ -129176,7 +129946,7 @@ var analytics_default = router22;
 
 // src/routes/v1/homepage-sections.ts
 var import_express23 = __toESM(require_express2(), 1);
-import { eq as eq26, inArray as inArray12, asc as asc6, and as and17, gt as gt2, desc as desc14, sql as sql9 } from "drizzle-orm";
+import { eq as eq27, inArray as inArray12, asc as asc6, and as and17, gt as gt2, desc as desc15, sql as sql10 } from "drizzle-orm";
 async function enrichWithShopNames(rows) {
   const shopIds = [...new Set(rows.map((p) => p["shopId"]).filter(Boolean))];
   if (shopIds.length === 0) return rows;
@@ -129188,15 +129958,15 @@ var router23 = (0, import_express23.Router)();
 var A20 = requireRole("admin", "super_admin");
 async function resolveProducts(type, config, limit, offset = 0) {
   const lm = Math.min(limit, 40);
-  const base = and17(eq26(products.status, "active"), gt2(products.stock, 0));
+  const base = and17(eq27(products.status, "active"), gt2(products.stock, 0));
   if (type === "trending") {
-    const rows2 = await db.select().from(products).where(and17(base, eq26(products.trending, true))).orderBy(desc14(products.rating)).limit(lm).offset(offset);
-    const [{ total: total2 }] = await db.select({ total: sql9`count(*)::int` }).from(products).where(and17(base, eq26(products.trending, true)));
+    const rows2 = await db.select().from(products).where(and17(base, eq27(products.trending, true))).orderBy(desc15(products.rating)).limit(lm).offset(offset);
+    const [{ total: total2 }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(and17(base, eq27(products.trending, true)));
     return { rows: await enrichWithShopNames(miArr(rows2)), total: total2 ?? 0 };
   }
   if (type === "category" && config.categorySlug) {
-    const rows2 = await db.select().from(products).where(and17(base, eq26(products.category, config.categorySlug))).orderBy(desc14(products.rating)).limit(lm).offset(offset);
-    const [{ total: total2 }] = await db.select({ total: sql9`count(*)::int` }).from(products).where(and17(base, eq26(products.category, config.categorySlug)));
+    const rows2 = await db.select().from(products).where(and17(base, eq27(products.category, config.categorySlug))).orderBy(desc15(products.rating)).limit(lm).offset(offset);
+    const [{ total: total2 }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(and17(base, eq27(products.category, config.categorySlug)));
     return { rows: await enrichWithShopNames(miArr(rows2)), total: total2 ?? 0 };
   }
   if (type === "manual" && Array.isArray(config.productIds) && config.productIds.length > 0) {
@@ -129205,12 +129975,12 @@ async function resolveProducts(type, config, limit, offset = 0) {
     return { rows: await enrichWithShopNames(miArr(rows2)), total: ids.length };
   }
   if (type === "new_arrivals") {
-    const rows2 = await db.select().from(products).where(base).orderBy(desc14(products.createdAt)).limit(lm).offset(offset);
-    const [{ total: total2 }] = await db.select({ total: sql9`count(*)::int` }).from(products).where(base);
+    const rows2 = await db.select().from(products).where(base).orderBy(desc15(products.createdAt)).limit(lm).offset(offset);
+    const [{ total: total2 }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(base);
     return { rows: await enrichWithShopNames(miArr(rows2)), total: total2 ?? 0 };
   }
-  const rows = await db.select().from(products).where(base).orderBy(desc14(products.rating)).limit(lm).offset(offset);
-  const [{ total }] = await db.select({ total: sql9`count(*)::int` }).from(products).where(base);
+  const rows = await db.select().from(products).where(base).orderBy(desc15(products.rating)).limit(lm).offset(offset);
+  const [{ total }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(base);
   return { rows: await enrichWithShopNames(miArr(rows)), total: total ?? 0 };
 }
 router23.get("/", async (_req, res) => {
@@ -129219,7 +129989,7 @@ router23.get("/", async (_req, res) => {
     res.json(cached);
     return;
   }
-  const sections = await db.select().from(homepageSections).where(eq26(homepageSections.enabled, true)).orderBy(asc6(homepageSections.sortOrder));
+  const sections = await db.select().from(homepageSections).where(eq27(homepageSections.enabled, true)).orderBy(asc6(homepageSections.sortOrder));
   const resolved = await Promise.all(sections.map(async (s2) => {
     const cfg = s2.config ?? {};
     const { rows, total } = await resolveProducts(s2.type, cfg, 8, 0);
@@ -129234,7 +130004,7 @@ router23.get("/:id/products", async (req, res) => {
   const page = Math.max(1, parseInt(req.query["page"] ?? "1"));
   const limit = Math.min(40, parseInt(req.query["limit"] ?? "8"));
   const offset = (page - 1) * limit;
-  const [section] = await db.select().from(homepageSections).where(eq26(homepageSections.id, id)).limit(1);
+  const [section] = await db.select().from(homepageSections).where(eq27(homepageSections.id, id)).limit(1);
   if (!section) {
     res.status(404).json({ success: false, message: "Section not found" });
     return;
@@ -129267,7 +130037,7 @@ router23.patch("/reorder", authenticate, A20, async (req, res) => {
     return;
   }
   await Promise.all(order.map(
-    ({ id, sortOrder }) => db.update(homepageSections).set({ sortOrder }).where(eq26(homepageSections.id, id))
+    ({ id, sortOrder }) => db.update(homepageSections).set({ sortOrder }).where(eq27(homepageSections.id, id))
   ));
   void cacheDel(KEYS.HOMEPAGE);
   res.json({ success: true });
@@ -129281,7 +130051,7 @@ router23.patch("/:id", authenticate, A20, async (req, res) => {
   if ("sortOrder" in body) updates["sortOrder"] = Number(body["sortOrder"]);
   if ("config" in body) updates["config"] = body["config"];
   updates["updatedAt"] = /* @__PURE__ */ new Date();
-  const [section] = await db.update(homepageSections).set(updates).where(eq26(homepageSections.id, req.params["id"])).returning();
+  const [section] = await db.update(homepageSections).set(updates).where(eq27(homepageSections.id, req.params["id"])).returning();
   if (!section) {
     res.status(404).json({ success: false, message: "Section not found" });
     return;
@@ -129290,7 +130060,7 @@ router23.patch("/:id", authenticate, A20, async (req, res) => {
   res.json({ success: true, section: mi(section) });
 });
 router23.delete("/:id", authenticate, A20, async (req, res) => {
-  await db.delete(homepageSections).where(eq26(homepageSections.id, req.params["id"]));
+  await db.delete(homepageSections).where(eq27(homepageSections.id, req.params["id"]));
   void cacheDel(KEYS.HOMEPAGE);
   res.json({ success: true, message: "Section deleted" });
 });
@@ -129298,7 +130068,7 @@ var homepage_sections_default = router23;
 
 // src/routes/v1/servicePincodes.ts
 var import_express24 = __toESM(require_express2(), 1);
-import { eq as eq27 } from "drizzle-orm";
+import { eq as eq28 } from "drizzle-orm";
 var router24 = (0, import_express24.Router)();
 var A21 = requireRole("admin", "super_admin");
 router24.get("/public", async (_req, res) => {
@@ -129307,7 +130077,7 @@ router24.get("/public", async (_req, res) => {
     const envPincodes = rawPincodes.split(",").map((p) => p.trim()).filter(Boolean);
     let rows;
     try {
-      const dbRows = await db.select().from(servicePincodes).where(eq27(servicePincodes.isActive, true));
+      const dbRows = await db.select().from(servicePincodes).where(eq28(servicePincodes.isActive, true));
       rows = dbRows.length > 0 ? dbRows : envPincodes.map((p) => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal", isActive: true }));
     } catch {
       rows = envPincodes.map((p) => ({ pincode: p, area: "Balurghat, South Dinajpur", state: "West Bengal", isActive: true }));
@@ -129347,7 +130117,7 @@ router24.patch("/:pincode", authenticate, A21, async (req, res) => {
   if (body["area"] !== void 0) update["area"] = String(body["area"]);
   if (body["state"] !== void 0) update["state"] = String(body["state"]);
   if (body["isActive"] !== void 0) update["isActive"] = Boolean(body["isActive"]);
-  const [row] = await db.update(servicePincodes).set(update).where(eq27(servicePincodes.pincode, pincode)).returning();
+  const [row] = await db.update(servicePincodes).set(update).where(eq28(servicePincodes.pincode, pincode)).returning();
   if (!row) {
     res.status(404).json({ success: false, message: "Not found" });
     return;
@@ -129356,14 +130126,14 @@ router24.patch("/:pincode", authenticate, A21, async (req, res) => {
 });
 router24.delete("/:pincode", authenticate, A21, async (req, res) => {
   const pincode = req.params["pincode"];
-  await db.delete(servicePincodes).where(eq27(servicePincodes.pincode, pincode));
+  await db.delete(servicePincodes).where(eq28(servicePincodes.pincode, pincode));
   res.json({ success: true });
 });
 var servicePincodes_default = router24;
 
 // src/routes/v1/buckets.ts
 var import_express25 = __toESM(require_express2(), 1);
-import { eq as eq28, inArray as inArray13, asc as asc7, and as and18, gt as gt3 } from "drizzle-orm";
+import { eq as eq29, inArray as inArray13, asc as asc7, and as and18, gt as gt3 } from "drizzle-orm";
 var router25 = (0, import_express25.Router)();
 var A22 = requireRole("admin", "super_admin");
 var BUCKET_TTL_MS = 10 * 60 * 1e3;
@@ -129387,7 +130157,7 @@ async function enrichWithShopNames2(rows) {
 async function resolveBucketProducts(productIds, limit = 12) {
   const ids = (productIds ?? []).slice(0, 40);
   if (ids.length === 0) return [];
-  const rows = await db.select().from(products).where(and18(eq28(products.status, "active"), gt3(products.stock, 0), inArray13(products.id, ids))).limit(limit);
+  const rows = await db.select().from(products).where(and18(eq29(products.status, "active"), gt3(products.stock, 0), inArray13(products.id, ids))).limit(limit);
   const order = new Map(ids.map((id, i2) => [id, i2]));
   const sorted = miArr(rows).sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
   return enrichWithShopNames2(sorted);
@@ -129398,7 +130168,7 @@ router25.get("/", async (_req, res) => {
     res.json(hit);
     return;
   }
-  const rows = await db.select().from(buckets).where(and18(eq28(buckets.isActive, true), eq28(buckets.showOnHomepage, true))).orderBy(asc7(buckets.sortOrder));
+  const rows = await db.select().from(buckets).where(and18(eq29(buckets.isActive, true), eq29(buckets.showOnHomepage, true))).orderBy(asc7(buckets.sortOrder));
   const resolved = await Promise.all(rows.map(async (b) => {
     const productIds = b.productIds ?? [];
     const bucketProducts = await resolveBucketProducts(productIds);
@@ -129414,7 +130184,7 @@ router25.get("/addons", async (_req, res) => {
     res.json(hit);
     return;
   }
-  const rows = await db.select().from(buckets).where(and18(eq28(buckets.isActive, true), eq28(buckets.showAsAddon, true))).orderBy(asc7(buckets.sortOrder));
+  const rows = await db.select().from(buckets).where(and18(eq29(buckets.isActive, true), eq29(buckets.showAsAddon, true))).orderBy(asc7(buckets.sortOrder));
   const resolved = await Promise.all(rows.map(async (b) => {
     const productIds = b.productIds ?? [];
     const bucketProducts = await resolveBucketProducts(productIds, 20);
@@ -129453,7 +130223,7 @@ router25.patch("/reorder", authenticate, A22, async (req, res) => {
     return;
   }
   await Promise.all(order.map(
-    ({ id, sortOrder }) => db.update(buckets).set({ sortOrder }).where(eq28(buckets.id, id))
+    ({ id, sortOrder }) => db.update(buckets).set({ sortOrder }).where(eq29(buckets.id, id))
   ));
   invalidateBucketCache();
   res.json({ success: true });
@@ -129473,7 +130243,7 @@ router25.patch("/:id", authenticate, A22, async (req, res) => {
   if ("isActive" in body) updates["isActive"] = Boolean(body["isActive"]);
   if ("sortOrder" in body) updates["sortOrder"] = Number(body["sortOrder"]);
   updates["updatedAt"] = /* @__PURE__ */ new Date();
-  const [bucket] = await db.update(buckets).set(updates).where(eq28(buckets.id, req.params["id"])).returning();
+  const [bucket] = await db.update(buckets).set(updates).where(eq29(buckets.id, req.params["id"])).returning();
   if (!bucket) {
     res.status(404).json({ success: false, message: "Bucket not found" });
     return;
@@ -129482,7 +130252,7 @@ router25.patch("/:id", authenticate, A22, async (req, res) => {
   res.json({ success: true, bucket: mi(bucket) });
 });
 router25.delete("/:id", authenticate, A22, async (req, res) => {
-  await db.delete(buckets).where(eq28(buckets.id, req.params["id"]));
+  await db.delete(buckets).where(eq29(buckets.id, req.params["id"]));
   invalidateBucketCache();
   res.json({ success: true, message: "Bucket deleted" });
 });
@@ -129541,7 +130311,7 @@ var maintenanceBypass_default = router26;
 
 // src/routes/v1/manager.ts
 var import_express27 = __toESM(require_express2(), 1);
-import { eq as eq29, and as and19, inArray as inArray14, count as count11, sum as sum4, gte as gte5, desc as desc15 } from "drizzle-orm";
+import { eq as eq30, and as and19, inArray as inArray14, count as count11, sum as sum4, gte as gte5, desc as desc16 } from "drizzle-orm";
 var router27 = (0, import_express27.Router)();
 var requireManager = (req, res, next) => {
   if (!req.user) {
@@ -129569,7 +130339,7 @@ async function checkCityAccess(req, res, next) {
     res.status(400).json({ success: false, message: "Missing cityId parameter" });
     return;
   }
-  const [assignment] = await db.select().from(managerCities).where(and19(eq29(managerCities.managerId, managerId), eq29(managerCities.cityId, String(cityId)))).limit(1);
+  const [assignment] = await db.select().from(managerCities).where(and19(eq30(managerCities.managerId, managerId), eq30(managerCities.cityId, String(cityId)))).limit(1);
   if (!assignment) {
     res.status(403).json({ success: false, message: "Forbidden: you do not manage this city" });
     return;
@@ -129595,7 +130365,7 @@ async function checkRecordCityAccess(req, res, cityId) {
     res.status(403).json({ success: false, message: "Forbidden: Record has no city assigned" });
     return false;
   }
-  const [assignment] = await db.select().from(managerCities).where(and19(eq29(managerCities.managerId, req.user.userId), eq29(managerCities.cityId, cityId))).limit(1);
+  const [assignment] = await db.select().from(managerCities).where(and19(eq30(managerCities.managerId, req.user.userId), eq30(managerCities.cityId, cityId))).limit(1);
   if (!assignment) {
     res.status(403).json({ success: false, message: "Forbidden: You do not manage this city" });
     return false;
@@ -129604,7 +130374,7 @@ async function checkRecordCityAccess(req, res, cityId) {
 }
 router27.get("/cities", authenticate, requireManager, async (req, res) => {
   try {
-    const pinAreas = await db.select({ area: servicePincodes.area }).from(servicePincodes).where(eq29(servicePincodes.isActive, true));
+    const pinAreas = await db.select({ area: servicePincodes.area }).from(servicePincodes).where(eq30(servicePincodes.isActive, true));
     const uniqueCities = Array.from(new Set(pinAreas.map((p) => p.area.trim()).filter(Boolean)));
     if (uniqueCities.length > 0) {
       await Promise.all(uniqueCities.map(async (cityName) => {
@@ -129625,7 +130395,7 @@ router27.get("/cities", authenticate, requireManager, async (req, res) => {
       id: cities.id,
       name: cities.name,
       isActive: cities.isActive
-    }).from(managerCities).innerJoin(cities, eq29(managerCities.cityId, cities.id)).where(eq29(managerCities.managerId, req.user.userId)).orderBy(cities.name);
+    }).from(managerCities).innerJoin(cities, eq30(managerCities.cityId, cities.id)).where(eq30(managerCities.managerId, req.user.userId)).orderBy(cities.name);
     res.json({ success: true, cities: list });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -129647,15 +130417,15 @@ router27.get("/stats", authenticate, requireManager, checkCityAccess, async (req
       [{ activeDelivery }],
       [{ totalCustomers }]
     ] = await Promise.all([
-      db.select({ todayOrders: count11() }).from(orders).where(and19(eq29(orders.cityId, cityId), gte5(orders.createdAt, startOfDay))),
-      db.select({ todayRevenue: sum4(orders.netAmount) }).from(orders).where(and19(eq29(orders.cityId, cityId), eq29(orders.status, "delivered"), gte5(orders.createdAt, startOfDay))),
-      db.select({ monthlyRevenue: sum4(orders.netAmount) }).from(orders).where(and19(eq29(orders.cityId, cityId), eq29(orders.status, "delivered"), gte5(orders.createdAt, new Date((/* @__PURE__ */ new Date()).getFullYear(), (/* @__PURE__ */ new Date()).getMonth(), 1)))),
-      db.select({ pendingOrders: count11() }).from(orders).where(and19(eq29(orders.cityId, cityId), inArray14(orders.status, ["placed", "confirmed", "packed", "out_for_delivery"]))),
-      db.select({ completedOrders: count11() }).from(orders).where(and19(eq29(orders.cityId, cityId), eq29(orders.status, "delivered"))),
-      db.select({ cancelledOrders: count11() }).from(orders).where(and19(eq29(orders.cityId, cityId), eq29(orders.status, "cancelled"))),
-      db.select({ activeShops: count11() }).from(shops).where(and19(eq29(shops.cityId, cityId), eq29(shops.status, "approved"))),
-      db.select({ activeDelivery: count11() }).from(deliveryPartners).where(and19(eq29(deliveryPartners.cityId, cityId), eq29(deliveryPartners.status, "active"))),
-      db.select({ totalCustomers: count11() }).from(users).where(and19(eq29(users.cityId, cityId), eq29(users.role, "customer")))
+      db.select({ todayOrders: count11() }).from(orders).where(and19(eq30(orders.cityId, cityId), gte5(orders.createdAt, startOfDay))),
+      db.select({ todayRevenue: sum4(orders.netAmount) }).from(orders).where(and19(eq30(orders.cityId, cityId), eq30(orders.status, "delivered"), gte5(orders.createdAt, startOfDay))),
+      db.select({ monthlyRevenue: sum4(orders.netAmount) }).from(orders).where(and19(eq30(orders.cityId, cityId), eq30(orders.status, "delivered"), gte5(orders.createdAt, new Date((/* @__PURE__ */ new Date()).getFullYear(), (/* @__PURE__ */ new Date()).getMonth(), 1)))),
+      db.select({ pendingOrders: count11() }).from(orders).where(and19(eq30(orders.cityId, cityId), inArray14(orders.status, ["placed", "confirmed", "packed", "out_for_delivery"]))),
+      db.select({ completedOrders: count11() }).from(orders).where(and19(eq30(orders.cityId, cityId), eq30(orders.status, "delivered"))),
+      db.select({ cancelledOrders: count11() }).from(orders).where(and19(eq30(orders.cityId, cityId), eq30(orders.status, "cancelled"))),
+      db.select({ activeShops: count11() }).from(shops).where(and19(eq30(shops.cityId, cityId), eq30(shops.status, "approved"))),
+      db.select({ activeDelivery: count11() }).from(deliveryPartners).where(and19(eq30(deliveryPartners.cityId, cityId), eq30(deliveryPartners.status, "active"))),
+      db.select({ totalCustomers: count11() }).from(users).where(and19(eq30(users.cityId, cityId), eq30(users.role, "customer")))
     ]);
     res.json({
       success: true,
@@ -129680,7 +130450,7 @@ router27.get("/stats", authenticate, requireManager, checkCityAccess, async (req
 router27.get("/analytics", authenticate, requireManager, checkCityAccess, async (req, res) => {
   const cityId = String(req.query["cityId"]);
   try {
-    const recent = await db.select().from(orders).where(and19(eq29(orders.cityId, cityId), eq29(orders.status, "delivered"))).orderBy(desc15(orders.createdAt)).limit(100);
+    const recent = await db.select().from(orders).where(and19(eq30(orders.cityId, cityId), eq30(orders.status, "delivered"))).orderBy(desc16(orders.createdAt)).limit(100);
     const dayMap = {};
     recent.forEach((o) => {
       const dateStr = o.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -129708,7 +130478,7 @@ router27.get("/finances", authenticate, requireManager, checkCityAccess, async (
       vendorEarnings: sum4(orders.vendorPayable),
       refundAmount: sum4(orders.couponDiscount)
       // placeholder mapping
-    }).from(orders).where(and19(eq29(orders.cityId, cityId), eq29(orders.status, "delivered")));
+    }).from(orders).where(and19(eq30(orders.cityId, cityId), eq30(orders.status, "delivered")));
     res.json({
       success: true,
       finances: {
@@ -129729,7 +130499,7 @@ router27.get("/finances", authenticate, requireManager, checkCityAccess, async (
 router27.get("/orders", authenticate, requireManager, checkCityAccess, async (req, res) => {
   const cityId = String(req.query["cityId"]);
   try {
-    const list = await db.select().from(orders).where(eq29(orders.cityId, cityId)).orderBy(desc15(orders.createdAt)).limit(200);
+    const list = await db.select().from(orders).where(eq30(orders.cityId, cityId)).orderBy(desc16(orders.createdAt)).limit(200);
     res.json({ success: true, orders: miArr(list) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -129738,7 +130508,7 @@ router27.get("/orders", authenticate, requireManager, checkCityAccess, async (re
 router27.patch("/orders/:id/status", authenticate, requireManager, async (req, res) => {
   const { status, deliveryPartnerId } = req.body;
   try {
-    const [order] = await db.select().from(orders).where(eq29(orders.id, req.params["id"])).limit(1);
+    const [order] = await db.select().from(orders).where(eq30(orders.id, req.params["id"])).limit(1);
     if (!order) {
       res.status(404).json({ success: false, message: "Order not found" });
       return;
@@ -129748,7 +130518,7 @@ router27.patch("/orders/:id/status", authenticate, requireManager, async (req, r
     const updates = { updatedAt: /* @__PURE__ */ new Date() };
     if (status) updates.status = status;
     if (deliveryPartnerId !== void 0) updates.deliveryPartnerId = deliveryPartnerId || null;
-    const [updated] = await db.update(orders).set(updates).where(eq29(orders.id, order.id)).returning();
+    const [updated] = await db.update(orders).set(updates).where(eq30(orders.id, order.id)).returning();
     await logAction(req.user.userId, req.user.phone, order.cityId, status ? "Updated Order Status" : "Assigned Rider", `Order #${order.id.slice(-6).toUpperCase()} updated to ${status || "assigned"}`);
     res.json({ success: true, order: mi(updated) });
   } catch (err) {
@@ -129758,7 +130528,7 @@ router27.patch("/orders/:id/status", authenticate, requireManager, async (req, r
 router27.get("/shops", authenticate, requireManager, checkCityAccess, async (req, res) => {
   const cityId = String(req.query["cityId"]);
   try {
-    const list = await db.select().from(shops).where(eq29(shops.cityId, cityId)).orderBy(desc15(shops.createdAt));
+    const list = await db.select().from(shops).where(eq30(shops.cityId, cityId)).orderBy(desc16(shops.createdAt));
     res.json({ success: true, shops: miArr(list) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -129767,14 +130537,14 @@ router27.get("/shops", authenticate, requireManager, checkCityAccess, async (req
 router27.patch("/shops/:id/status", authenticate, requireManager, async (req, res) => {
   const { status } = req.body;
   try {
-    const [shop] = await db.select().from(shops).where(eq29(shops.id, req.params["id"])).limit(1);
+    const [shop] = await db.select().from(shops).where(eq30(shops.id, req.params["id"])).limit(1);
     if (!shop) {
       res.status(404).json({ success: false, message: "Shop not found" });
       return;
     }
     const hasAccess = await checkRecordCityAccess(req, res, shop.cityId);
     if (!hasAccess) return;
-    const [updated] = await db.update(shops).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq29(shops.id, shop.id)).returning();
+    const [updated] = await db.update(shops).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq30(shops.id, shop.id)).returning();
     await logAction(req.user.userId, req.user.phone, shop.cityId, "Updated Shop Status", `Shop ${shop.shopName} set to ${status}`);
     res.json({ success: true, shop: mi(updated) });
   } catch (err) {
@@ -129784,7 +130554,7 @@ router27.patch("/shops/:id/status", authenticate, requireManager, async (req, re
 router27.get("/customers", authenticate, requireManager, checkCityAccess, async (req, res) => {
   const cityId = String(req.query["cityId"]);
   try {
-    const list = await db.select().from(users).where(and19(eq29(users.cityId, cityId), eq29(users.role, "customer"))).orderBy(users.name);
+    const list = await db.select().from(users).where(and19(eq30(users.cityId, cityId), eq30(users.role, "customer"))).orderBy(users.name);
     res.json({ success: true, customers: miArr(list) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -129793,14 +130563,14 @@ router27.get("/customers", authenticate, requireManager, checkCityAccess, async 
 router27.patch("/customers/:id/status", authenticate, requireManager, async (req, res) => {
   const { status } = req.body;
   try {
-    const [user] = await db.select().from(users).where(eq29(users.id, req.params["id"])).limit(1);
+    const [user] = await db.select().from(users).where(eq30(users.id, req.params["id"])).limit(1);
     if (!user) {
       res.status(404).json({ success: false, message: "User not found" });
       return;
     }
     const hasAccess = await checkRecordCityAccess(req, res, user.cityId);
     if (!hasAccess) return;
-    await db.update(users).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq29(users.id, user.id));
+    await db.update(users).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq30(users.id, user.id));
     await logAction(req.user.userId, req.user.phone, user.cityId, status === "suspended" ? "Blocked Customer" : "Unblocked Customer", `User ${user.name || user.phone} set to ${status}`);
     res.json({ success: true, message: "Customer status updated" });
   } catch (err) {
@@ -129810,7 +130580,7 @@ router27.patch("/customers/:id/status", authenticate, requireManager, async (req
 router27.get("/delivery", authenticate, requireManager, checkCityAccess, async (req, res) => {
   const cityId = String(req.query["cityId"]);
   try {
-    const list = await db.select().from(deliveryPartners).where(eq29(deliveryPartners.cityId, cityId)).orderBy(deliveryPartners.name);
+    const list = await db.select().from(deliveryPartners).where(eq30(deliveryPartners.cityId, cityId)).orderBy(deliveryPartners.name);
     res.json({ success: true, partners: miArr(list) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -129819,14 +130589,14 @@ router27.get("/delivery", authenticate, requireManager, checkCityAccess, async (
 router27.patch("/delivery/:id/status", authenticate, requireManager, async (req, res) => {
   const { status } = req.body;
   try {
-    const [partner] = await db.select().from(deliveryPartners).where(eq29(deliveryPartners.id, req.params["id"])).limit(1);
+    const [partner] = await db.select().from(deliveryPartners).where(eq30(deliveryPartners.id, req.params["id"])).limit(1);
     if (!partner) {
       res.status(404).json({ success: false, message: "Delivery partner not found" });
       return;
     }
     const hasAccess = await checkRecordCityAccess(req, res, partner.cityId);
     if (!hasAccess) return;
-    const [updated] = await db.update(deliveryPartners).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq29(deliveryPartners.id, partner.id)).returning();
+    const [updated] = await db.update(deliveryPartners).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq30(deliveryPartners.id, partner.id)).returning();
     await logAction(req.user.userId, req.user.phone, partner.cityId, "Updated Rider Status", `Rider ${partner.name} set to ${status}`);
     res.json({ success: true, partner: mi(updated) });
   } catch (err) {
@@ -129836,7 +130606,7 @@ router27.patch("/delivery/:id/status", authenticate, requireManager, async (req,
 router27.get("/payouts", authenticate, requireManager, checkCityAccess, async (req, res) => {
   const cityId = String(req.query["cityId"]);
   try {
-    const list = await db.select().from(payouts).where(eq29(payouts.cityId, cityId)).orderBy(desc15(payouts.createdAt));
+    const list = await db.select().from(payouts).where(eq30(payouts.cityId, cityId)).orderBy(desc16(payouts.createdAt));
     res.json({ success: true, payouts: miArr(list) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -129845,12 +130615,12 @@ router27.get("/payouts", authenticate, requireManager, checkCityAccess, async (r
 router27.post("/payouts/settle", authenticate, requireManager, checkCityAccess, async (req, res) => {
   const { payoutId } = req.body;
   try {
-    const [payout] = await db.select().from(payouts).where(eq29(payouts.id, payoutId)).limit(1);
+    const [payout] = await db.select().from(payouts).where(eq30(payouts.id, payoutId)).limit(1);
     if (!payout) {
       res.status(404).json({ success: false, message: "Payout not found" });
       return;
     }
-    const [updated] = await db.update(payouts).set({ status: "completed", paidAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() }).where(eq29(payouts.id, payoutId)).returning();
+    const [updated] = await db.update(payouts).set({ status: "completed", paidAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() }).where(eq30(payouts.id, payoutId)).returning();
     await logAction(req.user.userId, req.user.phone, payout.cityId, "Setted Payout", `Payout #${payout.id.slice(-6).toUpperCase()} set to completed`);
     res.json({ success: true, payout: mi(updated) });
   } catch (err) {
@@ -129860,7 +130630,7 @@ router27.post("/payouts/settle", authenticate, requireManager, checkCityAccess, 
 router27.get("/coupons", authenticate, requireManager, checkCityAccess, async (req, res) => {
   const cityId = String(req.query["cityId"]);
   try {
-    const list = await db.select().from(coupons).where(eq29(coupons.cityId, cityId)).orderBy(desc15(coupons.createdAt));
+    const list = await db.select().from(coupons).where(eq30(coupons.cityId, cityId)).orderBy(desc16(coupons.createdAt));
     res.json({ success: true, coupons: miArr(list) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -129889,7 +130659,7 @@ router27.post("/coupons", authenticate, requireManager, checkCityAccess, async (
 router27.get("/support", authenticate, requireManager, checkCityAccess, async (req, res) => {
   const cityId = String(req.query["cityId"]);
   try {
-    const list = await db.select().from(supportTickets).where(eq29(supportTickets.cityId, cityId)).orderBy(desc15(supportTickets.createdAt));
+    const list = await db.select().from(supportTickets).where(eq30(supportTickets.cityId, cityId)).orderBy(desc16(supportTickets.createdAt));
     res.json({ success: true, tickets: miArr(list) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -129898,7 +130668,7 @@ router27.get("/support", authenticate, requireManager, checkCityAccess, async (r
 router27.patch("/support/:id", authenticate, requireManager, async (req, res) => {
   const { adminNote, status } = req.body;
   try {
-    const [ticket] = await db.select().from(supportTickets).where(eq29(supportTickets.id, req.params["id"])).limit(1);
+    const [ticket] = await db.select().from(supportTickets).where(eq30(supportTickets.id, req.params["id"])).limit(1);
     if (!ticket) {
       res.status(404).json({ success: false, message: "Ticket not found" });
       return;
@@ -129908,7 +130678,7 @@ router27.patch("/support/:id", authenticate, requireManager, async (req, res) =>
     const updates = { updatedAt: /* @__PURE__ */ new Date() };
     if (adminNote) updates.adminNote = adminNote;
     if (status) updates.status = status;
-    const [updated] = await db.update(supportTickets).set(updates).where(eq29(supportTickets.id, ticket.id)).returning();
+    const [updated] = await db.update(supportTickets).set(updates).where(eq30(supportTickets.id, ticket.id)).returning();
     await logAction(req.user.userId, req.user.phone, ticket.cityId, "Resolved Ticket", `Ticket #${ticket.id.slice(-6).toUpperCase()} updated`);
     res.json({ success: true, ticket: mi(updated) });
   } catch (err) {
@@ -129919,7 +130689,7 @@ router27.post("/notifications", authenticate, requireManager, checkCityAccess, a
   const { title, message } = req.body;
   const cityId = String(req.query["cityId"]);
   try {
-    const targetUsers = await db.select({ id: users.id }).from(users).where(and19(eq29(users.cityId, cityId), eq29(users.role, "customer")));
+    const targetUsers = await db.select({ id: users.id }).from(users).where(and19(eq30(users.cityId, cityId), eq30(users.role, "customer")));
     const userIds = targetUsers.map((u) => u.id);
     if (userIds.length > 0) {
       await Promise.all(userIds.map((id) => createNotificationLimited(id, {
@@ -129939,7 +130709,7 @@ var manager_default = router27;
 
 // src/routes/v1/seasonal-campaign.ts
 var import_express28 = __toESM(require_express2(), 1);
-import { eq as eq30, inArray as inArray15 } from "drizzle-orm";
+import { eq as eq31, inArray as inArray15 } from "drizzle-orm";
 var router28 = (0, import_express28.Router)();
 var A23 = requireRole("admin", "super_admin");
 async function getOrCreateCampaign() {
@@ -129948,7 +130718,7 @@ async function getOrCreateCampaign() {
   } catch (err) {
     console.error("[DB Migration] Failed to alter seasonal_campaign:", err);
   }
-  const [existing] = await db.select().from(seasonalCampaign).where(eq30(seasonalCampaign.id, "default_campaign")).limit(1);
+  const [existing] = await db.select().from(seasonalCampaign).where(eq31(seasonalCampaign.id, "default_campaign")).limit(1);
   if (existing) return existing;
   const [created] = await db.insert(seasonalCampaign).values({
     id: "default_campaign",
@@ -129972,7 +130742,7 @@ router28.get("/", async (_req, res) => {
       const [updated] = await db.update(seasonalCampaign).set({
         layoutBlocks: [],
         updatedAt: /* @__PURE__ */ new Date()
-      }).where(eq30(seasonalCampaign.id, "default_campaign")).returning();
+      }).where(eq31(seasonalCampaign.id, "default_campaign")).returning();
       campaign = updated;
     }
     const blocks = campaign.layoutBlocks || [];
@@ -130053,7 +130823,7 @@ router28.post("/", authenticate, A23, async (req, res) => {
     if (layoutBlocks !== void 0) update.layoutBlocks = layoutBlocks;
     update.updatedAt = /* @__PURE__ */ new Date();
     await getOrCreateCampaign();
-    const [updated] = await db.update(seasonalCampaign).set(update).where(eq30(seasonalCampaign.id, "default_campaign")).returning();
+    const [updated] = await db.update(seasonalCampaign).set(update).where(eq31(seasonalCampaign.id, "default_campaign")).returning();
     res.json({ success: true, campaign: updated });
   } catch (err) {
     res.status(500).json({ success: false, message: "Failed to save seasonal campaign layouts", error: String(err) });
@@ -130063,7 +130833,7 @@ var seasonal_campaign_default = router28;
 
 // src/routes/v1/cafe-config.ts
 var import_express29 = __toESM(require_express2(), 1);
-import { eq as eq31, inArray as inArray16 } from "drizzle-orm";
+import { eq as eq32, inArray as inArray16 } from "drizzle-orm";
 var router29 = (0, import_express29.Router)();
 var A24 = requireRole("admin", "super_admin");
 async function getOrCreateCafeConfig() {
@@ -130080,7 +130850,7 @@ async function getOrCreateCafeConfig() {
   } catch (err) {
     console.error("[DB Migration] Failed to initialize cafe_page_config table:", err);
   }
-  const [existing] = await db.select().from(cafePageConfig).where(eq31(cafePageConfig.id, "default_cafe_page")).limit(1);
+  const [existing] = await db.select().from(cafePageConfig).where(eq32(cafePageConfig.id, "default_cafe_page")).limit(1);
   if (existing) return existing;
   const [created] = await db.insert(cafePageConfig).values({
     id: "default_cafe_page",
@@ -130104,7 +130874,7 @@ router29.get("/", async (_req, res) => {
         const [updated] = await db.update(cafePageConfig).set({
           layoutBlocks: [],
           updatedAt: /* @__PURE__ */ new Date()
-        }).where(eq31(cafePageConfig.id, "default_cafe_page")).returning();
+        }).where(eq32(cafePageConfig.id, "default_cafe_page")).returning();
         config = updated;
       } catch (dbErr) {
         console.error("[DB Sync] Failed to update empty fallback configurations:", dbErr);
@@ -130239,7 +131009,7 @@ router29.post("/", authenticate, A24, async (req, res) => {
     if (layoutBlocks !== void 0) update.layoutBlocks = layoutBlocks;
     update.updatedAt = /* @__PURE__ */ new Date();
     await getOrCreateCafeConfig();
-    const [updated] = await db.update(cafePageConfig).set(update).where(eq31(cafePageConfig.id, "default_cafe_page")).returning();
+    const [updated] = await db.update(cafePageConfig).set(update).where(eq32(cafePageConfig.id, "default_cafe_page")).returning();
     res.json({ success: true, campaign: updated });
   } catch (err) {
     res.status(500).json({ success: false, message: "Failed to save cafe page layouts", error: String(err) });
@@ -130249,7 +131019,7 @@ var cafe_config_default = router29;
 
 // src/routes/v1/themeConfig.ts
 var import_express30 = __toESM(require_express2(), 1);
-import { eq as eq32 } from "drizzle-orm";
+import { eq as eq33 } from "drizzle-orm";
 var router30 = (0, import_express30.Router)();
 var DEFAULT_THEME = {
   id: "global_theme",
@@ -130261,7 +131031,7 @@ var DEFAULT_THEME = {
 };
 router30.get("/", async (_req, res) => {
   try {
-    const [themeRecord] = await db.select().from(appThemeConfig).where(eq32(appThemeConfig.id, "global_theme")).limit(1);
+    const [themeRecord] = await db.select().from(appThemeConfig).where(eq33(appThemeConfig.id, "global_theme")).limit(1);
     if (!themeRecord) {
       res.json({
         success: true,
@@ -130337,7 +131107,7 @@ var themeConfig_default = router30;
 
 // src/routes/v1/layouts.ts
 var import_express31 = __toESM(require_express2(), 1);
-import { eq as eq33, inArray as inArray17, and as and20, or as or7 } from "drizzle-orm";
+import { eq as eq34, inArray as inArray17, and as and20, or as or9 } from "drizzle-orm";
 var router31 = (0, import_express31.Router)();
 var DEFAULT_HOME_BLOCKS = [
   {
@@ -130712,7 +131482,7 @@ async function resolveLayoutBlocks(blocks) {
         if (sourceType === "shop" && targetShopIds.length > 0) {
           try {
             const [shopProds, dbShops] = await Promise.all([
-              db.select().from(products).where(and20(inArray17(products.shopId, targetShopIds), or7(eq33(products.status, "active"), eq33(products.status, "approved")))).limit(Number(block.data.limit) || 12),
+              db.select().from(products).where(and20(inArray17(products.shopId, targetShopIds), or9(eq34(products.status, "active"), eq34(products.status, "approved")))).limit(Number(block.data.limit) || 12),
               db.select({ id: shops.id, shopName: shops.shopName }).from(shops).where(inArray17(shops.id, targetShopIds))
             ]);
             const shopNameMap = new Map(dbShops.map((s2) => [s2.id, s2.shopName]));
@@ -130764,7 +131534,7 @@ async function resolveLayoutBlocks(blocks) {
         }
         if (block.data.categorySlug && block.data.categorySlug !== "all") {
           try {
-            const catProds = await db.select().from(products).where(and20(eq33(products.category, block.data.categorySlug), or7(eq33(products.status, "active"), eq33(products.status, "approved")))).limit(Number(block.data.limit) || 12);
+            const catProds = await db.select().from(products).where(and20(eq34(products.category, block.data.categorySlug), or9(eq34(products.status, "active"), eq34(products.status, "approved")))).limit(Number(block.data.limit) || 12);
             const resolved = catProds.map((p) => {
               const isAvailable = (p.stock ?? 0) > 0;
               const imgList = Array.isArray(p.images) ? p.images : [];
@@ -130804,7 +131574,7 @@ router31.get("/:pageName", async (req, res) => {
   const rawParam = req.params["pageName"];
   const pageName = String(Array.isArray(rawParam) ? rawParam[0] : rawParam || "home").toLowerCase();
   try {
-    const [layout] = await db.select().from(appLayouts).where(eq33(appLayouts.pageName, pageName)).limit(1);
+    const [layout] = await db.select().from(appLayouts).where(eq34(appLayouts.pageName, pageName)).limit(1);
     if (!layout) {
       const defaultBlocks = getDefaultBlocksForPage(pageName);
       const resolvedDefaults = await resolveLayoutBlocks(defaultBlocks);
@@ -130892,12 +131662,12 @@ var layouts_default = router31;
 
 // src/routes/v1/adminRiders.ts
 var import_express32 = __toESM(require_express2(), 1);
-import { eq as eq34, desc as desc16 } from "drizzle-orm";
+import { eq as eq35, desc as desc17 } from "drizzle-orm";
 var router32 = (0, import_express32.Router)();
 var A25 = requireRole("admin", "super_admin");
 router32.get("/applications", authenticate, A25, async (req, res) => {
   const statusParam = req.query["status"] ?? "pending";
-  const rows = await db.select().from(deliveryPartners).where(eq34(deliveryPartners.applicationStatus, statusParam)).orderBy(desc16(deliveryPartners.createdAt));
+  const rows = await db.select().from(deliveryPartners).where(eq35(deliveryPartners.applicationStatus, statusParam)).orderBy(desc17(deliveryPartners.createdAt));
   res.json({ success: true, applications: miArr(rows) });
 });
 router32.post("/:id/approve", authenticate, A25, validateUuidParams("id"), async (req, res) => {
@@ -130907,26 +131677,26 @@ router32.post("/:id/approve", authenticate, A25, validateUuidParams("id"), async
     status: "active",
     isAvailable: true,
     updatedAt: /* @__PURE__ */ new Date()
-  }).where(eq34(deliveryPartners.id, id)).returning();
+  }).where(eq35(deliveryPartners.id, id)).returning();
   if (!updated) {
     res.status(404).json({ success: false, message: "Rider partner application not found" });
     return;
   }
   let targetUserId = updated.userId;
   if (!targetUserId && updated.phone) {
-    const [userRow] = await db.select({ id: users.id }).from(users).where(eq34(users.phone, updated.phone)).limit(1);
+    const [userRow] = await db.select({ id: users.id }).from(users).where(eq35(users.phone, updated.phone)).limit(1);
     if (userRow) {
       targetUserId = userRow.id;
-      await db.update(deliveryPartners).set({ userId: targetUserId }).where(eq34(deliveryPartners.id, updated.id));
+      await db.update(deliveryPartners).set({ userId: targetUserId }).where(eq35(deliveryPartners.id, updated.id));
     }
   }
   if (targetUserId) {
-    const [userRow] = await db.select().from(users).where(eq34(users.id, targetUserId)).limit(1);
+    const [userRow] = await db.select().from(users).where(eq35(users.id, targetUserId)).limit(1);
     if (userRow) {
       await db.update(users).set({
         role: "rider",
         updatedAt: /* @__PURE__ */ new Date()
-      }).where(eq34(users.id, targetUserId));
+      }).where(eq35(users.id, targetUserId));
     }
   }
   res.json({
@@ -130943,7 +131713,7 @@ router32.post("/:id/reject", authenticate, A25, validateUuidParams("id"), async 
     status: "inactive",
     rejectionReason: reason ?? "Application rejected by admin",
     updatedAt: /* @__PURE__ */ new Date()
-  }).where(eq34(deliveryPartners.id, id)).returning();
+  }).where(eq35(deliveryPartners.id, id)).returning();
   if (!updated) {
     res.status(404).json({ success: false, message: "Rider partner application not found" });
     return;
@@ -130966,7 +131736,7 @@ var getLiveLocationsHandler = async (_req, res) => {
     currentLon: deliveryPartners.currentLon,
     currentOrderId: deliveryPartners.currentOrderId,
     locationUpdatedAt: deliveryPartners.locationUpdatedAt
-  }).from(deliveryPartners).orderBy(desc16(deliveryPartners.locationUpdatedAt));
+  }).from(deliveryPartners).orderBy(desc17(deliveryPartners.locationUpdatedAt));
   res.json({
     success: true,
     riders: miArr(rows)
@@ -130975,7 +131745,7 @@ var getLiveLocationsHandler = async (_req, res) => {
 router32.get("/live-location", authenticate, A25, getLiveLocationsHandler);
 router32.get("/live-locations", authenticate, A25, getLiveLocationsHandler);
 router32.get("/", authenticate, A25, async (_req, res) => {
-  const rows = await db.select().from(deliveryPartners).orderBy(desc16(deliveryPartners.createdAt));
+  const rows = await db.select().from(deliveryPartners).orderBy(desc17(deliveryPartners.createdAt));
   res.json({
     success: true,
     riders: miArr(rows)
@@ -130984,11 +131754,11 @@ router32.get("/", authenticate, A25, async (_req, res) => {
 var adminRiders_default = router32;
 
 // src/routes/v1/index.ts
-import { eq as eq35, and as and21, asc as asc8 } from "drizzle-orm";
+import { eq as eq36, and as and21, asc as asc8 } from "drizzle-orm";
 var router33 = (0, import_express33.Router)();
 router33.get("/home-filters", async (_req, res) => {
   try {
-    const list = await db.select().from(categories).where(and21(eq35(categories.isActive, true), eq35(categories.showOnHome, true))).orderBy(asc8(categories.filterOrder));
+    const list = await db.select().from(categories).where(and21(eq36(categories.isActive, true), eq36(categories.showOnHome, true))).orderBy(asc8(categories.filterOrder));
     const mapped = miArr(list);
     const grouped = {
       swiftmart: [],
@@ -131422,7 +132192,7 @@ function maintenanceMode(req, res, next) {
 }
 
 // src/app.ts
-import { eq as eq36 } from "drizzle-orm";
+import { eq as eq37 } from "drizzle-orm";
 var helmet3 = helmet || helmet_exports;
 var compression = compressionModule.default || compressionModule;
 var pinoHttp = pinoHttpModule.default || pinoHttpModule;
@@ -131449,9 +132219,9 @@ async function buildSitemap() {
   const fmt = (d) => d ? new Date(d).toISOString().split("T")[0] : (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const [shopRows, productRows, categoryRows] = await Promise.all([
-    db.select({ id: shops.id, updatedAt: shops.updatedAt }).from(shops).where(eq36(shops.status, "approved")),
-    db.select({ id: products.id, updatedAt: products.updatedAt }).from(products).where(eq36(products.status, "active")),
-    db.select({ slug: categories.slug, updatedAt: categories.updatedAt }).from(categories).where(eq36(categories.isActive, true))
+    db.select({ id: shops.id, updatedAt: shops.updatedAt }).from(shops).where(eq37(shops.status, "approved")),
+    db.select({ id: products.id, updatedAt: products.updatedAt }).from(products).where(eq37(products.status, "active")),
+    db.select({ slug: categories.slug, updatedAt: categories.updatedAt }).from(categories).where(eq37(categories.isActive, true))
   ]);
   const urlTags = [
     ...STATIC_SITEMAP_URLS.map(

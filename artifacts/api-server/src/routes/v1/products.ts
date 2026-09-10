@@ -890,10 +890,13 @@ router.patch("/:id", authenticate, V, vendorWriteLimiter, async (req: AuthReques
     }
   }
 
-  if (!isAdmin) {
-    // Vendor edits must go through re-approval — force status back to pending
+  const isStockOnlyUpdate = Object.keys(body).every(k => k === "stock" || k === "inStock" || k === "status");
+  if (!isAdmin && !isStockOnlyUpdate) {
+    // Vendor general edits must go through re-approval — force status back to pending
     updateData["status"] = "pending";
     delete updateData["rejectionReason"];
+  } else if (body["status"]) {
+    updateData["status"] = body["status"];
   }
   // Validate: sale price must be less than MRP when both are present
   if ("discountedPrice" in updateData && updateData["discountedPrice"] != null) {
@@ -935,15 +938,26 @@ router.patch("/:id", authenticate, V, vendorWriteLimiter, async (req: AuthReques
   res.json({ success: true, product: mi(product) });
 });
 
-// DELETE /api/products/:id
-router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const [product] = await db.select({ images: products.images }).from(products).where(eq(products.id, req.params["id"] as string)).limit(1);
-  if (product?.images && (product.images as string[]).length > 0) {
+// DELETE /api/products/:id — Vendor (own shop) or Admin delete
+router.delete("/:id", authenticate, V, async (req: AuthRequest, res: Response): Promise<void> => {
+  const isAdmin = req.user!.role === "admin" || req.user!.role === "super_admin";
+  const [product] = await db.select({ id: products.id, shopId: products.shopId, images: products.images }).from(products).where(eq(products.id, req.params["id"] as string)).limit(1);
+  if (!product) { res.status(404).json({ success: false, message: "Product not found" }); return; }
+
+  if (!isAdmin) {
+    const [shop] = await db.select({ id: shops.id }).from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
+    if (!shop || shop.id !== product.shopId) {
+      res.status(403).json({ success: false, message: "Forbidden: You can only delete products from your own store" });
+      return;
+    }
+  }
+
+  if (product.images && (product.images as string[]).length > 0) {
     await Promise.all((product.images as string[]).map(url => deleteFromImageKit(url)));
   }
   await db.delete(products).where(eq(products.id, req.params["id"] as string));
   void invalidateProductCaches();
-  res.json({ success: true, message: "Deleted" });
+  res.json({ success: true, message: "Product deleted successfully" });
 });
 
 export default router;
