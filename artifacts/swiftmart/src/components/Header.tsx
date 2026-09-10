@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 
 export function Header() {
-  const { user, role, isAdmin, selectedDeliveryAddress, setSelectedDeliveryAddress, addAddress } = useAuth();
+  const { user, role, isAdmin, selectedDeliveryAddress, setSelectedDeliveryAddress, addAddress, openLoginModal } = useAuth();
   const { totalItems } = useCart();
   const [location, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
@@ -248,13 +248,15 @@ export function Header() {
           {/* Guest login prompt — shown only when not logged in */}
           {!user && (
             <div className="ml-auto shrink-0">
-              <Link href="/auth">
-                <button className="flex items-center gap-2 bg-primary text-primary-foreground font-semibold text-sm px-4 py-2 rounded-2xl neu-card shadow-none hover:opacity-90 transition-opacity">
-                  <LogIn className="w-4 h-4" />
-                  <span className="hidden sm:inline">Login</span>
-                  <span className="hidden md:inline">/ Sign Up</span>
-                </button>
-              </Link>
+              <button
+                type="button"
+                onClick={() => openLoginModal()}
+                className="flex items-center gap-2 bg-primary text-primary-foreground font-semibold text-sm px-4 py-2 rounded-2xl neu-card shadow-none hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" />
+                <span className="hidden sm:inline">Login</span>
+                <span className="hidden md:inline">/ Sign Up</span>
+              </button>
             </div>
           )}
 

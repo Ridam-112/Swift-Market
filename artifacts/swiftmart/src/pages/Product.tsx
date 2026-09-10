@@ -3,6 +3,7 @@ import { useRoute } from "wouter";
 import { SEO } from "@/components/SEO";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { formatINR } from "@/lib/currency";
 import { QuantityStepper } from "@/components/QuantityStepper";
@@ -292,7 +293,13 @@ export default function Product() {
     ? priceForWeight(effectivePrice, baseGrams, selectedGrams)
     : effectivePrice;
 
+  const { user, openLoginModal } = useAuth();
+
   const handleAddToCart = () => {
+    if (!user) {
+      openLoginModal("Please log in to add this item to your cart");
+      return;
+    }
     if (!variantSelectionValid()) {
       setShowVariantError(true);
       return;
@@ -601,7 +608,10 @@ export default function Product() {
                 selectedGrams={selectedGrams}
                 presets={weightPresetList}
                 maxGrams={maxGrams}
-                onChange={(grams) => updateWeight(itemKey, grams)}
+                onChange={(grams) => {
+                  if (!user) { openLoginModal("Please log in to update your cart"); return; }
+                  updateWeight(itemKey, grams);
+                }}
               />
             ) : (
               <Button size="sm" className="rounded-full font-bold shadow-none neu-card px-5 shrink-0" onClick={handleAddToCart}>
@@ -609,7 +619,14 @@ export default function Product() {
               </Button>
             )
           ) : qty > 0 ? (
-            <QuantityStepper qty={qty} maxQty={limit !== undefined ? (product.stock > 0 ? Math.min(limit, product.stock) : limit) : product.stock} onChange={(newQty) => updateQty(itemKey, newQty)} />
+            <QuantityStepper
+              qty={qty}
+              maxQty={limit !== undefined ? (product.stock > 0 ? Math.min(limit, product.stock) : limit) : product.stock}
+              onChange={(newQty) => {
+                if (!user) { openLoginModal("Please log in to update your cart"); return; }
+                updateQty(itemKey, newQty);
+              }}
+            />
           ) : (
             <Button size="sm" className="rounded-full font-bold shadow-none neu-card px-5 shrink-0" onClick={handleAddToCart}>
               Add to Cart

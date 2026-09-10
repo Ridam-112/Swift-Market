@@ -300,6 +300,7 @@ function DynamicSection({ section }: { section: HomepageSection }) {
 
 export default function Home() {
   const { user, selectedDeliveryAddress, setSelectedDeliveryAddress } = useAuth();
+  const { products, isLoading: productsLoading } = useProducts();
   const { shops, isLoading: shopsLoading } = useShops();
   const selectedCity = (selectedDeliveryAddress?.city ?? selectedDeliveryAddress?.line1 ?? "Your Location").trim();
   const loading = shopsLoading;
@@ -634,6 +635,25 @@ export default function Home() {
               }))
               .filter(s => s.products.length > 0)
               .map(section => <DynamicSection key={section._id} section={section} />)
+          ) : products.length > 0 ? (
+            <section>
+              <SectionHeader
+                title="Popular & Trending Items"
+                action={
+                  <Link
+                    href="/products"
+                    className="flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80 transition-opacity"
+                  >
+                    See all <ChevronRight className="w-4 h-4" />
+                  </Link>
+                }
+              />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
+                {products.slice(0, 12).map((product, i) => (
+                  <ProductCard key={product.id} product={product} index={i} />
+                ))}
+              </div>
+            </section>
           ) : null}
 
           {/* ── AdSense Section Banner: Above FAQ ── */}

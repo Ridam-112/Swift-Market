@@ -4,6 +4,7 @@ import { formatINR } from "@/lib/currency";
 import { QuantityStepper } from "./QuantityStepper";
 import { WeightStepper } from "./WeightStepper";
 import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "./ui/button";
 import { motion } from "framer-motion";
 import { categories } from "@/data/categories";
@@ -18,6 +19,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardProps) {
+  const { user, openLoginModal } = useAuth();
   const { items, addToCart, updateQty, updateWeight, productLimits } = useCart();
   const [, navigate] = useLocation();
 
@@ -65,6 +67,10 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
     : effectivePrice;
 
   const handleAdd = () => {
+    if (!user) {
+      openLoginModal("Please log in to add items to your cart");
+      return;
+    }
     if (hasVariants) {
       navigate(`/product/${product.id}`);
     } else if (isWeightBased) {
@@ -76,6 +82,10 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
   };
 
   const handleStepperChange = (newQty: number) => {
+    if (!user) {
+      openLoginModal("Please log in to update your cart");
+      return;
+    }
     if (hasVariants) {
       navigate(`/product/${product.id}`);
     } else {
@@ -84,6 +94,10 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
   };
 
   const handleWeightChange = (grams: number) => {
+    if (!user) {
+      openLoginModal("Please log in to update your cart");
+      return;
+    }
     updateWeight(simpleKey, grams);
   };
 

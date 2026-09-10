@@ -14,6 +14,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
+import { AuthModal } from "@/components/AuthModal";
 import { RoleGuard } from "@/components/RoleGuard";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AdminGuard } from "@/components/AdminGuard";
@@ -359,9 +360,9 @@ function Router() {
           <PublicLayout><Product /></PublicLayout>
         </Route>
 
-        {/* ── Private / transactional pages — AuthGuard blocks unauthenticated users ── */}
+        {/* ── Cart page — accessible to guests, checkout requires login ── */}
         <Route path="/cart">
-          <ProtectedLayout><RoleGuard requiredRole="customer"><Cart /></RoleGuard></ProtectedLayout>
+          <PublicLayout><Cart /></PublicLayout>
         </Route>
         <Route path="/checkout">
           <ProtectedLayout><RoleGuard requiredRole="customer"><Checkout /></RoleGuard></ProtectedLayout>
@@ -515,6 +516,7 @@ function App() {
                   </WouterRouter>
                   <PushManager />
                   <InstallPrompt />
+                  <AuthModal />
                   <Toaster />
                 </CartProvider>
               </ProductsProvider>

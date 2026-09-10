@@ -40,7 +40,11 @@ interface AuthContextType {
   signup: (name: string, phone: string, password: string) => Promise<{ isNewUser: boolean; user?: User }>;
   loginWithGoogle: (token: string, type?: "credential" | "accessToken") => Promise<{ isNewUser: boolean; needsProfile?: boolean; user?: User }>;
   loginWithPhone: (phone: string) => Promise<void>;
-  verifyOtp: (otp: string, phone: string) => Promise<{ isNewUser: boolean; user?: User }>;
+  // ── Modal Login Popup ──────────────────────────────────────────────
+  isLoginModalOpen: boolean;
+  loginModalMessage?: string;
+  openLoginModal: (message?: string) => void;
+  closeLoginModal: () => void;
 
   applications: VendorApplication[];
   submitVendorApplication: (app: Omit<VendorApplication, 'id' | 'userId' | 'userName' | 'userPhone' | 'submittedAt' | 'status'>) => Promise<void>;
@@ -167,6 +171,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [bannedVendorIds, setBannedVendorIds] = useState<string[]>([]);
   const [platformOrders] = useState<PlatformOrder[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>(undefined);
+
+  const openLoginModal = (message?: string) => {
+    setLoginModalMessage(message);
+    setIsLoginModalOpen(true);
+  };
+
+  const closeLoginModal = () => {
+    setIsLoginModalOpen(false);
+    setLoginModalMessage(undefined);
+  };
 
   const isAdmin = userRole === 'admin' || userRole === 'super_admin';
 
@@ -610,6 +626,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       applications, submitVendorApplication, approveApplication, rejectApplication,
       adminCustomers, banCustomer, unbanCustomer, bannedVendorIds, banVendor, unbanVendor, removeVendor,
       platformOrders, updateOrderStatus, refundOrder, reports, resolveReport, ignoreReport,
+      isLoginModalOpen, loginModalMessage, openLoginModal, closeLoginModal,
     }}>
       {children}
     </AuthContext.Provider>

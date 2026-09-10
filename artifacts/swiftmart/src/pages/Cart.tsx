@@ -1,5 +1,6 @@
 import { useCart } from "@/hooks/useCart";
 import { useShops } from "@/hooks/useShops";
+import { useAuth } from "@/hooks/useAuth";
 import { CartItemRow } from "@/components/CartItemRow";
 import { CartSummary } from "@/components/CartSummary";
 import { EmptyState } from "@/components/EmptyState";
@@ -112,11 +113,18 @@ export default function Cart() {
               Add ₹{remaining} more to checkout
             </Button>
           ) : (
-            <Link href="/checkout">
-              <Button className="w-full rounded-full h-12 text-base font-bold shadow-none neu-card">
-                Proceed to Checkout
-              </Button>
-            </Link>
+            <Button
+              className="w-full rounded-full h-12 text-base font-bold shadow-none neu-card"
+              onClick={() => {
+                if (!user) {
+                  openLoginModal("Please log in to proceed to checkout");
+                } else {
+                  window.location.href = "/checkout";
+                }
+              }}
+            >
+              Proceed to Checkout
+            </Button>
           )}
         </div>
       </div>
