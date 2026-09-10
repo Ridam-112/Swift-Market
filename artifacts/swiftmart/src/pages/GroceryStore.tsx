@@ -1,12 +1,13 @@
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import { Link } from "wouter";
 import { useProducts } from "@/hooks/useProducts";
 import { ProductCard } from "@/components/ProductCard";
 import { EmptyState } from "@/components/EmptyState";
 import { SEO } from "@/components/SEO";
 import { AdSenseInFeedCard } from "@/components/GoogleAdSense";
-import { ArrowLeft, PackageOpen, Search, X, ChevronRight } from "lucide-react";
+import { ArrowLeft, PackageOpen, Search, X, ChevronRight, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { GROCERY_SUBCATS } from "@/data/grocerySubcats";
 
@@ -24,7 +25,8 @@ function matchSubcat(product: { name: string; category?: string; subcategory?: s
   const name = (product.name || "").toLowerCase();
   const subcat = (product.subcategory || "").toLowerCase();
   const cat = (product.category || "").toLowerCase();
-  const combined = `${name} ${subcat} ${cat}`;
+  const desc = (product.description || "").toLowerCase();
+  const combined = `${name} ${subcat} ${cat} ${desc}`;
 
   switch (subcatId) {
     case "rice":
@@ -59,39 +61,48 @@ function matchSubcat(product: { name: string; category?: string; subcategory?: s
       return /chips|lays|kurkure|bingo|pringles|namkeen|bhujia|chanachur|mixture|popcorn|snack/i.test(combined) || cat === "snacks" || subcat.includes("chips") || subcat.includes("snack");
     case "noodles":
       return /maggi|yippee|noodles|pasta|macaroni|vermicelli|chowmein|ready to eat|ready to cook|soup/i.test(combined) || cat === "packaged-food" || subcat.includes("ready to") || subcat.includes("noodle");
-    case "sauces":
-      return /ketchup|sauce|mayonnaise|jam|jelly|spread|pickle|achar|papad|vinegar/i.test(combined) || cat === "breakfast-sauces" || subcat.includes("spread") || subcat.includes("sauce") || subcat.includes("pickle");
+    case "cereals":
+      return /corn flakes|cornflakes|muesli|oats|oatmeal|kellogg|quaker|chocos|cereal|upma/i.test(combined) || subcat.includes("cereal");
+    case "soap":
+      return /soap|body wash|handwash|hand wash|lifebuoy|lux|dove|dettol|pears|savlon|shower gel/i.test(combined) || subcat.includes("soap") || subcat.includes("body wash");
+    case "dental":
+      return /toothpaste|toothbrush|tooth paste|tooth brush|colgate|sensodyne|pepsodent|close up|oral-b|mouthwash/i.test(combined) || subcat.includes("dental") || subcat.includes("oral");
     case "personal-care":
-      return /soap|body wash|handwash|shampoo|conditioner|face wash|lotion|cream|powder|toothpaste|toothbrush|deodorant|perfume|shaving|razor|grooming|hygiene|skincare/i.test(combined) || cat === "fragrance" || cat === "feminine-hygiene" || cat === "beauty-personal-care" || subcat.includes("wellness") || subcat.includes("grooming");
+      return /shampoo|conditioner|face wash|lotion|cream|powder|deodorant|perfume|shaving|razor|grooming|hygiene|skincare|hair oil|vaseline/i.test(combined) || cat === "fragrance" || cat === "feminine-hygiene" || cat === "beauty-personal-care" || subcat.includes("wellness") || subcat.includes("grooming");
     case "cleaning":
       return /detergent|surf excel|tide|ariel|vim|dishwash|phenyl|lizol|harpic|cleaner|air freshner|repellent|mop|broom|garbage/i.test(combined) || cat === "cleaning-essentials" || subcat.includes("dishwashing") || subcat.includes("cleaning");
     case "baby-care":
       return /baby|diaper|pampers|huggies|wipes|cerelac|johnson/i.test(combined) || cat === "baby-care";
     case "pooja":
       return /agarbatti|incense|camphor|kapoor|diya|sindoor|kumkum|dhoop|pooja/i.test(combined) || cat === "pooja" || subcat.includes("pooja");
+    case "frozen":
+      return /frozen|pickle|achar|jam|jelly|spread|sauce|ketchup|mayonnaise|vinegar|peanut butter|ready to cook|papad/i.test(combined) || cat === "breakfast-sauces" || subcat.includes("spread") || subcat.includes("sauce") || subcat.includes("pickle") || subcat.includes("frozen");
     default:
       return false;
   }
 }
 
-function getProductSubcatId(product: { name: string; category?: string; subcategory?: string; description?: string }): string | null {
-  if (NON_GROCERY_CATS.has(product.category ?? "")) return null;
-  return GROCERY_SUBCATS.find(sc => matchSubcat(product, sc.id))?.id ?? null;
-}
+const PAGE_SIZE = 24;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function GroceryStore() {
   const { products, isLoading } = useProducts();
   const [selectedId, setSelectedId] = useState<string>("all");
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+
+  // Reset page when category or query changes
+  useEffect(() => {
+    setPage(1);
+  }, [selectedId, query]);
 
   // Count products per subcategory
   const counts = useMemo(() => {
     const map: Record<string, number> = {};
-    products.forEach(p => {
-      const id = getProductSubcatId(p);
-      if (id) map[id] = (map[id] ?? 0) + 1;
-    });
+    const groceryList = products.filter(p => !NON_GROCERY_CATS.has(p.category ?? ""));
+    for (const sc of GROCERY_SUBCATS) {
+      map[sc.id] = groceryList.filter(p => matchSubcat(p, sc.id)).length;
+    }
     return map;
   }, [products]);
 
@@ -114,6 +125,12 @@ export default function GroceryStore() {
     }
     return list;
   }, [products, selectedId, query]);
+
+  const paginatedProducts = useMemo(() => {
+    return filteredProducts.slice(0, page * PAGE_SIZE);
+  }, [filteredProducts, page]);
+
+  const hasMore = paginatedProducts.length < filteredProducts.length;
 
   const activeMeta = selectedId === "all"
     ? { name: "All Products", emoji: "🛒", color: "hsl(140,60%,45%)" }
@@ -330,17 +347,33 @@ export default function GroceryStore() {
             </div>
           )}
 
-          {!isLoading && filteredProducts.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {filteredProducts.map((product, i) => (
-                <Fragment key={product.id}>
-                  <ProductCard product={product} index={i} />
-                  {(i + 1) % 8 === 0 && (
-                    <AdSenseInFeedCard key={`ad-groc-${i}`} />
-                  )}
-                </Fragment>
-              ))}
-            </div>
+          {!isLoading && paginatedProducts.length > 0 && (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {paginatedProducts.map((product, i) => (
+                  <Fragment key={product.id}>
+                    <ProductCard product={product} index={i % 24} />
+                    {i === 7 && (
+                      <AdSenseInFeedCard key="ad-groc-1" />
+                    )}
+                    {i === 23 && (
+                      <AdSenseInFeedCard key="ad-groc-2" />
+                    )}
+                  </Fragment>
+                ))}
+              </div>
+              {hasMore && (
+                <div className="flex flex-col items-center justify-center pt-8 pb-4 gap-2">
+                  <Button
+                    onClick={() => setPage(p => p + 1)}
+                    variant="outline"
+                    className="rounded-full px-8 py-2 font-bold neu-card border-none shadow-md hover:bg-primary hover:text-white transition-all text-sm"
+                  >
+                    Load More Products ({filteredProducts.length - paginatedProducts.length} remaining)
+                  </Button>
+                </div>
+              )}
+            </>
           )}
 
           {!isLoading && filteredProducts.length === 0 && (
