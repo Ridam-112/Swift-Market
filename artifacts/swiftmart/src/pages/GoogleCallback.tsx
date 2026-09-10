@@ -117,7 +117,10 @@ export default function GoogleCallback() {
           !data.user.phone ||
           data.user.phone.startsWith("g_");
 
-        const target = needsProfile ? "/complete-profile" : "/";
+        const savedNext = sessionStorage.getItem("auth_next");
+        if (savedNext) sessionStorage.removeItem("auth_next");
+
+        const target = needsProfile ? "/complete-profile" : (savedNext && savedNext.startsWith("/") ? savedNext : "/");
         console.log("[GoogleCallback] redirecting to:", target);
 
         setLocation(target);

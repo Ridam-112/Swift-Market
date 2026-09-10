@@ -98,10 +98,38 @@ export function AuthModal() {
     }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
-    const returnPath = window.location.pathname + window.location.search;
-    window.location.href = `${api.BASE}/auth/google/start?next=${encodeURIComponent(returnPath)}`;
+    if (api.isCapacitorNative) {
+      try {
+        const mod = await import("@/lib/googleNativeAuth");
+        const idToken = await mod.nativeGoogleSignIn();
+        const res = await fetch(`${api.BASE}/auth/google`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ credential: idToken }),
+        });
+        const data = await res.json() as any;
+        if (data.success && data.accessToken && data.refreshToken) {
+          setTokens(data.accessToken, data.refreshToken);
+          await refreshUser();
+          closeLoginModal();
+          toast.success("Signed in with Google!");
+        } else {
+          toast.error(data.message || "Google sign-in failed");
+        }
+      } catch (e: any) {
+        toast.error(e.message || "Google sign-in failed");
+      } finally {
+        setGoogleLoading(false);
+      }
+    } else {
+      const returnPath = window.location.pathname + window.location.search;
+      if (returnPath && returnPath !== "/auth") {
+        sessionStorage.setItem("auth_next", returnPath);
+      }
+      window.location.href = `${api.BASE}/auth/google/redirect`;
+    }
   };
 
   const handleTruecallerSignIn = () => {
