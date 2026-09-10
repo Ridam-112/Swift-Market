@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, MapPin, ShoppingBag, Store, Clock, User, Shield, LayoutDashboard, Package, ClipboardList, Plus, Bell, LogIn } from "lucide-react";
+import { Search, MapPin, ShoppingBag, Store, Clock, User, Shield, LayoutDashboard, Package, ClipboardList, Plus, Bell, LogIn, ArrowRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
+import { useProducts } from "@/hooks/useProducts";
+import { formatINR } from "@/lib/currency";
 import { Input } from "./ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
@@ -72,14 +74,43 @@ export function Header() {
     };
   }, [user]);
 
+  const { products } = useProducts();
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setSearchFocused(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const searchSuggestions = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q || q.length < 1) return [];
+    return products.filter(p => {
+      const name = (p.name || "").toLowerCase();
+      const cat = (p.category || "").toLowerCase();
+      const shop = (p.shopName || "").toLowerCase();
+      return name.includes(q) || cat.includes(q) || shop.includes(q);
+    }).slice(0, 6);
+  }, [products, searchQuery]);
+
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && searchQuery.trim()) {
+      setSearchFocused(false);
       setLocation(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    } else if (e.key === "Escape") {
+      setSearchFocused(false);
     }
   };
 
   const handleSearchClick = () => {
     if (searchQuery.trim()) {
+      setSearchFocused(false);
       setLocation(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
@@ -117,7 +148,7 @@ export function Header() {
               <Link href="/shops" className="flex items-center gap-1.5 font-medium hover:text-primary transition-colors text-foreground shrink-0 text-sm">
                 <Store className="w-4 h-4" /> Shops
               </Link>
-              <div className="relative flex-1 flex items-center">
+              <div ref={searchContainerRef} className="relative flex-1 flex items-center">
                 <button onClick={handleSearchClick} aria-label="Search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   <Search className="w-4 h-4" aria-hidden="true" />
                 </button>
@@ -131,6 +162,7 @@ export function Header() {
                   }
                   aria-label="Search groceries and products"
                   value={searchQuery}
+                  onFocus={() => setSearchFocused(true)}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleSearch}
                 />
@@ -150,6 +182,64 @@ export function Header() {
                       <span className="text-[8px] opacity-80">{campaign.theme?.badgeSubtitle || "Special"}</span>
                     </div>
                   </Link>
+                )}
+
+                {/* Autocomplete Suggestions Dropdown */}
+                {searchFocused && searchQuery.trim().length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-background/95 backdrop-blur-xl border border-border/60 rounded-2xl shadow-2xl p-2 z-[100] space-y-1">
+                    {searchSuggestions.length > 0 ? (
+                      <>
+                        <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          Suggested Products
+                        </div>
+                        {searchSuggestions.map((prod) => (
+                          <button
+                            key={prod.id}
+                            type="button"
+                            onClick={() => {
+                              setSearchFocused(false);
+                              setLocation(`/product/${prod.id}`);
+                            }}
+                            className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-muted text-left transition-colors group cursor-pointer"
+                          >
+                            <img
+                              src={prod.image || "/assets/product-placeholder.png"}
+                              alt=""
+                              className="w-8 h-8 object-contain rounded-lg bg-card p-0.5 border border-border/40 shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-foreground truncate group-hover:text-primary">
+                                {prod.name}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground truncate">
+                                {prod.category} {prod.shopName ? `· ${prod.shopName}` : ""}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-xs font-bold text-primary">
+                                {formatINR(prod.discountedPrice ?? prod.price)}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchFocused(false);
+                            setLocation(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+                          }}
+                          className="w-full mt-1 p-2 text-center text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-xl transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <span>View all results for "{searchQuery}"</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <div className="py-4 text-center text-xs text-muted-foreground">
+                        No matching products found for "{searchQuery}"
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

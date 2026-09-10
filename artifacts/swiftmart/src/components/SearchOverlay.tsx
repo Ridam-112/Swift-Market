@@ -6,24 +6,29 @@ import { useProducts } from "@/hooks/useProducts";
 import { formatINR } from "@/lib/currency";
 import type { Product } from "@/types";
 
-// Highlight matched letters in a string
-function Highlight({ text, query }: { text: string; query: string }) {
+// Highlight matched letters in a string safely
+function Highlight({ text, query }: { text?: string | null; query: string }) {
+  if (!text) return null;
   if (!query.trim()) return <>{text}</>;
-  const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
-  const parts = text.split(regex);
-  return (
-    <>
-      {parts.map((part, i) =>
-        regex.test(part) ? (
-          <mark key={i} className="bg-primary/20 text-primary font-bold rounded-sm px-0.5">
-            {part}
-          </mark>
-        ) : (
-          <span key={i}>{part}</span>
-        )
-      )}
-    </>
-  );
+  try {
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+    const parts = text.split(regex);
+    return (
+      <>
+        {parts.map((part, i) =>
+          regex.test(part) ? (
+            <mark key={i} className="bg-primary/20 text-primary font-bold rounded-sm px-0.5">
+              {part}
+            </mark>
+          ) : (
+            <span key={i}>{part}</span>
+          )
+        )}
+      </>
+    );
+  } catch {
+    return <>{text}</>;
+  }
 }
 
 interface Props {
@@ -55,18 +60,17 @@ export function SearchOverlay({ isOpen, onClose }: Props) {
     return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
-  // Live filter — match name, category, description, shopName
+  // Live filter — match name, category, description, shopName safely
   const results: Product[] = query.trim().length === 0
     ? []
     : products.filter(p => {
-        const q = query.toLowerCase();
-        return (
-          p.name.toLowerCase().includes(q) ||
-          (p.category ?? "").toLowerCase().includes(q) ||
-          (p.description ?? "").toLowerCase().includes(q) ||
-          (p.shopName ?? "").toLowerCase().includes(q)
-        );
-      }).slice(0, 40);
+        const q = query.toLowerCase().trim();
+        const name = (p.name || "").toLowerCase();
+        const cat = (p.category || "").toLowerCase();
+        const desc = (p.description || "").toLowerCase();
+        const shop = (p.shopName || "").toLowerCase();
+        return name.includes(q) || cat.includes(q) || desc.includes(q) || shop.includes(q);
+      }).slice(0, 30);
 
   const hasQuery = query.trim().length > 0;
 

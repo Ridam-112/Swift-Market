@@ -89,9 +89,9 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, duration: 0.3 }}
+      transition={{ delay: Math.min(index * 0.02, 0.12), duration: 0.2 }}
       className="bg-card rounded-2xl p-2.5 flex flex-col gap-2 neu-card relative overflow-hidden group w-full min-w-0"
     >
       <div
