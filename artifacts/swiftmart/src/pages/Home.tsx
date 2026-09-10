@@ -471,37 +471,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* ── Multi-Store Switcher Tabs (Zepto/Blinkit/SwiftMart App Style) ── */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-3 px-3">
-            {[
-              { id: "swiftmart", label: "SwiftMart", subtitle: "Grocery & Veggies", icon: "🛒", active: true, color: "from-purple-600 to-indigo-600" },
-              { id: "festive", label: "Festive Store", subtitle: "Sweets & Gifts", icon: "🎀", href: "/festive", color: "from-rose-500 to-pink-600" },
-              { id: "super_store", label: "Super Store", subtitle: "Electronics & Home", icon: "⚡", href: "/category/electronics", color: "from-amber-500 to-orange-600" },
-              { id: "cafe", label: "Cafe & Food", subtitle: "Fast Food & Snacks", icon: "☕", href: "/category/food_junction", color: "from-emerald-500 to-teal-600" },
-            ].map((tab) => (
-              <Link
-                key={tab.id}
-                href={tab.href || "/"}
-                className={cn(
-                  "flex items-center gap-2 px-3.5 py-2 rounded-2xl shrink-0 transition-all cursor-pointer border",
-                  tab.active
-                    ? "bg-gradient-to-r text-white shadow-md border-transparent " + tab.color
-                    : "bg-card/80 hover:bg-card border-purple-200/50 dark:border-purple-900/30 text-foreground hover:scale-[1.02]"
-                )}
-              >
-                <span className="text-base">{tab.icon}</span>
-                <div className="flex flex-col text-left leading-none">
-                  <span className={cn("text-xs font-black tracking-tight", tab.active ? "text-white" : "text-foreground")}>
-                    {tab.label}
-                  </span>
-                  <span className={cn("text-[9px] mt-0.5 font-medium", tab.active ? "text-white/80" : "text-muted-foreground")}>
-                    {tab.subtitle}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-
           <HeroBannerSlider />
 
           {/* Admin-curated highlighted bucket bundles */}

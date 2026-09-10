@@ -14,8 +14,8 @@ export function BottomNav() {
 
   const customerTabs: Tab[] = [
     { href: "/", icon: Home, label: "Home" },
-    { href: "/categories", icon: Store, label: "Categories" },
-    { href: "/shops", icon: ShoppingBag, label: "Shops" },
+    { href: "/shops", icon: Store, label: "Shops" },
+    { href: "/cart", icon: ShoppingBag, label: "Cart", badge: totalItems || undefined },
     { href: "/orders", icon: Clock, label: "Orders" },
     { href: "/profile", icon: User, label: "Profile" }
   ];
@@ -31,29 +31,34 @@ export function BottomNav() {
   const tabs = role === 'vendor' ? vendorTabs : customerTabs;
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-xl pb-safe pt-2 px-2 z-30 rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.08)] border-t border-border/50">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 glass pb-safe pt-2 px-2 z-50 rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.05)] border-t border-border/50">
       <div className="flex justify-around items-center">
         {tabs.map((tab) => {
           const isActive = location === tab.href || (tab.href !== "/" && tab.href !== "/vendor" && location.startsWith(tab.href));
           const Icon = tab.icon;
 
           return (
-            <Link key={tab.href} href={tab.href} className="relative flex flex-col items-center py-1.5 px-2 w-16 group">
+            <Link key={tab.href} href={tab.href} className="relative flex flex-col items-center p-2 w-16">
               <div className="relative z-10 flex flex-col items-center gap-1">
                 <div className="relative">
-                  <Icon className={cn("w-5 h-5 transition-transform duration-200", isActive ? "text-primary scale-110" : "text-muted-foreground group-hover:text-foreground")} />
+                  <Icon className={cn("w-6 h-6 transition-colors duration-300", isActive ? "text-white" : "text-muted-foreground")} />
                   {tab.badge ? (
-                    <span className="absolute -top-1.5 -right-2 bg-emerald-500 text-slate-950 text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                    <span className="absolute -top-1 -right-2 bg-destructive text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                       {tab.badge}
                     </span>
                   ) : null}
                 </div>
-                <span className={cn("text-[10px] font-bold tracking-tight transition-colors duration-200", isActive ? "text-primary" : "text-muted-foreground")}>
+                <span className={cn("text-[10px] font-medium transition-colors duration-300", isActive ? "text-primary" : "text-muted-foreground")}>
                   {tab.label}
                 </span>
               </div>
               {isActive && (
-                <div className="absolute top-0 w-8 h-1 bg-primary rounded-full shadow-[0_0_8px_rgba(108,61,232,0.6)]" />
+                <motion.div
+                  layoutId="bottom-nav-active"
+                  className="absolute top-1 w-12 h-10 rounded-2xl -z-0 neu-card opacity-[0] border-t-[#ff8300] border-r-[#ff8300] border-b-[#ff8300] border-l-[#ff8300] border-t-[4px] border-r-[4px] border-b-[4px] border-l-[4px] bg-[#00000000]"
+                  initial={false}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
               )}
             </Link>
           );

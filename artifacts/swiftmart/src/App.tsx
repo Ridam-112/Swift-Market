@@ -14,7 +14,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
-import { FloatingCartBar } from "@/components/FloatingCartBar";
 import { RoleGuard } from "@/components/RoleGuard";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AdminGuard } from "@/components/AdminGuard";
@@ -254,7 +253,6 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
         </motion.main>
       </AnimatePresence>
       <BottomNav />
-      <FloatingCartBar />
       <WhatsAppButton />
     </PincodeGuard>
   );
@@ -283,7 +281,6 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
           </motion.main>
         </AnimatePresence>
         <BottomNav />
-        <FloatingCartBar />
         <WhatsAppButton />
       </PincodeGuard>
     </AuthGuard>
