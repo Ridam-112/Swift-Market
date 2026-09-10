@@ -115,27 +115,53 @@ export function Header() {
     }
   };
 
+  const PLACEHOLDERS = [
+    "Search 'Fresh Milk, Bread, Butter' 🥛",
+    "Search 'Fresh Fruits & Vegetables' 🥦",
+    "Search 'Sweets, Snacks & Chocolates' 🍬",
+    "Search 'Cold Drinks & Juices' 🧃",
+    "Search 'Atta, Rice & Dal' 🌾",
+    "Search 'Medicines & Essentials' 💊",
+  ];
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDERS.length);
+    }, 2800);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <>
-      <header className="sticky top-0 z-50 glass w-full px-3 py-2.5 md:px-6">
+      <header className="sticky top-0 z-50 w-full px-3 py-2.5 md:px-6 bg-gradient-to-r from-[#F4EBFF]/95 via-[#EFE6FD]/95 to-[#FAF5FF]/95 dark:from-[#1C1328]/95 dark:via-[#170E22]/95 dark:to-[#140B1D]/95 backdrop-blur-md border-b border-purple-200/50 dark:border-purple-900/40 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center gap-2 md:gap-4">
-          {/* Logo — always visible */}
-          <Link href="/" className="shrink-0 flex items-center">
-            <img src="/logo.png" alt="SwiftMart" className="h-9 w-auto object-contain" />
-          </Link>
+          {/* Logo & 10-MIN Badge */}
+          <div className="shrink-0 flex items-center gap-2">
+            <Link href="/" className="flex items-center">
+              <img src="/logo.png" alt="SwiftMart" className="h-9 w-auto object-contain" />
+            </Link>
+            <div className="hidden sm:flex items-center gap-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+              <span>⚡ 10 MINS</span>
+            </div>
+          </div>
 
           {/* Location pill — customer only, takes remaining space on mobile */}
           {role === 'customer' && (
             <button
               onClick={() => setIsLocationOpen(true)}
-              className="flex-1 min-w-0 flex items-center gap-1.5 text-sm bg-background/50 rounded-full px-2.5 py-1.5 neu-inset hover:bg-background/80 transition-colors md:flex-none md:max-w-[200px]"
+              className="flex-1 min-w-0 flex items-center gap-1.5 text-sm bg-white/70 dark:bg-card/70 border border-purple-200/60 dark:border-purple-900/40 shadow-sm rounded-full px-2.5 py-1.5 hover:bg-white dark:hover:bg-card transition-colors md:flex-none md:max-w-[210px]"
             >
-              <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-              <div className="flex flex-col items-start text-left min-w-0">
-                <span className="font-bold text-[10px] leading-none text-foreground">
-                  {selectedDeliveryAddress?.label || "Deliver to"}
-                </span>
-                <span className="text-muted-foreground text-[10px] truncate w-full leading-none mt-0.5">
+              <div className="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center shrink-0">
+                <MapPin className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div className="flex flex-col items-start text-left min-w-0 flex-1">
+                <div className="flex items-center gap-1 w-full">
+                  <span className="font-extrabold text-[11px] leading-none text-foreground truncate">
+                    {selectedDeliveryAddress?.label || "Deliver in 10 mins"}
+                  </span>
+                </div>
+                <span className="text-muted-foreground text-[10px] truncate w-full leading-none mt-0.5 font-medium">
                   {selectedDeliveryAddress?.city || "Select Location"}
                 </span>
               </div>
@@ -145,20 +171,20 @@ export function Header() {
           {/* Desktop search bar */}
           {role === 'customer' && (
             <div className="flex-1 max-w-xl hidden md:flex gap-3 items-center">
-              <Link href="/shops" className="flex items-center gap-1.5 font-medium hover:text-primary transition-colors text-foreground shrink-0 text-sm">
-                <Store className="w-4 h-4" /> Shops
+              <Link href="/shops" className="flex items-center gap-1.5 font-semibold hover:text-purple-600 transition-colors text-foreground shrink-0 text-sm">
+                <Store className="w-4 h-4 text-purple-600" /> Shops
               </Link>
               <div ref={searchContainerRef} className="relative flex-1 flex items-center">
-                <button onClick={handleSearchClick} aria-label="Search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <button onClick={handleSearchClick} aria-label="Search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-10">
                   <Search className="w-4 h-4" aria-hidden="true" />
                 </button>
                 <Input
                   className={cn(
-                    "w-full pl-9 bg-background/50 neu-inset border-none h-9 rounded-full focus-visible:ring-1 focus-visible:ring-primary/50 text-foreground text-sm transition-all",
+                    "w-full pl-9 bg-white/80 dark:bg-card/80 border border-purple-200/60 dark:border-purple-900/40 h-10 rounded-full focus-visible:ring-2 focus-visible:ring-purple-500 text-foreground text-sm transition-all shadow-inner placeholder:text-muted-foreground/80 placeholder:transition-opacity",
                     campaign?.isActive && "pr-28"
                   )}
                   placeholder={
-                    campaign?.theme?.searchPlaceholders?.[0] || "Search groceries, vegetables..."
+                    campaign?.theme?.searchPlaceholders?.[0] || PLACEHOLDERS[placeholderIndex]
                   }
                   aria-label="Search groceries and products"
                   value={searchQuery}

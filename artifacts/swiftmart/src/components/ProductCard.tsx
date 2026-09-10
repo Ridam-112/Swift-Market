@@ -108,25 +108,32 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
           height={200}
           className={`w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? "opacity-40" : ""}`}
         />
+        {/* Discount Badge */}
         {product.discountedPrice && product.discountedPrice < product.price && !isOutOfStock && (
-          <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-            {Math.round((1 - product.discountedPrice / product.price) * 100)}% off
+          <div className="absolute top-2 right-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm">
+            {Math.round((1 - product.discountedPrice / product.price) * 100)}% OFF
+          </div>
+        )}
+        {/* 10 MINS Delivery ETA Pill */}
+        {!isOutOfStock && (
+          <div className="absolute bottom-1.5 left-1.5 bg-black/70 backdrop-blur-md text-amber-300 text-[9px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-0.5 border border-white/10">
+            <span>⚡ 10 MINS</span>
           </div>
         )}
         {product.trending && !isOutOfStock && !(product.discountedPrice && product.discountedPrice < product.price) && (
-          <div className="absolute top-2 left-2 bg-primary/90 text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
+          <div className="absolute top-2 left-2 bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm shadow-sm">
             Trending
           </div>
         )}
         {isOutOfStock && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="bg-background/90 text-foreground text-[10px] font-bold px-2 py-1 rounded-full border border-border">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
+            <span className="bg-background/95 text-foreground text-[10px] font-bold px-2.5 py-1 rounded-full border border-border shadow">
               Out of Stock
             </span>
           </div>
         )}
         {isLowStock && (
-          <div className="absolute top-2 left-2 bg-amber-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
+          <div className="absolute top-2 left-2 bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow-sm">
             Only {product.stock} left
           </div>
         )}
