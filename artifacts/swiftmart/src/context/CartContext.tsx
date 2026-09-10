@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect } from "react";
 import { CartItem, Product, ProductVariant } from "@/types";
-import { parseUnit, priceForWeight } from "@/lib/weightUtils";
+import { parseUnit, priceForWeight, isProductWeightBased } from "@/lib/weightUtils";
 import { api } from "@/lib/api";
 
 export function weightVariantId(productId: string, grams: number): string {
@@ -49,9 +49,9 @@ function itemPrice(item: CartItem): number {
   const unitPrice = p.discountedPrice != null && p.discountedPrice < p.price
     ? p.discountedPrice
     : p.price;
-  if (item.selectedGrams) {
+  if (item.selectedGrams && isProductWeightBased(p)) {
     const parsed = parseUnit(p.unit);
-    if (parsed.type === "weight") {
+    if (parsed.type === "weight" && parsed.baseGrams > 0) {
       return priceForWeight(unitPrice, parsed.baseGrams, item.selectedGrams) * item.qty;
     }
   }

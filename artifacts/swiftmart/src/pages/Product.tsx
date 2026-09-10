@@ -14,7 +14,7 @@ import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { categories } from "@/data/categories";
 import { cartKey } from "@/context/CartContext";
-import { parseUnit, weightPresets, priceForWeight, formatWeight } from "@/lib/weightUtils";
+import { parseUnit, weightPresets, priceForWeight, formatWeight, isProductWeightBased } from "@/lib/weightUtils";
 import type { Product as ProductType } from "@/types";
 
 const COLOR_HEX: Record<string, string> = {
@@ -239,10 +239,10 @@ export default function Product() {
 
   // Weight-based unit detection
   const unitInfo = parseUnit(product.unit);
-  const isWeightBased = !hasColors && !hasSizes && !hasCustomVariants && unitInfo.type === "weight";
+  const isWeightBased = !hasColors && !hasSizes && !hasCustomVariants && isProductWeightBased(product);
   const baseGrams = isWeightBased && unitInfo.type === "weight" ? unitInfo.baseGrams : 1000;
   const maxGrams = product.stock > 0 ? product.stock * baseGrams : undefined;
-  const weightPresetList = weightPresets(maxGrams);
+  const weightPresetList = weightPresets(maxGrams, product.weightPresets);
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(prev => prev === color ? null : color);

@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { useShops } from "@/hooks/useShops";
-import { parseUnit, priceForWeight, formatWeight } from "@/lib/weightUtils";
+import { parseUnit, priceForWeight, formatWeight, isProductWeightBased } from "@/lib/weightUtils";
 import { weightVariantId } from "@/context/CartContext";
 import { AddressCard } from "@/components/AddressCard";
 import { AddressForm } from "@/components/AddressForm";
@@ -185,7 +185,7 @@ export default function Checkout() {
       const base = item.product.discountedPrice != null && item.product.discountedPrice < item.product.price
         ? item.product.discountedPrice : item.product.price;
       let unitPrice = base;
-      if (item.selectedGrams) {
+      if (item.selectedGrams && isProductWeightBased(item.product)) {
         const parsed = parseUnit(item.product.unit);
         if (parsed.type === "weight" && parsed.baseGrams > 0) {
           unitPrice = +(priceForWeight(base, parsed.baseGrams, item.selectedGrams)).toFixed(2);
@@ -271,7 +271,7 @@ export default function Checkout() {
           ? item.product.discountedPrice
           : item.product.price;
         let unitPrice = basePrice;
-        if (item.selectedGrams) {
+        if (item.selectedGrams && isProductWeightBased(item.product)) {
           const parsed = parseUnit(item.product.unit);
           if (parsed.type === "weight" && parsed.baseGrams > 0) {
             unitPrice = +(priceForWeight(basePrice, parsed.baseGrams, item.selectedGrams)).toFixed(2);
@@ -384,7 +384,7 @@ export default function Checkout() {
             ? i.product.discountedPrice
             : i.product.price;
           let unitPrice = base;
-          if (i.selectedGrams) {
+          if (i.selectedGrams && isProductWeightBased(i.product)) {
             const parsed = parseUnit(i.product.unit);
             if (parsed.type === "weight" && parsed.baseGrams > 0) {
               unitPrice = +(priceForWeight(base, parsed.baseGrams, i.selectedGrams)).toFixed(2);

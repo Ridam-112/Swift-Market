@@ -65,6 +65,9 @@ export interface Product {
   shopName?: string;
   shopId?: string;
   fomoTag?: string;
+  weightPresets?: number[];
+  allowWeightSelection?: boolean;
+  isLoose?: boolean;
 }
 
 export interface CartItem {

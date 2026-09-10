@@ -10,7 +10,7 @@ import { motion } from "framer-motion";
 import { categories } from "@/data/categories";
 import { cartKey } from "@/context/CartContext";
 import { Store } from "lucide-react";
-import { parseUnit, weightPresets, priceForWeight, formatWeight } from "@/lib/weightUtils";
+import { parseUnit, weightPresets, priceForWeight, formatWeight, isProductWeightBased } from "@/lib/weightUtils";
 
 interface ProductCardProps {
   product: Product;
@@ -26,7 +26,7 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
   const hasCustomVariants = (product.variants?.length ?? 0) > 0;
   const hasVariants = (product.colors?.length ?? 0) > 0 || (product.sizes?.length ?? 0) > 0 || hasCustomVariants;
   const unitInfo = parseUnit(product.unit);
-  const isWeightBased = unitInfo.type === "weight";
+  const isWeightBased = isProductWeightBased(product);
 
   const cartItem = items.find(item => item.product.id === product.id && !item.selectedColor && !item.selectedSize);
   const simpleKey = cartKey(product.id, undefined, undefined, cartItem?.selectedGrams);
@@ -50,7 +50,7 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
   // Weight-based helpers
   const baseGrams = isWeightBased && unitInfo.type === "weight" ? unitInfo.baseGrams : 1000;
   const maxGrams = product.stock > 0 ? product.stock * baseGrams : undefined;
-  const presets = weightPresets(maxGrams);
+  const presets = weightPresets(maxGrams, product.weightPresets);
   const selectedGrams = cartItem?.selectedGrams;
   const weightInCart = isWeightBased && selectedGrams != null && selectedGrams > 0;
 

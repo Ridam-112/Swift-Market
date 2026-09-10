@@ -4,7 +4,7 @@ import { QuantityStepper } from "./QuantityStepper";
 import { WeightStepper } from "./WeightStepper";
 import { useCart } from "@/hooks/useCart";
 import { cartKey } from "@/context/CartContext";
-import { parseUnit, weightPresets, priceForWeight, formatWeight } from "@/lib/weightUtils";
+import { parseUnit, weightPresets, priceForWeight, formatWeight, isProductWeightBased } from "@/lib/weightUtils";
 import { Trash2 } from "lucide-react";
 
 const COLOR_HEX: Record<string, string> = {
@@ -20,10 +20,10 @@ export function CartItemRow({ item }: { item: CartItem }) {
   const key = cartKey(product.id, selectedColor, selectedSize, selectedGrams);
 
   const unitInfo = parseUnit(product.unit);
-  const isWeightBased = unitInfo.type === "weight";
+  const isWeightBased = isProductWeightBased(product) && Boolean(selectedGrams);
   const baseGrams = isWeightBased && unitInfo.type === "weight" ? unitInfo.baseGrams : 1000;
   const maxGrams = product.stock > 0 ? product.stock * baseGrams : undefined;
-  const presets = weightPresets(maxGrams);
+  const presets = weightPresets(maxGrams, product.weightPresets);
 
   const isLowStock = product.stock > 0 && product.stock <= 5;
 
