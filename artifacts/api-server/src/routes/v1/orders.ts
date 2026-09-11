@@ -725,7 +725,9 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
       // 5. Insert order record
       const paymentMethod = String(body["paymentMethod"] ?? "COD");
       const deliveryOtp = String(Math.floor(1000 + Math.random() * 9000));
+      const orderId = crypto.randomUUID();
       const [order] = await tx.insert(orders).values({
+        id: orderId,
         customerId: req.user!.userId,
         customerName: String(body["customerName"] ?? ""),
         customerPhone: String(body["customerPhone"] ?? ""),
@@ -760,6 +762,7 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
       if (shopId && vendorPayable > 0 && shop) {
         const scheduledDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); // 3 days after order
         await tx.insert(payouts).values({
+          id: crypto.randomUUID(),
           vendorId: shop.ownerId,
           vendorName: shop.ownerName ?? String(body["shopName"] ?? ""),
           shopId,
@@ -786,14 +789,16 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
       return order!;
     });
   } catch (err: unknown) {
+    logger.error({ err }, "Order creation error in POST /orders");
     // Known validation errors (stock, minimum order, coupon) — return 4xx to client
     const e = err as { statusCode?: number; message?: string };
     if (e.statusCode) {
       res.status(e.statusCode).json({ success: false, message: e.message });
       return;
     }
-    // Unexpected DB/server errors — re-throw for Express 5 global handler (returns 500)
-    throw err;
+    const errMsg = err instanceof Error ? err.message : "Failed to place order";
+    res.status(500).json({ success: false, message: errMsg });
+    return;
   }
 
   // Post-transaction: fire-and-forget notifications — failures never affect the 201 response

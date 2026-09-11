@@ -370,6 +370,7 @@ router.post("/:id/accept-and-pay", authenticate, async (req: AuthRequest, res: R
 
     // Create linked official order in orders table
     const [newOrder] = await db.insert(orders).values({
+      id: crypto.randomUUID(),
       customerId: userId!,
       customerName: cakeReq.customerName,
       customerPhone: cakeReq.customerPhone,
