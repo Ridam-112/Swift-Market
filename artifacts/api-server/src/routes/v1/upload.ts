@@ -99,7 +99,7 @@ function runMulter(
 }
 
 router.post(
-  "/product-image",
+  ["/product-image", "/cake-image", "/"],
   authenticate,
   async (req: Request, res: Response): Promise<void> => {
     try {
@@ -119,8 +119,9 @@ router.post(
     }
 
     try {
-      const { url } = await uploadToImageKit(req.file.buffer, "swiftmart/products", req.file.originalname);
-      res.json({ success: true, imageUrl: url, url });
+      const folder = req.path.includes("cake") ? "swiftmart/custom-cakes" : "swiftmart/products";
+      const { url } = await uploadToImageKit(req.file.buffer, folder, req.file.originalname);
+      res.json({ success: true, imageUrl: url, url, fileUrl: url });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
       res.status(502).json({ success: false, message: msg });

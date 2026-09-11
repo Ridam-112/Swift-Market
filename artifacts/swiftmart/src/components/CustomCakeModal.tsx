@@ -110,11 +110,24 @@ export function CustomCakeModal({ isOpen, onClose, shop }: CustomCakeModalProps)
       const formData = new FormData();
       formData.append("image", file);
 
-      const res = await api.post<{ success: boolean; url?: string; fileUrl?: string }>("/upload", formData);
-      const url = res.url || res.fileUrl;
-      if (url) {
+      const token = localStorage.getItem("sm_at");
+      const uploadUrl = `${api.BASE}/upload/cake-image`;
+
+      const response = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
+
+      const res = await response.json();
+      const url = res.url || res.imageUrl || res.fileUrl;
+      if (response.ok && url) {
         setReferenceImageUrl(url);
         toast({ title: "Photo uploaded!", description: "Reference cake image attached successfully." });
+      } else {
+        throw new Error(res.message || "Upload failed");
       }
     } catch (err: any) {
       toast({ title: "Upload failed", description: err?.message || "Could not upload image.", variant: "destructive" });
@@ -350,7 +363,17 @@ export function CustomCakeModal({ isOpen, onClose, shop }: CustomCakeModalProps)
                 </div>
               </div>
 
-              <div>
+              <div className="flex items-center gap-2">
+                {referenceImageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setReferenceImageUrl("")}
+                    className="p-1.5 rounded-full hover:bg-red-50 text-red-500 hover:text-red-700 transition-colors"
+                    title="Remove photo"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
                 <label className="cursor-pointer">
                   <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                   <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-card hover:bg-muted border border-border text-xs font-bold transition-all shadow-sm">

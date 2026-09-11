@@ -1,5 +1,5 @@
 import { Router, type Response } from "express";
-import { db, customCakeRequests, orders, shops, users, deliverySettings } from "@workspace/db";
+import { db, customCakeRequests, orders, shops, users, deliverySettings, payouts } from "@workspace/db";
 import { eq, desc, and, or, sql, ilike } from "drizzle-orm";
 import { authenticate, optionalAuth, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { mi, miArr } from "../../utils/mapId.js";
@@ -424,6 +424,13 @@ router.post("/:id/accept-and-pay", authenticate, async (req: AuthRequest, res: R
 
     const resolvedLbs = cakeReq.weightLbs || (cakeReq.weightKg ? Math.round(cakeReq.weightKg * 2.20462 * 10) / 10 : 1);
 
+    const [shop] = await db.select().from(shops).where(eq(shops.id, cakeReq.shopId)).limit(1);
+    const commRate = shop?.commissionRate ?? 5;
+    const cakePrice = cakeReq.cakePrice || 0;
+    const commAmt = Math.round(((cakePrice * commRate) / 100) * 100) / 100;
+    const vendorPayable = Math.max(0, cakePrice - commAmt);
+    const platformRev = commAmt + (cakeReq.deliveryFee || 0);
+
     // Create linked official order in orders table
     const [newOrder] = await db.insert(orders).values({
       id: crypto.randomUUID(),
@@ -432,14 +439,21 @@ router.post("/:id/accept-and-pay", authenticate, async (req: AuthRequest, res: R
       customerPhone: cakeReq.customerPhone,
       shopId: cakeReq.shopId,
       shopName: cakeReq.shopName,
+      cityId: shop?.cityId || "balurghat",
       items: [
         {
           id: `custom_cake_${cakeReq.id}`,
+          productId: `custom_cake_${cakeReq.id}`,
+          productName: `Custom Cake: ${cakeReq.flavour} (${resolvedLbs} lbs / Pounds)`,
           name: `Custom Cake: ${cakeReq.flavour} (${resolvedLbs} lbs / Pounds)`,
           price: cakeReq.cakePrice || 0,
+          qty: 1,
           quantity: 1,
           image: cakeReq.referenceImageUrl || "",
           occasion: cakeReq.occasion,
+          flavour: cakeReq.flavour,
+          weightLbs: resolvedLbs,
+          eggless: cakeReq.eggless,
           messageOnCake: cakeReq.messageOnCake,
           fulfillmentType: cakeReq.fulfillmentType,
           customCakeRequestId: cakeReq.id,
@@ -448,12 +462,36 @@ router.post("/:id/accept-and-pay", authenticate, async (req: AuthRequest, res: R
       subtotal: cakeReq.cakePrice || 0,
       deliveryCharge: cakeReq.deliveryFee || 0,
       netAmount: cakeReq.totalAmount || 0,
+      commissionRate: commRate,
+      commissionAmount: commAmt,
+      vendorPayable,
+      platformRevenue: platformRev,
       status: "confirmed",
       paymentMethod: advanceToPay > 0 ? "Advance Online + Balance on Delivery" : "COD",
       paymentStatus: advanceToPay >= (cakeReq.totalAmount || 0) ? "paid" : "partially_paid",
       deliveryType: cakeReq.fulfillmentType === "delivery" ? "custom_cake" : "self_pickup",
       address: cakeReq.deliveryAddress || {},
     }).returning();
+
+    // Insert payout record for shop owner
+    if (shop && newOrder) {
+      try {
+        await db.insert(payouts).values({
+          id: crypto.randomUUID(),
+          shopId: shop.id,
+          vendorId: shop.ownerId,
+          vendorName: shop.ownerName || "",
+          cityId: shop.cityId || "balurghat",
+          orderId: newOrder.id,
+          amount: vendorPayable,
+          orderTotal: cakeReq.totalAmount || 0,
+          commissionAmount: commAmt,
+          status: "pending",
+        });
+      } catch (payoutErr) {
+        logger.warn({ payoutErr }, "Failed to create payout record for custom cake order");
+      }
+    }
 
     const [updated] = await db
       .update(customCakeRequests)
@@ -471,7 +509,6 @@ router.post("/:id/accept-and-pay", authenticate, async (req: AuthRequest, res: R
       .returning();
 
     // Notify shop owner
-    const [shop] = await db.select().from(shops).where(eq(shops.id, cakeReq.shopId)).limit(1);
     if (shop) {
       try {
         await createNotificationLimited(shop.ownerId, {
