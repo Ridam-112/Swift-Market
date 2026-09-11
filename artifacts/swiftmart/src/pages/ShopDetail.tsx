@@ -7,10 +7,11 @@ import { useShops } from "@/hooks/useShops";
 import { useProducts } from "@/hooks/useProducts";
 import { ProductGrid } from "@/components/ProductGrid";
 import { EmptyState } from "@/components/EmptyState";
-import { ArrowLeft, Star, Clock, MapPin, PackageOpen, Store, AlertCircle } from "lucide-react";
+import { ArrowLeft, Star, Clock, MapPin, PackageOpen, Store, AlertCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
+import { CustomCakeModal } from "@/components/CustomCakeModal";
 
 interface ApiShopDetail {
   _id: string;
@@ -37,6 +38,7 @@ export default function ShopDetail() {
   const [shop, setShop] = useState<ShopListing | null>(null);
   const [fetchLoading, setFetchLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [isCustomCakeOpen, setIsCustomCakeOpen] = useState(false);
 
   useEffect(() => {
     if (!vendorId) return;
@@ -223,6 +225,27 @@ export default function ShopDetail() {
           </div>
         )}
 
+        {/* Custom Cake Banner for Bakeries & Cake Shops */}
+        <div className="bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 rounded-3xl p-5 md:p-6 text-white shadow-lg shadow-pink-500/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-pink-100 text-xs font-bold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5" /> Customized Designer Cakes
+            </div>
+            <h3 className="text-xl md:text-2xl font-black tracking-tight">
+              🎂 Customize Your Cake with {shop.storeName}
+            </h3>
+            <p className="text-white/85 text-xs max-w-xl">
+              Select flavour, weight, tiers & attach reference photo. Choose Doorstep Delivery or Free Store Pickup!
+            </p>
+          </div>
+          <Button
+            onClick={() => setIsCustomCakeOpen(true)}
+            className="rounded-full font-black bg-white text-pink-600 hover:bg-pink-50 shadow-md text-sm px-6 shrink-0"
+          >
+            Customize Cake 🎂
+          </Button>
+        </div>
+
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-foreground">Our Products</h2>
           {vendorProducts.length > 0 ? (
@@ -247,7 +270,22 @@ export default function ShopDetail() {
             />
           )}
         </div>
+
+        {/* Custom Cake Modal */}
+        <CustomCakeModal
+          isOpen={isCustomCakeOpen}
+          onClose={() => setIsCustomCakeOpen(false)}
+          shop={{
+            id: shop.id,
+            shopName: shop.storeName,
+            address: {
+              city: shop.city,
+              pincode: shop.pincode,
+            }
+          }}
+        />
       </div>
     </div>
   );
 }
+

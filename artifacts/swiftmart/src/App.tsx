@@ -75,6 +75,7 @@ const DeliveryDashboard = lazy(() => import("@/pages/DeliveryDashboard"));
 const AllProducts     = lazy(() => import("@/pages/AllProducts"));
 const SectionProducts = lazy(() => import("@/pages/SectionProducts"));
 const GroceryStore    = lazy(() => import("@/pages/GroceryStore"));
+const CustomCakeTracker = lazy(() => import("@/pages/CustomCakeTracker"));
 
 const queryClient = new QueryClient();
 
@@ -372,6 +373,12 @@ function Router() {
         </Route>
         <Route path="/orders">
           <ProtectedLayout><RoleGuard requiredRole="customer"><Orders /></RoleGuard></ProtectedLayout>
+        </Route>
+        <Route path="/custom-cakes">
+          <ProtectedLayout><RoleGuard requiredRole="customer"><CustomCakeTracker /></RoleGuard></ProtectedLayout>
+        </Route>
+        <Route path="/custom-cakes/:id">
+          <ProtectedLayout><RoleGuard requiredRole="customer"><CustomCakeTracker /></RoleGuard></ProtectedLayout>
         </Route>
 
         <Route path="/profile">

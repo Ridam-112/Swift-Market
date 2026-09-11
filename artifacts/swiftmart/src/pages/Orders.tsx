@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useSearch } from "wouter";
+import { useSearch, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { formatINR } from "@/lib/currency";
@@ -172,6 +172,24 @@ export default function Orders() {
         <Button variant="ghost" size="sm" onClick={fetchOrders} className="text-muted-foreground">
           <RefreshCw className="w-4 h-4 mr-1" /> Refresh
         </Button>
+      </div>
+
+      {/* Custom Cakes quick tracker banner */}
+      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-pink-500/10 via-amber-500/10 to-rose-500/10 border border-pink-500/20">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center text-xl shrink-0">
+            🎂
+          </div>
+          <div>
+            <p className="text-xs font-bold text-foreground">Custom Cake Requests</p>
+            <p className="text-[11px] text-muted-foreground">Track your bakery custom orders & pickup PINs</p>
+          </div>
+        </div>
+        <Link href="/custom-cakes">
+          <Button size="sm" variant="outline" className="rounded-xl border-pink-400/40 text-pink-600 hover:bg-pink-50 dark:text-pink-400 dark:hover:bg-pink-950/40 text-xs font-bold shrink-0">
+            View Cakes →
+          </Button>
+        </Link>
       </div>
 
       {/* Multi-shop delivery notice — shown right after placing orders from different shops */}

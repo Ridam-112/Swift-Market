@@ -13,10 +13,11 @@ import {
 import {
   IndianRupee, ShoppingBag, Package, AlertCircle, RefreshCw,
   Store, Power, Pencil, Wallet, CheckCircle2, Clock, ChevronRight,
-  TrendingUp, ArrowUpRight,
+  TrendingUp, ArrowUpRight, Cake, Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/currency";
+import { CustomCakesTab } from "./CustomCakesTab";
 
 interface VendorOrder {
   _id: string;
@@ -98,6 +99,7 @@ export default function Dashboard() {
   const [shopId, setShopId] = useState<string | null>(null);
   const [shopIsOpen, setShopIsOpen] = useState<boolean | null>(null);
   const [shopStatus, setShopStatus] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"overview" | "custom-cakes">("overview");
   const [toggling, setToggling] = useState(false);
   const [shopNotFound, setShopNotFound] = useState(false);
   const [chartDays, setChartDays] = useState<7 | 30>(7);
@@ -253,15 +255,46 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Today's Revenue"
-          value={formatINR(todayRevenue)}
-          icon={IndianRupee}
-          trend={todayOrders.length > 0 ? `${todayOrders.length} orders` : "No orders today"}
-          trendUp={todayOrders.length > 0}
-        />
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 p-1.5 bg-muted/60 rounded-2xl w-fit">
+        <button
+          onClick={() => setActiveTab("overview")}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            activeTab === "overview"
+              ? "bg-background text-foreground shadow-sm shadow-black/5"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Store className="w-4 h-4" /> Overview
+        </button>
+        <button
+          onClick={() => setActiveTab("custom-cakes")}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            activeTab === "custom-cakes"
+              ? "bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-sm shadow-amber-500/20"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Cake className="w-4 h-4" /> Custom Cakes
+          <span className="bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wide">
+            New
+          </span>
+        </button>
+      </div>
+
+      {activeTab === "custom-cakes" ? (
+        <CustomCakesTab shopId={shopId!} isOwner={true} />
+      ) : (
+        <>
+          {/* Stat cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard
+              title="Today's Revenue"
+              value={formatINR(todayRevenue)}
+              icon={IndianRupee}
+              trend={todayOrders.length > 0 ? `${todayOrders.length} orders` : "No orders today"}
+              trendUp={todayOrders.length > 0}
+            />
         <StatCard
           title="Active Orders"
           value={activeOrders}
@@ -419,6 +452,8 @@ export default function Dashboard() {
           )}
         </section>
       </div>
+      </>
+      )}
 
     </div>
   );

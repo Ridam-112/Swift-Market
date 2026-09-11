@@ -30,6 +30,7 @@ import cafeConfigRouter from "./cafe-config.js";
 import themeConfigRouter from "./themeConfig.js";
 import layoutsRouter from "./layouts.js";
 import adminRidersRouter from "./adminRiders.js";
+import customCakesRouter from "./customCakes.js";
 import { db, categories } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { miArr } from "../../utils/mapId.js";
@@ -100,7 +101,6 @@ router.use("/admin/theme-config", themeConfigRouter);
 router.use("/layout", layoutsRouter);
 router.use("/admin/layout", layoutsRouter);
 router.use("/admin/riders", adminRidersRouter);
-
-
+router.use("/custom-cakes", customCakesRouter);
 
 export default router;

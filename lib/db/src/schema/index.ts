@@ -36,5 +36,6 @@ export * from "./appThemeConfig.js";
 export * from "./appLayouts.js";
 export * from "./pickupVerificationSessions.js";
 export * from "./pickupScanLogs.js";
+export * from "./customCakes.js";
 
 
