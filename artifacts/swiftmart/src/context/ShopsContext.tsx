@@ -7,6 +7,7 @@ export interface ShopListing {
   storeName: string;
   ownerName: string;
   category: string;
+  shopType?: string;
   city: string;
   pincode: string;
   phone: string;
@@ -30,7 +31,8 @@ interface ApiShopItem {
   _id: string;
   shopName: string;
   ownerName: string;
-  shopType: string;
+  shopType?: string;
+  category?: string;
   address?: Record<string, any>;
   phone: string;
   isOpen: boolean;
@@ -55,7 +57,8 @@ export function mapApiShop(s: ApiShopItem): ShopListing {
     id: s._id,
     storeName: s.shopName,
     ownerName: s.ownerName,
-    category: s.shopType,
+    category: s.category || s.shopType || "",
+    shopType: s.shopType || s.category || "",
     city: addr.city ?? "",
     pincode: addr.pincode ?? "",
     phone: s.phone,
@@ -64,7 +67,7 @@ export function mapApiShop(s: ApiShopItem): ShopListing {
     totalOrders: s.totalOrders ?? 0,
     totalRevenue: s.totalRevenue ?? 0,
     commissionRate: s.commissionRate ?? 5,
-    image: s.image || `/assets/cat-${s.shopType}.png`,
+    image: s.image || `/assets/cat-${s.shopType || "grocery"}.png`,
     status: s.status,
     eta: s.eta ?? "",
     packagingCharge: s.packagingCharge ?? undefined,

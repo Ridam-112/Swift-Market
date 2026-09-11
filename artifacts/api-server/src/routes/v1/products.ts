@@ -185,13 +185,26 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
 
   let enriched: any[] = result.map(p => ({ ...mi(p), shopName: shopMap[p.shopId] ?? "" }));
 
-  // Server-driven customizable cake product for Bakery / Cake shops
+  // Server-driven customizable cake product for Bakery / Cake shops only (e.g. Sudeshna's Cake House)
   if (pg === 1 && shopId) {
     try {
       const [targetShop] = await db.select().from(shops).where(eq(shops.id, shopId)).limit(1);
-      const cat = (targetShop?.category || "").toLowerCase();
-      const name = (targetShop?.shopName || "").toLowerCase();
-      if (cat.includes("bakery") || cat.includes("cake") || cat.includes("sweet") || name.includes("cake") || name.includes("bakery")) {
+      const cat = (targetShop?.category || "").toLowerCase().trim();
+      const shopType = (targetShop?.shopType || "").toLowerCase().trim();
+      const name = (targetShop?.shopName || "").toLowerCase().trim();
+      const isBakery =
+        cat === "bakery" ||
+        cat === "cake" ||
+        cat === "cakes" ||
+        cat === "bakery-cakes" ||
+        cat === "cakes-bakery" ||
+        shopType === "bakery" ||
+        shopType === "cake" ||
+        shopType === "cakes" ||
+        name.includes("cake") ||
+        name.includes("bakery");
+
+      if (isBakery) {
         const customCakeItem = buildCustomCakeProduct(targetShop!.id, targetShop!.shopName);
         enriched = [customCakeItem, ...enriched.filter(p => !p.id.startsWith("custom_cake_"))];
       }

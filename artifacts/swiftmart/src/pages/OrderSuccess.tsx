@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRoute, Link } from "wouter";
 import { CheckCircle2, Package, Clock, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,64 +47,67 @@ export default function OrderSuccess() {
     <div className="min-h-[calc(100vh-140px)] flex items-center justify-center p-4 relative overflow-hidden">
       <SEO noIndex />
 
-      {/* Green animated splash overlay */}
-      <AnimatePresence>
-        {!splashDone && (
-          <motion.div
-            key="splash"
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-emerald-500"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.5, ease: "easeOut" } }}
-          >
-            {/* Expanding ring */}
+      {/* Green animated splash overlay — portalled to body to escape motion.main transform */}
+      {createPortal(
+        <AnimatePresence>
+          {!splashDone && (
             <motion.div
-              className="absolute w-32 h-32 rounded-full border-4 border-white/40"
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 4, opacity: 0 }}
-              transition={{ duration: 1.4, ease: "easeOut", delay: 0.2 }}
-            />
-            <motion.div
-              className="absolute w-32 h-32 rounded-full border-4 border-white/25"
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 5.5, opacity: 0 }}
-              transition={{ duration: 1.6, ease: "easeOut", delay: 0.4 }}
-            />
-
-            {/* Check icon */}
-            <motion.div
-              className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-6"
-              initial={{ scale: 0, rotate: -30 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.1 }}
+              key="splash"
+              className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-emerald-500"
+              initial={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: 0.5, ease: "easeOut" } }}
             >
+              {/* Expanding ring */}
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.3 }}
-              >
-                <CheckCircle2 className="w-14 h-14 text-white" />
-              </motion.div>
-            </motion.div>
+                className="absolute w-32 h-32 rounded-full border-4 border-white/40"
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 4, opacity: 0 }}
+                transition={{ duration: 1.4, ease: "easeOut", delay: 0.2 }}
+              />
+              <motion.div
+                className="absolute w-32 h-32 rounded-full border-4 border-white/25"
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 5.5, opacity: 0 }}
+                transition={{ duration: 1.6, ease: "easeOut", delay: 0.4 }}
+              />
 
-            <motion.h1
-              className="text-3xl font-extrabold text-white tracking-tight"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.4 }}
-            >
-              Order Placed!
-            </motion.h1>
-            <motion.p
-              className="text-white/80 mt-2 text-base font-medium"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7, duration: 0.4 }}
-            >
-              On its way in ~10 minutes
-            </motion.p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {/* Check icon */}
+              <motion.div
+                className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-6"
+                initial={{ scale: 0, rotate: -30 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.1 }}
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.3 }}
+                >
+                  <CheckCircle2 className="w-14 h-14 text-white" />
+                </motion.div>
+              </motion.div>
+
+              <motion.h1
+                className="text-3xl font-extrabold text-white tracking-tight"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.4 }}
+              >
+                Order Placed!
+              </motion.h1>
+              <motion.p
+                className="text-white/80 mt-2 text-base font-medium"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7, duration: 0.4 }}
+              >
+                On its way in ~10 minutes
+              </motion.p>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Main card — fades in after splash */}
       <motion.div
