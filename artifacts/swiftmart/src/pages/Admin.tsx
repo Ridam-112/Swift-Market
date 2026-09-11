@@ -14,7 +14,7 @@ import {
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
   ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, Coffee, ArrowUpDown, Home, Mail,
   Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin, Truck, Bike, List, Phone,
-  UserCheck, Gift, QrCode, Upload, Palette, LayoutGrid, Smartphone,
+  UserCheck, Gift, QrCode, Upload, Palette, LayoutGrid, Smartphone, Cake,
   type LucideIcon,
 } from "lucide-react";
 import { generateShopSticker } from "@/lib/shopSticker";
@@ -149,13 +149,14 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'shops-map' | 'users' | 'orders' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config' | 'theme-config' | 'app-home-builder' | 'app-superstore-builder' | 'app-cafe-builder' | 'riders';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'shops-map' | 'users' | 'orders' | 'custom-cakes' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config' | 'theme-config' | 'app-home-builder' | 'app-superstore-builder' | 'app-cafe-builder' | 'riders';
 
 import { SEO } from "@/components/SEO";
 import FleetMapTab from "@/components/FleetMapTab";
 import ShopsMapTab from "@/components/ShopsMapTab";
 import { ThemeConfigTab } from "./admin/ThemeConfigTab";
 import { LayoutBuilderTab } from "./admin/LayoutBuilderTab";
+import { AdminCustomCakesTab } from "./admin/AdminCustomCakesTab";
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -227,7 +228,8 @@ export default function Admin() {
               {activeSection === 'shops' && <ShopsManagementTab />}
               {activeSection === 'shops-map' && <ShopsMapTab />}
               {activeSection === 'users' && <UsersTab />}
-              {activeSection === 'orders' && <OrdersTab />}
+              {activeSection === 'orders' && <OrdersTab onNavigate={setActiveSection} />}
+              {activeSection === 'custom-cakes' && <AdminCustomCakesTab />}
               {activeSection === 'reports' && <ReportsTab />}
               {activeSection === 'analytics' && <AnalyticsTab />}
               {activeSection === 'transactions' && <TransactionsTab />}
@@ -286,6 +288,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
   const [pendingRequests, setPendingRequests] = useState(0);
   const [pendingOrders, setPendingOrders] = useState(0);
   const [pendingRiders, setPendingRiders] = useState(0);
+  const [pendingCustomCakes, setPendingCustomCakes] = useState(0);
   const { reports, user } = useAuth();
   const openReports = reports.filter(r => r.status === 'open').length;
 
@@ -299,6 +302,11 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     api.get<{ success: boolean; applications: any[] }>('/admin/riders/applications?status=pending')
       .then(d => setPendingRiders((d.applications ?? []).length))
       .catch(() => {});
+    api.get<{ success: boolean; stats?: { requested: number; confirmed: number } }>('/custom-cakes/admin/all')
+      .then(d => {
+        if (d.stats) setPendingCustomCakes((d.stats.requested || 0) + (d.stats.confirmed || 0));
+      })
+      .catch(() => {});
   }, []);
 
   const navItems: { id: AdminSection; label: string; icon: LucideIcon; badge?: number }[] = [
@@ -308,6 +316,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'shops-map', label: 'Shops Map', icon: MapPin },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'orders', label: 'Orders', icon: ShoppingBag, badge: pendingOrders },
+    { id: 'custom-cakes', label: 'Custom Cakes', icon: Cake, badge: pendingCustomCakes },
     { id: 'riders', label: 'Riders', icon: Truck, badge: pendingRiders },
     { id: 'reports', label: 'Reports', icon: Flag, badge: openReports },
     { id: 'analytics', label: 'Analytics', icon: BarChart2 },
@@ -1507,7 +1516,7 @@ function VendorsList() {
 // ORDERS SECTION
 // ============================================================================
 
-function OrdersTab() {
+function OrdersTab({ onNavigate }: { onNavigate?: (s: AdminSection) => void }) {
   const [platformOrders, setPlatformOrders] = useState<PlatformOrder[]>([]);
   const [partnerMap, setPartnerMap] = useState<Record<string, string | null>>({});
   const [activePartners, setActivePartners] = useState<ActivePartner[]>([]);
@@ -1741,6 +1750,28 @@ function OrdersTab() {
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
+      </div>
+
+      {/* Custom Cakes banner inside Orders tab */}
+      <div className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-pink-500/10 via-amber-500/10 to-rose-500/10 border border-pink-500/20">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center text-xl shrink-0">
+            🎂
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">Custom Cake Requests & Bakery Orders</p>
+            <p className="text-xs text-muted-foreground">Review custom cake quotes, baking status, and customer pickup PINs</p>
+          </div>
+        </div>
+        {onNavigate && (
+          <Button
+            size="sm"
+            onClick={() => onNavigate('custom-cakes')}
+            className="rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white text-xs font-bold shrink-0 shadow-sm"
+          >
+            Manage Custom Cakes →
+          </Button>
+        )}
       </div>
 
       <AnimatePresence>

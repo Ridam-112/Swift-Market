@@ -1,6 +1,6 @@
 import { Router, type Response } from "express";
 import { db, customCakeRequests, orders, shops, users, deliverySettings } from "@workspace/db";
-import { eq, desc, and, or, sql } from "drizzle-orm";
+import { eq, desc, and, or, sql, ilike } from "drizzle-orm";
 import { authenticate, optionalAuth, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { mi, miArr } from "../../utils/mapId.js";
 import { createNotificationLimited } from "../../utils/notification.js";
@@ -223,6 +223,62 @@ router.get("/shop-requests", authenticate, async (req: AuthRequest, res: Respons
       requests: requests.map(formatCustomCake),
     });
   } catch (err: any) {
+    res.status(500).json({ success: false, message: err?.message || "Internal server error" });
+  }
+});
+
+// ─── 4b. Admin: View All Cake Requests Across All Shops ─────────────────────
+// GET /api/custom-cakes/admin/all
+router.get("/admin/all", authenticate, requireRole("admin", "super_admin"), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { status, shopId, search } = req.query as Record<string, string>;
+
+    const conditions = [];
+    if (status && status !== "all") {
+      conditions.push(eq(customCakeRequests.status, status));
+    }
+    if (shopId && shopId !== "all") {
+      conditions.push(eq(customCakeRequests.shopId, shopId));
+    }
+    if (search) {
+      conditions.push(
+        or(
+          ilike(customCakeRequests.customerName, `%${search}%`),
+          ilike(customCakeRequests.customerPhone, `%${search}%`),
+          ilike(customCakeRequests.shopName, `%${search}%`),
+          ilike(customCakeRequests.flavour, `%${search}%`),
+          ilike(customCakeRequests.occasion, `%${search}%`)
+        )!
+      );
+    }
+
+    const where = conditions.length ? and(...conditions) : undefined;
+    const requests = await db
+      .select()
+      .from(customCakeRequests)
+      .where(where)
+      .orderBy(desc(customCakeRequests.createdAt));
+
+    // Stats summary
+    const allRequests = await db.select().from(customCakeRequests);
+    const stats = {
+      total: allRequests.length,
+      requested: allRequests.filter(r => r.status === "requested").length,
+      quoteSent: allRequests.filter(r => r.status === "quote_sent").length,
+      confirmed: allRequests.filter(r => r.status === "confirmed").length,
+      preparing: allRequests.filter(r => r.status === "preparing").length,
+      ready: allRequests.filter(r => r.status === "ready").length,
+      completed: allRequests.filter(r => r.status === "delivered" || r.status === "customer_picked_up").length,
+      cancelled: allRequests.filter(r => r.status === "cancelled" || r.status === "rejected").length,
+    };
+
+    res.json({
+      success: true,
+      requests: requests.map(formatCustomCake),
+      stats,
+    });
+  } catch (err: any) {
+    logger.error({ err: err?.message || err }, "GET /api/custom-cakes/admin/all error");
     res.status(500).json({ success: false, message: err?.message || "Internal server error" });
   }
 });
