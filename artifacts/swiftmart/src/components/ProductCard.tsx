@@ -66,12 +66,20 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
     ? priceForWeight(effectivePrice, baseGrams, selectedGrams)
     : effectivePrice;
 
+  const isCustomCake = (product as any).isCustomizable || (product as any).customCake || product.id.startsWith("custom_cake_");
+
   const handleAdd = () => {
     if (!user) {
       openLoginModal("Please log in to add items to your cart");
       return;
     }
-    if (hasVariants) {
+    if (isCustomCake) {
+      if (product.shopId) {
+        navigate(`/shop/${product.shopId}`);
+      } else {
+        navigate('/shops');
+      }
+    } else if (hasVariants) {
       navigate(`/product/${product.id}`);
     } else if (isWeightBased) {
       const defaultGrams = presets[1] ?? presets[0]; // default to 250g or smallest
@@ -206,6 +214,14 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
           <div className="z-10 shrink-0">
             {isOutOfStock ? (
               <span className="text-[10px] font-semibold text-muted-foreground">Unavailable</span>
+            ) : isCustomCake ? (
+              <Button
+                size="sm"
+                className="rounded-full font-bold shadow-none bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 px-3 h-8 text-[11px]"
+                onClick={handleAdd}
+              >
+                CUSTOMIZE 🎂
+              </Button>
             ) : hasVariants ? (
               totalQtyInCart > 0 ? (
                 <Button

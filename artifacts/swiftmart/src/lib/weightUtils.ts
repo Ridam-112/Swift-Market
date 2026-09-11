@@ -44,6 +44,31 @@ export function isProductWeightBased(product: {
   const cat = (product.category || "").toLowerCase().trim();
   const subcat = (product.subcategory || "").toLowerCase().trim();
 
+  // Exclude non-fresh categories (grocery, dry fruits, packaged goods, snacks, dairy, etc.)
+  if (
+    cat === "grocery" ||
+    cat === "packaged-food" ||
+    cat === "snacks" ||
+    cat === "bakery" ||
+    cat === "beverages" ||
+    cat === "dairy" ||
+    subcat.includes("dry-fruit") ||
+    subcat.includes("dryfruit") ||
+    subcat.includes("canned") ||
+    subcat.includes("juice") ||
+    subcat.includes("jam") ||
+    subcat.includes("pickle") ||
+    subcat.includes("snack") ||
+    subcat.includes("biscuit") ||
+    subcat.includes("masala") ||
+    subcat.includes("spice") ||
+    subcat.includes("atta") ||
+    subcat.includes("rice") ||
+    subcat.includes("dal")
+  ) {
+    return false;
+  }
+
   const isVegOrFruit =
     cat === "vegetables" ||
     cat === "fruits" ||
@@ -55,8 +80,12 @@ export function isProductWeightBased(product: {
     cat === "shobji" ||
     cat === "vegetable" ||
     cat === "fruit" ||
-    subcat.includes("vegetable") ||
-    subcat.includes("fruit") ||
+    subcat === "vegetables" ||
+    subcat === "fruits" ||
+    subcat === "fresh-vegetables" ||
+    subcat === "fresh-fruits" ||
+    subcat.includes("fresh-veg") ||
+    subcat.includes("fresh-fruit") ||
     subcat.includes("greens") ||
     subcat.includes("gourds") ||
     subcat.includes("herbs") ||

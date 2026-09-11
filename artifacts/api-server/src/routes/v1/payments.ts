@@ -19,6 +19,82 @@ function parseBaseGrams(unit: string | null | undefined): number | null {
   return grams ? parseFloat(grams[1]) : null;
 }
 
+function isProductWeightBased(product: {
+  category?: string | null;
+  subcategory?: string | null;
+  unit?: string | null;
+  variants?: any;
+} | null | undefined): boolean {
+  if (!product) return false;
+
+  const variants = product.variants;
+  if (variants && typeof variants === "object") {
+    if (variants.allowWeightSelection === true || variants.isLoose === true) {
+      return true;
+    }
+    if (Array.isArray(variants.weightPresets) && variants.weightPresets.length > 0) {
+      return true;
+    }
+  }
+
+  const cat = (product.category || "").toLowerCase().trim();
+  const subcat = (product.subcategory || "").toLowerCase().trim();
+
+  // Exclude non-fresh categories (grocery, dry fruits, packaged goods, snacks, dairy, etc.)
+  if (
+    cat === "grocery" ||
+    cat === "packaged-food" ||
+    cat === "snacks" ||
+    cat === "bakery" ||
+    cat === "beverages" ||
+    cat === "dairy" ||
+    subcat.includes("dry-fruit") ||
+    subcat.includes("dryfruit") ||
+    subcat.includes("canned") ||
+    subcat.includes("juice") ||
+    subcat.includes("jam") ||
+    subcat.includes("pickle") ||
+    subcat.includes("snack") ||
+    subcat.includes("biscuit") ||
+    subcat.includes("masala") ||
+    subcat.includes("spice") ||
+    subcat.includes("atta") ||
+    subcat.includes("rice") ||
+    subcat.includes("dal")
+  ) {
+    return false;
+  }
+
+  const isVegOrFruit =
+    cat === "vegetables" ||
+    cat === "fruits" ||
+    cat === "fruits-vegetables" ||
+    cat === "fruits & vegetables" ||
+    cat === "fresh-vegetables" ||
+    cat === "fresh-fruits" ||
+    cat === "sabji" ||
+    cat === "shobji" ||
+    cat === "vegetable" ||
+    cat === "fruit" ||
+    subcat === "vegetables" ||
+    subcat === "fruits" ||
+    subcat === "fresh-vegetables" ||
+    subcat === "fresh-fruits" ||
+    subcat.includes("fresh-veg") ||
+    subcat.includes("fresh-fruit") ||
+    subcat.includes("greens") ||
+    subcat.includes("gourds") ||
+    subcat.includes("herbs") ||
+    subcat.includes("shobji") ||
+    subcat.includes("sabji");
+
+  if (!isVegOrFruit) {
+    return false;
+  }
+
+  return parseBaseGrams(product.unit) !== null;
+}
+
 function getRazorpay() {
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
@@ -69,6 +145,9 @@ router.post("/create-order", authenticate, async (req: AuthRequest, res: Respons
       price: products.price,
       discountedPrice: products.discountedPrice,
       unit: products.unit,
+      category: products.category,
+      subcategory: products.subcategory,
+      variants: products.variants,
     })
       .from(products)
       .where(inArray(products.id, productIds));
@@ -86,16 +165,10 @@ router.post("/create-order", authenticate, async (req: AuthRequest, res: Respons
       const product = productMap.get(item.productId)!;
       const basePrice = product.discountedPrice ?? product.price;
       const baseGrams = parseBaseGrams(product.unit);
+      const isWeight = isProductWeightBased(product);
 
-      if (baseGrams !== null) {
-        const expectedVariantId = `${item.productId}:weight:${item.selectedGrams ?? ""}`;
-        if (!item.selectedGrams || item.selectedVariantId !== expectedVariantId) {
-          throw new Error(`Selected weight variant is required for product ${item.productId}`);
-        }
+      if (isWeight && baseGrams !== null && item.selectedGrams && item.selectedGrams > 0) {
         return +(basePrice * (item.selectedGrams / baseGrams)).toFixed(2);
-      }
-      if (item.selectedGrams || item.selectedVariantId) {
-        throw new Error(`Invalid weight variant for product ${item.productId}`);
       }
       return basePrice;
     });

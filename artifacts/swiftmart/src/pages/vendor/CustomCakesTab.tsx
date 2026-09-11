@@ -22,7 +22,9 @@ interface CustomCakeItem {
   customerPhone: string;
   occasion: string;
   flavour: string;
-  weightKg: number;
+  weightLbs?: number;
+  weightKg?: number;
+  weightFormatted?: string;
   tierCount: number;
   eggless: boolean;
   messageOnCake?: string;
@@ -318,7 +320,7 @@ export function CustomCakesTab({ shopId, isOwner = true }: CustomCakesTabProps) 
                       <span className="text-lg">🎂</span>
                       <div>
                         <h4 className="font-extrabold text-sm text-foreground">
-                          {req.flavour} Cake ({req.weightKg} kg)
+                          {req.flavour} Cake ({req.weightFormatted || `${req.weightLbs || (req.weightKg ? Math.round(req.weightKg * 2.20462 * 10) / 10 : 1)} lbs`})
                         </h4>
                         <p className="text-[11px] text-muted-foreground">Occasion: {req.occasion} {req.tierCount > 1 ? `· ${req.tierCount} Tiers` : ""}</p>
                       </div>
@@ -453,7 +455,7 @@ export function CustomCakesTab({ shopId, isOwner = true }: CustomCakesTabProps) 
             <div>
               <DialogHeader>
                 <DialogTitle className="text-xl font-black flex items-center gap-2">
-                  🎂 {selectedReq.flavour} Cake ({selectedReq.weightKg} kg)
+                  🎂 {selectedReq.flavour} Cake ({selectedReq.weightFormatted || `${selectedReq.weightLbs || (selectedReq.weightKg ? Math.round(selectedReq.weightKg * 2.20462 * 10) / 10 : 1)} lbs`})
                 </DialogTitle>
                 <DialogDescription>
                   Custom cake request submitted by {selectedReq.customerName}
@@ -483,7 +485,7 @@ export function CustomCakesTab({ shopId, isOwner = true }: CustomCakesTabProps) 
                   </div>
                   <div>
                     <span className="text-muted-foreground block text-[10px]">Weight</span>
-                    <span className="font-bold text-foreground text-sm">{selectedReq.weightKg} kg</span>
+                    <span className="font-bold text-foreground text-sm">{selectedReq.weightFormatted || `${selectedReq.weightLbs || (selectedReq.weightKg ? Math.round(selectedReq.weightKg * 2.20462 * 10) / 10 : 1)} lbs`}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground block text-[10px]">Tiers & Type</span>

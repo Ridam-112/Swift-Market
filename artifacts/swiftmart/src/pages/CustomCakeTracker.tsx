@@ -21,7 +21,9 @@ interface CustomCakeItem {
   customerPhone: string;
   occasion: string;
   flavour: string;
-  weightKg: number;
+  weightLbs?: number;
+  weightKg?: number;
+  weightFormatted?: string;
   tierCount: number;
   eggless: boolean;
   messageOnCake?: string;
@@ -198,7 +200,7 @@ export default function CustomCakeTracker() {
                     <div className="flex items-center gap-2">
                       <span className="text-xl">🎂</span>
                       <h3 className="text-lg font-black text-foreground">
-                        {req.flavour} Cake ({req.weightKg} kg)
+                        {req.flavour} Cake ({req.weightFormatted || `${req.weightLbs || (req.weightKg ? Math.round(req.weightKg * 2.20462 * 10) / 10 : 1)} lbs`})
                       </h3>
                       {req.eggless && (
                         <span className="text-[10px] font-bold text-green-600 bg-green-100 dark:bg-green-950/50 px-2 py-0.5 rounded-full">

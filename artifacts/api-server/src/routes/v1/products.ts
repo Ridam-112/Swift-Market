@@ -183,7 +183,20 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     // Return lean products directly if shop mapping errors out
   }
 
-  const enriched = result.map(p => ({ ...mi(p), shopName: shopMap[p.shopId] ?? "" }));
+  let enriched: any[] = result.map(p => ({ ...mi(p), shopName: shopMap[p.shopId] ?? "" }));
+
+  // Server-driven customizable cake product for Bakery / Cake shops
+  if (pg === 1 && shopId) {
+    try {
+      const [targetShop] = await db.select().from(shops).where(eq(shops.id, shopId)).limit(1);
+      const cat = (targetShop?.category || "").toLowerCase();
+      const name = (targetShop?.shopName || "").toLowerCase();
+      if (cat.includes("bakery") || cat.includes("cake") || cat.includes("sweet") || name.includes("cake") || name.includes("bakery")) {
+        const customCakeItem = buildCustomCakeProduct(targetShop!.id, targetShop!.shopName);
+        enriched = [customCakeItem, ...enriched.filter(p => !p.id.startsWith("custom_cake_"))];
+      }
+    } catch (_) {}
+  }
 
   const payload = {
     success: true,
@@ -202,6 +215,52 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     res.status(500).json({ success: false, message: "Failed to load products. Please try again.", _dbError: msg });
   }
 });
+
+function buildCustomCakeProduct(shopId: string, shopName: string) {
+  return {
+    _id: `custom_cake_${shopId}`,
+    id: `custom_cake_${shopId}`,
+    name: "🎂 Custom Design Cake (Customize Your Cake)",
+    price: 450,
+    mrp: 550,
+    discountedPrice: 450,
+    unit: "1 lb (Pound)",
+    category: "bakery",
+    subcategory: "Custom Cakes",
+    description: "Design and order personalized fresh cakes for Birthdays, Anniversaries & Parties! Choose your flavour, weight in pounds (1 lb, 2 lbs, 3 lbs...), tiers, eggless preference, custom message, and reference photo.",
+    images: [
+      "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600",
+      "https://images.unsplash.com/photo-1535141192574-5d4897c13136?w=600"
+    ],
+    primaryImage: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600",
+    stock: 999,
+    status: "active",
+    trending: true,
+    shopId,
+    shopName,
+    isCustomizable: true,
+    customCake: true,
+    customCakeConfig: {
+      unit: "pound",
+      weights: [
+        { label: "1 Pound (1 lb)", value: 1.0, popular: true, approxGrams: 450 },
+        { label: "1.5 Pounds (1.5 lbs)", value: 1.5, approxGrams: 680 },
+        { label: "2 Pounds (2 lbs)", value: 2.0, popular: true, approxGrams: 900 },
+        { label: "2.5 Pounds (2.5 lbs)", value: 2.5, approxGrams: 1130 },
+        { label: "3 Pounds (3 lbs)", value: 3.0, approxGrams: 1350 },
+        { label: "4 Pounds (4 lbs)", value: 4.0, approxGrams: 1800 },
+        { label: "5 Pounds (5 lbs)", value: 5.0, approxGrams: 2250 },
+        { label: "6+ Pounds (Custom)", value: 6.0, approxGrams: 2700 }
+      ],
+      flavours: [
+        "Chocolate Truffle", "Black Forest", "Red Velvet", "Butterscotch", "Vanilla",
+        "Pineapple", "Strawberry", "Mango", "Blueberry", "Fruit & Nut", "Rasmalai", "Custom Flavour"
+      ],
+      occasions: ["Birthday", "Anniversary", "Wedding / Reception", "Baby Shower", "Celebration", "Other"],
+      tiers: [1, 2, 3, 4]
+    }
+  };
+}
 
 // GET /api/products/admin-review — admin: list products for approval with shop name
 // IMPORTANT: must be defined before /:id to avoid route conflict
@@ -853,6 +912,45 @@ router.patch("/:id/approval", authenticate, A, async (req: AuthRequest, res: Res
   }
 
   res.json({ success: true, product: mi(product) });
+});
+
+// GET /api/products/:id — Fetch single product details (supports custom cake products)
+router.get("/:id", optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params["id"] as string;
+    if (id.startsWith("custom_cake_") || id === "custom_cake") {
+      const targetShopId = id.replace("custom_cake_", "");
+      let shopName = "Bakery & Cake Shop";
+      if (targetShopId && targetShopId !== "custom_cake") {
+        const [shop] = await db.select({ shopName: shops.shopName }).from(shops).where(eq(shops.id, targetShopId)).limit(1);
+        if (shop) shopName = shop.shopName;
+      }
+      res.json({
+        success: true,
+        product: buildCustomCakeProduct(targetShopId || "bakery", shopName),
+      });
+      return;
+    }
+
+    const [product] = await db.select().from(products).where(eq(products.id, id)).limit(1);
+    if (!product) {
+      res.status(404).json({ success: false, message: "Product not found" });
+      return;
+    }
+
+    let shopName = "";
+    try {
+      const [shop] = await db.select({ shopName: shops.shopName }).from(shops).where(eq(shops.id, product.shopId)).limit(1);
+      if (shop) shopName = shop.shopName;
+    } catch (_) {}
+
+    res.json({
+      success: true,
+      product: { ...mi(product), shopName },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to fetch product" });
+  }
 });
 
 // PATCH /api/products/:id — vendor/admin edit

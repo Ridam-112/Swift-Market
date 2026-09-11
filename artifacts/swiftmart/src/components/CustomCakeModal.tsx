@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,23 +21,42 @@ interface CustomCakeModalProps {
   };
 }
 
-const FLAVOURS = [
-  "Chocolate", "Black Forest", "Red Velvet", "Vanilla",
-  "Butterscotch", "Pineapple", "Strawberry", "Mango",
-  "Blueberry", "Fruit & Nut", "Rasmalai", "Custom"
+interface WeightOption {
+  label: string;
+  value: number;
+  popular?: boolean;
+}
+
+const DEFAULT_WEIGHTS: WeightOption[] = [
+  { label: "1 lb (Pound)", value: 1.0, popular: true },
+  { label: "1.5 lbs", value: 1.5 },
+  { label: "2 lbs (Pounds)", value: 2.0, popular: true },
+  { label: "2.5 lbs", value: 2.5 },
+  { label: "3 lbs", value: 3.0 },
+  { label: "4 lbs", value: 4.0 },
+  { label: "5 lbs", value: 5.0 },
+  { label: "6+ lbs", value: 6.0 },
 ];
 
-const WEIGHTS = [0.5, 1, 1.5, 2, 2.5, 3, 4, 5];
-const OCCASIONS = ["Birthday", "Anniversary", "Wedding", "Baby Shower", "Celebration", "Other"];
+const DEFAULT_FLAVOURS = [
+  "Chocolate Truffle", "Black Forest", "Red Velvet", "Butterscotch", "Vanilla",
+  "Pineapple", "Strawberry", "Mango", "Blueberry", "Fruit & Nut", "Rasmalai", "Custom"
+];
+
+const DEFAULT_OCCASIONS = ["Birthday", "Anniversary", "Wedding", "Baby Shower", "Celebration", "Other"];
 
 export function CustomCakeModal({ isOpen, onClose, shop }: CustomCakeModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  const [flavour, setFlavour] = useState("Chocolate");
+  const [serverWeights, setServerWeights] = useState<WeightOption[]>(DEFAULT_WEIGHTS);
+  const [serverFlavours, setServerFlavours] = useState<string[]>(DEFAULT_FLAVOURS);
+  const [serverOccasions, setServerOccasions] = useState<string[]>(DEFAULT_OCCASIONS);
+
+  const [flavour, setFlavour] = useState("Chocolate Truffle");
   const [customFlavour, setCustomFlavour] = useState("");
-  const [weightKg, setWeightKg] = useState(1);
+  const [weightLbs, setWeightLbs] = useState(1);
   const [tierCount, setTierCount] = useState(1);
   const [eggless, setEggless] = useState(false);
   const [occasion, setOccasion] = useState("Birthday");
@@ -56,6 +75,23 @@ export function CustomCakeModal({ isOpen, onClose, shop }: CustomCakeModalProps)
   const [customerPhone, setCustomerPhone] = useState(user?.phone || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Fetch server-driven cake configuration on modal open
+  useEffect(() => {
+    if (!isOpen) return;
+    api.get<{
+      success: boolean;
+      weights?: WeightOption[];
+      flavours?: string[];
+      occasions?: string[];
+    }>("/custom-cakes/config")
+      .then(res => {
+        if (res.weights && res.weights.length > 0) setServerWeights(res.weights);
+        if (res.flavours && res.flavours.length > 0) setServerFlavours(res.flavours);
+        if (res.occasions && res.occasions.length > 0) setServerOccasions(res.occasions);
+      })
+      .catch(() => {});
+  }, [isOpen]);
 
   // Minimum date: tomorrow or today
   const todayStr = new Date().toISOString().split("T")[0];
@@ -107,13 +143,13 @@ export function CustomCakeModal({ isOpen, onClose, shop }: CustomCakeModalProps)
 
     setIsSubmitting(true);
     try {
-      const finalFlavour = flavour === "Custom" ? (customFlavour.trim() || "Custom") : flavour;
+      const finalFlavour = flavour === "Custom" || flavour === "Custom / Other" ? (customFlavour.trim() || "Custom") : flavour;
 
       const payload = {
         shopId: shop.id,
         occasion,
         flavour: finalFlavour,
-        weightKg,
+        weightLbs,
         tierCount,
         eggless,
         messageOnCake,
@@ -177,28 +213,31 @@ export function CustomCakeModal({ isOpen, onClose, shop }: CustomCakeModalProps)
           {/* 1. Flavour & Weight */}
           <div className="space-y-3">
             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Cake className="w-3.5 h-3.5 text-pink-500" /> 1. Flavour & Weight
+              <Cake className="w-3.5 h-3.5 text-pink-500" /> 1. Flavour & Weight (in Pounds)
             </Label>
             
             {/* Flavours */}
-            <div className="flex flex-wrap gap-1.5">
-              {FLAVOURS.map(f => (
-                <button
-                  type="button"
-                  key={f}
-                  onClick={() => setFlavour(f)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
-                    flavour === f
-                      ? "bg-pink-500 text-white border-pink-500 shadow-sm"
-                      : "bg-muted text-muted-foreground border-transparent hover:border-pink-300"
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
+            <div>
+              <span className="text-xs text-muted-foreground block mb-1.5 font-medium">Select Flavour:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {serverFlavours.map(f => (
+                  <button
+                    type="button"
+                    key={f}
+                    onClick={() => setFlavour(f)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                      flavour === f
+                        ? "bg-pink-500 text-white border-pink-500 shadow-sm"
+                        : "bg-muted text-muted-foreground border-transparent hover:border-pink-300"
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {flavour === "Custom" && (
+            {(flavour === "Custom" || flavour === "Custom / Other" || flavour === "Custom Flavour") && (
               <Input
                 value={customFlavour}
                 onChange={e => setCustomFlavour(e.target.value)}
@@ -207,22 +246,31 @@ export function CustomCakeModal({ isOpen, onClose, shop }: CustomCakeModalProps)
               />
             )}
 
-            {/* Weights */}
+            {/* Weights in Pounds */}
             <div className="pt-2">
-              <span className="text-xs text-muted-foreground block mb-1.5 font-medium">Cake Weight:</span>
-              <div className="flex flex-wrap gap-1.5">
-                {WEIGHTS.map(w => (
+              <span className="text-xs text-muted-foreground block mb-1.5 font-medium">
+                Cake Weight <span className="text-amber-500 font-bold">(Pounds / lbs)</span>:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {serverWeights.map(w => (
                   <button
                     type="button"
-                    key={w}
-                    onClick={() => setWeightKg(w)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                      weightKg === w
-                        ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                    key={w.value}
+                    onClick={() => setWeightLbs(w.value)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
+                      weightLbs === w.value
+                        ? "bg-amber-500 text-white border-amber-500 shadow-sm ring-2 ring-amber-400/30"
                         : "bg-muted text-muted-foreground border-transparent hover:border-amber-300"
                     }`}
                   >
-                    {w} kg
+                    <span>{w.label}</span>
+                    {w.popular && (
+                      <span className={`text-[9px] px-1.5 py-0.2 rounded-full uppercase font-black ${
+                        weightLbs === w.value ? "bg-white text-amber-600" : "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                      }`}>
+                        Popular
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>

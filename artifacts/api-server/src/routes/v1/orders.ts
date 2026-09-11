@@ -28,6 +28,88 @@ function parseBaseGrams(unit: string | null | undefined): number | null {
   return null;
 }
 
+/**
+ * Checks if a product is fresh produce (vegetables/fruits) or explicitly configured
+ * for loose weight selection (e.g. 100g, 250g, 500g, 1kg).
+ * Standard packaged goods (e.g. Makhana, Atta, Rice, Chips, Oil) are sold as complete packaged items.
+ */
+function isProductWeightBased(product: {
+  category?: string | null;
+  subcategory?: string | null;
+  unit?: string | null;
+  variants?: any;
+} | null | undefined): boolean {
+  if (!product) return false;
+
+  // Check if explicitly configured in variants JSON
+  const variants = product.variants;
+  if (variants && typeof variants === "object") {
+    if (variants.allowWeightSelection === true || variants.isLoose === true) {
+      return true;
+    }
+    if (Array.isArray(variants.weightPresets) && variants.weightPresets.length > 0) {
+      return true;
+    }
+  }
+
+  const cat = (product.category || "").toLowerCase().trim();
+  const subcat = (product.subcategory || "").toLowerCase().trim();
+
+  // Exclude non-fresh categories (grocery, dry fruits, packaged goods, snacks, dairy, etc.)
+  if (
+    cat === "grocery" ||
+    cat === "packaged-food" ||
+    cat === "snacks" ||
+    cat === "bakery" ||
+    cat === "beverages" ||
+    cat === "dairy" ||
+    subcat.includes("dry-fruit") ||
+    subcat.includes("dryfruit") ||
+    subcat.includes("canned") ||
+    subcat.includes("juice") ||
+    subcat.includes("jam") ||
+    subcat.includes("pickle") ||
+    subcat.includes("snack") ||
+    subcat.includes("biscuit") ||
+    subcat.includes("masala") ||
+    subcat.includes("spice") ||
+    subcat.includes("atta") ||
+    subcat.includes("rice") ||
+    subcat.includes("dal")
+  ) {
+    return false;
+  }
+
+  const isVegOrFruit =
+    cat === "vegetables" ||
+    cat === "fruits" ||
+    cat === "fruits-vegetables" ||
+    cat === "fruits & vegetables" ||
+    cat === "fresh-vegetables" ||
+    cat === "fresh-fruits" ||
+    cat === "sabji" ||
+    cat === "shobji" ||
+    cat === "vegetable" ||
+    cat === "fruit" ||
+    subcat === "vegetables" ||
+    subcat === "fruits" ||
+    subcat === "fresh-vegetables" ||
+    subcat === "fresh-fruits" ||
+    subcat.includes("fresh-veg") ||
+    subcat.includes("fresh-fruit") ||
+    subcat.includes("greens") ||
+    subcat.includes("gourds") ||
+    subcat.includes("herbs") ||
+    subcat.includes("shobji") ||
+    subcat.includes("sabji");
+
+  if (!isVegOrFruit) {
+    return false;
+  }
+
+  return parseBaseGrams(product.unit) !== null;
+}
+
 /** Format grams to a human-readable label e.g. 250 → "250g", 1000 → "1 kg" */
 function formatGrams(grams: number): string {
   if (grams >= 1000) {
@@ -482,7 +564,16 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
             gte(products.stock, item.qty),
             ne(products.status, "inactive"),
           ))
-          .returning({ id: products.id, price: products.price, discountedPrice: products.discountedPrice, stock: products.stock, unit: products.unit });
+          .returning({
+            id: products.id,
+            price: products.price,
+            discountedPrice: products.discountedPrice,
+            stock: products.stock,
+            unit: products.unit,
+            category: products.category,
+            subcategory: products.subcategory,
+            variants: products.variants,
+          });
 
         if (!updated) {
           throw Object.assign(
@@ -494,31 +585,17 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
         // Use offer/discounted price when set — this is what the customer was shown
         const basePrice = updated.discountedPrice ?? updated.price;
         const baseGrams = parseBaseGrams(updated.unit);
+        const isWeight = isProductWeightBased(updated);
 
-        // Weight products must carry their selected variant all the way to the
-        // order. Never fall back to the base (usually 1 kg) product price.
         let dbPrice = basePrice;
         const selectedGrams = item.selectedGrams && item.selectedGrams > 0 ? item.selectedGrams : null;
-        if (baseGrams !== null) {
-          if (!selectedGrams || !item.selectedVariantId) {
-            throw Object.assign(
-              new Error(`"${item.productName}" is missing its selected weight variant.`),
-              { statusCode: 400 },
-            );
-          }
-          const expectedVariantId = `${item.productId}:weight:${selectedGrams}`;
-          if (item.selectedVariantId !== expectedVariantId) {
-            throw Object.assign(
-              new Error(`Invalid selected variant for "${item.productName}".`),
-              { statusCode: 400 },
-            );
-          }
+
+        if (isWeight && baseGrams !== null && selectedGrams) {
+          // Genuine loose weight product with selected variant
           dbPrice = +(basePrice * (selectedGrams / baseGrams)).toFixed(2);
-        } else if (selectedGrams || item.selectedVariantId) {
-          throw Object.assign(
-            new Error(`"${item.productName}" has invalid weight variant data.`),
-            { statusCode: 400 },
-          );
+        } else {
+          // Packaged groceries (Makhana, Atta, Rice, etc.), piece-based items, or full unit purchase
+          dbPrice = basePrice;
         }
 
         reducedProducts.push({

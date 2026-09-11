@@ -27,8 +27,57 @@ router.get("/config", async (_req, res: Response): Promise<void> => {
     success: true,
     customCakeDeliveryFee: fee,
     selfPickupFee: 0,
+    unit: "pound",
+    weights: [
+      { label: "1 Pound (1 lb)", value: 1.0, popular: true, approxGrams: 450 },
+      { label: "1.5 Pounds (1.5 lbs)", value: 1.5, approxGrams: 680 },
+      { label: "2 Pounds (2 lbs)", value: 2.0, popular: true, approxGrams: 900 },
+      { label: "2.5 Pounds (2.5 lbs)", value: 2.5, approxGrams: 1130 },
+      { label: "3 Pounds (3 lbs)", value: 3.0, approxGrams: 1350 },
+      { label: "4 Pounds (4 lbs)", value: 4.0, approxGrams: 1800 },
+      { label: "5 Pounds (5 lbs)", value: 5.0, approxGrams: 2250 },
+      { label: "6+ Pounds (Custom)", value: 6.0, approxGrams: 2700 },
+    ],
+    flavours: [
+      "Chocolate Truffle",
+      "Black Forest",
+      "Red Velvet",
+      "Butterscotch",
+      "Vanilla",
+      "Pineapple",
+      "Strawberry",
+      "Mango",
+      "Blueberry",
+      "Fruit & Nut",
+      "Rasmalai",
+      "Choco Vanilla Fusion",
+      "Custom / Other",
+    ],
+    occasions: [
+      "Birthday",
+      "Anniversary",
+      "Wedding / Reception",
+      "Baby Shower",
+      "Celebration",
+      "Festival",
+      "Farewell / Congrats",
+      "Other",
+    ],
+    tiers: [1, 2, 3, 4],
+    leadTimeNotice: "Please order at least 4-6 hours in advance for fresh preparation.",
   });
 });
+
+// Helper to format custom cake object with pound weight
+function formatCustomCake(req: any) {
+  const mapped = mi(req);
+  const resolvedLbs = Number(req.weightLbs) || (Number(req.weightKg) ? Math.round(Number(req.weightKg) * 2.20462 * 10) / 10 : 1);
+  return {
+    ...mapped,
+    weightLbs: resolvedLbs,
+    weightFormatted: `${resolvedLbs} ${resolvedLbs === 1 ? 'Pound (1 lb)' : 'lbs'}`,
+  };
+}
 
 // ─── 2. Customer: Submit Custom Cake Request ─────────────────────────────────
 // POST /api/custom-cakes/request
@@ -44,7 +93,8 @@ router.post("/request", authenticate, async (req: AuthRequest, res: Response): P
       shopId,
       occasion = "Birthday",
       flavour = "Chocolate",
-      weightKg = 1,
+      weightLbs = 1,
+      weightKg,
       tierCount = 1,
       eggless = false,
       messageOnCake = "",
@@ -75,6 +125,9 @@ router.post("/request", authenticate, async (req: AuthRequest, res: Response): P
     const resolvedName = customerName || user?.name || "Customer";
     const resolvedPhone = customerPhone || user?.phone || "";
 
+    const parsedWeightLbs = Number(weightLbs) || (Number(weightKg) ? Number(weightKg) * 2.20462 : 1);
+    const parsedWeightKg = parsedWeightLbs * 0.453592;
+
     const [created] = await db.insert(customCakeRequests).values({
       shopId,
       shopName: shop.shopName,
@@ -83,7 +136,8 @@ router.post("/request", authenticate, async (req: AuthRequest, res: Response): P
       customerPhone: resolvedPhone,
       occasion,
       flavour,
-      weightKg: Number(weightKg) || 1,
+      weightLbs: parsedWeightLbs,
+      weightKg: parsedWeightKg,
       tierCount: Number(tierCount) || 1,
       eggless: Boolean(eggless),
       messageOnCake: messageOnCake || "",
@@ -101,13 +155,13 @@ router.post("/request", authenticate, async (req: AuthRequest, res: Response): P
       await createNotificationLimited(shop.ownerId, {
         type: "order_update",
         title: "🎂 New Custom Cake Request!",
-        message: `${resolvedName} requested a ${weightKg}kg ${flavour} cake for ${requiredDate} (${fulfillmentType === "self_pickup" ? "Self Pickup" : "Delivery"}). Provide a price quote now!`,
+        message: `${resolvedName} requested a ${parsedWeightLbs} lb ${flavour} cake for ${requiredDate} (${fulfillmentType === "self_pickup" ? "Self Pickup" : "Delivery"}). Provide a price quote now!`,
       });
     } catch (_) {}
 
     res.status(201).json({
       success: true,
-      request: mi(created!),
+      request: formatCustomCake(created!),
       message: "Custom cake request submitted successfully. The baker will provide a price quote shortly.",
     });
   } catch (err: any) {
@@ -129,7 +183,7 @@ router.get("/my-requests", authenticate, async (req: AuthRequest, res: Response)
 
     res.json({
       success: true,
-      requests: miArr(requests),
+      requests: requests.map(formatCustomCake),
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err?.message || "Internal server error" });
@@ -166,7 +220,7 @@ router.get("/shop-requests", authenticate, async (req: AuthRequest, res: Respons
 
     res.json({
       success: true,
-      requests: miArr(requests),
+      requests: requests.map(formatCustomCake),
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err?.message || "Internal server error" });
@@ -186,7 +240,7 @@ router.get("/:id", authenticate, async (req: AuthRequest, res: Response): Promis
 
     res.json({
       success: true,
-      request: mi(request),
+      request: formatCustomCake(request),
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err?.message || "Internal server error" });
@@ -269,7 +323,7 @@ router.post("/:id/quote", authenticate, async (req: AuthRequest, res: Response):
 
     res.json({
       success: true,
-      request: mi(updated!),
+      request: formatCustomCake(updated!),
       message: "Price quote sent to customer successfully.",
     });
   } catch (err: any) {
@@ -312,6 +366,8 @@ router.post("/:id/accept-and-pay", authenticate, async (req: AuthRequest, res: R
       pickupQrCode = crypto.randomUUID();
     }
 
+    const resolvedLbs = cakeReq.weightLbs || (cakeReq.weightKg ? Math.round(cakeReq.weightKg * 2.20462 * 10) / 10 : 1);
+
     // Create linked official order in orders table
     const [newOrder] = await db.insert(orders).values({
       customerId: userId!,
@@ -322,7 +378,7 @@ router.post("/:id/accept-and-pay", authenticate, async (req: AuthRequest, res: R
       items: [
         {
           id: `custom_cake_${cakeReq.id}`,
-          name: `Custom Cake: ${cakeReq.flavour} (${cakeReq.weightKg}kg)`,
+          name: `Custom Cake: ${cakeReq.flavour} (${resolvedLbs} lbs / Pounds)`,
           price: cakeReq.cakePrice || 0,
           quantity: 1,
           image: cakeReq.referenceImageUrl || "",
@@ -364,14 +420,14 @@ router.post("/:id/accept-and-pay", authenticate, async (req: AuthRequest, res: R
         await createNotificationLimited(shop.ownerId, {
           type: "order_update",
           title: "🎉 Advance Paid! Custom Cake Order Confirmed",
-          message: `${cakeReq.customerName} paid ₹${advanceToPay} advance for ${cakeReq.flavour} Cake. Start preparing for ${cakeReq.requiredDate}!`,
+          message: `${cakeReq.customerName} paid ₹${advanceToPay} advance for ${cakeReq.flavour} Cake (${resolvedLbs} lbs). Start preparing for ${cakeReq.requiredDate}!`,
         });
       } catch (_) {}
     }
 
     res.json({
       success: true,
-      request: mi(updated!),
+      request: formatCustomCake(updated!),
       order: mi(newOrder!),
       message: `Advance payment of ₹${advanceToPay} successful! Your custom cake order is confirmed.`,
     });
@@ -465,7 +521,7 @@ router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response
 
     res.json({
       success: true,
-      request: mi(updated!),
+      request: formatCustomCake(updated!),
       message: `Status updated to '${status}'.`,
     });
   } catch (err: any) {
@@ -543,8 +599,8 @@ router.post("/:id/verify-pickup", authenticate, async (req: AuthRequest, res: Re
 
     res.json({
       success: true,
-      request: mi(updated!),
-      message: "Customer pickup verified successfully! Order completed.",
+      request: formatCustomCake(updated!),
+      message: "Customer pickup verified successfully. Order completed!",
     });
   } catch (err: any) {
     logger.error({ err: err?.message || err }, "POST /api/custom-cakes/:id/verify-pickup error");
