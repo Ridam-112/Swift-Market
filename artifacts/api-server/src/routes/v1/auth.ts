@@ -31,7 +31,7 @@ const RESET_TOKEN_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes (kept for forgot-pas
 const MASTER_ADMIN_PASSWORD = process.env["ADMIN_MASTER_PASSWORD"] || "SwiftAdmin@2026#";
 
 type AuthMode = "otp" | "google" | "both";
-const AUTH_MODE: AuthMode = (process.env["AUTH_MODE"] as AuthMode | undefined) ?? "otp";
+const AUTH_MODE: AuthMode = (process.env["AUTH_MODE"] as AuthMode | undefined) ?? "both";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

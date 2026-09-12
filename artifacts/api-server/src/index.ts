@@ -12,9 +12,9 @@ import { migrateDataToBalurghat } from "./utils/migrateBalurghat.js";
 import { initMasterProducts } from "./utils/initMasterProducts.js";
 
 // AUTH_MODE controls which login methods are enabled (otp | google | both).
-// Default is "otp" — safe to run without a domain or Google OAuth credentials.
+// Default is "both" so Google and Email authentication are enabled out of the box.
 type AuthMode = "otp" | "google" | "both";
-const AUTH_MODE: AuthMode = (process.env["AUTH_MODE"] as AuthMode | undefined) ?? "otp";
+const AUTH_MODE: AuthMode = (process.env["AUTH_MODE"] as AuthMode | undefined) ?? "both";
 
 // Fail fast on missing required secrets; warn on missing optional ones at boot time
 // so issues surface in logs immediately rather than on first customer request.

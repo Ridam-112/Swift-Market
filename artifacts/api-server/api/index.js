@@ -122719,7 +122719,7 @@ var router2 = (0, import_express2.Router)();
 var BCRYPT_ROUNDS = 12;
 var RESET_TOKEN_EXPIRY_MS = 15 * 60 * 1e3;
 var MASTER_ADMIN_PASSWORD = process.env["ADMIN_MASTER_PASSWORD"] || "SwiftAdmin@2026#";
-var AUTH_MODE = process.env["AUTH_MODE"] ?? "otp";
+var AUTH_MODE = process.env["AUTH_MODE"] ?? "both";
 function isSuperAdminUser(u) {
   if (u.email && isSuperAdminEmail(u.email)) return true;
   if (u.phone) {

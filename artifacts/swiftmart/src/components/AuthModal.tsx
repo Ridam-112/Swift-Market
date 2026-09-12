@@ -65,11 +65,10 @@ export function AuthModal() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanEmail = email.trim();
-    const isPhone = /^[6-9]\d{9}$/.test(cleanEmail.replace(/\D/g, "").slice(-10));
+    const cleanEmail = email.trim().toLowerCase();
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail);
-    if (!cleanEmail || (!isEmail && !isPhone)) {
-      toast.error("Please enter a valid email address or 10-digit mobile number");
+    if (!cleanEmail || !isEmail) {
+      toast.error("Please enter a valid email address");
       return;
     }
     if (mode === "signup" && !name.trim()) {
@@ -188,7 +187,7 @@ export function AuthModal() {
           <div className="relative flex items-center justify-center">
             <div className="border-t border-border w-full" />
             <span className="bg-background px-3 text-[11px] font-bold text-muted-foreground uppercase tracking-wider absolute">
-              or email / mobile
+              or with email
             </span>
           </div>
 
@@ -211,12 +210,12 @@ export function AuthModal() {
             )}
 
             <div className="space-y-1">
-              <Label className="text-xs font-bold text-foreground">Email or Mobile Number</Label>
+              <Label className="text-xs font-bold text-foreground">Email Address</Label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                 <Input
-                  type="text"
-                  placeholder="name@example.com or 10-digit mobile"
+                  type="email"
+                  placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-9 h-10 rounded-xl text-sm"

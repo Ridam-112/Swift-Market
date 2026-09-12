@@ -292,14 +292,13 @@ export default function Auth() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading, setLocation]);
 
-  // ─── Email / Mobile step ──────────────────────────────────────────────────
+  // ─── Email step ──────────────────────────────────────────────────────────
   const handleEmailContinue = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = email.trim();
-    const isPhone = /^[6-9]\d{9}$/.test(trimmed.replace(/\D/g, "").slice(-10));
+    const trimmed = email.trim().toLowerCase();
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
-    if (!trimmed || (!isEmail && !isPhone)) {
-      toast.error("Enter a valid email address or 10-digit mobile number");
+    if (!trimmed || !isEmail) {
+      toast.error("Please enter a valid email address");
       return;
     }
     setLoading(true);
@@ -571,16 +570,16 @@ export default function Auth() {
                 <div className="space-y-2">
                   <Label htmlFor="email" className="flex items-center gap-2 text-sm font-medium">
                     <Mail className="w-4 h-4 text-muted-foreground" />
-                    Email address or Mobile number
+                    Email address
                   </Label>
                   <Input
                     id="email"
-                    type="text"
-                    placeholder="you@example.com or 10-digit mobile"
+                    type="email"
+                    placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoFocus
-                    autoComplete="username"
+                    autoComplete="email"
                     className="h-12 rounded-xl text-base"
                   />
                 </div>
