@@ -292,24 +292,23 @@ export default function Auth() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading, setLocation]);
 
-  // ─── Email step ─────────────────────────────────────────────────────────────
+  // ─── Email / Mobile step ──────────────────────────────────────────────────
   const handleEmailContinue = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = email.toLowerCase().trim();
-    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      toast.error("Enter a valid email address");
+    const trimmed = email.trim();
+    const isPhone = /^[6-9]\d{9}$/.test(trimmed.replace(/\D/g, "").slice(-10));
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+    if (!trimmed || (!isEmail && !isPhone)) {
+      toast.error("Enter a valid email address or 10-digit mobile number");
       return;
     }
     setLoading(true);
     try {
-      // IMPORTANT: use api.post() — never raw fetch() with a relative URL.
-      // On Android/Capacitor, relative URLs resolve to capacitor://localhost/api/...
-      // which gets intercepted by the bridge and returns an HTML page (status 200, non-JSON).
-      console.log("[Auth] Checking email via", `${api.BASE}/auth/check-email`);
+      console.log("[Auth] Checking user via", `${api.BASE}/auth/check-email`);
       const data = await api.post<{ exists?: boolean }>("/auth/check-email", { email: trimmed });
       setStep(data.exists ? "signin" : "signup");
     } catch {
-      // Network error — just go to signin (the backend will give the right error)
+      // On error, proceed to signin
       setStep("signin");
     } finally {
       setLoading(false);
@@ -322,7 +321,7 @@ export default function Auth() {
     if (!password) { toast.error("Enter your password"); return; }
     setLoading(true);
     try {
-      const result = await signInWithEmail(email.toLowerCase().trim(), password);
+      const result = await signInWithEmail(email.trim(), password);
       if (result.needsProfile) {
         setLocation("/complete-profile");
       } else {
@@ -572,16 +571,16 @@ export default function Auth() {
                 <div className="space-y-2">
                   <Label htmlFor="email" className="flex items-center gap-2 text-sm font-medium">
                     <Mail className="w-4 h-4 text-muted-foreground" />
-                    Email address
+                    Email address or Mobile number
                   </Label>
                   <Input
                     id="email"
-                    type="email"
-                    placeholder="you@example.com"
+                    type="text"
+                    placeholder="you@example.com or 10-digit mobile"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoFocus
-                    autoComplete="email"
+                    autoComplete="username"
                     className="h-12 rounded-xl text-base"
                   />
                 </div>

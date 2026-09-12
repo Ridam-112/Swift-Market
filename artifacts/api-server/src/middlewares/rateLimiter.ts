@@ -41,49 +41,61 @@ function makeRateLimiter(opts: { windowMs: number; max: number; keyFn: (req: Req
   };
 }
 
+function getAuthIdentifier(req: Request): string {
+  const body = req.body as { phone?: string; email?: string } | undefined;
+  if (body?.email && typeof body.email === "string" && body.email.trim()) {
+    return `email:${body.email.toLowerCase().trim()}`;
+  }
+  if (body?.phone && typeof body.phone === "string" && body.phone.trim()) {
+    return `phone:${body.phone.trim()}`;
+  }
+  const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || req.ip || req.socket?.remoteAddress || "unknown";
+  return `ip:${ip}`;
+}
+
 // ─── OTP limiters (kept for backward compat, no longer used in routes) ────────
 export const otpPhoneLimiter = makeRateLimiter({
   windowMs: isDev ? 60 * 1000 : 10 * 60 * 1000,
-  max: isDev ? 50 : 5,
-  keyFn: (req) => `otp:phone:${(req.body as { phone?: string })?.phone ?? "unknown"}`,
-  message: "Too many OTP requests for this number. Please wait 10 minutes before trying again.",
+  max: isDev ? 50 : 10,
+  keyFn: (req) => `otp:${getAuthIdentifier(req)}`,
+  message: "Too many OTP requests. Please wait 10 minutes before trying again.",
 });
 
 export const otpIpLimiter = isDev
   ? (_req: Request, _res: Response, next: NextFunction): void => next()
   : makeRateLimiter({
       windowMs: 15 * 60 * 1000,
-      max: 10,
+      max: 30,
       keyFn: (req) => `otp:ip:${req.ip ?? req.socket.remoteAddress ?? "unknown"}`,
       message: "Too many OTP requests from your network. Please wait 10 minutes before trying again.",
     });
 
 // ─── Password login limiter ───────────────────────────────────────────────────
-// Per-phone: 10 attempts per 15 minutes. Always active (user-scoped key, not IP).
+// Per-user (email or phone or IP): 30 attempts per 15 minutes.
 export const loginLimiter = makeRateLimiter({
   windowMs: isDev ? 60 * 1000 : 15 * 60 * 1000,
-  max: isDev ? 100 : 10,
-  keyFn: (req) => `login:phone:${(req.body as { phone?: string })?.phone ?? "unknown"}`,
-  message: "Too many login attempts. Please wait 15 minutes before trying again.",
+  max: isDev ? 200 : 30,
+  keyFn: (req) => `login:${getAuthIdentifier(req)}`,
+  message: "Too many login attempts. Please wait a few minutes before trying again.",
 });
 
 // ─── Signup limiter ───────────────────────────────────────────────────────────
-// Per-IP: 5 signups per 15 minutes in production.
+// Per-IP: 20 signups per 15 minutes in production.
 export const signupLimiter = isDev
   ? (_req: Request, _res: Response, next: NextFunction): void => next()
   : makeRateLimiter({
       windowMs: 15 * 60 * 1000,
-      max: 5,
+      max: 20,
       keyFn: (req) => `signup:ip:${req.ip ?? req.socket.remoteAddress ?? "unknown"}`,
       message: "Too many signup attempts. Please wait 15 minutes before trying again.",
     });
 
 // ─── Password reset limiter ───────────────────────────────────────────────────
-// Per-phone: 3 reset requests per 15 minutes to prevent token spam.
+// Per-user (email or phone): 10 reset requests per 15 minutes.
 export const resetPasswordLimiter = makeRateLimiter({
   windowMs: isDev ? 60 * 1000 : 15 * 60 * 1000,
-  max: isDev ? 50 : 3,
-  keyFn: (req) => `reset:phone:${(req.body as { phone?: string })?.phone ?? "unknown"}`,
+  max: isDev ? 50 : 10,
+  keyFn: (req) => `reset:${getAuthIdentifier(req)}`,
   message: "Too many password reset requests. Please wait 15 minutes before trying again.",
 });
 

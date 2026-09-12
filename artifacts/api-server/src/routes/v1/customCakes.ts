@@ -555,19 +555,26 @@ router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response
       return;
     }
 
-    const validStatuses = ["preparing", "ready", "rejected", "cancelled"];
+    const validStatuses = ["preparing", "ready", "delivered", "customer_picked_up", "rejected", "cancelled"];
     if (!validStatuses.includes(status)) {
       res.status(400).json({ success: false, message: `Invalid status '${status}'` });
       return;
     }
 
+    const updatePayload: Record<string, any> = {
+      status,
+      cancelReason: cancelReason || undefined,
+      updatedAt: new Date(),
+    };
+    if (status === "customer_picked_up" || status === "delivered") {
+      updatePayload.pickedUpAt = new Date();
+      updatePayload.deliveredAt = new Date();
+      updatePayload.verifiedByUserId = userId;
+    }
+
     const [updated] = await db
       .update(customCakeRequests)
-      .set({
-        status,
-        cancelReason: cancelReason || undefined,
-        updatedAt: new Date(),
-      })
+      .set(updatePayload)
       .where(eq(customCakeRequests.id, id))
       .returning();
 
@@ -576,6 +583,8 @@ router.patch("/:id/status", authenticate, async (req: AuthRequest, res: Response
       const orderStatusMap: Record<string, string> = {
         preparing: "preparing",
         ready: "ready",
+        delivered: "delivered",
+        customer_picked_up: "delivered",
         rejected: "cancelled",
         cancelled: "cancelled",
       };
