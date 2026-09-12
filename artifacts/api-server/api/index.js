@@ -132881,22 +132881,36 @@ function buildMaintenanceHtml(message, endTime) {
     </div>
 
     <!-- Status badge -->
-    <div class="badge">Under Maintenance / \u0993\u09AF\u09BC\u09C7\u09AC\u09B8\u09BE\u0987\u099F\u09C7 \u0995\u09BE\u099C \u099A\u09B2\u099B\u09C7</div>
+    <div class="badge">\u{1F680} Major Upgrade in Progress / \u0995\u09BE\u099C \u099A\u09B2\u099B\u09C7</div>
 
     <h1>We'll be back soon!</h1>
 
-    <p class="message" style="color: #fcd34d; font-weight: 600; margin-bottom: 8px;">
-      \u0993\u09AF\u09BC\u09C7\u09AC\u09B8\u09BE\u0987\u099F\u09C7 \u099F\u09C7\u0995\u09A8\u09BF\u0995\u09CD\u09AF\u09BE\u09B2 \u0986\u09AA\u0997\u09CD\u09B0\u09C7\u09A1\u09C7\u09B0 \u0995\u09BE\u099C \u099A\u09B2\u099B\u09C7, \u0986\u09AE\u09B0\u09BE \u09B6\u09C0\u0998\u09CD\u09B0\u0987 \u09AB\u09BF\u09B0\u099B\u09BF!
+    <p class="message" style="color: #fcd34d; font-weight: 700; font-size: 15px; margin-bottom: 6px;">
+      \u0993\u09AF\u09BC\u09C7\u09AC\u09B8\u09BE\u0987\u099F\u09C7 \u09AC\u09A1\u09BC \u09A7\u09B0\u09A8\u09C7\u09B0 \u0986\u09AA\u0997\u09CD\u09B0\u09C7\u09A1\u09C7\u09B0 \u0995\u09BE\u099C \u099A\u09B2\u099B\u09C7!
     </p>
-    <p class="message">${message}</p>
+    <p class="message" style="color: #cbd5e1; font-size: 13px; line-height: 1.6; margin-bottom: 16px;">
+      SwiftMart Mobile App \u0996\u09C1\u09AC \u09B6\u09C0\u0998\u09CD\u09B0\u0987 \u0986\u09B8\u099B\u09C7 \u098F\u09AC\u0982 \u0986\u09B0\u09CB \u0985\u09A8\u09C7\u0995 \u09A8\u09A4\u09C1\u09A8 \u09A6\u09CB\u0995\u09BE\u09A8 \u0993 \u09AA\u09CD\u09B0\u09CB\u09A1\u09BE\u0995\u09CD\u099F \u09AF\u09C1\u0995\u09CD\u09A4 \u09B9\u099A\u09CD\u099B\u09C7\u0964 \u0986\u09AA\u09A8\u09BE\u09A6\u09C7\u09B0 \u0986\u09B0\u0993 \u09AD\u09BE\u09B2\u09CB \u09B6\u09AA\u09BF\u0982 \u0985\u09AD\u09BF\u099C\u09CD\u099E\u09A4\u09BE \u09A6\u09BF\u09A4\u09C7 \u09B8\u09BF\u09B8\u09CD\u099F\u09C7\u09AE \u0985\u09AA\u09CD\u099F\u09BF\u09AE\u09BE\u0987\u099C \u0995\u09B0\u09BE \u09B9\u099A\u09CD\u099B\u09C7 \u2014 \u0985\u09A8\u09C1\u0997\u09CD\u09B0\u09B9 \u0995\u09B0\u09C7 \u09B8\u09BE\u09A5\u09C7 \u09A5\u09BE\u0995\u09C1\u09A8!
+    </p>
+
+    <!-- Highlights -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; text-align: left;">
+      <div style="background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 10px;">
+        <p style="color: #fff; font-weight: 700; font-size: 12px; margin: 0 0 2px 0;">\u{1F4F1} Mobile App \u0986\u09B8\u099B\u09C7!</p>
+        <p style="color: #a5b4fc; font-size: 11px; margin: 0;">Play Store \u098F \u09A6\u09CD\u09B0\u09C1\u09A4 \u09B2\u099E\u09CD\u099A \u09B9\u099A\u09CD\u099B\u09C7\u0964</p>
+      </div>
+      <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 10px;">
+        <p style="color: #fff; font-weight: 700; font-size: 12px; margin: 0 0 2px 0;">\u{1F3EC} \u09A8\u09A4\u09C1\u09A8 \u09A6\u09CB\u0995\u09BE\u09A8 \u09AF\u09C1\u0995\u09CD\u09A4 \u09B9\u099A\u09CD\u099B\u09C7!</p>
+        <p style="color: #fde68a; font-size: 11px; margin: 0;">\u09B9\u09BE\u099C\u09BE\u09B0\u09CB \u09A8\u09A4\u09C1\u09A8 \u0986\u0987\u099F\u09C7\u09AE \u0986\u09B8\u099B\u09C7\u0964</p>
+      </div>
+    </div>
 
     <!-- WhatsApp Order Box -->
-    <div style="background: rgba(16, 185, 129, 0.12); border: 2px solid rgba(16, 185, 129, 0.4); border-radius: 16px; padding: 18px; margin: 20px 0; text-align: center;">
+    <div style="background: rgba(16, 185, 129, 0.12); border: 2px solid rgba(16, 185, 129, 0.4); border-radius: 16px; padding: 18px; margin: 18px 0; text-align: center;">
       <p style="color: #34d399; font-weight: 800; font-size: 14px; margin: 0 0 6px 0; text-transform: uppercase;">
         \u{1F4E6} \u099C\u09B0\u09C1\u09B0\u09BF \u0985\u09B0\u09CD\u09A1\u09BE\u09B0 \u0995\u09B0\u09A4\u09C7 \u099A\u09BE\u09A8?
       </p>
       <p style="color: #e2e8f0; font-size: 13px; margin: 0 0 14px 0;">
-        \u0993\u09AF\u09BC\u09C7\u09AC\u09B8\u09BE\u0987\u099F\u09C7 \u0995\u09BE\u099C \u099A\u09B2\u09BE\u0995\u09BE\u09B2\u09C0\u09A8 \u09AF\u09C7\u0995\u09CB\u09A8\u09CB \u0985\u09B0\u09CD\u09A1\u09BE\u09B0 \u0995\u09B0\u09A4\u09C7 \u09B8\u09B0\u09BE\u09B8\u09B0\u09BF WhatsApp-\u098F \u09AE\u09C7\u09B8\u09C7\u099C \u0995\u09B0\u09C1\u09A8:
+        \u0993\u09AF\u09BC\u09C7\u09AC\u09B8\u09BE\u0987\u099F\u09C7 \u0995\u09BE\u099C \u099A\u09B2\u09BE\u0995\u09BE\u09B2\u09C0\u09A8 \u09AF\u09C7\u0995\u09CB\u09A8\u09CB \u0985\u09B0\u09CD\u09A1\u09BE\u09B0 \u09B8\u09B0\u09BE\u09B8\u09B0\u09BF WhatsApp-\u098F \u09AE\u09C7\u09B8\u09C7\u099C \u09A6\u09BF\u09AF\u09BC\u09C7 \u09AA\u09CD\u09B2\u09C7\u09B8 \u0995\u09B0\u09C1\u09A8:
       </p>
       <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
         <a href="https://wa.me/916296118949?text=Hello%20SwiftMart!%20Ami%20ekta%20order%20dite%20chai." target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 8px; background: #10b981; color: #052e16; font-weight: 800; font-size: 14px; padding: 12px 22px; border-radius: 12px; text-decoration: none; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">

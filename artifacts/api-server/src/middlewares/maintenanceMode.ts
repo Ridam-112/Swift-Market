@@ -343,22 +343,36 @@ function buildMaintenanceHtml(message: string, endTime: string | null): string {
     </div>
 
     <!-- Status badge -->
-    <div class="badge">Under Maintenance / ওয়েবসাইটে কাজ চলছে</div>
+    <div class="badge">🚀 Major Upgrade in Progress / কাজ চলছে</div>
 
     <h1>We'll be back soon!</h1>
 
-    <p class="message" style="color: #fcd34d; font-weight: 600; margin-bottom: 8px;">
-      ওয়েবসাইটে টেকনিক্যাল আপগ্রেডের কাজ চলছে, আমরা শীঘ্রই ফিরছি!
+    <p class="message" style="color: #fcd34d; font-weight: 700; font-size: 15px; margin-bottom: 6px;">
+      ওয়েবসাইটে বড় ধরনের আপগ্রেডের কাজ চলছে!
     </p>
-    <p class="message">${message}</p>
+    <p class="message" style="color: #cbd5e1; font-size: 13px; line-height: 1.6; margin-bottom: 16px;">
+      SwiftMart Mobile App খুব শীঘ্রই আসছে এবং আরো অনেক নতুন দোকান ও প্রোডাক্ট যুক্ত হচ্ছে। আপনাদের আরও ভালো শপিং অভিজ্ঞতা দিতে সিস্টেম অপ্টিমাইজ করা হচ্ছে — অনুগ্রহ করে সাথে থাকুন!
+    </p>
+
+    <!-- Highlights -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; text-align: left;">
+      <div style="background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 10px;">
+        <p style="color: #fff; font-weight: 700; font-size: 12px; margin: 0 0 2px 0;">📱 Mobile App আসছে!</p>
+        <p style="color: #a5b4fc; font-size: 11px; margin: 0;">Play Store এ দ্রুত লঞ্চ হচ্ছে।</p>
+      </div>
+      <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 10px;">
+        <p style="color: #fff; font-weight: 700; font-size: 12px; margin: 0 0 2px 0;">🏬 নতুন দোকান যুক্ত হচ্ছে!</p>
+        <p style="color: #fde68a; font-size: 11px; margin: 0;">হাজারো নতুন আইটেম আসছে।</p>
+      </div>
+    </div>
 
     <!-- WhatsApp Order Box -->
-    <div style="background: rgba(16, 185, 129, 0.12); border: 2px solid rgba(16, 185, 129, 0.4); border-radius: 16px; padding: 18px; margin: 20px 0; text-align: center;">
+    <div style="background: rgba(16, 185, 129, 0.12); border: 2px solid rgba(16, 185, 129, 0.4); border-radius: 16px; padding: 18px; margin: 18px 0; text-align: center;">
       <p style="color: #34d399; font-weight: 800; font-size: 14px; margin: 0 0 6px 0; text-transform: uppercase;">
         📦 জরুরি অর্ডার করতে চান?
       </p>
       <p style="color: #e2e8f0; font-size: 13px; margin: 0 0 14px 0;">
-        ওয়েবসাইটে কাজ চলাকালীন যেকোনো অর্ডার করতে সরাসরি WhatsApp-এ মেসেজ করুন:
+        ওয়েবসাইটে কাজ চলাকালীন যেকোনো অর্ডার সরাসরি WhatsApp-এ মেসেজ দিয়ে প্লেস করুন:
       </p>
       <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
         <a href="https://wa.me/916296118949?text=Hello%20SwiftMart!%20Ami%20ekta%20order%20dite%20chai." target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 8px; background: #10b981; color: #052e16; font-weight: 800; font-size: 14px; padding: 12px 22px; border-radius: 12px; text-decoration: none; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
