@@ -49,12 +49,15 @@ function createNeonPool(url: string, label: string): Pool {
 import { db as db1 } from "@workspace/db";
 export { db1 };
 
-// Fall back to DATABASE_URL when a shard-specific secret is not set (dev/single-DB mode).
-const fallback = process.env.DATABASE_URL!;
-const _db2Pool = createNeonPool(process.env.DATABASE2_URL ?? fallback, "DB2");
-const _db3Pool = createNeonPool(process.env.DATABASE3_URL ?? fallback, "DB3");
-const _db4Pool = createNeonPool(process.env.DATABASE4_URL ?? fallback, "DB4");
-const _db5Pool = createNeonPool(process.env.DATABASE5_URL ?? fallback, "DB5");
+// Fall back to DB 2/3/4/5 URLs when environment variables are not set.
+const fallback =
+  process.env.DATABASE_URL ??
+  "postgresql://neondb_owner:npg_U38WKbfcFLwB@ep-lucky-shape-azpdcnzz-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
+
+const _db2Pool = createNeonPool(process.env.DATABASE2_URL ?? "postgresql://neondb_owner:npg_U38WKbfcFLwB@ep-lucky-shape-azpdcnzz-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require", "DB2");
+const _db3Pool = createNeonPool(process.env.DATABASE3_URL ?? "postgresql://neondb_owner:npg_5xQCT9dNgqRS@ep-small-violet-azvsq53k-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require", "DB3");
+const _db4Pool = createNeonPool(process.env.DATABASE4_URL ?? "postgresql://neondb_owner:npg_4enZGx0fHDIv@ep-dawn-unit-azzrimbp-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require", "DB4");
+const _db5Pool = createNeonPool(process.env.DATABASE5_URL ?? "postgresql://neondb_owner:npg_tFHT9NoO5Cvy@ep-dark-tooth-az6x4682-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require", "DB5");
 
 export const db2 = drizzle(_db2Pool, { schema });
 export const db3 = drizzle(_db3Pool, { schema });

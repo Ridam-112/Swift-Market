@@ -10,12 +10,10 @@ const connectionString =
   process.env.DATABASE1_URL ??
   process.env.NEON_DATABASE_URL ??
   process.env.TEMP_DB_URL ??
-  "";
+  "postgresql://neondb_owner:npg_U38WKbfcFLwB@ep-lucky-shape-azpdcnzz-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
 
-if (!connectionString) {
-  console.error(
-    "[DB Error] DATABASE_URL (or MAIN_DB_URL / NEON_DATABASE_URL) must be set in Environment Variables.",
-  );
+if (!process.env.DATABASE_URL && !process.env.MAIN_DB_URL) {
+  console.log("[DB] Using default primary database (DB 2).");
 }
 
 const isNeon =
