@@ -29,11 +29,27 @@ export const KEYS = {
   PRODUCTS_PREFIX: "sm:products:",
 } as const;
 
+// ── In-Memory L1 Cache (Always active, 0 DB transfer) ─────────────────────────
+interface MemoryCacheEntry {
+  value: unknown;
+  expiresAt: number;
+}
+const memoryCache = new Map<string, MemoryCacheEntry>();
+const MAX_MEMORY_CACHE_ITEMS = 500;
+
+// Periodic cleanup of expired in-memory cache items
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of memoryCache) {
+    if (v.expiresAt <= now) memoryCache.delete(k);
+  }
+}, 60_000);
+
 // ── Internal state ────────────────────────────────────────────────────────────
 let redis: any = null;
 let available = false;
 
-// ── Public helpers ────────────────────────────────────────────────────────────
+// ─── Public helpers ────────────────────────────────────────────────────────────
 
 /**
  * Build a deterministic cache key for the products list endpoint.
@@ -51,59 +67,100 @@ export function productsCacheKey(query: Record<string, string>): string {
 }
 
 /**
- * Get a cached value. Returns `null` on miss, Redis unavailability, or any error.
+ * Get a cached value. Checks In-Memory cache first, then Redis.
  */
 export async function cacheGet<T = unknown>(key: string): Promise<T | null> {
-  if (!redis || !available) return null;
-  try {
-    const raw = await redis.get(key);
-    return raw ? (JSON.parse(raw) as T) : null;
-  } catch {
-    return null;
+  const now = Date.now();
+  // 1. Check L1 Memory cache
+  const mem = memoryCache.get(key);
+  if (mem) {
+    if (mem.expiresAt > now) {
+      return mem.value as T;
+    }
+    memoryCache.delete(key);
   }
+
+  // 2. Check L2 Redis cache if available
+  if (redis && available) {
+    try {
+      const raw = await redis.get(key);
+      if (raw) {
+        const parsed = JSON.parse(raw) as T;
+        // Populate L1 cache
+        memoryCache.set(key, { value: parsed, expiresAt: now + 60_000 });
+        return parsed;
+      }
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  return null;
 }
 
 /**
- * Store a value. Silently no-ops if Redis is unavailable or an error occurs.
+ * Store a value in memory cache and Redis.
  */
 export async function cacheSet(key: string, value: unknown, ttlSeconds: number): Promise<void> {
-  if (!redis || !available) return;
-  try {
-    await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
-  } catch {
-    // Non-fatal
+  const now = Date.now();
+  // Evict oldest if full
+  if (memoryCache.size >= MAX_MEMORY_CACHE_ITEMS) {
+    const first = memoryCache.keys().next().value;
+    if (first !== undefined) memoryCache.delete(first);
+  }
+  memoryCache.set(key, { value, expiresAt: now + ttlSeconds * 1000 });
+
+  if (redis && available) {
+    try {
+      await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
+    } catch {
+      // Non-fatal
+    }
   }
 }
 
 /**
- * Delete one or more exact keys.
+ * Delete one or more exact keys from memory and Redis.
  */
 export async function cacheDel(...keys: string[]): Promise<void> {
-  if (!redis || !available || keys.length === 0) return;
-  try {
-    await redis.del(...keys);
-  } catch {
-    // Non-fatal
+  for (const k of keys) {
+    memoryCache.delete(k);
+  }
+
+  if (redis && available && keys.length > 0) {
+    try {
+      await redis.del(...keys);
+    } catch {
+      // Non-fatal
+    }
   }
 }
 
 /**
- * Delete all keys matching a glob pattern (uses SCAN — safe for production).
- * Example pattern: "sm:products:*"
+ * Delete all keys matching a pattern from memory and Redis.
  */
 export async function cacheDelPattern(pattern: string): Promise<void> {
-  if (!redis || !available) return;
-  try {
-    let cursor = "0";
-    do {
-      const [next, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 200);
-      cursor = next;
-      if (keys.length > 0) {
-        await redis.del(...keys);
-      }
-    } while (cursor !== "0");
-  } catch {
-    // Non-fatal
+  // Convert glob pattern (e.g. sm:products:*) to regex
+  const regex = new RegExp("^" + pattern.replace(/\*/g, ".*") + "$");
+  for (const k of memoryCache.keys()) {
+    if (regex.test(k)) {
+      memoryCache.delete(k);
+    }
+  }
+
+  if (redis && available) {
+    try {
+      let cursor = "0";
+      do {
+        const [next, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 200);
+        cursor = next;
+        if (keys.length > 0) {
+          await redis.del(...keys);
+        }
+      } while (cursor !== "0");
+    } catch {
+      // Non-fatal
+    }
   }
 }
 

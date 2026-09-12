@@ -125248,6 +125248,14 @@ var KEYS = {
   HOMEPAGE: "sm:homepage",
   PRODUCTS_PREFIX: "sm:products:"
 };
+var memoryCache = /* @__PURE__ */ new Map();
+var MAX_MEMORY_CACHE_ITEMS = 500;
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of memoryCache) {
+    if (v.expiresAt <= now) memoryCache.delete(k);
+  }
+}, 6e4);
 var redis = null;
 var available = false;
 function productsCacheKey(query) {
@@ -125258,40 +125266,71 @@ function productsCacheKey(query) {
   return KEYS.PRODUCTS_PREFIX + JSON.stringify(sorted);
 }
 async function cacheGet(key) {
-  if (!redis || !available) return null;
-  try {
-    const raw = await redis.get(key);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
+  const now = Date.now();
+  const mem = memoryCache.get(key);
+  if (mem) {
+    if (mem.expiresAt > now) {
+      return mem.value;
+    }
+    memoryCache.delete(key);
   }
+  if (redis && available) {
+    try {
+      const raw = await redis.get(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        memoryCache.set(key, { value: parsed, expiresAt: now + 6e4 });
+        return parsed;
+      }
+    } catch {
+    }
+  }
+  return null;
 }
 async function cacheSet(key, value, ttlSeconds) {
-  if (!redis || !available) return;
-  try {
-    await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
-  } catch {
+  const now = Date.now();
+  if (memoryCache.size >= MAX_MEMORY_CACHE_ITEMS) {
+    const first = memoryCache.keys().next().value;
+    if (first !== void 0) memoryCache.delete(first);
+  }
+  memoryCache.set(key, { value, expiresAt: now + ttlSeconds * 1e3 });
+  if (redis && available) {
+    try {
+      await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
+    } catch {
+    }
   }
 }
 async function cacheDel(...keys) {
-  if (!redis || !available || keys.length === 0) return;
-  try {
-    await redis.del(...keys);
-  } catch {
+  for (const k of keys) {
+    memoryCache.delete(k);
+  }
+  if (redis && available && keys.length > 0) {
+    try {
+      await redis.del(...keys);
+    } catch {
+    }
   }
 }
 async function cacheDelPattern(pattern) {
-  if (!redis || !available) return;
-  try {
-    let cursor = "0";
-    do {
-      const [next, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 200);
-      cursor = next;
-      if (keys.length > 0) {
-        await redis.del(...keys);
-      }
-    } while (cursor !== "0");
-  } catch {
+  const regex = new RegExp("^" + pattern.replace(/\*/g, ".*") + "$");
+  for (const k of memoryCache.keys()) {
+    if (regex.test(k)) {
+      memoryCache.delete(k);
+    }
+  }
+  if (redis && available) {
+    try {
+      let cursor = "0";
+      do {
+        const [next, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 200);
+        cursor = next;
+        if (keys.length > 0) {
+          await redis.del(...keys);
+        }
+      } while (cursor !== "0");
+    } catch {
+    }
   }
 }
 async function invalidateProductCaches() {

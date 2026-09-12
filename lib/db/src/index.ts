@@ -4,11 +4,17 @@ import * as schema from "./schema/index.js";
 
 const { Pool } = pg;
 
-const connectionString = process.env.DATABASE1_URL ?? process.env.NEON_DATABASE_URL ?? process.env.DATABASE_URL ?? "";
+const connectionString =
+  process.env.MAIN_DB_URL ??
+  process.env.DATABASE_URL ??
+  process.env.DATABASE1_URL ??
+  process.env.NEON_DATABASE_URL ??
+  process.env.TEMP_DB_URL ??
+  "";
 
 if (!connectionString) {
   console.error(
-    "[DB Error] DATABASE_URL must be set in Environment Variables.",
+    "[DB Error] DATABASE_URL (or MAIN_DB_URL / NEON_DATABASE_URL) must be set in Environment Variables.",
   );
 }
 
