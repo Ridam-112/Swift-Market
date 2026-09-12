@@ -144,7 +144,7 @@ export default function GoogleCallback() {
           </div>
           <Button
             className="w-full h-12 rounded-xl text-base font-semibold"
-            onClick={() => setLocation("/auth")}
+            onClick={() => { window.location.href = "/auth"; }}
           >
             Back to sign in
           </Button>
