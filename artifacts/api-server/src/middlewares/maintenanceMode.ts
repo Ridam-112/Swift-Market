@@ -343,23 +343,44 @@ function buildMaintenanceHtml(message: string, endTime: string | null): string {
     </div>
 
     <!-- Status badge -->
-    <div class="badge">Under Maintenance</div>
+    <div class="badge">Under Maintenance / ওয়েবসাইটে কাজ চলছে</div>
 
-    <h1>We'll be back shortly</h1>
+    <h1>We'll be back soon!</h1>
 
+    <p class="message" style="color: #fcd34d; font-weight: 600; margin-bottom: 8px;">
+      ওয়েবসাইটে টেকনিক্যাল আপগ্রেডের কাজ চলছে, আমরা শীঘ্রই ফিরছি!
+    </p>
     <p class="message">${message}</p>
+
+    <!-- WhatsApp Order Box -->
+    <div style="background: rgba(16, 185, 129, 0.12); border: 2px solid rgba(16, 185, 129, 0.4); border-radius: 16px; padding: 18px; margin: 20px 0; text-align: center;">
+      <p style="color: #34d399; font-weight: 800; font-size: 14px; margin: 0 0 6px 0; text-transform: uppercase;">
+        📦 জরুরি অর্ডার করতে চান?
+      </p>
+      <p style="color: #e2e8f0; font-size: 13px; margin: 0 0 14px 0;">
+        ওয়েবসাইটে কাজ চলাকালীন যেকোনো অর্ডার করতে সরাসরি WhatsApp-এ মেসেজ করুন:
+      </p>
+      <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+        <a href="https://wa.me/916296118949?text=Hello%20SwiftMart!%20Ami%20ekta%20order%20dite%20chai." target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 8px; background: #10b981; color: #052e16; font-weight: 800; font-size: 14px; padding: 12px 22px; border-radius: 12px; text-decoration: none; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
+          📲 WhatsApp এ অর্ডার করুন (6296118949)
+        </a>
+        <a href="tel:6296118949" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.08); color: #fff; font-weight: 700; font-size: 14px; padding: 12px 18px; border-radius: 12px; text-decoration: none; border: 1px solid rgba(255,255,255,0.15);">
+          📞 Call: 6296118949
+        </a>
+      </div>
+    </div>
 
     ${endTimeBlock}
 
     <hr class="divider" />
 
-    <p class="contact-title">Need help in the meantime?</p>
+    <p class="contact-title">Need help or inquiries?</p>
     <div class="contact-links">
       <a class="contact-link" href="https://wa.me/916296118949" target="_blank" rel="noopener">
-        💬 WhatsApp Support
+        💬 WhatsApp: +91 6296118949
       </a>
-      <a class="contact-link" href="mailto:support@swiftmart.space">
-        ✉️ Email Us
+      <a class="contact-link" href="mailto:thrid5564@gmail.com">
+        ✉️ Email Support
       </a>
     </div>
   </div>
@@ -374,7 +395,9 @@ function buildMaintenanceHtml(message: string, endTime: string | null): string {
 // ─── Middleware export ────────────────────────────────────────────────────────
 
 export function maintenanceMode(req: Request, res: Response, next: NextFunction): void {
-  const enabled = (process.env["MAINTENANCE_MODE"] ?? "false").toLowerCase() === "true";
+  // Enabled by default unless explicitly disabled with MAINTENANCE_MODE=false
+  const envVal = process.env["MAINTENANCE_MODE"];
+  const enabled = envVal !== undefined ? envVal.toLowerCase() === "true" : true;
   if (!enabled) { next(); return; }
 
   // Always pass through: health check, bypass endpoint, robots.txt, and sitemap.xml
@@ -395,7 +418,7 @@ export function maintenanceMode(req: Request, res: Response, next: NextFunction)
 
   const message =
     process.env["MAINTENANCE_MESSAGE"] ??
-    "We're performing scheduled maintenance to improve your experience. Our team is working hard to get everything back up as quickly as possible.";
+    "We are performing scheduled server upgrades to optimize your experience. For placing any orders during maintenance, please WhatsApp us at 6296118949.";
 
   const endTime = process.env["MAINTENANCE_END_TIME"] ?? null;
 
@@ -411,7 +434,9 @@ export function maintenanceMode(req: Request, res: Response, next: NextFunction)
       .json({
         success: false,
         maintenance: true,
-        message: "SwiftMart is currently under maintenance. Please try again later.",
+        message: "SwiftMart is currently under maintenance. We will be back soon! To place an order, WhatsApp 6296118949.",
+        whatsappOrder: "https://wa.me/916296118949",
+        phone: "6296118949",
         ...(endTime ? { estimatedEndTime: endTime } : {}),
       });
     return;

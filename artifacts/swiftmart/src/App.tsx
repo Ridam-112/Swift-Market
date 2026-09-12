@@ -497,15 +497,14 @@ function PushManager() {
 }
 
 // ─── Maintenance mode guard ───────────────────────────────────────────────────
-// In production the Express server intercepts ALL routes before the SPA is
-// served, so this React-level check only fires in the Vite dev server.
-// Set VITE_MAINTENANCE_MODE=true in your .env / Replit Secrets to activate it.
-const IS_MAINTENANCE = (import.meta.env["VITE_MAINTENANCE_MODE"] as string | undefined)?.toLowerCase() === "true";
+// Maintenance mode is ON by default. To disable set VITE_MAINTENANCE_MODE=false.
+const envMaintenance = import.meta.env["VITE_MAINTENANCE_MODE"] as string | undefined;
+const isExplicitlyDisabled = envMaintenance?.toLowerCase() === "false";
+const hasBypassParam = typeof window !== "undefined" && (window.location.search.includes("bypass=admin") || localStorage.getItem("sm_maintenance_bypass") === "true");
 
 function App() {
-  // Dev-server maintenance mode: show the page before mounting any providers
-  // so no API calls or auth checks happen while the site is down.
-  if (IS_MAINTENANCE) {
+  // If maintenance mode is active and not bypassed, show MaintenancePage immediately
+  if (!isExplicitlyDisabled && !hasBypassParam) {
     return <MaintenancePage />;
   }
 
