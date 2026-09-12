@@ -121,22 +121,24 @@ export function ProductsProvider({ children }: { children: React.ReactNode }) {
     fetchProducts(false);
   }, [userId, authLoading, fetchProducts]);
 
-  // Background safety interval — only fires when the tab is visible.
+  // Background safety interval — only refresh periodically if needed (every 5 minutes, not every 60s)
   useEffect(() => {
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") {
-        fetchProducts(false);
+        // Only refresh if data is older than 5 minutes
+        if (Date.now() - lastFetchedAt.current > 300_000) {
+          fetchProducts(false);
+        }
       }
-    }, BG_INTERVAL_MS);
+    }, 300_000);
     return () => clearInterval(interval);
   }, [fetchProducts]);
 
-  // Refetch when the user switches back to this tab after being away.
+  // Refetch when the user switches back to this tab only if data is very stale (older than 5 minutes).
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === "visible") {
-        // Only refetch if data is stale (older than 30 s).
-        if (Date.now() - lastFetchedAt.current > 30_000) {
+        if (Date.now() - lastFetchedAt.current > 300_000) {
           fetchProducts(false);
         }
       }
