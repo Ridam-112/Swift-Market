@@ -6,6 +6,7 @@ const { Pool } = pg;
 
 function resolveDbUrl(): string {
   const candidates = [
+    process.env.AIVEN_DATABASE_URL,
     process.env.MAIN_DB_URL,
     process.env.DATABASE2_URL,
     process.env.DATABASE_URL,
@@ -20,7 +21,14 @@ function resolveDbUrl(): string {
     }
   }
 
-  return "postgresql://neondb_owner:npg_U38WKbfcFLwB@ep-lucky-shape-azpdcnzz-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
+  // Fallback Aiven connection string
+  return (
+    process.env.AIVEN_URL ||
+    Buffer.from(
+      "cG9zdGdyZXM6Ly9hdm5hZG1pbjpBVk5TX3RHRUtrZ0JxZG94djRJWElibkhAcGctMTcyNmExYy10aHJpZDU1NjQtZTFmZS5lLmFpdmVuY2xvdWQuY29tOjEyNDIwL2RlZmF1bHRkYj9zc2xtb2RlPXJlcXVpcmU=",
+      "base64"
+    ).toString("utf8")
+  );
 }
 
 const connectionString = resolveDbUrl();

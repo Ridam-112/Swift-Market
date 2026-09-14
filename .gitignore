@@ -53,6 +53,7 @@ Thumbs.db
 .env.local
 .env.*.local
 *.env
+backups/
 
 # Android — signing keystores and build outputs (MUST NOT be committed)
 *.keystore
