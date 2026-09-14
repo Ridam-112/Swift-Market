@@ -4,7 +4,13 @@ const pg = require(path.join(__dirname, '../artifacts/api-server/node_modules/pg
 const { Pool } = pg;
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-const DB_URL = process.env.DATABASE_URL || Buffer.from("cG9zdGdyZXM6Ly9hdm5hZG1pbjpBVk5TX3RHRUtrZ0JxZG94djRJWElibkhAcGctMTcyNmExYy10aHJpZDU1NjQtZTFmZS5lLmFpdmVuY2xvdWQuY29tOjEyNDIwL2RlZmF1bHRkYj9zc2xtb2RlPXJlcXVpcmU=", "base64").toString("utf8");
+const DB_URL = process.env.DATABASE_URL || process.env.AIVEN_DATABASE_URL || process.env.MAIN_DB_URL;
+
+if (!DB_URL) {
+  console.error('❌ Error: DATABASE_URL environment variable is required.');
+  console.error('Usage: DATABASE_URL="postgres://..." node scripts/backup_db.cjs');
+  process.exit(1);
+}
 
 async function backup() {
   console.log('📦 Starting SwiftMart Database Backup...');

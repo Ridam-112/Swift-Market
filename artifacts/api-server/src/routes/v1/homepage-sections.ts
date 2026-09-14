@@ -103,6 +103,7 @@ async function resolveProducts(
 
 // GET /api/homepage-sections — public, enabled sections with first 8 products each
 router.get("/", async (_req: Request, res: Response): Promise<void> => {
+  res.setHeader("Cache-Control", "public, s-maxage=180, stale-while-revalidate=360");
   // ── Cache check ──────────────────────────────────────────────────────────
   const cached = await cacheGet(KEYS.HOMEPAGE);
   if (cached) {
@@ -127,6 +128,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
 // GET /api/homepage-sections/:id/products — public, paginated products for one section
 router.get("/:id/products", async (req: Request, res: Response): Promise<void> => {
+  res.setHeader("Cache-Control", "public, s-maxage=120, stale-while-revalidate=240");
   const id = req.params["id"] as string;
   const page = Math.max(1, parseInt((req.query as Record<string, string>)["page"] ?? "1"));
   const limit = Math.min(40, parseInt((req.query as Record<string, string>)["limit"] ?? "8"));

@@ -122459,6 +122459,7 @@ async function authenticate(req, res, next) {
       ...payload,
       role: liveRole
     };
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
     touchPresence(payload.userId);
     next();
   } catch {
@@ -125347,6 +125348,7 @@ async function invalidateCategoryCache() {
 var router7 = (0, import_express7.Router)();
 var A6 = requireRole("admin", "super_admin");
 router7.get("/", async (_req, res) => {
+  res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
   const cached = await cacheGet(KEYS.CATEGORIES);
   if (cached && typeof cached === "object" && "categories" in cached) {
     res.json(cached);
@@ -127698,6 +127700,7 @@ router12.post("/:id/link-user", authenticate, A11, validateUuidParams("id"), asy
 var chargesCache = null;
 var CHARGES_CACHE_TTL = 5 * 60 * 1e3;
 router12.get("/charges", async (_req, res) => {
+  res.setHeader("Cache-Control", "public, s-maxage=180, stale-while-revalidate=360");
   const now = Date.now();
   if (chargesCache && chargesCache.expires > now) {
     res.json(chargesCache.data);
@@ -129251,6 +129254,7 @@ function invalidateBannerCache() {
 var router17 = (0, import_express17.Router)();
 var A15 = requireRole("admin", "super_admin");
 router17.get("/", async (_req, res) => {
+  res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
   const hit = getBannerCache();
   if (hit) {
     res.json(hit);
@@ -130200,6 +130204,7 @@ async function resolveProducts(type, config, limit, offset = 0) {
   return { rows: await enrichWithShopNames(miArr(rows)), total: total ?? 0 };
 }
 router23.get("/", async (_req, res) => {
+  res.setHeader("Cache-Control", "public, s-maxage=180, stale-while-revalidate=360");
   const cached = await cacheGet(KEYS.HOMEPAGE);
   if (cached) {
     res.json(cached);
@@ -130216,6 +130221,7 @@ router23.get("/", async (_req, res) => {
   res.json(payload);
 });
 router23.get("/:id/products", async (req, res) => {
+  res.setHeader("Cache-Control", "public, s-maxage=120, stale-while-revalidate=240");
   const id = req.params["id"];
   const page = Math.max(1, parseInt(req.query["page"] ?? "1"));
   const limit = Math.min(40, parseInt(req.query["limit"] ?? "8"));
@@ -130288,6 +130294,7 @@ import { eq as eq28 } from "drizzle-orm";
 var router24 = (0, import_express24.Router)();
 var A21 = requireRole("admin", "super_admin");
 router24.get("/public", async (_req, res) => {
+  res.setHeader("Cache-Control", "public, s-maxage=3600, stale-while-revalidate=86400");
   try {
     const rawPincodes = process.env["SERVICE_PINCODES"] ?? "733101,733102,733103";
     const envPincodes = rawPincodes.split(",").map((p) => p.trim()).filter(Boolean);
@@ -131787,6 +131794,7 @@ async function resolveLayoutBlocks(blocks) {
   );
 }
 router31.get("/:pageName", async (req, res) => {
+  res.setHeader("Cache-Control", "public, s-maxage=180, stale-while-revalidate=360");
   const rawParam = req.params["pageName"];
   const pageName = String(Array.isArray(rawParam) ? rawParam[0] : rawParam || "home").toLowerCase();
   try {

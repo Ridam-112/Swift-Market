@@ -159,7 +159,11 @@ export default function FleetMapTab() {
 
   useEffect(() => {
     fetchFleet();
-    intervalRef.current = setInterval(fetchFleet, 10000);
+    intervalRef.current = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchFleet();
+      }
+    }, 15000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [fetchFleet]);
 

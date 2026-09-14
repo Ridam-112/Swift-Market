@@ -9,6 +9,7 @@ const router = Router();
 const A = requireRole("admin", "super_admin");
 
 router.get("/", async (_req: Request, res: Response): Promise<void> => {
+  res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
   // ── Cache check ──────────────────────────────────────────────────────────
   const cached = await cacheGet(KEYS.CATEGORIES);
   if (cached && typeof cached === "object" && "categories" in cached) {

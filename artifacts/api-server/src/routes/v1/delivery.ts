@@ -90,6 +90,7 @@ export function invalidateDeliveryChargesCache() {
 
 // GET /delivery/charges — public: returns all rules + rain mode status
 router.get("/charges", async (_req, res: Response): Promise<void> => {
+  res.setHeader("Cache-Control", "public, s-maxage=180, stale-while-revalidate=360");
   const now = Date.now();
   if (chargesCache && chargesCache.expires > now) {
     res.json(chargesCache.data);

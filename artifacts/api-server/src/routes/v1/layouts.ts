@@ -518,6 +518,7 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
 // ─── GET /api/v1/layout/:pageName ─────────────────────────────────────
 // Public SDUI layout API endpoint — returns sorted active layout blocks
 router.get("/:pageName", async (req: Request, res: Response): Promise<void> => {
+    res.setHeader("Cache-Control", "public, s-maxage=180, stale-while-revalidate=360");
     const rawParam = req.params["pageName"];
     const pageName = String(Array.isArray(rawParam) ? rawParam[0] : (rawParam || "home")).toLowerCase();
 

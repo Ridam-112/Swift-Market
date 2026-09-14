@@ -36,6 +36,7 @@ const A = requireRole("admin", "super_admin");
 
 // GET /api/hero-banners — public, active banners sorted by displayOrder
 router.get("/", async (_req: Request, res: Response): Promise<void> => {
+  res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
   const hit = getBannerCache();
   if (hit) { res.json(hit); return; }
   const banners = await db.select().from(heroBanners).where(eq(heroBanners.isActive, true)).orderBy(asc(heroBanners.displayOrder));

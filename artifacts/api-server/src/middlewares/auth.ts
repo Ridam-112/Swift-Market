@@ -53,6 +53,7 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
       ...payload,
       role: liveRole as any,
     };
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
     touchPresence(payload.userId);
     next();
   } catch {

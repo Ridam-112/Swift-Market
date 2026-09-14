@@ -110,7 +110,11 @@ function redirectToAuth() {
   }
 }
 
+// In-flight GET request deduplication cache to prevent duplicate simultaneous calls
+const inFlightGets = new Map<string, Promise<any>>();
+
 async function request<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
+  const isGet = !options.method || options.method === "GET";
   const { access } = getTokens();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -120,21 +124,42 @@ async function request<T>(path: string, options: RequestInit = {}, retry = true)
   if (access) headers["Authorization"] = `Bearer ${access}`;
 
   const fullUrl = `${BASE}${path}`;
-  console.log("[API]", options.method ?? "GET", fullUrl);
 
+  // Deduplicate concurrent in-flight GET requests for the same URL + auth token
+  if (isGet) {
+    const cacheKey = `${access ? 'auth:' : 'anon:'}${fullUrl}`;
+    if (inFlightGets.has(cacheKey)) {
+      return inFlightGets.get(cacheKey) as Promise<T>;
+    }
+
+    const getPromise = executeRequest<T>(fullUrl, options, headers, path, retry)
+      .finally(() => {
+        inFlightGets.delete(cacheKey);
+      });
+
+    inFlightGets.set(cacheKey, getPromise);
+    return getPromise;
+  }
+
+  return executeRequest<T>(fullUrl, options, headers, path, retry);
+}
+
+async function executeRequest<T>(
+  fullUrl: string,
+  options: RequestInit,
+  headers: Record<string, string>,
+  path: string,
+  retry: boolean
+): Promise<T> {
   const res = await fetch(fullUrl, { ...options, headers });
 
   // Skip token-refresh for auth endpoints that return 401 to mean "wrong credentials"
-  // (not for protected routes like /auth/me that return 401 for "session expired")
   const isLoginEndpoint =
     path.startsWith("/auth/") && path !== "/auth/me" && path !== "/auth/logout";
   if (res.status === 401 && retry && !isLoginEndpoint) {
     const { token: newToken, invalid } = await refreshTokens();
     if (newToken) return request<T>(path, options, false);
     if (invalid) {
-      // Refresh token is genuinely expired or revoked — the session cannot be
-      // recovered silently. Clear stored tokens and signal the auth layer to
-      // log the user out and send them to the login screen.
       clearTokens();
       window.dispatchEvent(
         new CustomEvent("swiftmart:session-expired", {
@@ -143,14 +168,11 @@ async function request<T>(path: string, options: RequestInit = {}, retry = true)
       );
       throw new Error("Session expired — please log in again.");
     }
-    // Transient failure (network blip, rate-limited refresh, server hiccup) —
-    // keep the session intact and just surface this one request as failed.
     throw new Error("Network error — please check your connection and try again.");
   }
 
   const contentType = res.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) {
-    // Clone the response to read the body for diagnostics without consuming it
     const bodyText = await res.clone().text().catch(() => "(unreadable)");
     console.error(
       `[API] Non-JSON response — status=${res.status} content-type="${contentType}" url="${fullUrl}"`,
@@ -164,7 +186,7 @@ async function request<T>(path: string, options: RequestInit = {}, retry = true)
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path, { cache: "no-store" }),
+  get: <T>(path: string, options?: RequestInit) => request<T>(path, { method: "GET", ...options }),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, {
       method: "POST",

@@ -54,6 +54,9 @@ Thumbs.db
 .env.*.local
 *.env
 backups/
+*.sql
+scratch/backups/
+swiftmart_backup_*.json
 
 # Android — signing keystores and build outputs (MUST NOT be committed)
 *.keystore

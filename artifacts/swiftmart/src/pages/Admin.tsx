@@ -1062,8 +1062,6 @@ function CustomersList() {
 
   useEffect(() => {
     fetchCustomers();
-    const timer = setInterval(fetchCustomers, 30000);
-    return () => clearInterval(timer);
   }, []);
 
   const sendSetupEmail = async (customerId: string, emailOverride?: string) => {
@@ -9194,8 +9192,10 @@ function AllRidersTabContent() {
   useEffect(() => {
     fetchRiders(false);
     intervalRef.current = setInterval(() => {
-      fetchRiders(true);
-    }, 15000);
+      if (document.visibilityState === "visible") {
+        fetchRiders(true);
+      }
+    }, 20000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };

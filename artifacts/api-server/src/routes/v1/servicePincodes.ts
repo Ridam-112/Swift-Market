@@ -8,6 +8,7 @@ const A = requireRole("admin", "super_admin");
 
 // GET /api/service-pincodes/public — Public endpoint for app and web to check live service areas
 router.get("/public", async (_req, res: Response): Promise<void> => {
+  res.setHeader("Cache-Control", "public, s-maxage=3600, stale-while-revalidate=86400");
   try {
     const rawPincodes = process.env["SERVICE_PINCODES"] ?? "733101,733102,733103";
     const envPincodes = rawPincodes.split(",").map(p => p.trim()).filter(Boolean);
