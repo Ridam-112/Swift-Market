@@ -439,32 +439,73 @@ router.post("/:id/cancel", authenticate, validateUuidParams("id"), async (req: A
 // GET /api/orders/:id/rider-location — customer fetches live rider GPS
 router.get("/:id/rider-location", authenticate, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
   const orderId = req.params["id"] as string;
-  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  const [order] = await db.select({
+    id: orders.id,
+    customerId: orders.customerId,
+    deliveryPartnerId: orders.deliveryPartnerId,
+    status: orders.status,
+  }).from(orders).where(eq(orders.id, orderId)).limit(1);
+
   if (!order) { res.status(404).json({ success: false, message: "Order not found" }); return; }
   if (req.user!.role === "customer" && order.customerId !== req.user!.userId) {
     res.status(403).json({ success: false, message: "Forbidden" }); return;
   }
   if (!order.deliveryPartnerId) {
-    res.json({ success: true, location: null, message: "No rider assigned yet" }); return;
+    res.json({ success: true, location: null, message: "No rider assigned yet", trackingStatus: "WAITING_FOR_RIDER" }); return;
   }
+
   const [partner] = await db
     .select({
       name: deliveryPartners.name,
       phone: deliveryPartners.phone,
       vehicle: deliveryPartners.vehicle,
+      isAvailable: deliveryPartners.isAvailable,
       currentLat: deliveryPartners.currentLat,
       currentLon: deliveryPartners.currentLon,
+      heading: deliveryPartners.heading,
+      speed: deliveryPartners.speed,
+      accuracy: deliveryPartners.accuracy,
+      trackingStatus: deliveryPartners.trackingStatus,
       locationUpdatedAt: deliveryPartners.locationUpdatedAt,
     })
     .from(deliveryPartners)
     .where(eq(deliveryPartners.id, order.deliveryPartnerId))
     .limit(1);
-  if (!partner) { res.json({ success: true, location: null }); return; }
+
+  if (!partner) { res.json({ success: true, location: null, trackingStatus: "NO_RIDER" }); return; }
+
+  // Compute live freshness / trackingStatus
+  const now = Date.now();
+  const lastUpdateMs = partner.locationUpdatedAt ? new Date(partner.locationUpdatedAt).getTime() : 0;
+  const ageSec = lastUpdateMs > 0 ? Math.round((now - lastUpdateMs) / 1000) : 9999;
+
+  let derivedStatus: "LIVE" | "NETWORK_LOST" | "GPS_WEAK" | "OFFLINE" = "LIVE";
+  if (!partner.isAvailable) {
+    derivedStatus = "OFFLINE";
+  } else if (ageSec > 60) {
+    derivedStatus = "NETWORK_LOST";
+  } else if (partner.accuracy && partner.accuracy > 60) {
+    derivedStatus = "GPS_WEAK";
+  } else {
+    derivedStatus = (partner.trackingStatus as any) || "LIVE";
+  }
+
   res.json({
     success: true,
     location: partner.currentLat && partner.currentLon
-      ? { lat: partner.currentLat, lon: partner.currentLon, updatedAt: partner.locationUpdatedAt }
+      ? {
+          lat: partner.currentLat,
+          lon: partner.currentLon,
+          lng: partner.currentLon,
+          heading: partner.heading ?? null,
+          speed: partner.speed ?? null,
+          accuracy: partner.accuracy ?? null,
+          updatedAt: partner.locationUpdatedAt,
+          ageSeconds: ageSec,
+        }
       : null,
+    trackingStatus: derivedStatus,
+    isOnline: partner.isAvailable,
     rider: { name: partner.name, phone: partner.phone, vehicle: partner.vehicle },
   });
 });

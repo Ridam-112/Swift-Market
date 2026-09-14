@@ -553,42 +553,91 @@ export default function DeliveryDashboard() {
     );
   }, []);
 
-  // Push GPS to backend — watchPosition for accurate continuous tracking
+  // Push GPS to backend — 20s interval only during active delivery with offline buffer
+  const lastUploadedGpsRef = useRef<{ lat: number; lon: number; time: number } | null>(null);
+  const offlineBufferRef = useRef<{ lat: number; lon: number; heading?: number | null; speed?: number | null; accuracy?: number | null } | null>(null);
+
   useEffect(() => {
     const hasActiveDelivery = orders.some(o => o.status === "out_for_delivery");
 
-    if (!hasActiveDelivery || locPermission !== "granted") {
-      // Stop watching if no active delivery
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-        setLocSharing(false);
-      }
+    if (!hasActiveDelivery || locPermission !== "granted" || partner?.isAvailable === false) {
+      setLocSharing(false);
       return;
     }
 
-    if (watchIdRef.current !== null) return; // Already watching
-
     setLocSharing(true);
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      pos => {
+
+    const pushLocation = () => {
+      if (!navigator.geolocation) return;
+
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const heading = typeof pos.coords.heading === "number" && !isNaN(pos.coords.heading) ? pos.coords.heading : null;
+          const speed = typeof pos.coords.speed === "number" && !isNaN(pos.coords.speed) ? pos.coords.speed : null;
+          const accuracy = pos.coords.accuracy || null;
+
+          // GPS Jitter filter: if stationary and moved < 5 meters, skip upload
+          if (lastUploadedGpsRef.current) {
+            const dLat = Math.abs(lat - lastUploadedGpsRef.current.lat);
+            const dLon = Math.abs(lon - lastUploadedGpsRef.current.lon);
+            const approxMeters = Math.sqrt(dLat * dLat + dLon * dLon) * 111320;
+            const timeDiffSec = (Date.now() - lastUploadedGpsRef.current.time) / 1000;
+            if (approxMeters < 5 && (!speed || speed < 0.5) && timeDiffSec < 60) {
+              return; // skip duplicate stationary point
+            }
+          }
+
+          if (!navigator.onLine) {
+            offlineBufferRef.current = { lat, lon, heading, speed, accuracy };
+            return;
+          }
+
+          api.patch("/delivery/me/location", {
+            lat,
+            lon,
+            heading: heading ?? undefined,
+            speed: speed ?? undefined,
+            accuracy: accuracy ?? undefined,
+            trackingStatus: "LIVE",
+          }).then(() => {
+            lastUploadedGpsRef.current = { lat, lon, time: Date.now() };
+            offlineBufferRef.current = null;
+          }).catch(() => {
+            offlineBufferRef.current = { lat, lon, heading, speed, accuracy };
+          });
+        },
+        () => {
+          // GPS read failed or weak
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      );
+    };
+
+    // Push first reading immediately, then every 20 seconds
+    pushLocation();
+    const interval = setInterval(pushLocation, 20_000);
+
+    const onOnline = () => {
+      if (offlineBufferRef.current) {
         api.patch("/delivery/me/location", {
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude,
+          ...offlineBufferRef.current,
+          trackingStatus: "LIVE",
+        }).then(() => {
+          offlineBufferRef.current = null;
         }).catch(() => {});
-      },
-      () => { setLocSharing(false); },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 },
-    );
+      }
+      pushLocation();
+    };
+    window.addEventListener("online", onOnline);
 
     return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-        setLocSharing(false);
-      }
+      clearInterval(interval);
+      window.removeEventListener("online", onOnline);
+      setLocSharing(false);
     };
-  }, [orders, locPermission]);
+  }, [orders, locPermission, partner?.isAvailable]);
 
   const fetchData = useCallback(async () => {
     try {

@@ -126888,7 +126888,12 @@ router9.post("/:id/cancel", authenticate, validateUuidParams("id"), async (req, 
 });
 router9.get("/:id/rider-location", authenticate, validateUuidParams("id"), async (req, res) => {
   const orderId = req.params["id"];
-  const [order] = await db.select().from(orders).where(eq13(orders.id, orderId)).limit(1);
+  const [order] = await db.select({
+    id: orders.id,
+    customerId: orders.customerId,
+    deliveryPartnerId: orders.deliveryPartnerId,
+    status: orders.status
+  }).from(orders).where(eq13(orders.id, orderId)).limit(1);
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
@@ -126898,24 +126903,53 @@ router9.get("/:id/rider-location", authenticate, validateUuidParams("id"), async
     return;
   }
   if (!order.deliveryPartnerId) {
-    res.json({ success: true, location: null, message: "No rider assigned yet" });
+    res.json({ success: true, location: null, message: "No rider assigned yet", trackingStatus: "WAITING_FOR_RIDER" });
     return;
   }
   const [partner] = await db.select({
     name: deliveryPartners.name,
     phone: deliveryPartners.phone,
     vehicle: deliveryPartners.vehicle,
+    isAvailable: deliveryPartners.isAvailable,
     currentLat: deliveryPartners.currentLat,
     currentLon: deliveryPartners.currentLon,
+    heading: deliveryPartners.heading,
+    speed: deliveryPartners.speed,
+    accuracy: deliveryPartners.accuracy,
+    trackingStatus: deliveryPartners.trackingStatus,
     locationUpdatedAt: deliveryPartners.locationUpdatedAt
   }).from(deliveryPartners).where(eq13(deliveryPartners.id, order.deliveryPartnerId)).limit(1);
   if (!partner) {
-    res.json({ success: true, location: null });
+    res.json({ success: true, location: null, trackingStatus: "NO_RIDER" });
     return;
+  }
+  const now = Date.now();
+  const lastUpdateMs = partner.locationUpdatedAt ? new Date(partner.locationUpdatedAt).getTime() : 0;
+  const ageSec = lastUpdateMs > 0 ? Math.round((now - lastUpdateMs) / 1e3) : 9999;
+  let derivedStatus = "LIVE";
+  if (!partner.isAvailable) {
+    derivedStatus = "OFFLINE";
+  } else if (ageSec > 60) {
+    derivedStatus = "NETWORK_LOST";
+  } else if (partner.accuracy && partner.accuracy > 60) {
+    derivedStatus = "GPS_WEAK";
+  } else {
+    derivedStatus = partner.trackingStatus || "LIVE";
   }
   res.json({
     success: true,
-    location: partner.currentLat && partner.currentLon ? { lat: partner.currentLat, lon: partner.currentLon, updatedAt: partner.locationUpdatedAt } : null,
+    location: partner.currentLat && partner.currentLon ? {
+      lat: partner.currentLat,
+      lon: partner.currentLon,
+      lng: partner.currentLon,
+      heading: partner.heading ?? null,
+      speed: partner.speed ?? null,
+      accuracy: partner.accuracy ?? null,
+      updatedAt: partner.locationUpdatedAt,
+      ageSeconds: ageSec
+    } : null,
+    trackingStatus: derivedStatus,
+    isOnline: partner.isAvailable,
     rider: { name: partner.name, phone: partner.phone, vehicle: partner.vehicle }
   });
 });
@@ -127838,18 +127872,37 @@ router12.get("/me", authenticate, async (req, res) => {
 });
 router12.patch("/me/location", authenticate, async (req, res) => {
   const userId = req.user.userId;
-  const { lat, lon } = req.body;
-  if (typeof lat !== "number" || typeof lon !== "number") {
-    res.status(400).json({ success: false, message: "lat and lon required" });
+  const body = req.body;
+  const lat = typeof body["lat"] === "number" ? body["lat"] : typeof body["latitude"] === "number" ? body["latitude"] : null;
+  const lon = typeof body["lon"] === "number" ? body["lon"] : typeof body["lng"] === "number" ? body["lng"] : typeof body["longitude"] === "number" ? body["longitude"] : null;
+  const heading = typeof body["heading"] === "number" ? body["heading"] : void 0;
+  const speed = typeof body["speed"] === "number" ? body["speed"] : void 0;
+  const accuracy = typeof body["accuracy"] === "number" ? body["accuracy"] : void 0;
+  const trackingStatus = typeof body["trackingStatus"] === "string" ? String(body["trackingStatus"]).trim() : "LIVE";
+  if (lat === null || lon === null || isNaN(lat) || isNaN(lon)) {
+    res.status(400).json({ success: false, message: "Valid lat and lon required" });
     return;
   }
-  const [partner] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+    res.status(400).json({ success: false, message: "Coordinates out of bounds" });
+    return;
+  }
+  const [partner] = await db.select({ id: deliveryPartners.id, isAvailable: deliveryPartners.isAvailable }).from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
   if (!partner) {
     res.status(404).json({ success: false, message: "Not a delivery partner" });
     return;
   }
-  await db.update(deliveryPartners).set({ currentLat: lat, currentLon: lon, locationUpdatedAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, partner.id));
-  res.json({ success: true });
+  await db.update(deliveryPartners).set({
+    currentLat: lat,
+    currentLon: lon,
+    heading: heading ?? null,
+    speed: speed ?? null,
+    accuracy: accuracy ?? null,
+    trackingStatus: partner.isAvailable ? trackingStatus : "OFFLINE",
+    locationUpdatedAt: /* @__PURE__ */ new Date(),
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq16(deliveryPartners.id, partner.id));
+  res.json({ success: true, trackingStatus: partner.isAvailable ? trackingStatus : "OFFLINE" });
 });
 router12.patch("/me/availability", authenticate, async (req, res) => {
   const userId = req.user.userId;

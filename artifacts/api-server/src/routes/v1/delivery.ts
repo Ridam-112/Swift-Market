@@ -269,19 +269,44 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response): Promise
   res.json({ success: true, partner: mi(partner) });
 });
 
-// PATCH /delivery/me/location — rider pushes GPS coords (called every ~10s while active)
+// PATCH /delivery/me/location — rider pushes real GPS coords (every 20s during active delivery)
 router.patch("/me/location", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user!.userId;
-  const { lat, lon } = req.body as { lat: number; lon: number };
-  if (typeof lat !== "number" || typeof lon !== "number") {
-    res.status(400).json({ success: false, message: "lat and lon required" }); return;
+  const body = req.body as Record<string, unknown>;
+  const lat = typeof body["lat"] === "number" ? body["lat"] : (typeof body["latitude"] === "number" ? body["latitude"] : null);
+  const lon = typeof body["lon"] === "number" ? body["lon"] : (typeof body["lng"] === "number" ? body["lng"] : (typeof body["longitude"] === "number" ? body["longitude"] : null));
+  const heading = typeof body["heading"] === "number" ? body["heading"] : undefined;
+  const speed = typeof body["speed"] === "number" ? body["speed"] : undefined;
+  const accuracy = typeof body["accuracy"] === "number" ? body["accuracy"] : undefined;
+  const trackingStatus = typeof body["trackingStatus"] === "string" ? String(body["trackingStatus"]).trim() : "LIVE";
+
+  if (lat === null || lon === null || isNaN(lat) || isNaN(lon)) {
+    res.status(400).json({ success: false, message: "Valid lat and lon required" }); return;
   }
-  const [partner] = await db.select().from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+
+  // Filter out invalid GPS coordinates
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+    res.status(400).json({ success: false, message: "Coordinates out of bounds" }); return;
+  }
+
+  const [partner] = await db.select({ id: deliveryPartners.id, isAvailable: deliveryPartners.isAvailable }).from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
   if (!partner) { res.status(404).json({ success: false, message: "Not a delivery partner" }); return; }
+
+  // Update the latest rider location in-place
   await db.update(deliveryPartners)
-    .set({ currentLat: lat, currentLon: lon, locationUpdatedAt: new Date(), updatedAt: new Date() })
+    .set({
+      currentLat: lat,
+      currentLon: lon,
+      heading: heading ?? null,
+      speed: speed ?? null,
+      accuracy: accuracy ?? null,
+      trackingStatus: partner.isAvailable ? trackingStatus : "OFFLINE",
+      locationUpdatedAt: new Date(),
+      updatedAt: new Date(),
+    })
     .where(eq(deliveryPartners.id, partner.id));
-  res.json({ success: true });
+
+  res.json({ success: true, trackingStatus: partner.isAvailable ? trackingStatus : "OFFLINE" });
 });
 
 // PATCH /delivery/me/availability — toggle online/offline
