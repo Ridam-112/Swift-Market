@@ -88,6 +88,7 @@ export function LiveOrderTracker({ orderId, initialStatus, createdAt, onStatusCh
   const intervalRef               = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const poll = () => {
+    if (document.visibilityState !== "visible") return;
     api
       .get<{ success: boolean; order: ApiOrder }>(`/orders/${orderId}`)
       .then((d) => {
@@ -102,9 +103,19 @@ export function LiveOrderTracker({ orderId, initialStatus, createdAt, onStatusCh
   };
 
   useEffect(() => {
-    // Start polling only for active orders
+    // Start polling only for active orders with visibility awareness
     if (ACTIVE_STATUSES.has(status)) {
-      intervalRef.current = setInterval(poll, 5000);
+      intervalRef.current = setInterval(poll, 15000);
+      const onVisChange = () => {
+        if (document.visibilityState === "visible") {
+          poll();
+        }
+      };
+      document.addEventListener("visibilitychange", onVisChange);
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        document.removeEventListener("visibilitychange", onVisChange);
+      };
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);

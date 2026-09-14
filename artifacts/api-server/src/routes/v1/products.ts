@@ -166,8 +166,29 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
   const where = conditions.length ? and(...conditions) : undefined;
   const skip = (pg - 1) * lm;
 
+  const leanColumns = {
+    id: products.id,
+    name: products.name,
+    price: products.price,
+    discountedPrice: products.discountedPrice,
+    category: products.category,
+    subcategory: products.subcategory,
+    shopId: products.shopId,
+    images: products.images,
+    stock: products.stock,
+    unit: products.unit,
+    rating: products.rating,
+    trending: products.trending,
+    status: products.status,
+    colors: products.colors,
+    sizes: products.sizes,
+    colorImages: products.colorImages,
+    fomoTag: products.fomoTag,
+    createdAt: products.createdAt,
+  };
+
   const [result, [{ total }]] = await Promise.all([
-    db.select().from(products).where(where).orderBy(desc(products.createdAt)).offset(skip).limit(lm),
+    db.select(leanColumns).from(products).where(where).orderBy(desc(products.createdAt)).offset(skip).limit(lm),
     db.select({ total: count() }).from(products).where(where),
   ]);
 

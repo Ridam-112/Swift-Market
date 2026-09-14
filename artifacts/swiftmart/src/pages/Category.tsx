@@ -34,21 +34,45 @@ function slugToName(slug: string): string {
 export default function Category() {
   const [, params] = useRoute("/category/:slug");
   const slug = params?.slug ?? "";
-  const { products } = useProducts();
+  const { products: contextProducts } = useProducts();
+  const [serverProducts, setServerProducts] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'instock'>('all');
   const [apiCategory, setApiCategory] = useState<ApiCategory | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    api.get<{ success: boolean; categories: ApiCategory[] }>('/categories')
-      .then(d => {
-        const match = (d.categories ?? []).find(c => c.slug === slug);
+    setServerProducts(null);
+    Promise.all([
+      api.get<{ success: boolean; categories: ApiCategory[] }>('/categories'),
+      api.get<{ success: boolean; products: any[] }>(`/products?category=${encodeURIComponent(slug)}&limit=60`),
+    ])
+      .then(([catData, prodData]) => {
+        const match = (catData.categories ?? []).find(c => c.slug === slug);
         if (match) setApiCategory(match);
+        if (prodData.success && Array.isArray(prodData.products)) {
+          setServerProducts(prodData.products.map((p: any) => ({
+            id: p._id || p.id,
+            name: p.name,
+            category: p.category,
+            price: p.price,
+            discountedPrice: p.discountedPrice ?? undefined,
+            unit: p.unit ?? "1 unit",
+            image: p.images?.[0] ?? p.image ?? "/assets/product-placeholder.png",
+            images: p.images ?? (p.image ? [p.image] : []),
+            description: p.description ?? "",
+            stock: p.stock ?? 0,
+            rating: p.rating ?? 0,
+            vendorId: p.shopId ?? "",
+            shopId: p.shopId ?? "",
+            shopName: p.shopName,
+            trending: p.trending ?? false,
+          })));
+        }
       })
       .catch(() => {})
       .finally(() => {
-        setTimeout(() => setLoading(false), 200);
+        setTimeout(() => setLoading(false), 150);
       });
   }, [slug]);
 
@@ -72,7 +96,8 @@ export default function Category() {
             image: undefined,
           };
 
-  let filteredProducts = products.filter(p => p.category === slug);
+  const allCatProducts = serverProducts !== null ? serverProducts : contextProducts.filter(p => p.category === slug);
+  let filteredProducts = allCatProducts;
   if (filter === 'instock') filteredProducts = filteredProducts.filter(p => p.stock > 0);
 
   if (!category) {

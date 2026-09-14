@@ -24,6 +24,26 @@ type SectionConfig = {
   layout?: "grid" | "scroll";
 };
 
+const leanProductColumns = {
+  id: products.id,
+  name: products.name,
+  price: products.price,
+  discountedPrice: products.discountedPrice,
+  unit: products.unit,
+  images: products.images,
+  stock: products.stock,
+  rating: products.rating,
+  shopId: products.shopId,
+  category: products.category,
+  subcategory: products.subcategory,
+  trending: products.trending,
+  status: products.status,
+  colors: products.colors,
+  sizes: products.sizes,
+  colorImages: products.colorImages,
+  fomoTag: products.fomoTag,
+};
+
 async function resolveProducts(
   type: string,
   config: SectionConfig,
@@ -34,7 +54,7 @@ async function resolveProducts(
   const base = and(eq(products.status, "active"), gt(products.stock, 0));
 
   if (type === "trending") {
-    const rows = await db.select().from(products)
+    const rows = await db.select(leanProductColumns).from(products)
       .where(and(base, eq(products.trending, true)))
       .orderBy(desc(products.rating))
       .limit(lm).offset(offset);
@@ -44,7 +64,7 @@ async function resolveProducts(
   }
 
   if (type === "category" && config.categorySlug) {
-    const rows = await db.select().from(products)
+    const rows = await db.select(leanProductColumns).from(products)
       .where(and(base, eq(products.category, config.categorySlug)))
       .orderBy(desc(products.rating))
       .limit(lm).offset(offset);
@@ -55,14 +75,14 @@ async function resolveProducts(
 
   if (type === "manual" && Array.isArray(config.productIds) && config.productIds.length > 0) {
     const ids = config.productIds.slice(0, 40);
-    const rows = await db.select().from(products)
+    const rows = await db.select(leanProductColumns).from(products)
       .where(and(base, inArray(products.id, ids)))
       .limit(lm).offset(offset);
     return { rows: await enrichWithShopNames(miArr(rows)), total: ids.length };
   }
 
   if (type === "new_arrivals") {
-    const rows = await db.select().from(products)
+    const rows = await db.select(leanProductColumns).from(products)
       .where(base)
       .orderBy(desc(products.createdAt))
       .limit(lm).offset(offset);
@@ -72,7 +92,7 @@ async function resolveProducts(
   }
 
   // fallback: all active products by rating
-  const rows = await db.select().from(products)
+  const rows = await db.select(leanProductColumns).from(products)
     .where(base)
     .orderBy(desc(products.rating))
     .limit(lm).offset(offset);

@@ -87,7 +87,7 @@ export default function VendorOrders() {
     setLoading(true);
     setError(null);
     try {
-      const d = await api.get<{ success: boolean; orders: ApiOrder[] }>(`/orders?shopId=${sid}&limit=200`);
+      const d = await api.get<{ success: boolean; orders: ApiOrder[] }>(`/orders?shopId=${sid}&limit=50`);
       // Seed known IDs on first load — don't alert for existing orders
       d.orders.forEach(o => knownIds.current.add(o._id));
       initialLoad.current = false;
@@ -102,7 +102,7 @@ export default function VendorOrders() {
 
   const pollOrders = useCallback(async (sid: string) => {
     try {
-      const d = await api.get<{ success: boolean; orders: ApiOrder[] }>(`/orders?shopId=${sid}&limit=200`);
+      const d = await api.get<{ success: boolean; orders: ApiOrder[] }>(`/orders?shopId=${sid}&limit=50`);
 
       if (!initialLoad.current) {
         // Find orders that just arrived (new ID + placed status = unacknowledged)
@@ -155,8 +155,19 @@ export default function VendorOrders() {
       // Skip polling when the tab is hidden — saves battery/data and avoids unnecessary requests
       if (document.visibilityState === "hidden") return;
       pollOrders(shopId);
-    }, 5000);
-    return () => clearInterval(id);
+    }, 15000);
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        pollOrders(shopId);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [shopId, pollOrders]);
 
   const updateStatus = async (orderId: string, newStatus: string) => {

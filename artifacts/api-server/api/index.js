@@ -125347,18 +125347,9 @@ async function invalidateCategoryCache() {
 var router7 = (0, import_express7.Router)();
 var A6 = requireRole("admin", "super_admin");
 router7.get("/", async (_req, res) => {
-  try {
-    await db.delete(categories).where(eq9(categories.slug, "sexual-wellness"));
-    await db.update(categories).set({ name: "SwiftMart Cafe" }).where(eq9(categories.slug, "food_junction"));
-  } catch {
-  }
   const cached = await cacheGet(KEYS.CATEGORIES);
   if (cached && typeof cached === "object" && "categories" in cached) {
-    const cleanedCategories = (cached.categories || []).filter((c) => c.slug !== "sexual-wellness" && !c.name.toLowerCase().includes("sexual")).map((c) => ({
-      ...c,
-      name: c.name === "Zepto Cafe" || c.slug === "food_junction" ? "SwiftMart Cafe" : c.name
-    }));
-    res.json({ success: true, categories: cleanedCategories });
+    res.json(cached);
     return;
   }
   const rawCats = await db.select().from(categories).where(eq9(categories.isActive, true)).orderBy(asc3(categories.name));
@@ -125746,8 +125737,28 @@ router8.get("/", optionalAuth, async (req, res) => {
     }
     const where = conditions.length ? and5(...conditions) : void 0;
     const skip = (pg2 - 1) * lm;
+    const leanColumns = {
+      id: products.id,
+      name: products.name,
+      price: products.price,
+      discountedPrice: products.discountedPrice,
+      category: products.category,
+      subcategory: products.subcategory,
+      shopId: products.shopId,
+      images: products.images,
+      stock: products.stock,
+      unit: products.unit,
+      rating: products.rating,
+      trending: products.trending,
+      status: products.status,
+      colors: products.colors,
+      sizes: products.sizes,
+      colorImages: products.colorImages,
+      fomoTag: products.fomoTag,
+      createdAt: products.createdAt
+    };
     const [result, [{ total }]] = await Promise.all([
-      db.select().from(products).where(where).orderBy(desc5(products.createdAt)).offset(skip).limit(lm),
+      db.select(leanColumns).from(products).where(where).orderBy(desc5(products.createdAt)).offset(skip).limit(lm),
       db.select({ total: count5() }).from(products).where(where)
     ]);
     let shopMap = {};
@@ -126702,7 +126713,8 @@ async function reverseOrderFinancials(order) {
 }
 router9.get("/", authenticate, async (req, res) => {
   const { status, shopId, page = "1", limit = "20", search } = req.query;
-  const pg2 = parseInt(page), lm = parseInt(limit);
+  const pg2 = Math.max(1, parseInt(page) || 1);
+  const lm = Math.min(100, Math.max(1, parseInt(limit) || 20));
   const conditions = [];
   const role = req.user.role;
   if (role === "customer") {
@@ -126726,7 +126738,14 @@ router9.get("/", authenticate, async (req, res) => {
   } else {
     if (shopId) conditions.push(eq13(orders.shopId, shopId));
   }
-  if (status) conditions.push(eq13(orders.status, status));
+  if (status) {
+    const statusArr = status.split(",").map((s2) => s2.trim()).filter(Boolean);
+    if (statusArr.length === 1) {
+      conditions.push(eq13(orders.status, statusArr[0]));
+    } else if (statusArr.length > 1) {
+      conditions.push(inArray5(orders.status, statusArr));
+    }
+  }
   if (search) {
     conditions.push(or6(
       ilike4(orders.customerName, `%${search}%`),
@@ -127676,18 +127695,27 @@ router12.post("/:id/link-user", authenticate, A11, validateUuidParams("id"), asy
   const [updated] = await db.update(deliveryPartners).set({ userId: userRow.id, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, id)).returning();
   res.json({ success: true, partner: mi(updated), message: "User account linked successfully" });
 });
+var chargesCache = null;
+var CHARGES_CACHE_TTL = 5 * 60 * 1e3;
 router12.get("/charges", async (_req, res) => {
+  const now = Date.now();
+  if (chargesCache && chargesCache.expires > now) {
+    res.json(chargesCache.data);
+    return;
+  }
   const [rules, settingRow] = await Promise.all([
     db.select().from(deliveryChargeRules).orderBy(desc8(deliveryChargeRules.createdAt)),
     db.select().from(deliverySettings).where(eq16(deliverySettings.key, "rain_mode_active"))
   ]);
   const rainModeActive = settingRow[0]?.value === "true";
-  res.json({ success: true, rules: miArr(rules), rainModeActive });
+  const payload = { success: true, rules: miArr(rules), rainModeActive };
+  chargesCache = { data: payload, expires: now + CHARGES_CACHE_TTL };
+  res.json(payload);
 });
 router12.get("/charges/calculate", async (req, res) => {
   const shopPincode = String(req.query["shopPincode"] ?? "");
   const userPincode = String(req.query["userPincode"] ?? "");
-  if (shopPincode === userPincode) {
+  if (!shopPincode || !userPincode || shopPincode === userPincode) {
     res.json({ success: true, crossAreaCharge: 0, rainSurcharge: 0, rainModeActive: false, total: 0 });
     return;
   }
@@ -130125,30 +130153,49 @@ async function enrichWithShopNames(rows) {
 }
 var router23 = (0, import_express23.Router)();
 var A20 = requireRole("admin", "super_admin");
+var leanProductColumns = {
+  id: products.id,
+  name: products.name,
+  price: products.price,
+  discountedPrice: products.discountedPrice,
+  unit: products.unit,
+  images: products.images,
+  stock: products.stock,
+  rating: products.rating,
+  shopId: products.shopId,
+  category: products.category,
+  subcategory: products.subcategory,
+  trending: products.trending,
+  status: products.status,
+  colors: products.colors,
+  sizes: products.sizes,
+  colorImages: products.colorImages,
+  fomoTag: products.fomoTag
+};
 async function resolveProducts(type, config, limit, offset = 0) {
   const lm = Math.min(limit, 40);
   const base = and17(eq27(products.status, "active"), gt2(products.stock, 0));
   if (type === "trending") {
-    const rows2 = await db.select().from(products).where(and17(base, eq27(products.trending, true))).orderBy(desc15(products.rating)).limit(lm).offset(offset);
+    const rows2 = await db.select(leanProductColumns).from(products).where(and17(base, eq27(products.trending, true))).orderBy(desc15(products.rating)).limit(lm).offset(offset);
     const [{ total: total2 }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(and17(base, eq27(products.trending, true)));
     return { rows: await enrichWithShopNames(miArr(rows2)), total: total2 ?? 0 };
   }
   if (type === "category" && config.categorySlug) {
-    const rows2 = await db.select().from(products).where(and17(base, eq27(products.category, config.categorySlug))).orderBy(desc15(products.rating)).limit(lm).offset(offset);
+    const rows2 = await db.select(leanProductColumns).from(products).where(and17(base, eq27(products.category, config.categorySlug))).orderBy(desc15(products.rating)).limit(lm).offset(offset);
     const [{ total: total2 }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(and17(base, eq27(products.category, config.categorySlug)));
     return { rows: await enrichWithShopNames(miArr(rows2)), total: total2 ?? 0 };
   }
   if (type === "manual" && Array.isArray(config.productIds) && config.productIds.length > 0) {
     const ids = config.productIds.slice(0, 40);
-    const rows2 = await db.select().from(products).where(and17(base, inArray12(products.id, ids))).limit(lm).offset(offset);
+    const rows2 = await db.select(leanProductColumns).from(products).where(and17(base, inArray12(products.id, ids))).limit(lm).offset(offset);
     return { rows: await enrichWithShopNames(miArr(rows2)), total: ids.length };
   }
   if (type === "new_arrivals") {
-    const rows2 = await db.select().from(products).where(base).orderBy(desc15(products.createdAt)).limit(lm).offset(offset);
+    const rows2 = await db.select(leanProductColumns).from(products).where(base).orderBy(desc15(products.createdAt)).limit(lm).offset(offset);
     const [{ total: total2 }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(base);
     return { rows: await enrichWithShopNames(miArr(rows2)), total: total2 ?? 0 };
   }
-  const rows = await db.select().from(products).where(base).orderBy(desc15(products.rating)).limit(lm).offset(offset);
+  const rows = await db.select(leanProductColumns).from(products).where(base).orderBy(desc15(products.rating)).limit(lm).offset(offset);
   const [{ total }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(base);
   return { rows: await enrichWithShopNames(miArr(rows)), total: total ?? 0 };
 }

@@ -244,7 +244,8 @@ async function reverseOrderFinancials(order: { id: string; shopId: string; coupo
 // GET /api/orders
 router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const { status, shopId, page = "1", limit = "20", search } = req.query as Record<string, string>;
-  const pg = parseInt(page), lm = parseInt(limit);
+  const pg = Math.max(1, parseInt(page) || 1);
+  const lm = Math.min(100, Math.max(1, parseInt(limit) || 20));
   const conditions = [];
   const role = req.user!.role;
 
@@ -272,7 +273,14 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<v
     if (shopId) conditions.push(eq(orders.shopId, shopId));
   }
 
-  if (status) conditions.push(eq(orders.status, status));
+  if (status) {
+    const statusArr = status.split(",").map(s => s.trim()).filter(Boolean);
+    if (statusArr.length === 1) {
+      conditions.push(eq(orders.status, statusArr[0]));
+    } else if (statusArr.length > 1) {
+      conditions.push(inArray(orders.status, statusArr));
+    }
+  }
   if (search) {
     conditions.push(or(
       ilike(orders.customerName, `%${search}%`),

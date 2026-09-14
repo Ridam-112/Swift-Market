@@ -36,6 +36,8 @@ export const products = pgTable("products", {
   index("products_category_idx").on(t.category),
   index("products_status_idx").on(t.status),
   index("products_shop_id_status_idx").on(t.shopId, t.status),
+  index("products_shop_cat_idx").on(t.shopId, t.category),
+  index("products_created_at_idx").on(t.createdAt),
 ]);
 
 export type Product = typeof products.$inferSelect;

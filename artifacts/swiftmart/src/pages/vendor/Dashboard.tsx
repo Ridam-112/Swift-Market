@@ -120,8 +120,8 @@ export default function Dashboard() {
         setShopStatus(shop.status ?? "");
         setShopCategory((shop.category ?? shop.shopType ?? "").toLowerCase());
         const [ordersData, productsData, payoutsData] = await Promise.all([
-          api.get<{ success: boolean; orders: VendorOrder[] }>(`/orders?shopId=${shop._id}&limit=200`),
-          api.get<{ success: boolean; products: VendorProduct[] }>(`/products?shopId=${shop._id}&status=all&limit=5000`),
+          api.get<{ success: boolean; orders: VendorOrder[] }>(`/orders?shopId=${shop._id}&limit=50`),
+          api.get<{ success: boolean; products: VendorProduct[] }>(`/products?shopId=${shop._id}&status=all&limit=100`),
           api.get<{ success: boolean; payouts: Payout[]; totalEarned: number; pendingAmount: number }>(`/payouts/my`),
         ]);
         setOrders(ordersData.orders);

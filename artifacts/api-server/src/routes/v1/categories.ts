@@ -9,22 +9,10 @@ const router = Router();
 const A = requireRole("admin", "super_admin");
 
 router.get("/", async (_req: Request, res: Response): Promise<void> => {
-  try {
-    // Proactive lazy DB cleanup
-    await db.delete(categories).where(eq(categories.slug, "sexual-wellness"));
-    await db.update(categories).set({ name: "SwiftMart Cafe" }).where(eq(categories.slug, "food_junction"));
-  } catch {}
-
   // ── Cache check ──────────────────────────────────────────────────────────
   const cached = await cacheGet(KEYS.CATEGORIES);
   if (cached && typeof cached === "object" && "categories" in cached) {
-    const cleanedCategories = ((cached as { categories: Array<{ name: string; slug: string }> }).categories || [])
-      .filter(c => c.slug !== "sexual-wellness" && !c.name.toLowerCase().includes("sexual"))
-      .map(c => ({
-        ...c,
-        name: c.name === "Zepto Cafe" || c.slug === "food_junction" ? "SwiftMart Cafe" : c.name,
-      }));
-    res.json({ success: true, categories: cleanedCategories });
+    res.json(cached);
     return;
   }
 

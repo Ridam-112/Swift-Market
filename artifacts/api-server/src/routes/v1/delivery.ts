@@ -80,16 +80,30 @@ router.post("/:id/link-user", authenticate, A, validateUuidParams("id"), async (
   res.json({ success: true, partner: mi(updated!), message: "User account linked successfully" });
 });
 
-// ─── Delivery Charge Rules ────────────────────────────────────────────────────
+// ─── Delivery Charge Rules (with caching) ────────────────────────────────────
+let chargesCache: { data: any; expires: number } | null = null;
+const CHARGES_CACHE_TTL = 5 * 60 * 1000; // 5 mins
+
+export function invalidateDeliveryChargesCache() {
+  chargesCache = null;
+}
 
 // GET /delivery/charges — public: returns all rules + rain mode status
 router.get("/charges", async (_req, res: Response): Promise<void> => {
+  const now = Date.now();
+  if (chargesCache && chargesCache.expires > now) {
+    res.json(chargesCache.data);
+    return;
+  }
+
   const [rules, settingRow] = await Promise.all([
     db.select().from(deliveryChargeRules).orderBy(desc(deliveryChargeRules.createdAt)),
     db.select().from(deliverySettings).where(eq(deliverySettings.key, "rain_mode_active")),
   ]);
   const rainModeActive = settingRow[0]?.value === "true";
-  res.json({ success: true, rules: miArr(rules), rainModeActive });
+  const payload = { success: true, rules: miArr(rules), rainModeActive };
+  chargesCache = { data: payload, expires: now + CHARGES_CACHE_TTL };
+  res.json(payload);
 });
 
 // GET /delivery/charges/calculate — public: compute fee for a pincode pair
@@ -97,7 +111,7 @@ router.get("/charges/calculate", async (req, res: Response): Promise<void> => {
   const shopPincode = String(req.query["shopPincode"] ?? "");
   const userPincode = String(req.query["userPincode"] ?? "");
 
-  if (shopPincode === userPincode) {
+  if (!shopPincode || !userPincode || shopPincode === userPincode) {
     res.json({ success: true, crossAreaCharge: 0, rainSurcharge: 0, rainModeActive: false, total: 0 });
     return;
   }

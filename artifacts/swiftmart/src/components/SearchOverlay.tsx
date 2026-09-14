@@ -41,12 +41,15 @@ export function SearchOverlay({ isOpen, onClose }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { products } = useProducts();
 
+  const [serverResults, setServerResults] = useState<Product[] | null>(null);
+
   // Auto-focus when overlay opens, clear on close
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 120);
     } else {
       setQuery("");
+      setServerResults(null);
     }
   }, [isOpen]);
 
@@ -60,8 +63,44 @@ export function SearchOverlay({ isOpen, onClose }: Props) {
     return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
-  // Live filter — match name, category, description, shopName safely
-  const results: Product[] = query.trim().length === 0
+  // Debounced server search
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setServerResults(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      api.get<{ success: boolean; products: any[] }>(`/products?search=${encodeURIComponent(q)}&limit=30`)
+        .then(d => {
+          if (d.success && Array.isArray(d.products)) {
+            setServerResults(d.products.map(p => ({
+              id: p._id || p.id,
+              name: p.name,
+              category: p.category,
+              price: p.price,
+              discountedPrice: p.discountedPrice ?? undefined,
+              unit: p.unit ?? "1 unit",
+              image: p.images?.[0] ?? p.image ?? "/assets/product-placeholder.png",
+              images: p.images ?? (p.image ? [p.image] : []),
+              description: p.description ?? "",
+              stock: p.stock ?? 0,
+              rating: p.rating ?? 0,
+              vendorId: p.shopId ?? "",
+              shopId: p.shopId ?? "",
+              shopName: p.shopName,
+              trending: p.trending ?? false,
+            })));
+          }
+        })
+        .catch(() => {});
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  // Local fallback filter if server results not yet returned
+  const localResults: Product[] = query.trim().length === 0
     ? []
     : products.filter(p => {
         const q = query.toLowerCase().trim();
@@ -72,6 +111,7 @@ export function SearchOverlay({ isOpen, onClose }: Props) {
         return name.includes(q) || cat.includes(q) || desc.includes(q) || shop.includes(q);
       }).slice(0, 30);
 
+  const results: Product[] = serverResults !== null ? serverResults : localResults;
   const hasQuery = query.trim().length > 0;
 
   return (

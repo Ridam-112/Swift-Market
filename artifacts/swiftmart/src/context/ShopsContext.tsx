@@ -90,8 +90,8 @@ interface ShopsContextType {
 
 export const ShopsContext = createContext<ShopsContextType | null>(null);
 
-// Refresh at most every 60 s in the background when the tab is visible.
-const BG_INTERVAL_MS = 60_000;
+// Refresh at most every 5 minutes in the background when the tab is visible.
+const BG_INTERVAL_MS = 300_000;
 
 export function ShopsProvider({ children }: { children: React.ReactNode }) {
   const auth = useContext(AuthContext);
@@ -149,22 +149,21 @@ export function ShopsProvider({ children }: { children: React.ReactNode }) {
     fetchShops(false);
   }, [userId, authLoading, fetchShops]);
 
-  // Background safety interval — only fires when the tab is visible.
+  // Background safety interval — only fires when the tab is visible and stale.
   useEffect(() => {
     const interval = setInterval(() => {
-      if (document.visibilityState === "visible") {
+      if (document.visibilityState === "visible" && Date.now() - lastFetchedAt.current > 300_000) {
         fetchShops(false);
       }
     }, BG_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [fetchShops]);
 
-  // Refetch when the user switches back to this tab after being away.
+  // Refetch when the user switches back to this tab after being away (if stale > 5 min).
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === "visible") {
-        // Only refetch if data is stale (older than 30 s).
-        if (Date.now() - lastFetchedAt.current > 30_000) {
+        if (Date.now() - lastFetchedAt.current > 300_000) {
           fetchShops(false);
         }
       }

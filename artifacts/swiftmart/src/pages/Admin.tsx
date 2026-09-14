@@ -1001,10 +1001,10 @@ function CustomersList() {
   const fetchCustomers = () => {
     setLoadingCustomers(true);
     setFetchError(null);
-    api.get<{ success: boolean; users: ApiUser[] }>('/users?role=customer&limit=500')
+    api.get<{ success: boolean; users: ApiUser[] }>('/users?role=customer&limit=100')
       .then(async usersData => {
         const allOrders: ApiOrder[] = await api
-          .get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=2000')
+          .get<{ success: boolean; orders: ApiOrder[] }>('/orders?limit=100')
           .then(d => d.orders ?? [])
           .catch(() => []);
         setCustomers(usersData.users.map(u => {
