@@ -1,6 +1,15 @@
 {
   "headers": [
     {
+      "source": "/app/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
       "source": "/assets/(.*)",
       "headers": [
         {
@@ -29,6 +38,14 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/app",
+      "destination": "/app/index.html"
+    },
+    {
+      "source": "/app/",
+      "destination": "/app/index.html"
+    },
     {
       "source": "/api",
       "destination": "https://swift-market-api-server-6w3x.vercel.app/api"

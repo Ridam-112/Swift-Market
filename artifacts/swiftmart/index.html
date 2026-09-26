@@ -162,9 +162,45 @@
       }
     </style>
 
-    <!-- JSON-LD is injected per-page by react-helmet-async (see Home.tsx for homepage schema).
-         Organization · WebSite · SearchAction · LocalBusiness · WebApplication · Product schemas
-         are all managed dynamically so they stay accurate and de-duplicated. -->
+    <script>
+      // ── Smart Device Router: Mobile Phone -> Flutter App, PC / Desktop -> React Web ──
+      (function() {
+        try {
+          var params = new URLSearchParams(window.location.search);
+          var viewParam = params.get('view');
+          if (viewParam === 'desktop') {
+            localStorage.setItem('swiftmart_preferred_view', 'desktop');
+            return;
+          }
+          if (viewParam === 'mobile') {
+            localStorage.removeItem('swiftmart_preferred_view');
+          }
+          if (localStorage.getItem('swiftmart_preferred_view') === 'desktop') {
+            return;
+          }
+
+          var path = window.location.pathname.toLowerCase();
+          // Never redirect admin / vendor / delivery / manager / legal / callback routes
+          var isExcludedRoute =
+            path.startsWith('/admin') ||
+            path.startsWith('/vendor') ||
+            path.startsWith('/manager') ||
+            path.startsWith('/delivery') ||
+            path.startsWith('/app') ||
+            path.startsWith('/auth/google/callback');
+
+          if (isExcludedRoute) return;
+
+          // Detect Mobile device or narrow viewport
+          var isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+          var isNarrowScreen = window.innerWidth > 0 && window.innerWidth < 768;
+
+          if (isMobileUA || isNarrowScreen) {
+            window.location.replace('/app/');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="swm-splash" aria-hidden="true">
