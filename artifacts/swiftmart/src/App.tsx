@@ -497,9 +497,10 @@ function PushManager() {
 }
 
 // ─── Maintenance mode guard ───────────────────────────────────────────────────
-// Set to true only when maintenance is explicitly required.
+// Maintenance mode is ON by default. To disable set VITE_MAINTENANCE_MODE=false or ?bypass=admin.
 const envMaintenance = import.meta.env["VITE_MAINTENANCE_MODE"] as string | undefined;
-const isMaintenanceActive = envMaintenance?.toLowerCase() === "true";
+const isExplicitlyDisabled = envMaintenance?.toLowerCase() === "false";
+const isMaintenanceActive = !isExplicitlyDisabled;
 const hasBypassParam = typeof window !== "undefined" && (window.location.search.includes("bypass=admin") || localStorage.getItem("sm_maintenance_bypass") === "true");
 
 function App() {
