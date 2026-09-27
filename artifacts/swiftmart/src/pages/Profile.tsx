@@ -404,6 +404,7 @@ export default function Profile() {
           Legal &amp; Support
         </p>
         {([
+          { href: "/about",              label: "About SwiftMart",         icon: "✨" },
           { href: "/contact-support",    label: "Contact Support",        icon: "💬" },
           { href: "/refund-cancellation",label: "Refund & Cancellation",  icon: "↩️" },
           { href: "/privacy",            label: "Privacy Policy",          icon: "🔒" },

@@ -29,6 +29,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://swiftmart.space/about</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://swiftmart.space/search</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>

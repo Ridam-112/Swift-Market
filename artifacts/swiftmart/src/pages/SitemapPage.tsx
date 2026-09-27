@@ -16,6 +16,7 @@ const SECTIONS = [
       { href: "/products", label: "All Products",  desc: "Full product catalogue across all categories" },
       { href: "/grocery",  label: "Grocery Store", desc: "Shop fresh groceries, kirana items, and daily staples" },
       { href: "/search",   label: "Search",        desc: "Search for any product, shop, or category" },
+      { href: "/about",    label: "About Us",      desc: "Our story, founders Ridam Mahanta & Abhi Das, vision, mission and 10-minute quick commerce in Balurghat" },
       { href: "/categories", label: "Categories",  desc: "Browse products by category" },
     ],
   },

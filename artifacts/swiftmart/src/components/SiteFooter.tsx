@@ -16,18 +16,23 @@ export function SiteFooter() {
     <footer aria-label="SwiftMart site footer" className="border-t border-border/30 pt-6 space-y-5">
       {/* About blurb */}
       <div className="space-y-2">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
-          About SwiftMart
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
+            About SwiftMart
+          </div>
+          <Link href="/about" className="text-xs font-bold text-primary hover:underline">
+            Read Our Story &rarr;
+          </Link>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          SwiftMart is Balurghat&apos;s very own quick commerce &amp; e-grocery app — built for the
-          people of Balurghat, by the people of Balurghat. We deliver groceries, daily essentials,
-          snacks, beverages, household items, and much more right to your doorstep in as fast as{" "}
+          SwiftMart is Balurghat&apos;s very own quick commerce &amp; e-grocery app — founded by Ridam Mahanta &amp; Abhi Das. Built for the
+          people of Balurghat, delivering groceries, daily essentials,
+          fresh produce, sweets, and medicines right to your doorstep in as fast as{" "}
           <span className="font-semibold text-foreground">10 minutes</span>.
         </p>
         <div className="flex flex-wrap gap-2 pt-1">
-          {["⚡ 10-Min Delivery", "🛒 E-Grocery", "🏪 Local Shops", "📍 Balurghat Only"].map(tag => (
+          {["⚡ 10-Min Delivery", "🛒 Quick Commerce", "🏪 Local Dukandars", "📍 Balurghat Only"].map(tag => (
             <span
               key={tag}
               className="text-[10px] font-semibold bg-primary/10 text-primary px-2.5 py-0.5 rounded-full"
@@ -84,8 +89,12 @@ export function SiteFooter() {
         Proudly serving Balurghat, West Bengal 🇮🇳
       </p>
 
-      {/* Legal links */}
+      {/* Legal & About links */}
       <nav aria-label="Legal and support links" className="flex items-center gap-3 flex-wrap text-xs pb-2">
+        <Link href="/about" className="text-primary font-semibold hover:underline transition-colors">
+          About Us
+        </Link>
+        <span className="text-border" aria-hidden="true">·</span>
         <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
           Privacy
         </Link>

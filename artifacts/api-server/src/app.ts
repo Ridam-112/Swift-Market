@@ -33,6 +33,7 @@ const STATIC_SITEMAP_URLS: Array<{ loc: string; changefreq: string; priority: st
   { loc: `${BASE_URL}/shops`,               changefreq: "daily",   priority: "0.9" },
   { loc: `${BASE_URL}/products`,            changefreq: "daily",   priority: "0.9" },
   { loc: `${BASE_URL}/grocery`,             changefreq: "daily",   priority: "0.8" },
+  { loc: `${BASE_URL}/about`,               changefreq: "weekly",  priority: "0.8" },
   { loc: `${BASE_URL}/categories`,          changefreq: "weekly",  priority: "0.8" },
   { loc: `${BASE_URL}/search`,              changefreq: "weekly",  priority: "0.7" },
   { loc: `${BASE_URL}/contact-support`,     changefreq: "monthly", priority: "0.6" },

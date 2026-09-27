@@ -59,6 +59,7 @@ const RefundCancellation = lazy(() => import("@/pages/legal/RefundCancellation")
 const ContactSupport     = lazy(() => import("@/pages/legal/ContactSupport"));
 const DeleteAccount      = lazy(() => import("@/pages/legal/DeleteAccount"));
 const SitemapPage        = lazy(() => import("@/pages/SitemapPage"));
+const AboutUs            = lazy(() => import("@/pages/AboutUs"));
 
 const VendorDashboard    = lazy(() => import("@/pages/vendor/Dashboard"));
 const VendorProducts     = lazy(() => import("@/pages/vendor/Products"));
@@ -328,6 +329,12 @@ function Router() {
         <Route path="/sitemap">
           <PublicLayout><SitemapPage /></PublicLayout>
         </Route>
+        <Route path="/about">
+          <PublicLayout><AboutUs /></PublicLayout>
+        </Route>
+        <Route path="/about-us">
+          <PublicLayout><AboutUs /></PublicLayout>
+        </Route>
 
         {/* ── Public browsable pages — no auth gate, Google can index these ── */}
         <Route path="/">
@@ -497,10 +504,9 @@ function PushManager() {
 }
 
 // ─── Maintenance mode guard ───────────────────────────────────────────────────
-// Maintenance mode is ON by default. To disable set VITE_MAINTENANCE_MODE=false or ?bypass=admin.
+// Set to true only when maintenance is explicitly required.
 const envMaintenance = import.meta.env["VITE_MAINTENANCE_MODE"] as string | undefined;
-const isExplicitlyDisabled = envMaintenance?.toLowerCase() === "false";
-const isMaintenanceActive = !isExplicitlyDisabled;
+const isMaintenanceActive = envMaintenance?.toLowerCase() === "true";
 const hasBypassParam = typeof window !== "undefined" && (window.location.search.includes("bypass=admin") || localStorage.getItem("sm_maintenance_bypass") === "true");
 
 function App() {

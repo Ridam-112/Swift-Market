@@ -166,7 +166,7 @@
       // ── Smart Device Router: Mobile Phone -> Flutter App, PC / Desktop -> React Web ──
       (function() {
         try {
-          var isMaintenanceMode = true; // Set to true while in maintenance
+          var isMaintenanceMode = false; // Set to true while in maintenance
           var params = new URLSearchParams(window.location.search);
           var hasBypass = params.get('bypass') === 'admin' || localStorage.getItem('sm_maintenance_bypass') === 'true';
           if (isMaintenanceMode && !hasBypass) {

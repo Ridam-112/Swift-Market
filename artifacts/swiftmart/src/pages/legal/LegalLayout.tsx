@@ -63,6 +63,8 @@ export function LegalLayout({ title, subtitle, children }: LegalLayoutProps) {
           </a>
         </p>
         <div className="flex items-center justify-center gap-3 flex-wrap text-xs">
+          <Link href="/about" className="text-primary font-medium hover:underline transition-colors">About Us</Link>
+          <span className="text-border">·</span>
           <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy</Link>
           <span className="text-border">·</span>
           <Link href="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms</Link>
