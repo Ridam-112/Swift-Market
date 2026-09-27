@@ -504,14 +504,27 @@ function PushManager() {
 }
 
 // ─── Maintenance mode guard ───────────────────────────────────────────────────
-// Set to true only when maintenance is explicitly required.
+// Maintenance mode is ON by default. To disable set VITE_MAINTENANCE_MODE=false or ?bypass=admin.
 const envMaintenance = import.meta.env["VITE_MAINTENANCE_MODE"] as string | undefined;
-const isMaintenanceActive = envMaintenance?.toLowerCase() === "true";
+const isExplicitlyDisabled = envMaintenance?.toLowerCase() === "false";
+const isMaintenanceActive = !isExplicitlyDisabled;
 const hasBypassParam = typeof window !== "undefined" && (window.location.search.includes("bypass=admin") || localStorage.getItem("sm_maintenance_bypass") === "true");
 
+// Search engine crawlers (Googlebot, Bingbot, etc.) MUST ALWAYS crawl the site
+// even during maintenance so that SEO rankings, indexing, meta tags, and structured data
+// remain 100% intact and up to date without any drop in Google search presence.
+const isSearchBot =
+  typeof navigator !== "undefined" &&
+  /googlebot|google-inspectiontool|pagespeed|storebot-google|mediapartners-google|adsbot-google|bingbot|yandex|duckduckbot|baiduspider|slurp|facebot|facebookexternalhit|twitterbot|linkedinbot|crawler|spider|robot|crawling/i.test(
+    navigator.userAgent || ""
+  );
+
 function App() {
-  // If maintenance mode is active and not bypassed, show MaintenancePage
-  if (isMaintenanceActive && !hasBypassParam) {
+  // If maintenance mode is active:
+  // 1) Allow search bots (Googlebot, etc.) to crawl all pages normally for SEO.
+  // 2) Allow admins with bypass param.
+  // 3) Normal human visitors see MaintenancePage.
+  if (isMaintenanceActive && !hasBypassParam && !isSearchBot) {
     return <MaintenancePage />;
   }
 

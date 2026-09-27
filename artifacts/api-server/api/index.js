@@ -133062,6 +133062,11 @@ function maintenanceMode(req, res, next) {
     next();
     return;
   }
+  const BOT_REGEX = /googlebot|google-inspectiontool|pagespeed|storebot-google|mediapartners-google|adsbot-google|bingbot|yandex|duckduckbot|baiduspider|slurp|facebot|facebookexternalhit|twitterbot|linkedinbot|crawler|spider|robot|crawling/i;
+  if (BOT_REGEX.test(req.headers["user-agent"] || "") && (req.method === "GET" || req.method === "HEAD")) {
+    next();
+    return;
+  }
   const token = extractBypassToken(req);
   if (token && isAdminToken(token)) {
     next();

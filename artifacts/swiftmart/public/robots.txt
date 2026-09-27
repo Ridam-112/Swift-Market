@@ -13,6 +13,8 @@ Allow: /contact-support
 Allow: /privacy
 Allow: /terms
 Allow: /refund-cancellation
+Allow: /about
+Allow: /about-us
 
 # Confidential & Private routes (blocked from search engines)
 Disallow: /cart

@@ -49,6 +49,14 @@ function extractBypassToken(req: Request): string | null {
   return null;
 }
 
+const BOT_USER_AGENT_REGEX =
+  /googlebot|google-inspectiontool|pagespeed|storebot-google|mediapartners-google|adsbot-google|bingbot|yandex|duckduckbot|baiduspider|slurp|facebot|facebookexternalhit|twitterbot|linkedinbot|crawler|spider|robot|crawling/i;
+
+function isSearchCrawler(req: Request): boolean {
+  const ua = (req.headers["user-agent"] as string) ?? "";
+  return BOT_USER_AGENT_REGEX.test(ua);
+}
+
 // ─── Maintenance HTML page ────────────────────────────────────────────────────
 
 function buildMaintenanceHtml(message: string, endTime: string | null): string {
@@ -422,6 +430,14 @@ export function maintenanceMode(req: Request, res: Response, next: NextFunction)
     req.path === "/sitemap.xml"
   ) {
     next(); return;
+  }
+
+  // Search engine crawlers (Googlebot, Bingbot, etc.) pass through freely for GET/HEAD
+  // so that SEO rankings, page indexing, /about, products, shops, and structured data
+  // remain 100% crawlable and indexable even while human maintenance mode is active.
+  if (isSearchCrawler(req) && (req.method === "GET" || req.method === "HEAD")) {
+    next();
+    return;
   }
 
   // Admin bypass — check JWT in Authorization header or bypass cookie

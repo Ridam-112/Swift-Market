@@ -166,11 +166,20 @@
       // ── Smart Device Router: Mobile Phone -> Flutter App, PC / Desktop -> React Web ──
       (function() {
         try {
-          var isMaintenanceMode = false; // Set to true while in maintenance
+          var isMaintenanceMode = true; // Set to true while in maintenance
           var params = new URLSearchParams(window.location.search);
           var hasBypass = params.get('bypass') === 'admin' || localStorage.getItem('sm_maintenance_bypass') === 'true';
-          if (isMaintenanceMode && !hasBypass) {
+          var isBot = /googlebot|google-inspectiontool|pagespeed|storebot-google|mediapartners-google|adsbot-google|bingbot|yandex|duckduckbot|baiduspider|slurp|facebot|facebookexternalhit|twitterbot|linkedinbot|crawler|spider|robot|crawling/i.test(navigator.userAgent || '');
+
+          // If maintenance mode is active, block human visitors (let React render MaintenancePage),
+          // but allow search crawlers (Googlebot, Bingbot, etc.) and admin bypass through to crawl SEO pages
+          if (isMaintenanceMode && !hasBypass && !isBot) {
             return; // Let React render the Maintenance page
+          }
+
+          // Search bots must always index the React Web application, never redirect bots to /app/
+          if (isBot) {
+            return;
           }
 
           var viewParam = params.get('view');
