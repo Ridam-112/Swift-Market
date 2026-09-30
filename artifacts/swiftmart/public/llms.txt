@@ -44,6 +44,7 @@ dairy, bakery items, medicines, snacks, beverages, and daily household essential
 - **Search:** https://swiftmart.space/search
 - **HTML Sitemap:** https://swiftmart.space/sitemap
 - **XML Sitemap:** https://swiftmart.space/sitemap.xml
+- **About Us & Leadership:** https://swiftmart.space/about
 - **Privacy Policy:** https://swiftmart.space/privacy
 - **Terms & Conditions:** https://swiftmart.space/terms
 - **Refund Policy:** https://swiftmart.space/refund-cancellation

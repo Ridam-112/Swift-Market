@@ -6,11 +6,11 @@
     <!-- react-helmet-async manages all per-page title/meta/canonical/JSON-LD.
          These tags are fallbacks used only before React hydrates (e.g. opengraph crawlers
          that don't execute JS). Do NOT add duplicate meta here. -->
-    <title>SwiftMart Balurghat | Grocery, Food, Medicine &amp; Quick Commerce Delivery</title>
-    <meta name="description" content="Order groceries, vegetables, fruits, food, medicines, dairy, bakery, sweets and daily essentials from trusted local shops in Balurghat with SwiftMart. Fast local delivery." />
-    <meta name="keywords" content="SwiftMart, SwiftMart Balurghat, Balurghat Grocery, Balurghat Online Shopping, Quick Commerce Balurghat, Food Delivery Balurghat" />
+    <title>SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce | Official Site</title>
+    <meta name="description" content="Official website of SwiftMart (Swift Mart) Balurghat. Order fresh groceries, vegetables, fruits, medicines, dairy, sweets, and daily essentials from trusted local shops in Balurghat. Fast 10-minute delivery." />
+    <meta name="keywords" content="SwiftMart, Swift Mart, swiftmart, swift-mart, swift mart app, swiftmart space, swiftmart balurghat, quick commerce near me, online grocery delivery balurghat, 10 minute delivery balurghat, blinkit balurghat, zepto balurghat, balurghat online shopping, food delivery balurghat, ridam mahanta, abhi das" />
     <!-- All public pages are indexable. Private routes override this via RobotsManager in React. -->
-    <meta name="robots" content="index,follow" />
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
 
     <!-- Static canonical fallback — overridden per-page by react-helmet-async.
          Needed for crawlers / link-previewers that don't execute JS: without this
@@ -21,16 +21,111 @@
     <!-- Open Graph (static fallback — overridden per-page by react-helmet-async) -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="SwiftMart" />
-    <meta property="og:title" content="SwiftMart Balurghat | Grocery, Food, Medicine &amp; Quick Commerce Delivery" />
-    <meta property="og:description" content="Order groceries, vegetables, fruits, food, medicines, dairy, bakery, sweets and daily essentials from trusted local shops in Balurghat with SwiftMart." />
+    <meta property="og:title" content="SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce | Official Site" />
+    <meta property="og:description" content="Official website of SwiftMart (Swift Mart). Order groceries, vegetables, fruits, food, medicines, dairy, bakery, sweets and daily essentials from trusted local shops in Balurghat." />
     <meta property="og:url" content="https://swiftmart.space/" />
     <meta property="og:image" content="https://swiftmart.space/opengraph.jpg" />
 
     <!-- Twitter Card (static fallback) -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="SwiftMart Balurghat | Grocery, Food, Medicine &amp; Quick Commerce Delivery" />
-    <meta name="twitter:description" content="Order groceries, vegetables, fruits, food, medicines, dairy, bakery, sweets and daily essentials from trusted local shops in Balurghat with SwiftMart." />
+    <meta name="twitter:title" content="SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce | Official Site" />
+    <meta name="twitter:description" content="Official website of SwiftMart (Swift Mart). Order groceries, vegetables, fruits, food, medicines, dairy, bakery, sweets and daily essentials from trusted local shops in Balurghat." />
     <meta name="twitter:image" content="https://swiftmart.space/opengraph.jpg" />
+
+    <!-- Structured Data (JSON-LD) for Search Engines (Stage-1 Crawling) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://swiftmart.space/#website",
+          "url": "https://swiftmart.space/",
+          "name": "SwiftMart",
+          "alternateName": ["Swift Mart", "Swift-Mart", "SwiftMart Balurghat", "Swift Mart Balurghat"],
+          "description": "Balurghat's official 10-minute quick commerce delivery service for groceries, fresh vegetables, medicines, sweets, and daily essentials.",
+          "inLanguage": "en-IN",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://swiftmart.space/search?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://swiftmart.space/#organization",
+          "name": "SwiftMart",
+          "alternateName": ["Swift Mart", "Swift-Mart", "SwiftMart Balurghat"],
+          "url": "https://swiftmart.space/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://swiftmart.space/logo.png",
+            "caption": "SwiftMart Logo"
+          },
+          "founders": [
+            {
+              "@type": "Person",
+              "name": "Ridam Mahanta",
+              "jobTitle": "Founder & Chief Executive Officer",
+              "sameAs": "https://swiftmart.space/about#founders"
+            },
+            {
+              "@type": "Person",
+              "name": "Abhi Das",
+              "jobTitle": "Co-Founder & Head of Operations",
+              "sameAs": "https://swiftmart.space/about#founders"
+            }
+          ],
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Balurghat Main Road",
+            "addressLocality": "Balurghat",
+            "addressRegion": "West Bengal",
+            "postalCode": "733101",
+            "addressCountry": "IN"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+91 62961 18949",
+            "contactType": "customer service",
+            "email": "swiftmart144@gmail.com",
+            "areaServed": "IN"
+          }
+        },
+        {
+          "@type": ["LocalBusiness", "Store"],
+          "@id": "https://swiftmart.space/#business",
+          "name": "SwiftMart Balurghat",
+          "image": "https://swiftmart.space/opengraph.jpg",
+          "url": "https://swiftmart.space/",
+          "telephone": "+91 62961 18949",
+          "priceRange": "₹",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Balurghat, Dakshin Dinajpur",
+            "addressLocality": "Balurghat",
+            "addressRegion": "West Bengal",
+            "postalCode": "733101",
+            "addressCountry": "IN"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 25.2167,
+            "longitude": 88.7667
+          },
+          "openingHoursSpecification": {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+            "opens": "07:00",
+            "closes": "23:00"
+          }
+        }
+      ]
+    }
+    </script>
 
     <!-- Icons & PWA -->
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
@@ -235,7 +330,49 @@
         }
       }, 3500);
     </script>
-    <div id="root"></div>
+    <div id="root">
+      <div id="swm-seo-preamble" style="max-width: 900px; margin: 0 auto; padding: 24px; color: #d1d5db; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <header>
+          <h1 style="color: #f59e0b; font-size: 22px; font-weight: 800; margin-bottom: 8px;">
+            SwiftMart (Swift Mart) — 10-Minute Hyperlocal Grocery &amp; Quick Commerce Delivery in Balurghat
+          </h1>
+          <p style="font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
+            Welcome to the official <strong>SwiftMart</strong> (also known as <strong>Swift Mart</strong>), Balurghat&apos;s premier quick commerce app and website. Founded by <strong>Ridam Mahanta</strong> (Founder &amp; CEO) and <strong>Abhi Das</strong> (Co-Founder), SwiftMart delivers fresh groceries, fruits, vegetables, dairy, medicines, cakes, and daily essentials directly to your doorstep in 10 to 15 minutes.
+          </p>
+        </header>
+        <section style="margin-bottom: 16px;">
+          <h2 style="color: #ffffff; font-size: 16px; font-weight: 700; margin-bottom: 8px;">
+            Balurghat's Own Quick Commerce Delivery Service
+          </h2>
+          <p style="font-size: 13px; line-height: 1.6; margin-bottom: 12px;">
+            Operating with the speed of Blinkit and Zepto tailored specifically for Balurghat (covering Pincodes 733101 and 733103), SwiftMart brings instant convenience while empowering local neighborhood shopkeepers and dukandars.
+          </p>
+          <ul style="font-size: 13px; line-height: 1.7; padding-left: 20px;">
+            <li><strong>10-Minute Grocery Delivery:</strong> Rice, dal, atta, cooking oil, spices, and packaged food.</li>
+            <li><strong>Fresh Sabzi &amp; Fruits:</strong> Daily harvest sourced directly from Balurghat sabzi mandis.</li>
+            <li><strong>Dairy &amp; Morning Bakery:</strong> Fresh milk, curd, paneer, bread, butter, and eggs.</li>
+            <li><strong>Emergency Pharmacy:</strong> Essential OTC healthcare and medicines delivered up to 11 PM.</li>
+            <li><strong>Balurghat Sweets &amp; Bakery:</strong> Famous regional mishti, confectionery, and customized cakes.</li>
+          </ul>
+        </section>
+        <nav aria-label="Explore SwiftMart" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 14px;">
+          <h3 style="color: #f59e0b; font-size: 14px; font-weight: 700; margin-bottom: 8px;">
+            Explore SwiftMart Categories &amp; Services
+          </h3>
+          <ul style="list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px;">
+            <li><a href="/grocery" style="color: #fbbf24; text-decoration: underline;">Groceries &amp; Staples</a></li>
+            <li><a href="/category/fruits-vegetables" style="color: #fbbf24; text-decoration: underline;">Fresh Fruits &amp; Vegetables</a></li>
+            <li><a href="/category/dairy" style="color: #fbbf24; text-decoration: underline;">Dairy &amp; Eggs</a></li>
+            <li><a href="/category/medicine" style="color: #fbbf24; text-decoration: underline;">Medicines &amp; Wellness</a></li>
+            <li><a href="/category/bakery" style="color: #fbbf24; text-decoration: underline;">Bakery &amp; Sweets</a></li>
+            <li><a href="/shops" style="color: #fbbf24; text-decoration: underline;">Local Partner Stores</a></li>
+            <li><a href="/about" style="color: #fbbf24; text-decoration: underline;">About Us &amp; Leadership</a></li>
+            <li><a href="/contact-support" style="color: #fbbf24; text-decoration: underline;">Customer Support</a></li>
+            <li><a href="/sitemap" style="color: #fbbf24; text-decoration: underline;">Site Map</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

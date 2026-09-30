@@ -72,11 +72,25 @@ const HOME_JSON_LD = [
     "@type": "Organization",
     "@id": "https://swiftmart.space/#organization",
     "name": "SwiftMart",
-    "alternateName": "SwiftMart Balurghat",
+    "alternateName": ["Swift Mart", "Swift-Mart", "SwiftMart Balurghat", "Swift Mart Balurghat"],
     "url": "https://swiftmart.space/",
     "logo": { "@type": "ImageObject", "url": "https://swiftmart.space/logo.png" },
     "email": "swiftmart144@gmail.com",
     "foundingDate": "2024",
+    "founders": [
+      {
+        "@type": "Person",
+        "name": "Ridam Mahanta",
+        "jobTitle": "Founder & Chief Executive Officer",
+        "sameAs": "https://swiftmart.space/about#founders"
+      },
+      {
+        "@type": "Person",
+        "name": "Abhi Das",
+        "jobTitle": "Co-Founder & Head of Operations",
+        "sameAs": "https://swiftmart.space/about#founders"
+      }
+    ],
     "foundingLocation": {
       "@type": "Place",
       "name": "Balurghat, West Bengal, India"
@@ -375,12 +389,12 @@ export default function Home() {
   return (
     <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto space-y-6 overflow-x-hidden">
       {/* Visually-hidden H1 anchors the page outline for crawlers */}
-      <h1 className="sr-only">SwiftMart Balurghat — Grocery, Food &amp; Medicine Delivery in 10 Minutes</h1>
+      <h1 className="sr-only">SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce in Balurghat</h1>
       <SEO
-        title="SwiftMart Balurghat | Grocery, Food & Medicine Delivery"
-        description="Order fresh groceries, organic vegetables, food, & medicine online in Balurghat. Fast delivery from your favorite local shops. Shop now on SwiftMart!"
+        title="SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce | Official Site"
+        description="Official website of SwiftMart (Swift Mart). Order fresh groceries, organic vegetables, food, medicines, dairy and sweets online in Balurghat. Fast 10-minute delivery from local shops."
         canonical="/"
-        keywords="SwiftMart, SwiftMart Balurghat, Balurghat Grocery, Balurghat Online Shopping, Quick Commerce Balurghat, Food Delivery Balurghat, Medicine Delivery Balurghat, Vegetable Delivery Balurghat, Local Marketplace Balurghat"
+        keywords="SwiftMart, Swift Mart, swiftmart, swift-mart, swift mart app, swiftmart space, swiftmart balurghat, quick commerce near me, online grocery delivery balurghat, 10 minute delivery balurghat, blinkit balurghat, zepto balurghat, Balurghat Grocery, Balurghat Online Shopping, Quick Commerce Balurghat, Food Delivery Balurghat, Medicine Delivery Balurghat, Vegetable Delivery Balurghat, Local Marketplace Balurghat, ridam mahanta, abhi das"
         jsonLd={HOME_JSON_LD}
       />
       {/* ── Mobile Search Bar — tap opens full-screen overlay ── */}

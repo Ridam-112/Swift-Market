@@ -30,7 +30,7 @@ export function SEO({
   jsonLd,
 }: SEOProps) {
   const [location] = useLocation();
-  const fullTitle = title === DEFAULT_TITLE ? title : `${title} | ${SITE_NAME}`;
+  const fullTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
   // Always produce a canonical: use the explicit prop if given, otherwise derive
   // from the current route so every page self-references correctly.
   const canonicalPath = canonical ?? (location.split("?")[0].replace(/\/$/, "") || "/");
