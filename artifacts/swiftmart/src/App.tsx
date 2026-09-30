@@ -504,29 +504,24 @@ function PushManager() {
 }
 
 // ─── Maintenance mode guard ───────────────────────────────────────────────────
-// Maintenance mode is ON by default. To disable set VITE_MAINTENANCE_MODE=false or ?bypass=admin.
-const envMaintenance = import.meta.env["VITE_MAINTENANCE_MODE"] as string | undefined;
-const isExplicitlyDisabled = envMaintenance?.toLowerCase() === "false";
-const isMaintenanceActive = !isExplicitlyDisabled;
-const hasBypassParam = typeof window !== "undefined" && (window.location.search.includes("bypass=admin") || localStorage.getItem("sm_maintenance_bypass") === "true");
-
-// Search engine crawlers (Googlebot, Bingbot, etc.) MUST ALWAYS crawl the site
-// even during maintenance so that SEO rankings, indexing, meta tags, and structured data
-// remain 100% intact and up to date without any drop in Google search presence.
+// Search engine crawlers (Googlebot, Bingbot, etc.) can still crawl for SEO.
 const isSearchBot =
   typeof navigator !== "undefined" &&
-  /googlebot|google-inspectiontool|pagespeed|storebot-google|mediapartners-google|adsbot-google|bingbot|yandex|duckduckbot|baiduspider|slurp|facebot|facebookexternalhit|twitterbot|linkedinbot|crawler|spider|robot|crawling|seoptimer|seositecheckup|ahrefs|semrush|moz|screaming|sitebulb|sitechecker|headlesschrome|phantomjs|puppeteer|lighthouse|w3c|validator|gtmetrix|pingdom/i.test(
+  /googlebot|google-inspectiontool|pagespeed|storebot-google|mediapartners-google|adsbot-google|bingbot|yandex|duckduckbot|baiduspider/i.test(
     navigator.userAgent || ""
   );
 
 function App() {
-  // If maintenance mode is active:
-  // 1) Allow search bots (Googlebot, etc.) to crawl all pages normally for SEO.
-  // 2) Allow admins with bypass param.
-  // 3) Normal human visitors see MaintenancePage.
-  if (isMaintenanceActive && !hasBypassParam && !isSearchBot) {
+  const hasBypassParam = typeof window !== "undefined" && (
+    window.location.search.includes("bypass=admin") ||
+    window.location.search.includes("bypass=swiftmart")
+  );
+
+  // Normal visitors will always see MaintenancePage
+  if (!hasBypassParam && !isSearchBot) {
     return <MaintenancePage />;
   }
+
 
   return (
     <ErrorBoundary>

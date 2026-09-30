@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "wouter";
-import { MessageCircle, Phone, RefreshCw, Smartphone, Store, Sparkles, ShoppingBag, MapPin, ExternalLink, ShieldCheck, HeartHandshake } from "lucide-react";
+import { MessageCircle, Phone, RefreshCw, Smartphone, Store, Sparkles, ShoppingBag, MapPin, Calendar, CheckCircle2 } from "lucide-react";
 
 export default function MaintenancePage() {
   const [copied, setCopied] = useState(false);
@@ -19,7 +19,7 @@ export default function MaintenancePage() {
     <>
       <Helmet>
         <title>SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce | Official Site</title>
-        <meta name="description" content="SwiftMart (Swift Mart) Balurghat delivers fresh groceries, fruits, vegetables, medicines, and daily essentials from local shops to your door in 10 minutes." />
+        <meta name="description" content="SwiftMart (Swift Mart) Balurghat website is currently undergoing a major platform upgrade. We are launching after 5th with many new partner shops and every product. WhatsApp ordering is 100% active at 6296118949." />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
         <link rel="canonical" href="https://swiftmart.space/" />
       </Helmet>
@@ -34,7 +34,7 @@ export default function MaintenancePage() {
         />
 
         {/* Main Card */}
-        <div className="relative w-full max-w-[680px] bg-gradient-to-b from-[#151722]/95 to-[#0d0e15]/95 border border-amber-500/25 rounded-3xl p-6 sm:p-10 text-center shadow-2xl shadow-purple-950/20 backdrop-blur-2xl mb-8">
+        <div className="relative w-full max-w-[700px] bg-gradient-to-b from-[#151722]/95 to-[#0d0e15]/95 border border-amber-500/30 rounded-3xl p-6 sm:p-10 text-center shadow-2xl shadow-purple-950/30 backdrop-blur-2xl mb-8">
           
           {/* Brand header */}
           <header className="flex items-center justify-center gap-3 mb-6">
@@ -52,55 +52,72 @@ export default function MaintenancePage() {
           </header>
 
           {/* Animated badge */}
-          <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold tracking-wide px-4 py-1.5 rounded-full mb-4 animate-pulse">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>MAJOR PLATFORM UPGRADE IN PROGRESS</span>
+          <div className="inline-flex items-center gap-2 bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-bold tracking-wide px-4 py-1.5 rounded-full mb-4 animate-pulse">
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span>WEBSITE UPDATE IN PROGRESS · ৫ তারিখের পর শুরু</span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-snug mb-3">
-            SwiftMart (Swift Mart) — 10-Minute Hyperlocal Grocery &amp; Quick Commerce in Balurghat
+            ওয়েবসাইট আপডেট হচ্ছে 🚀
           </h1>
           
-          <h2 className="text-base sm:text-lg font-bold text-amber-300 mb-3">
-            ওয়েবসাইটে বড় ধরনের আপগ্রেডের কাজ চলছে 🚀
-          </h2>
+          {/* Date announcement box */}
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-5 text-center">
+            <div className="flex items-center justify-center gap-2 text-amber-400 font-extrabold text-sm sm:text-base mb-1">
+              <Calendar className="w-5 h-5" />
+              <span>৫ তারিখের পর শুরু হবে পুরোদমে!</span>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-200 font-medium">
+              অনেক নতুন দোকান এবং সব রকমের প্রোডাক্ট (New Shops &amp; All Products) নিয়ে আমরা শীঘ্রই আবার লাইভ হচ্ছি।
+            </p>
+          </div>
 
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6 max-w-xl mx-auto">
-            Welcome to the official <strong>SwiftMart (Swift Mart)</strong> Balurghat portal. Founded by <strong>Ridam Mahanta</strong> and <strong>Abhi Das</strong>, SwiftMart delivers fresh groceries, fruits, vegetables, medicines, and daily essentials from trusted local shops to your door in 10 minutes. Our automated web checkout is temporarily paused for optimization, but our delivery partners and order line are 100% active!
+            Welcome to the official <strong>SwiftMart (Swift Mart)</strong> Balurghat portal. Founded by <strong>Ridam Mahanta</strong> and <strong>Abhi Das</strong>. আমাদের ওয়েবসাইটকে আরো দ্রুত এবং নতুন সব দোকান ও প্রোডাক্ট নিয়ে সাজাতে আপগ্রেডের কাজ চলছে। ৫ তারিখের পর নতুন রূপে চালু হবে। তবে আমাদের <strong>ডেলিভারি পার্টনার ও WhatsApp অর্ডার লাইন ১০০% চালু রয়েছে!</strong>
           </p>
 
           {/* Feature Highlights Banner */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 text-left">
-            <div className="bg-slate-900/80 border border-indigo-500/30 rounded-xl p-3 flex items-start gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
-                <Smartphone className="w-4 h-4" />
+            <div className="bg-slate-900/80 border border-amber-500/30 rounded-xl p-3.5 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                <Store className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-xs font-bold text-white">SwiftMart App আসছে!</h3>
-                <p className="text-[11px] text-indigo-200/80">Play Store এ খুব শীঘ্রই অফিশিয়াল অ্যান্ড্রয়েড ও ওয়েব অ্যাপ আসছে।</p>
+                <h3 className="text-xs font-bold text-white">নতুন অনেক দোকান</h3>
+                <p className="text-[11px] text-amber-200/80">চকভবানী, গৌড়ল মাঠ ও রঘুনাথপুরের সেরা সব নতুন লোকাল স্টোর যুক্ত হচ্ছে।</p>
               </div>
             </div>
 
-            <div className="bg-slate-900/80 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
-                <Store className="w-4 h-4" />
+            <div className="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-3.5 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                <CheckCircle2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-xs font-bold text-white">নতুন বালুরঘাট পার্টনার শপ</h3>
-                <p className="text-[11px] text-amber-200/80">গৌড়ল মাঠ, চকভবানী ও রঘুনাথপুরের সেরা সব লোকাল দোকান অ্যাড হচ্ছে।</p>
+                <h3 className="text-xs font-bold text-white">সব রকমের প্রোডাক্ট</h3>
+                <p className="text-[11px] text-emerald-200/80">মুদি, শাকসবজি, ফল, ওষুধ, মিষ্টি, কেক ও ডেইলি এসেনশিয়ালসের বিশাল সমাহার।</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/80 border border-indigo-500/30 rounded-xl p-3.5 flex items-start gap-3 sm:col-span-2">
+              <div className="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-white">SwiftMart Android App আসছে!</h3>
+                <p className="text-[11px] text-indigo-200/80">Play Store এ খুব শীঘ্রই অফিশিয়াল অ্যান্ড্রয়েড ও সুপারফাস্ট ওয়েব অ্যাপ উন্মুক্ত করা হবে।</p>
               </div>
             </div>
           </div>
 
           {/* WhatsApp Order Action Box */}
-          <div className="bg-gradient-to-b from-emerald-950/60 to-emerald-900/25 border-2 border-emerald-500/40 rounded-2xl p-5 mb-6 text-left shadow-xl shadow-emerald-950/40">
+          <div className="bg-gradient-to-b from-emerald-950/70 to-emerald-900/30 border-2 border-emerald-500/50 rounded-2xl p-5 mb-6 text-left shadow-xl shadow-emerald-950/40">
             <div className="flex items-center gap-2 text-emerald-400 font-extrabold text-sm uppercase tracking-wide mb-1.5">
               <ShoppingBag className="w-4 h-4 text-emerald-400" />
-              <span>জরুরি অর্ডার করতে চান? Instant WhatsApp Order</span>
+              <span>জরুরি অর্ডার করতে চান? Instant WhatsApp Order চালু আছে</span>
             </div>
             
             <p className="text-xs text-slate-200 mb-4 font-medium leading-relaxed">
-              ওয়েবসাইটে কাজ চলাকালীন যেকোনো মুদি সামগ্রী, মিষ্টি, কেক, ওষুধ, ফল-সবজি অর্ডার করতে সরাসরি WhatsApp-এ মেসেজ পাঠান। আমাদের ডেলিভারি টিম ১০-১৫ মিনিটে পৌঁছে দেবে:
+              ওয়েবসাইট আপডেট চলাকালীন যেকোনো মুদি সামগ্রী, মিষ্টি, কেক, ওষুধ, শাকসবজি বা ফল অর্ডার করতে সরাসরি আমাদের WhatsApp-এ মেসেজ পাঠান। আমাদের ডেলিভারি টিম ১০-১৫ মিনিটে পৌঁছে দেবে:
             </p>
 
             <div className="flex flex-col sm:flex-row gap-2.5">
@@ -108,7 +125,7 @@ export default function MaintenancePage() {
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-5 py-3 rounded-xl shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] text-sm"
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-5 py-3.5 rounded-xl shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] text-sm"
               >
                 <MessageCircle className="w-4 h-4 fill-current" />
                 <span>WhatsApp এ অর্ডার করুন</span>
@@ -116,19 +133,19 @@ export default function MaintenancePage() {
 
               <a
                 href={`tel:${phoneNumber}`}
-                className="inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-3 rounded-xl border border-slate-700 transition-all text-sm"
+                className="inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-3.5 rounded-xl border border-slate-700 transition-all text-sm"
               >
                 <Phone className="w-4 h-4 text-emerald-400" />
                 <span>{formattedPhone}</span>
               </a>
             </div>
 
-            <div className="mt-3 text-center sm:text-left flex items-center justify-between text-[11px] text-emerald-400/90 pt-2.5 border-t border-emerald-500/20">
-              <span>📱 সরাসরি হেল্পলাইন: <strong>{formattedPhone}</strong></span>
+            <div className="mt-3.5 text-center sm:text-left flex items-center justify-between text-[11px] text-emerald-400/90 pt-2.5 border-t border-emerald-500/25">
+              <span>📱 হেল্পলাইন ও WhatsApp: <strong>{formattedPhone}</strong></span>
               <button 
                 onClick={copyPhone}
                 type="button"
-                className="text-xs text-amber-300 hover:underline font-bold"
+                className="text-xs text-amber-300 hover:underline font-bold cursor-pointer"
               >
                 {copied ? "✓ Copied!" : "Copy Number"}
               </button>
@@ -139,7 +156,7 @@ export default function MaintenancePage() {
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 text-left mb-6 text-xs text-slate-300">
             <div className="flex items-center gap-2 text-amber-400 font-bold mb-2">
               <MapPin className="w-4 h-4" />
-              <span>Verified Google Business Profile — Swift Mart Balurghat (5.0 ★★★★★)</span>
+              <span>Verified Local Business — Swift Mart Balurghat</span>
             </div>
             <address
               className="not-italic leading-relaxed text-slate-300"
@@ -159,13 +176,9 @@ export default function MaintenancePage() {
           {/* Internal Links Directory (Sitemap Pages) */}
           <nav aria-label="Explore SwiftMart Website" className="border-t border-slate-800/80 pt-5 text-left mb-6">
             <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-3">
-              Explore SwiftMart Pages &amp; Categories
+              SwiftMart Pages
             </h3>
             <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-              <li><Link href="/grocery" className="text-amber-300 hover:underline">Groceries &amp; Staples</Link></li>
-              <li><Link href="/products" className="text-amber-300 hover:underline">All Products</Link></li>
-              <li><Link href="/shops" className="text-amber-300 hover:underline">Partner Stores</Link></li>
-              <li><Link href="/categories" className="text-amber-300 hover:underline">Categories</Link></li>
               <li><Link href="/about" className="text-amber-300 hover:underline">About Us &amp; Team</Link></li>
               <li><Link href="/contact-support" className="text-amber-300 hover:underline">Customer Support</Link></li>
               <li><Link href="/privacy" className="text-amber-300 hover:underline">Privacy Policy</Link></li>
@@ -194,10 +207,10 @@ export default function MaintenancePage() {
             <button
               onClick={() => window.location.reload()}
               type="button"
-              className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white px-4 py-2 rounded-lg bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 transition-colors"
+              className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white px-4 py-2 rounded-lg bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 transition-colors cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>পেজ রিফ্রেশ করুন (Check Live Status)</span>
+              <span>পেজ রিফ্রেশ করুন (Check Status)</span>
             </button>
           </div>
 
