@@ -140,21 +140,25 @@ const HOME_JSON_LD = [
     }
   },
   {
-    "@type": ["LocalBusiness", "Store"],
+    "@type": ["LocalBusiness", "Store", "GroceryStore"],
     "@id": "https://swiftmart.space/#business",
     "name": "SwiftMart Balurghat",
+    "alternateName": ["Swift Mart", "Swift-Mart", "SwiftMart", "Swift Mart Balurghat"],
+    "legalName": "SwiftMart (Swift Mart)",
     "url": "https://swiftmart.space/",
     "logo": { "@type": "ImageObject", "url": "https://swiftmart.space/logo.png" },
     "image": "https://swiftmart.space/opengraph.jpg",
-    "description": "Hyper-local online marketplace delivering groceries, food, medicine and daily essentials from local Balurghat shops in 10 minutes.",
+    "description": "Hyperlocal 10-minute online delivery of groceries, fresh vegetables, dairy, and medicines in Balurghat.",
     "telephone": "+916296118949",
     "priceRange": "₹",
+    "currenciesAccepted": "INR",
+    "paymentAccepted": "Cash on Delivery, UPI, Cards, Net Banking",
     "address": {
       "@type": "PostalAddress",
-      "streetAddress": "Balurghat",
+      "streetAddress": "Gourlo Math",
       "addressLocality": "Balurghat",
       "addressRegion": "West Bengal",
-      "postalCode": "733101",
+      "postalCode": "733103",
       "addressCountry": "IN"
     },
     "geo": {
@@ -162,6 +166,14 @@ const HOME_JSON_LD = [
       "latitude": 25.2167,
       "longitude": 88.7667
     },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "5.0",
+      "reviewCount": "15",
+      "bestRating": "5",
+      "worstRating": "1"
+    },
+    "hasMap": "https://maps.google.com/?q=Swift+Mart+Balurghat+Gourlo+Math+733103",
     "openingHoursSpecification": {
       "@type": "OpeningHoursSpecification",
       "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
@@ -392,7 +404,7 @@ export default function Home() {
       <h1 className="sr-only">SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce in Balurghat</h1>
       <SEO
         title="SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce | Official Site"
-        description="Official website of SwiftMart (Swift Mart). Order fresh groceries, organic vegetables, food, medicines, dairy and sweets online in Balurghat. Fast 10-minute delivery from local shops."
+        description="SwiftMart (Swift Mart) Balurghat delivers fresh groceries, fruits, vegetables, medicines, and daily essentials from local shops to your door in 10 minutes."
         canonical="/"
         keywords="SwiftMart, Swift Mart, swiftmart, swift-mart, swift mart app, swiftmart space, swiftmart balurghat, quick commerce near me, online grocery delivery balurghat, 10 minute delivery balurghat, blinkit balurghat, zepto balurghat, Balurghat Grocery, Balurghat Online Shopping, Quick Commerce Balurghat, Food Delivery Balurghat, Medicine Delivery Balurghat, Vegetable Delivery Balurghat, Local Marketplace Balurghat, ridam mahanta, abhi das"
         jsonLd={HOME_JSON_LD}

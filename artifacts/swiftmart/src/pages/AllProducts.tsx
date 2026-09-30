@@ -84,7 +84,7 @@ export default function AllProducts() {
     <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto space-y-4">
       <SEO
         title="Buy Daily Essentials & Groceries Online"
-        description="Shop 1000+ daily essential products, fresh dairy, organic fruits, vegetables, and medicines in Balurghat. Enjoy direct-to-home quick commerce delivery."
+        description="Shop 1000+ daily essentials, fresh dairy, fruits, vegetables, and medicines in Balurghat with 10-minute doorstep delivery on SwiftMart."
         canonical="/products"
         keywords="products Balurghat, grocery products, medicine products, food products Balurghat"
       />

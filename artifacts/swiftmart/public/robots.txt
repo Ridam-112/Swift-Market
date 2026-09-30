@@ -35,4 +35,35 @@ Disallow: /vendor-register
 Disallow: /vendor-status
 Disallow: /delete-account
 
+# AI Search & LLM Crawlers (Perplexity, ChatGPT, Claude, Gemini, Apple)
+User-agent: GPTBot
+Allow: /
+Disallow: /admin
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /profile
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /profile
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /profile
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
 Sitemap: https://swiftmart.space/sitemap.xml

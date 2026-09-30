@@ -62,10 +62,10 @@ const aboutJsonLd = [
       ],
       "address": {
         "@type": "PostalAddress",
-        "streetAddress": "Balurghat Main Road",
+        "streetAddress": "Gourlo Math",
         "addressLocality": "Balurghat",
         "addressRegion": "West Bengal",
-        "postalCode": "733101",
+        "postalCode": "733103",
         "addressCountry": "IN"
       },
       "areaServed": [
@@ -85,23 +85,31 @@ const aboutJsonLd = [
   },
   {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": "SwiftMart Quick Commerce Delivery Balurghat",
+    "@type": ["LocalBusiness", "Store", "GroceryStore"],
+    "name": "SwiftMart Balurghat",
+    "alternateName": ["Swift Mart", "Swift-Mart", "SwiftMart", "Swift Mart Balurghat"],
+    "legalName": "SwiftMart (Swift Mart)",
     "image": "https://swiftmart.space/opengraph.jpg",
     "telephone": "+91 62961 18949",
     "email": "swiftmart144@gmail.com",
     "priceRange": "₹",
     "address": {
       "@type": "PostalAddress",
+      "streetAddress": "Gourlo Math",
       "addressLocality": "Balurghat",
       "addressRegion": "West Bengal",
-      "postalCode": "733101",
+      "postalCode": "733103",
       "addressCountry": "IN"
     },
     "geo": {
       "@type": "GeoCoordinates",
-      "latitude": 25.2215,
-      "longitude": 88.7645
+      "latitude": 25.2167,
+      "longitude": 88.7667
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "5.0",
+      "reviewCount": "15"
     },
     "openingHoursSpecification": {
       "@type": "OpeningHoursSpecification",
@@ -121,7 +129,7 @@ export default function AboutUs() {
     <>
       <SEO
         title="About Us | SwiftMart Balurghat - 10-Min Quick Commerce & Grocery Delivery"
-        description="Meet SwiftMart, Balurghat's homegrown 10-minute quick commerce delivery service founded by Ridam Mahanta and Abhi Das. Like Blinkit and Zepto, delivering groceries, fresh produce, sweets, and medicines near you."
+        description="SwiftMart is Balurghat's premier 10-minute delivery platform founded by Ridam Mahanta and Abhi Das, bringing groceries and essentials to your doorstep."
         canonical="/about"
         keywords="quick commerce near me, online grocery delivery balurghat, 10 minute delivery balurghat, blinkit balurghat, zepto balurghat, swiftmart founders, ridam mahanta, abhi das, fastest grocery delivery dakshin dinajpur, local commerce balurghat, buy groceries online balurghat"
         jsonLd={aboutJsonLd}

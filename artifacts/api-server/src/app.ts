@@ -292,7 +292,63 @@ if (process.env.NODE_ENV === "production") {
   // robots.txt — served inline (no dependency on build artifact) so it's always fresh
   // Explicit Allow: / as the first directive under User-agent: * is required for Google
   // Search Console to recognise the homepage as crawlable.
-  const ROBOTS_TXT = `User-agent: *\nAllow: /\nDisallow: /auth\nDisallow: /google-callback\nDisallow: /complete-profile\nDisallow: /cart\nDisallow: /checkout\nDisallow: /order/\nDisallow: /orders\nDisallow: /profile\nDisallow: /notifications\nDisallow: /vendor-register\nDisallow: /vendor-status\nDisallow: /vendor/\nDisallow: /admin\nDisallow: /manager-panel\nDisallow: /delivery-dashboard\nDisallow: /delivery/\nDisallow: /delete-account\n\nSitemap: https://swiftmart.space/sitemap.xml\n`;
+  const ROBOTS_TXT = [
+    "User-agent: *",
+    "Allow: /",
+    "Allow: /sitemap.xml",
+    "Allow: /robots.txt",
+    "Disallow: /auth",
+    "Disallow: /google-callback",
+    "Disallow: /complete-profile",
+    "Disallow: /cart",
+    "Disallow: /checkout",
+    "Disallow: /order/",
+    "Disallow: /orders",
+    "Disallow: /profile",
+    "Disallow: /notifications",
+    "Disallow: /vendor-register",
+    "Disallow: /vendor-status",
+    "Disallow: /vendor/",
+    "Disallow: /admin",
+    "Disallow: /manager-panel",
+    "Disallow: /delivery-dashboard",
+    "Disallow: /delivery/",
+    "Disallow: /delete-account",
+    "",
+    "# AI Search & LLM Crawlers",
+    "User-agent: GPTBot",
+    "Allow: /",
+    "Disallow: /admin",
+    "Disallow: /cart",
+    "Disallow: /checkout",
+    "Disallow: /orders",
+    "Disallow: /profile",
+    "",
+    "User-agent: ClaudeBot",
+    "Allow: /",
+    "Disallow: /admin",
+    "Disallow: /cart",
+    "Disallow: /checkout",
+    "Disallow: /orders",
+    "Disallow: /profile",
+    "",
+    "User-agent: PerplexityBot",
+    "Allow: /",
+    "Disallow: /admin",
+    "Disallow: /cart",
+    "Disallow: /checkout",
+    "Disallow: /orders",
+    "Disallow: /profile",
+    "",
+    "User-agent: Google-Extended",
+    "Allow: /",
+    "",
+    "User-agent: Applebot",
+    "Allow: /",
+    "",
+    "Sitemap: https://swiftmart.space/sitemap.xml",
+    "",
+  ].join("\n");
   app.get("/robots.txt", (_req: Request, res: Response) => {
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -339,6 +395,8 @@ if (process.env.NODE_ENV === "production") {
     }
     const indexPath = path.join(frontendDist, "index.html");
     if (fs.existsSync(indexPath)) {
+      const canonicalPath = req.path === "/" ? "/" : req.path.replace(/\/$/, "");
+      res.setHeader("Link", `<${BASE_URL}${canonicalPath}>; rel="canonical"`);
       res.setHeader("Cache-Control", "no-cache, must-revalidate");
       res.sendFile(indexPath);
     } else {

@@ -97,7 +97,7 @@ export default function GroceryStore() {
     <div className="min-h-[100dvh] pb-24">
       <SEO
         title="Grocery Store — SwiftMart Balurghat"
-        description="Shop rice, atta, dal, oil, spices, tea, biscuits, chocolates, dairy, personal care and all daily essentials from SwiftMart's grocery store in Balurghat."
+        description="Order rice, atta, dal, cooking oil, spices, dairy, and daily grocery essentials in Balurghat with 10-minute doorstep delivery on SwiftMart."
         canonical="/grocery"
       />
 
