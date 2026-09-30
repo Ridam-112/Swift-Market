@@ -50,7 +50,7 @@ function extractBypassToken(req: Request): string | null {
 }
 
 const BOT_USER_AGENT_REGEX =
-  /googlebot|google-inspectiontool|pagespeed|storebot-google|mediapartners-google|adsbot-google|bingbot|yandex|duckduckbot|baiduspider|slurp|facebot|facebookexternalhit|twitterbot|linkedinbot|crawler|spider|robot|crawling/i;
+  /googlebot|google-inspectiontool|pagespeed|storebot-google|mediapartners-google|adsbot-google|bingbot|yandex|duckduckbot|baiduspider|slurp|facebot|facebookexternalhit|twitterbot|linkedinbot|crawler|spider|robot|crawling|seoptimer|seositecheckup|ahrefs|semrush|moz|screaming|sitebulb|sitechecker|headlesschrome|phantomjs|puppeteer|lighthouse|w3c|validator|gtmetrix|pingdom/i;
 
 function isSearchCrawler(req: Request): boolean {
   const ua = (req.headers["user-agent"] as string) ?? "";

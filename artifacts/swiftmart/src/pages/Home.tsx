@@ -75,7 +75,6 @@ const HOME_JSON_LD = [
     "alternateName": ["Swift Mart", "Swift-Mart", "SwiftMart Balurghat", "Swift Mart Balurghat"],
     "url": "https://swiftmart.space/",
     "logo": { "@type": "ImageObject", "url": "https://swiftmart.space/logo.png" },
-    "email": "swiftmart144@gmail.com",
     "foundingDate": "2024",
     "founders": [
       {
@@ -112,7 +111,7 @@ const HOME_JSON_LD = [
     "contactPoint": {
       "@type": "ContactPoint",
       "telephone": "+916296118949",
-      "email": "swiftmart144@gmail.com",
+      "url": "https://swiftmart.space/contact-support",
       "contactType": "customer support",
       "hoursAvailable": {
         "@type": "OpeningHoursSpecification",
@@ -123,7 +122,12 @@ const HOME_JSON_LD = [
       "availableLanguage": ["English", "Bengali"]
     },
     "sameAs": [
-      "https://swiftmart.space/"
+      "https://swiftmart.space/",
+      "https://www.facebook.com/swiftmart.balurghat",
+      "https://www.instagram.com/swiftmart.balurghat",
+      "https://x.com/SwiftMart_IN",
+      "https://www.linkedin.com/company/swiftmart-balurghat",
+      "https://www.youtube.com/@SwiftMartBalurghat"
     ]
   },
   {

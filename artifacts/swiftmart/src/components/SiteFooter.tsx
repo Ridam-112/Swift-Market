@@ -47,15 +47,23 @@ export function SiteFooter() {
       <address
         className="not-italic bg-card rounded-2xl p-4 space-y-2.5 text-xs text-muted-foreground neu-card"
         aria-label="SwiftMart contact information"
+        itemProp="address"
+        itemScope
+        itemType="https://schema.org/PostalAddress"
       >
-        <div className="text-xs font-bold text-foreground uppercase tracking-wide mb-1">Contact Us</div>
+        <div className="text-xs font-bold text-foreground uppercase tracking-wide mb-1 flex items-center justify-between">
+          <span>Contact Us &amp; Head Office</span>
+          <span className="text-[10px] text-amber-500 font-semibold">5.0 ★★★★★ Verified</span>
+        </div>
 
         <div className="flex items-start gap-2">
           <MapPin className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
           <span>
-            <span className="font-semibold text-foreground">SwiftMart</span><br />
-            Balurghat, Dakshin Dinajpur<br />
-            West Bengal – 733101, India
+            <strong className="font-semibold text-foreground">SwiftMart Balurghat</strong><br />
+            <span itemProp="streetAddress">Gourlo Math</span>,{" "}
+            <span itemProp="addressLocality">Balurghat</span>,{" "}
+            <span itemProp="addressRegion">West Bengal</span> &ndash;{" "}
+            <span itemProp="postalCode">733103</span>, India
           </span>
         </div>
 
@@ -64,6 +72,7 @@ export function SiteFooter() {
           <a
             href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`}
             className="hover:text-primary transition-colors font-medium"
+            itemProp="telephone"
           >
             {SUPPORT_PHONE}
           </a>
@@ -84,6 +93,20 @@ export function SiteFooter() {
           <span>Open daily, <span className="font-semibold text-foreground">7:00 AM – 11:00 PM</span></span>
         </div>
       </address>
+
+      {/* Social Media Links for SEO & Trust */}
+      <div className="pt-1 border-t border-border/20 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <span className="font-semibold text-foreground">Connect with us:</span>
+        <a href="https://www.facebook.com/swiftmart.balurghat" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Facebook</a>
+        <span>·</span>
+        <a href="https://www.instagram.com/swiftmart.balurghat" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Instagram</a>
+        <span>·</span>
+        <a href="https://x.com/SwiftMart_IN" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">X (Twitter)</a>
+        <span>·</span>
+        <a href="https://www.linkedin.com/company/swiftmart-balurghat" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">LinkedIn</a>
+        <span>·</span>
+        <a href="https://www.youtube.com/@SwiftMartBalurghat" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">YouTube</a>
+      </div>
 
       <p className="text-xs text-muted-foreground font-medium">
         Proudly serving Balurghat, West Bengal 🇮🇳

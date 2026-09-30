@@ -515,7 +515,7 @@ const hasBypassParam = typeof window !== "undefined" && (window.location.search.
 // remain 100% intact and up to date without any drop in Google search presence.
 const isSearchBot =
   typeof navigator !== "undefined" &&
-  /googlebot|google-inspectiontool|pagespeed|storebot-google|mediapartners-google|adsbot-google|bingbot|yandex|duckduckbot|baiduspider|slurp|facebot|facebookexternalhit|twitterbot|linkedinbot|crawler|spider|robot|crawling/i.test(
+  /googlebot|google-inspectiontool|pagespeed|storebot-google|mediapartners-google|adsbot-google|bingbot|yandex|duckduckbot|baiduspider|slurp|facebot|facebookexternalhit|twitterbot|linkedinbot|crawler|spider|robot|crawling|seoptimer|seositecheckup|ahrefs|semrush|moz|screaming|sitebulb|sitechecker|headlesschrome|phantomjs|puppeteer|lighthouse|w3c|validator|gtmetrix|pingdom/i.test(
     navigator.userAgent || ""
   );
 

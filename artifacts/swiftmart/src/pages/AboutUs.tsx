@@ -78,9 +78,17 @@ const aboutJsonLd = [
         "@type": "ContactPoint",
         "telephone": "+91 62961 18949",
         "contactType": "customer service",
-        "email": "swiftmart144@gmail.com",
+        "url": "https://swiftmart.space/contact-support",
         "areaServed": "IN"
-      }
+      },
+      "sameAs": [
+        "https://swiftmart.space/",
+        "https://www.facebook.com/swiftmart.balurghat",
+        "https://www.instagram.com/swiftmart.balurghat",
+        "https://x.com/SwiftMart_IN",
+        "https://www.linkedin.com/company/swiftmart-balurghat",
+        "https://www.youtube.com/@SwiftMartBalurghat"
+      ]
     }
   },
   {
@@ -91,7 +99,7 @@ const aboutJsonLd = [
     "legalName": "SwiftMart (Swift Mart)",
     "image": "https://swiftmart.space/opengraph.jpg",
     "telephone": "+91 62961 18949",
-    "email": "swiftmart144@gmail.com",
+    "url": "https://swiftmart.space/contact-support",
     "priceRange": "₹",
     "address": {
       "@type": "PostalAddress",
