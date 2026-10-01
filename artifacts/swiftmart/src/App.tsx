@@ -504,12 +504,8 @@ function PushManager() {
 }
 
 // ─── Maintenance mode guard ───────────────────────────────────────────────────
-// Search engine crawlers (Googlebot, Bingbot, etc.) can still crawl for SEO.
-const isSearchBot =
-  typeof navigator !== "undefined" &&
-  /googlebot|google-inspectiontool|pagespeed|storebot-google|mediapartners-google|adsbot-google|bingbot|yandex|duckduckbot|baiduspider/i.test(
-    navigator.userAgent || ""
-  );
+const envMaintenance = import.meta.env["VITE_MAINTENANCE_MODE"] as string | undefined;
+const isMaintenanceActive = envMaintenance?.toLowerCase() === "true";
 
 function App() {
   const hasBypassParam = typeof window !== "undefined" && (
@@ -517,8 +513,8 @@ function App() {
     window.location.search.includes("bypass=swiftmart")
   );
 
-  // Normal visitors will always see MaintenancePage
-  if (!hasBypassParam && !isSearchBot) {
+  // Maintenance mode is OFF (or active only when VITE_MAINTENANCE_MODE=true)
+  if (isMaintenanceActive && !hasBypassParam) {
     return <MaintenancePage />;
   }
 
