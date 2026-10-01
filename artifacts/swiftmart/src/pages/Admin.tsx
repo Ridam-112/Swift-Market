@@ -7956,7 +7956,10 @@ function HomepageSectionsTab() {
       api.get<{ success: boolean; products: ProductSearchResult[] }>(`/products?ids=${ids.join(',')}&limit=40`)
         .then(d => {
           const names: Record<string, string> = {};
-          for (const p of d.products ?? []) names[p._id] = p.name;
+          for (const p of d.products ?? []) {
+            const pid = p.id || p._id;
+            names[pid] = p.name;
+          }
           setFormProductNames(names);
         })
         .catch(() => {});
@@ -7976,7 +7979,8 @@ function HomepageSectionsTab() {
 
     try {
       if (editingSection) {
-        await api.patch(`/homepage-sections/${editingSection._id}`, { title: formTitle, type: formType, config });
+        const secId = editingSection.id || editingSection._id;
+        await api.patch(`/homepage-sections/${secId}`, { title: formTitle, type: formType, config });
         toast.success("Section updated");
       } else {
         const maxOrder = sections.length > 0 ? Math.max(...sections.map(s => s.sortOrder)) + 1 : 0;
@@ -7993,10 +7997,11 @@ function HomepageSectionsTab() {
   }
 
   async function handleToggle(s: HomepageSectionRow) {
-    setSaving(s._id);
+    const secId = s.id || s._id;
+    setSaving(secId);
     try {
-      await api.patch(`/homepage-sections/${s._id}`, { enabled: !s.enabled });
-      setSections(prev => prev.map(x => x._id === s._id ? { ...x, enabled: !x.enabled } : x));
+      await api.patch(`/homepage-sections/${secId}`, { enabled: !s.enabled });
+      setSections(prev => prev.map(x => (x.id === secId || x._id === secId) ? { ...x, enabled: !x.enabled } : x));
     } catch {
       toast.error("Failed to toggle section");
     } finally {
@@ -8006,11 +8011,12 @@ function HomepageSectionsTab() {
 
   async function handleDelete(s: HomepageSectionRow) {
     if (!confirm(`Delete "${s.title}"? This cannot be undone.`)) return;
-    setSaving(s._id + "-del");
+    const secId = s.id || s._id;
+    setSaving(secId + "-del");
     try {
-      await api.delete(`/homepage-sections/${s._id}`);
+      await api.delete(`/homepage-sections/${secId}`);
       toast.success("Section deleted");
-      setSections(prev => prev.filter(x => x._id !== s._id));
+      setSections(prev => prev.filter(x => x.id !== secId && x._id !== secId));
     } catch {
       toast.error("Failed to delete section");
     } finally {
@@ -8020,19 +8026,22 @@ function HomepageSectionsTab() {
 
   async function handleMove(s: HomepageSectionRow, dir: -1 | 1) {
     const sorted = [...sections].sort((a, b) => a.sortOrder - b.sortOrder);
-    const idx = sorted.findIndex(x => x._id === s._id);
+    const secId = s.id || s._id;
+    const idx = sorted.findIndex(x => (x.id === secId || x._id === secId));
     const swapIdx = idx + dir;
     if (swapIdx < 0 || swapIdx >= sorted.length) return;
     const swap = sorted[swapIdx]!;
+    const swapId = swap.id || swap._id;
     const newOrder = [
-      { id: s.id, sortOrder: swap.sortOrder },
-      { id: swap.id, sortOrder: s.sortOrder },
+      { id: secId, sortOrder: swap.sortOrder },
+      { id: swapId, sortOrder: s.sortOrder },
     ];
     try {
       await api.patch('/homepage-sections/reorder', { order: newOrder });
       setSections(prev => prev.map(x => {
-        if (x._id === s._id) return { ...x, sortOrder: swap.sortOrder };
-        if (x._id === swap._id) return { ...x, sortOrder: s.sortOrder };
+        const xId = x.id || x._id;
+        if (xId === secId) return { ...x, sortOrder: swap.sortOrder };
+        if (xId === swapId) return { ...x, sortOrder: s.sortOrder };
         return x;
       }));
     } catch {
@@ -8064,11 +8073,12 @@ function HomepageSectionsTab() {
   }, [pickerSelectedShopId, formType]);
 
   function togglePickerProduct(p: ProductSearchResult) {
-    if (formProductIds.includes(p._id)) {
-      setFormProductIds(prev => prev.filter(x => x !== p._id));
+    const pid = p.id || p._id;
+    if (formProductIds.includes(pid)) {
+      setFormProductIds(prev => prev.filter(x => x !== pid));
     } else {
-      setFormProductIds(prev => [...prev, p._id]);
-      setFormProductNames(prev => ({ ...prev, [p._id]: p.name }));
+      setFormProductIds(prev => [...prev, pid]);
+      setFormProductNames(prev => ({ ...prev, [pid]: p.name }));
     }
   }
 
@@ -8102,65 +8112,68 @@ function HomepageSectionsTab() {
         </div>
       ) : (
         <div className="space-y-3">
-          {sorted.map((s, idx) => (
-            <div key={s._id} className={`neu-card rounded-2xl px-5 py-4 flex items-center gap-4 transition-opacity ${!s.enabled ? "opacity-50" : ""}`}>
-              {/* Reorder */}
-              <div className="flex flex-col gap-0.5 shrink-0">
-                <button onClick={() => handleMove(s, -1)} disabled={idx === 0} className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
-                  <ChevronUp className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={() => handleMove(s, 1)} disabled={idx === sorted.length - 1} className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </button>
-              </div>
+          {sorted.map((s, idx) => {
+            const secId = s.id || s._id;
+            return (
+              <div key={secId} className={`neu-card rounded-2xl px-5 py-4 flex items-center gap-4 transition-opacity ${!s.enabled ? "opacity-50" : ""}`}>
+                {/* Reorder */}
+                <div className="flex flex-col gap-0.5 shrink-0">
+                  <button onClick={() => handleMove(s, -1)} disabled={idx === 0} className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => handleMove(s, 1)} disabled={idx === sorted.length - 1} className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
-              {/* Icon */}
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-xl shrink-0">
-                {typeIcon(s.type)}
-              </div>
+                {/* Icon */}
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-xl shrink-0">
+                  {typeIcon(s.type)}
+                </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-sm truncate">{s.title}</div>
-                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-medium">{typeLabel(s.type)}</span>
-                  {s.type === "category" && s.config.categorySlug && (
-                    <span className="text-xs text-primary font-medium">#{s.config.categorySlug}</span>
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm truncate">{s.title}</div>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground font-medium">{typeLabel(s.type)}</span>
+                    {s.type === "category" && s.config.categorySlug && (
+                      <span className="text-xs text-primary font-medium">#{s.config.categorySlug}</span>
+                    )}
+                    {s.type === "manual" && (
+                      <span className="text-xs text-primary font-medium">{(s.config.productIds ?? []).length} products</span>
+                    )}
+                    <span className="text-xs text-muted-foreground">{s.config.layout ?? "scroll"} · limit {s.config.limit ?? 10}</span>
+                  </div>
+                </div>
+
+                {/* Toggle */}
+                <button
+                  onClick={() => handleToggle(s)}
+                  disabled={saving === secId}
+                  className="shrink-0 transition-colors"
+                  title={s.enabled ? "Visible on home page" : "Hidden from home page"}
+                >
+                  {saving === secId ? (
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  ) : s.enabled ? (
+                    <ToggleRight className="w-8 h-8 text-primary" />
+                  ) : (
+                    <ToggleLeft className="w-8 h-8 text-muted-foreground" />
                   )}
-                  {s.type === "manual" && (
-                    <span className="text-xs text-primary font-medium">{(s.config.productIds ?? []).length} products</span>
-                  )}
-                  <span className="text-xs text-muted-foreground">{s.config.layout ?? "scroll"} · limit {s.config.limit ?? 10}</span>
+                </button>
+
+                {/* Actions */}
+                <div className="flex gap-1 shrink-0">
+                  <button onClick={() => openEdit(s)} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleDelete(s)} disabled={saving === secId + "-del"} className="p-2 rounded-lg hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive">
+                    {saving === secId + "-del" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
-
-              {/* Toggle */}
-              <button
-                onClick={() => handleToggle(s)}
-                disabled={saving === s._id}
-                className="shrink-0 transition-colors"
-                title={s.enabled ? "Visible on home page" : "Hidden from home page"}
-              >
-                {saving === s._id ? (
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                ) : s.enabled ? (
-                  <ToggleRight className="w-8 h-8 text-primary" />
-                ) : (
-                  <ToggleLeft className="w-8 h-8 text-muted-foreground" />
-                )}
-              </button>
-
-              {/* Actions */}
-              <div className="flex gap-1 shrink-0">
-                <button onClick={() => openEdit(s)} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button onClick={() => handleDelete(s)} disabled={saving === s._id + "-del"} className="p-2 rounded-lg hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive">
-                  {saving === s._id + "-del" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -8206,11 +8219,14 @@ function HomepageSectionsTab() {
                   className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="">— Pick a category —</option>
-                  {apiCategories.map(c => (
-                    <option key={c._id} value={c.slug}>
-                      {c.emoji ? `${c.emoji} ` : ""}{c.name}
-                    </option>
-                  ))}
+                  {apiCategories.map(c => {
+                    const cId = c._id || (c as any).id || c.slug;
+                    return (
+                      <option key={cId} value={c.slug}>
+                        {c.emoji ? `${c.emoji} ` : ""}{c.name}
+                      </option>
+                    );
+                  })}
                 </select>
                 {apiCategories.length === 0 && (
                   <p className="text-xs text-muted-foreground mt-1">Loading categories…</p>
@@ -8229,19 +8245,22 @@ function HomepageSectionsTab() {
                 <div>
                   <p className="text-xs text-muted-foreground mb-2">Browse by shop — pick one to see its products:</p>
                   <div className="flex flex-wrap gap-2">
-                    {pickerShops.map(sh => (
-                      <button
-                        key={sh._id}
-                        onClick={() => setPickerSelectedShopId(prev => prev === sh._id ? "" : sh._id)}
-                        className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${
-                          pickerSelectedShopId === sh._id
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border bg-muted text-muted-foreground hover:border-primary/50"
-                        }`}
-                      >
-                        {sh.shopName}
-                      </button>
-                    ))}
+                    {pickerShops.map(sh => {
+                      const shId = sh._id || (sh as any).id;
+                      return (
+                        <button
+                          key={shId}
+                          onClick={() => setPickerSelectedShopId(prev => prev === shId ? "" : shId)}
+                          className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${
+                            pickerSelectedShopId === shId
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-muted text-muted-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          {sh.shopName}
+                        </button>
+                      );
+                    })}
                     {pickerShops.length === 0 && <p className="text-xs text-muted-foreground">Loading shops…</p>}
                   </div>
                 </div>
@@ -8256,10 +8275,11 @@ function HomepageSectionsTab() {
                     ) : (
                       <div className="max-h-52 overflow-y-auto divide-y divide-border">
                         {pickerShopProducts.map(p => {
-                          const selected = formProductIds.includes(p._id);
+                          const pid = p.id || p._id;
+                          const selected = formProductIds.includes(pid);
                           return (
                             <button
-                              key={p._id}
+                              key={pid}
                               onClick={() => togglePickerProduct(p)}
                               className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${selected ? "bg-primary/5" : "hover:bg-muted/50"}`}
                             >
@@ -8290,18 +8310,21 @@ function HomepageSectionsTab() {
                   {productSearchLoading && <p className="text-xs text-muted-foreground mt-1">Searching…</p>}
                   {productSearchResults.length > 0 && (
                     <div className="neu-inset rounded-xl divide-y divide-border max-h-40 overflow-y-auto mt-1">
-                      {productSearchResults.map(p => (
-                        <button
-                          key={p._id}
-                          onClick={() => { togglePickerProduct(p); setFormProductSearch(""); setProductSearchResults([]); }}
-                          className={`w-full flex items-center gap-3 px-3 py-2 transition-colors text-left ${formProductIds.includes(p._id) ? "bg-primary/5" : "hover:bg-muted/50"}`}
-                        >
-                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${formProductIds.includes(p._id) ? "border-primary bg-primary" : "border-muted-foreground/40"}`}>
-                            {formProductIds.includes(p._id) && <span className="text-[10px] text-primary-foreground font-bold">✓</span>}
-                          </div>
-                          <span className="text-sm font-medium truncate">{p.name}</span>
-                        </button>
-                      ))}
+                      {productSearchResults.map(p => {
+                        const pid = p.id || p._id;
+                        return (
+                          <button
+                            key={pid}
+                            onClick={() => { togglePickerProduct(p); setFormProductSearch(""); setProductSearchResults([]); }}
+                            className={`w-full flex items-center gap-3 px-3 py-2 transition-colors text-left ${formProductIds.includes(pid) ? "bg-primary/5" : "hover:bg-muted/50"}`}
+                          >
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${formProductIds.includes(pid) ? "border-primary bg-primary" : "border-muted-foreground/40"}`}>
+                              {formProductIds.includes(pid) && <span className="text-[10px] text-primary-foreground font-bold">✓</span>}
+                            </div>
+                            <span className="text-sm font-medium truncate">{p.name}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

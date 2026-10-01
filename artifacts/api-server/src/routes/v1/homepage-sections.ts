@@ -51,12 +51,12 @@ async function resolveProducts(
   offset = 0,
 ) {
   const lm = Math.min(limit, 40);
-  const base = and(eq(products.status, "active"), gt(products.stock, 0));
+  const base = eq(products.status, "active");
 
   if (type === "trending") {
     const rows = await db.select(leanProductColumns).from(products)
       .where(and(base, eq(products.trending, true)))
-      .orderBy(desc(products.rating))
+      .orderBy(desc(products.rating), desc(products.createdAt))
       .limit(lm).offset(offset);
     const [{ total }] = await db.select({ total: sql<number>`count(*)::int` })
       .from(products).where(and(base, eq(products.trending, true)));
@@ -64,21 +64,24 @@ async function resolveProducts(
   }
 
   if (type === "category" && config.categorySlug) {
+    const slug = config.categorySlug.toLowerCase().trim();
     const rows = await db.select(leanProductColumns).from(products)
-      .where(and(base, eq(products.category, config.categorySlug)))
-      .orderBy(desc(products.rating))
+      .where(and(base, sql`LOWER(${products.category}) = ${slug} OR LOWER(${products.category}) LIKE ${`%${slug}%`}`))
+      .orderBy(desc(products.rating), desc(products.createdAt))
       .limit(lm).offset(offset);
     const [{ total }] = await db.select({ total: sql<number>`count(*)::int` })
-      .from(products).where(and(base, eq(products.category, config.categorySlug)));
+      .from(products).where(and(base, sql`LOWER(${products.category}) = ${slug} OR LOWER(${products.category}) LIKE ${`%${slug}%`}`));
     return { rows: await enrichWithShopNames(miArr(rows)), total: total ?? 0 };
   }
 
   if (type === "manual" && Array.isArray(config.productIds) && config.productIds.length > 0) {
-    const ids = config.productIds.slice(0, 40);
+    const ids = config.productIds.slice(offset, offset + lm);
+    if (ids.length === 0) return { rows: [], total: config.productIds.length };
     const rows = await db.select(leanProductColumns).from(products)
-      .where(and(base, inArray(products.id, ids)))
-      .limit(lm).offset(offset);
-    return { rows: await enrichWithShopNames(miArr(rows)), total: ids.length };
+      .where(and(base, inArray(products.id, ids)));
+    const rowMap = new Map(rows.map(r => [r.id, r]));
+    const ordered = ids.map(id => rowMap.get(id)).filter(Boolean) as typeof rows;
+    return { rows: await enrichWithShopNames(miArr(ordered)), total: config.productIds.length };
   }
 
   if (type === "new_arrivals") {
@@ -91,10 +94,10 @@ async function resolveProducts(
     return { rows: await enrichWithShopNames(miArr(rows)), total: total ?? 0 };
   }
 
-  // fallback: all active products by rating
+  // fallback: all active products
   const rows = await db.select(leanProductColumns).from(products)
     .where(base)
-    .orderBy(desc(products.rating))
+    .orderBy(desc(products.rating), desc(products.createdAt))
     .limit(lm).offset(offset);
   const [{ total }] = await db.select({ total: sql<number>`count(*)::int` })
     .from(products).where(base);

@@ -125727,21 +125727,14 @@ router8.get("/", optionalAuth, async (req, res) => {
           eq11(products.category, "fruits-vegetables")
         ));
       } else {
-        conditions.push(eq11(products.category, category));
+        conditions.push(or5(
+          eq11(products.category, category),
+          ilike3(products.category, `%${category}%`)
+        ));
       }
     }
     if (search) conditions.push(ilike3(products.name, `%${search}%`));
     if (trending === "true") conditions.push(eq11(products.trending, true));
-    if (status === "active" && category) {
-      const activeCats = await db.select({ slug: categories.slug }).from(categories).where(eq11(categories.isActive, true));
-      const activeSlugs = activeCats.map((c) => c.slug);
-      const catLower = category.toLowerCase().trim();
-      const isAllowed = activeSlugs.includes(category) || catLower === "vegetables" && activeSlugs.includes("fruits-vegetables") || catLower === "fruits" && activeSlugs.includes("fruits-vegetables") || catLower === "fruits-vegetables" && activeSlugs.includes("vegetables");
-      if (activeSlugs.length > 0 && !isAllowed) {
-        res.json({ success: true, products: [], total: 0, page: 1, pages: 0 });
-        return;
-      }
-    }
     if (pincode) {
       const pincodeShops = await db.select({ id: shops.id }).from(shops).where(and5(
         sql2`${shops.address}->>'pincode' = ${pincode}`,
@@ -130242,7 +130235,7 @@ var analytics_default = router22;
 
 // src/routes/v1/homepage-sections.ts
 var import_express23 = __toESM(require_express2(), 1);
-import { eq as eq27, inArray as inArray12, asc as asc6, and as and17, gt as gt2, desc as desc15, sql as sql10 } from "drizzle-orm";
+import { eq as eq27, inArray as inArray12, asc as asc6, and as and17, desc as desc15, sql as sql10 } from "drizzle-orm";
 async function enrichWithShopNames(rows) {
   const shopIds = [...new Set(rows.map((p) => p["shopId"]).filter(Boolean))];
   if (shopIds.length === 0) return rows;
@@ -130273,28 +130266,32 @@ var leanProductColumns = {
 };
 async function resolveProducts(type, config, limit, offset = 0) {
   const lm = Math.min(limit, 40);
-  const base = and17(eq27(products.status, "active"), gt2(products.stock, 0));
+  const base = eq27(products.status, "active");
   if (type === "trending") {
-    const rows2 = await db.select(leanProductColumns).from(products).where(and17(base, eq27(products.trending, true))).orderBy(desc15(products.rating)).limit(lm).offset(offset);
+    const rows2 = await db.select(leanProductColumns).from(products).where(and17(base, eq27(products.trending, true))).orderBy(desc15(products.rating), desc15(products.createdAt)).limit(lm).offset(offset);
     const [{ total: total2 }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(and17(base, eq27(products.trending, true)));
     return { rows: await enrichWithShopNames(miArr(rows2)), total: total2 ?? 0 };
   }
   if (type === "category" && config.categorySlug) {
-    const rows2 = await db.select(leanProductColumns).from(products).where(and17(base, eq27(products.category, config.categorySlug))).orderBy(desc15(products.rating)).limit(lm).offset(offset);
-    const [{ total: total2 }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(and17(base, eq27(products.category, config.categorySlug)));
+    const slug = config.categorySlug.toLowerCase().trim();
+    const rows2 = await db.select(leanProductColumns).from(products).where(and17(base, sql10`LOWER(${products.category}) = ${slug} OR LOWER(${products.category}) LIKE ${`%${slug}%`}`)).orderBy(desc15(products.rating), desc15(products.createdAt)).limit(lm).offset(offset);
+    const [{ total: total2 }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(and17(base, sql10`LOWER(${products.category}) = ${slug} OR LOWER(${products.category}) LIKE ${`%${slug}%`}`));
     return { rows: await enrichWithShopNames(miArr(rows2)), total: total2 ?? 0 };
   }
   if (type === "manual" && Array.isArray(config.productIds) && config.productIds.length > 0) {
-    const ids = config.productIds.slice(0, 40);
-    const rows2 = await db.select(leanProductColumns).from(products).where(and17(base, inArray12(products.id, ids))).limit(lm).offset(offset);
-    return { rows: await enrichWithShopNames(miArr(rows2)), total: ids.length };
+    const ids = config.productIds.slice(offset, offset + lm);
+    if (ids.length === 0) return { rows: [], total: config.productIds.length };
+    const rows2 = await db.select(leanProductColumns).from(products).where(and17(base, inArray12(products.id, ids)));
+    const rowMap = new Map(rows2.map((r2) => [r2.id, r2]));
+    const ordered = ids.map((id) => rowMap.get(id)).filter(Boolean);
+    return { rows: await enrichWithShopNames(miArr(ordered)), total: config.productIds.length };
   }
   if (type === "new_arrivals") {
     const rows2 = await db.select(leanProductColumns).from(products).where(base).orderBy(desc15(products.createdAt)).limit(lm).offset(offset);
     const [{ total: total2 }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(base);
     return { rows: await enrichWithShopNames(miArr(rows2)), total: total2 ?? 0 };
   }
-  const rows = await db.select(leanProductColumns).from(products).where(base).orderBy(desc15(products.rating)).limit(lm).offset(offset);
+  const rows = await db.select(leanProductColumns).from(products).where(base).orderBy(desc15(products.rating), desc15(products.createdAt)).limit(lm).offset(offset);
   const [{ total }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(base);
   return { rows: await enrichWithShopNames(miArr(rows)), total: total ?? 0 };
 }

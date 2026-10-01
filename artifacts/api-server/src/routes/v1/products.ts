@@ -92,28 +92,14 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
         eq(products.category, "fruits-vegetables")
       ));
     } else {
-      conditions.push(eq(products.category, category));
+      conditions.push(or(
+        eq(products.category, category),
+        ilike(products.category, `%${category}%`)
+      ));
     }
   }
   if (search) conditions.push(ilike(products.name, `%${search}%`));
   if (trending === "true") conditions.push(eq(products.trending, true));
-
-  // For customer-facing active queries, restrict by category only when a specific
-  // category is requested — do NOT filter the general listing by active-category slugs
-  // because vendor products may use shop-type slugs that don't map 1:1 to customer categories.
-  if (status === "active" && category) {
-    const activeCats = await db.select({ slug: categories.slug }).from(categories).where(eq(categories.isActive, true));
-    const activeSlugs = activeCats.map(c => c.slug);
-    const catLower = category.toLowerCase().trim();
-    const isAllowed = activeSlugs.includes(category) ||
-      (catLower === "vegetables" && activeSlugs.includes("fruits-vegetables")) ||
-      (catLower === "fruits" && activeSlugs.includes("fruits-vegetables")) ||
-      (catLower === "fruits-vegetables" && activeSlugs.includes("vegetables"));
-    if (activeSlugs.length > 0 && !isAllowed) {
-      res.json({ success: true, products: [], total: 0, page: 1, pages: 0 });
-      return;
-    }
-  }
 
   // Shop scope
   if (pincode) {
