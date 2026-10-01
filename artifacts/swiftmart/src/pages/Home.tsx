@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { useProducts } from "@/hooks/useProducts";
 import { useShops } from "@/hooks/useShops";
 import { HeroBannerSlider } from "@/components/HeroBannerSlider";
 import { BucketBanner } from "@/components/BucketBanner";
@@ -393,7 +392,6 @@ function DynamicSection({ section }: { section: HomepageSection }) {
 
 export default function Home() {
   const { user, selectedDeliveryAddress, setSelectedDeliveryAddress } = useAuth();
-  const { products, isLoading: productsLoading } = useProducts();
   const { shops, isLoading: shopsLoading } = useShops();
   const selectedCity = (selectedDeliveryAddress?.city ?? selectedDeliveryAddress?.line1 ?? "Your Location").trim();
   const loading = shopsLoading;

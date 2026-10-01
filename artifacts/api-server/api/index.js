@@ -127731,26 +127731,6 @@ router12.post("/", authenticate, A11, async (req, res) => {
   }).returning();
   res.status(201).json({ success: true, partner: mi(partner) });
 });
-router12.patch("/:id", authenticate, A11, async (req, res) => {
-  const id = req.params["id"];
-  if (!id.match(/^[0-9a-f-]{36}$/i)) {
-    return;
-  }
-  const [partner] = await db.update(deliveryPartners).set(req.body).where(eq16(deliveryPartners.id, id)).returning();
-  if (!partner) {
-    res.status(404).json({ success: false, message: "Not found" });
-    return;
-  }
-  res.json({ success: true, partner: mi(partner) });
-});
-router12.delete("/:id", authenticate, A11, async (req, res) => {
-  const id = req.params["id"];
-  if (!id.match(/^[0-9a-f-]{36}$/i)) {
-    return;
-  }
-  await db.delete(deliveryPartners).where(eq16(deliveryPartners.id, id));
-  res.json({ success: true, message: "Deleted" });
-});
 router12.post("/:id/link-user", authenticate, A11, validateUuidParams("id"), async (req, res) => {
   const id = req.params["id"];
   const [p] = await db.select().from(deliveryPartners).where(eq16(deliveryPartners.id, id)).limit(1);
@@ -128228,6 +128208,20 @@ router12.delete("/me/fcm-token", authenticate, async (req, res) => {
   }
   await db.update(deliveryPartners).set({ fcmToken: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, partner.id));
   res.json({ success: true, message: "FCM token cleared successfully" });
+});
+router12.patch("/:id", authenticate, A11, validateUuidParams("id"), async (req, res) => {
+  const id = req.params["id"];
+  const [partner] = await db.update(deliveryPartners).set(req.body).where(eq16(deliveryPartners.id, id)).returning();
+  if (!partner) {
+    res.status(404).json({ success: false, message: "Not found" });
+    return;
+  }
+  res.json({ success: true, partner: mi(partner) });
+});
+router12.delete("/:id", authenticate, A11, validateUuidParams("id"), async (req, res) => {
+  const id = req.params["id"];
+  await db.delete(deliveryPartners).where(eq16(deliveryPartners.id, id));
+  res.json({ success: true, message: "Deleted" });
 });
 router12.post("/apply", optionalAuth, async (req, res) => {
   const body = req.body;

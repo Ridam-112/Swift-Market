@@ -38,29 +38,6 @@ router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promi
   res.status(201).json({ success: true, partner: mi(partner!) });
 });
 
-router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const id = req.params["id"] as string;
-  if (!id.match(/^[0-9a-f-]{36}$/i)) {
-    // not a UUID — skip to next handler
-    return;
-  }
-  const [partner] = await db.update(deliveryPartners)
-    .set(req.body as Record<string, unknown>)
-    .where(eq(deliveryPartners.id, id))
-    .returning();
-  if (!partner) { res.status(404).json({ success: false, message: "Not found" }); return; }
-  res.json({ success: true, partner: mi(partner) });
-});
-
-router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const id = req.params["id"] as string;
-  if (!id.match(/^[0-9a-f-]{36}$/i)) {
-    return;
-  }
-  await db.delete(deliveryPartners).where(eq(deliveryPartners.id, id));
-  res.json({ success: true, message: "Deleted" });
-});
-
 // POST /delivery/:id/link-user — admin: auto-link a partner to the user account with matching phone
 router.post("/:id/link-user", authenticate, A, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
   const id = req.params["id"] as string;
@@ -657,6 +634,22 @@ router.delete("/me/fcm-token", authenticate, async (req: AuthRequest, res: Respo
   if (!partner) { res.status(404).json({ success: false, message: "Not a delivery partner" }); return; }
   await db.update(deliveryPartners).set({ fcmToken: null, updatedAt: new Date() }).where(eq(deliveryPartners.id, partner.id));
   res.json({ success: true, message: "FCM token cleared successfully" });
+});
+
+router.patch("/:id", authenticate, A, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const id = req.params["id"] as string;
+  const [partner] = await db.update(deliveryPartners)
+    .set(req.body as Record<string, unknown>)
+    .where(eq(deliveryPartners.id, id))
+    .returning();
+  if (!partner) { res.status(404).json({ success: false, message: "Not found" }); return; }
+  res.json({ success: true, partner: mi(partner) });
+});
+
+router.delete("/:id", authenticate, A, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
+  const id = req.params["id"] as string;
+  await db.delete(deliveryPartners).where(eq(deliveryPartners.id, id));
+  res.json({ success: true, message: "Deleted" });
 });
 
 // ─── Rider KYC Application & Onboarding (v2 Contract Section 5.1) ───────────
