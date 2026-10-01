@@ -7907,8 +7907,24 @@ function HomepageSectionsTab() {
   const load = useCallback(() => {
     setLoading(true);
     api.get<{ success: boolean; sections: HomepageSectionRow[] }>('/homepage-sections/admin')
-      .then(d => setSections(d.sections ?? []))
-      .catch(() => toast.error("Failed to load sections"))
+      .then(d => {
+        if (d && Array.isArray(d.sections)) {
+          setSections(d.sections);
+        } else {
+          setSections([]);
+        }
+      })
+      .catch(() => {
+        return api.get<{ success: boolean; sections: HomepageSectionRow[] }>('/homepage-sections')
+          .then(d => {
+            if (d && Array.isArray(d.sections)) {
+              setSections(d.sections);
+            }
+          })
+          .catch(() => {
+            toast.error("Failed to load sections");
+          });
+      })
       .finally(() => setLoading(false));
   }, []);
 

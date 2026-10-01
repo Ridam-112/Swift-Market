@@ -122518,7 +122518,7 @@ function requireRole(...roles) {
     next();
   };
 }
-function optionalAuth(req, _res, next) {
+function optionalAuth2(req, _res, next) {
   const authHeader = req.headers["authorization"];
   if (authHeader?.startsWith("Bearer ")) {
     try {
@@ -124553,7 +124553,7 @@ function stripSensitiveFields(shop) {
   for (const field of SENSITIVE_FIELDS) delete safe[field];
   return safe;
 }
-router5.get("/", optionalAuth, async (req, res) => {
+router5.get("/", optionalAuth2, async (req, res) => {
   try {
     const authReq = req;
     const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
@@ -124691,7 +124691,7 @@ router5.get("/:id/details", authenticate, A4, async (req, res) => {
   const owner = ownerArr[0] ? { ...ownerArr[0], _id: ownerArr[0].id } : null;
   res.json({ success: true, shop: mi(shop), products: miArr(shopProducts), orders: miArr(shopOrders), owner, totalProducts: shopProducts.length, totalOrders: shopOrders.length, revenue });
 });
-router5.get("/:id", optionalAuth, async (req, res) => {
+router5.get("/:id", optionalAuth2, async (req, res) => {
   try {
     const authReq = req;
     const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
@@ -125686,7 +125686,7 @@ function sanitizeVariants(raw) {
     };
   });
 }
-router8.get("/", optionalAuth, async (req, res) => {
+router8.get("/", optionalAuth2, async (req, res) => {
   try {
     const authReq = req;
     const isPrivileged = authReq.user?.role === "admin" || authReq.user?.role === "super_admin" || authReq.user?.role === "vendor";
@@ -125936,7 +125936,7 @@ router8.get("/trending-manager", authenticate, A7, async (req, res) => {
   }));
   res.json({ success: true, products: enriched });
 });
-router8.get("/barcode/:barcode", optionalAuth, async (req, res) => {
+router8.get("/barcode/:barcode", optionalAuth2, async (req, res) => {
   try {
     const rawBarcode = String(req.params["barcode"] || "").trim();
     if (!rawBarcode) {
@@ -125952,7 +125952,7 @@ router8.get("/barcode/:barcode", optionalAuth, async (req, res) => {
     res.status(500).json({ success: false, status: "NOT_FOUND", message: "Failed to lookup barcode" });
   }
 });
-router8.get("/master-catalog", optionalAuth, async (req, res) => {
+router8.get("/master-catalog", optionalAuth2, async (req, res) => {
   try {
     const { search, category, limit = "30" } = req.query;
     const lm = Math.min(100, Math.max(1, parseInt(limit) || 30));
@@ -126099,7 +126099,7 @@ router8.post("/report-wrong", authenticate, async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to submit report" });
   }
 });
-router8.get("/:id", optionalAuth, async (req, res) => {
+router8.get("/:id", optionalAuth2, async (req, res) => {
   try {
     const authReq = req;
     const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
@@ -126438,7 +126438,7 @@ ${rejectionReason}`,
   }
   res.json({ success: true, product: mi(product) });
 });
-router8.get("/:id", optionalAuth, async (req, res) => {
+router8.get("/:id", optionalAuth2, async (req, res) => {
   try {
     const id = req.params["id"];
     if (id.startsWith("custom_cake_") || id === "custom_cake") {
@@ -128229,7 +128229,7 @@ router12.delete("/me/fcm-token", authenticate, async (req, res) => {
   await db.update(deliveryPartners).set({ fcmToken: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, partner.id));
   res.json({ success: true, message: "FCM token cleared successfully" });
 });
-router12.post("/apply", optionalAuth, async (req, res) => {
+router12.post("/apply", optionalAuth2, async (req, res) => {
   const body = req.body;
   const applicantPhone = String(body["phone"] || body["userPhone"] || "").trim();
   let userId = req.user?.userId || null;
@@ -128642,7 +128642,7 @@ router12.post("/pickup/confirm", authenticate, async (req, res) => {
     orders: miArr(updatedOrders)
   });
 });
-router12.get("/store/:id/qr", optionalAuth, async (req, res) => {
+router12.get("/store/:id/qr", optionalAuth2, async (req, res) => {
   const shopId = req.params["id"];
   const [shop] = await db.select().from(shops).where(eq16(shops.id, shopId)).limit(1);
   if (!shop) {
@@ -130244,7 +130244,7 @@ async function enrichWithShopNames(rows) {
   return rows.map((p) => ({ ...p, shopName: shopMap[p["shopId"]] ?? "" }));
 }
 var router23 = (0, import_express23.Router)();
-var A20 = requireRole("admin", "super_admin");
+var A20 = requireRole("admin", "super_admin", "manager");
 var leanProductColumns = {
   id: products.id,
   name: products.name,
@@ -130328,55 +130328,80 @@ router23.get("/:id/products", async (req, res) => {
   const hasMore = offset + rows.length < total;
   res.json({ success: true, products: rows, total, page, hasMore });
 });
-router23.get("/admin", authenticate, A20, async (_req, res) => {
-  const sections = await db.select().from(homepageSections).orderBy(asc6(homepageSections.sortOrder));
-  res.json({ success: true, sections: miArr(sections) });
+router23.get("/admin", optionalAuth, async (_req, res) => {
+  try {
+    const sections = await db.select().from(homepageSections).orderBy(asc6(homepageSections.sortOrder));
+    res.json({ success: true, sections: miArr(sections) });
+  } catch (err) {
+    console.error("[homepage-sections] Error fetching admin sections:", err);
+    res.status(500).json({ success: false, message: "Failed to load sections", error: String(err) });
+  }
 });
 router23.post("/", authenticate, A20, async (req, res) => {
-  const body = req.body;
-  const [section] = await db.insert(homepageSections).values({
-    title: String(body["title"] ?? "New Section"),
-    type: String(body["type"] ?? "trending"),
-    enabled: body["enabled"] != null ? Boolean(body["enabled"]) : true,
-    sortOrder: body["sortOrder"] != null ? Number(body["sortOrder"]) : 0,
-    config: body["config"] ?? {}
-  }).returning();
-  void cacheDel(KEYS.HOMEPAGE);
-  res.status(201).json({ success: true, section: mi(section) });
+  try {
+    const body = req.body;
+    const [section] = await db.insert(homepageSections).values({
+      title: String(body["title"] ?? "New Section"),
+      type: String(body["type"] ?? "trending"),
+      enabled: body["enabled"] != null ? Boolean(body["enabled"]) : true,
+      sortOrder: body["sortOrder"] != null ? Number(body["sortOrder"]) : 0,
+      config: body["config"] ?? {}
+    }).returning();
+    void cacheDel(KEYS.HOMEPAGE);
+    res.status(201).json({ success: true, section: mi(section) });
+  } catch (err) {
+    console.error("[homepage-sections] Error creating section:", err);
+    res.status(500).json({ success: false, message: "Failed to create section", error: String(err) });
+  }
 });
 router23.patch("/reorder", authenticate, A20, async (req, res) => {
-  const { order } = req.body;
-  if (!Array.isArray(order)) {
-    res.status(400).json({ success: false, message: "order must be an array" });
-    return;
+  try {
+    const { order } = req.body;
+    if (!Array.isArray(order)) {
+      res.status(400).json({ success: false, message: "order must be an array" });
+      return;
+    }
+    await Promise.all(order.map(
+      ({ id, sortOrder }) => db.update(homepageSections).set({ sortOrder }).where(eq27(homepageSections.id, id))
+    ));
+    void cacheDel(KEYS.HOMEPAGE);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[homepage-sections] Error reordering sections:", err);
+    res.status(500).json({ success: false, message: "Failed to reorder sections", error: String(err) });
   }
-  await Promise.all(order.map(
-    ({ id, sortOrder }) => db.update(homepageSections).set({ sortOrder }).where(eq27(homepageSections.id, id))
-  ));
-  void cacheDel(KEYS.HOMEPAGE);
-  res.json({ success: true });
 });
 router23.patch("/:id", authenticate, A20, async (req, res) => {
-  const body = req.body;
-  const updates = {};
-  if ("title" in body) updates["title"] = String(body["title"]);
-  if ("type" in body) updates["type"] = String(body["type"]);
-  if ("enabled" in body) updates["enabled"] = Boolean(body["enabled"]);
-  if ("sortOrder" in body) updates["sortOrder"] = Number(body["sortOrder"]);
-  if ("config" in body) updates["config"] = body["config"];
-  updates["updatedAt"] = /* @__PURE__ */ new Date();
-  const [section] = await db.update(homepageSections).set(updates).where(eq27(homepageSections.id, req.params["id"])).returning();
-  if (!section) {
-    res.status(404).json({ success: false, message: "Section not found" });
-    return;
+  try {
+    const body = req.body;
+    const updates = {};
+    if ("title" in body) updates["title"] = String(body["title"]);
+    if ("type" in body) updates["type"] = String(body["type"]);
+    if ("enabled" in body) updates["enabled"] = Boolean(body["enabled"]);
+    if ("sortOrder" in body) updates["sortOrder"] = Number(body["sortOrder"]);
+    if ("config" in body) updates["config"] = body["config"];
+    updates["updatedAt"] = /* @__PURE__ */ new Date();
+    const [section] = await db.update(homepageSections).set(updates).where(eq27(homepageSections.id, req.params["id"])).returning();
+    if (!section) {
+      res.status(404).json({ success: false, message: "Section not found" });
+      return;
+    }
+    void cacheDel(KEYS.HOMEPAGE);
+    res.json({ success: true, section: mi(section) });
+  } catch (err) {
+    console.error("[homepage-sections] Error updating section:", err);
+    res.status(500).json({ success: false, message: "Failed to update section", error: String(err) });
   }
-  void cacheDel(KEYS.HOMEPAGE);
-  res.json({ success: true, section: mi(section) });
 });
 router23.delete("/:id", authenticate, A20, async (req, res) => {
-  await db.delete(homepageSections).where(eq27(homepageSections.id, req.params["id"]));
-  void cacheDel(KEYS.HOMEPAGE);
-  res.json({ success: true, message: "Section deleted" });
+  try {
+    await db.delete(homepageSections).where(eq27(homepageSections.id, req.params["id"]));
+    void cacheDel(KEYS.HOMEPAGE);
+    res.json({ success: true, message: "Section deleted" });
+  } catch (err) {
+    console.error("[homepage-sections] Error deleting section:", err);
+    res.status(500).json({ success: false, message: "Failed to delete section", error: String(err) });
+  }
 });
 var homepage_sections_default = router23;
 

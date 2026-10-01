@@ -15,7 +15,7 @@ async function enrichWithShopNames(rows: Record<string, unknown>[]) {
 }
 
 const router = Router();
-const A = requireRole("admin", "super_admin");
+const A = requireRole("admin", "super_admin", "manager");
 
 type SectionConfig = {
   categorySlug?: string;
@@ -149,61 +149,86 @@ router.get("/:id/products", async (req: Request, res: Response): Promise<void> =
 });
 
 // GET /api/homepage-sections/admin — admin, all sections (no product resolution)
-router.get("/admin", authenticate, A, async (_req: AuthRequest, res: Response): Promise<void> => {
-  const sections = await db.select().from(homepageSections).orderBy(asc(homepageSections.sortOrder));
-  res.json({ success: true, sections: miArr(sections) });
+router.get("/admin", optionalAuth, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const sections = await db.select().from(homepageSections).orderBy(asc(homepageSections.sortOrder));
+    res.json({ success: true, sections: miArr(sections) });
+  } catch (err) {
+    console.error("[homepage-sections] Error fetching admin sections:", err);
+    res.status(500).json({ success: false, message: "Failed to load sections", error: String(err) });
+  }
 });
 
 // POST /api/homepage-sections — admin, create section
 router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const body = req.body as Record<string, unknown>;
-  const [section] = await db.insert(homepageSections).values({
-    title: String(body["title"] ?? "New Section"),
-    type: String(body["type"] ?? "trending"),
-    enabled: body["enabled"] != null ? Boolean(body["enabled"]) : true,
-    sortOrder: body["sortOrder"] != null ? Number(body["sortOrder"]) : 0,
-    config: (body["config"] as object) ?? {},
-  }).returning();
-  void cacheDel(KEYS.HOMEPAGE);
-  res.status(201).json({ success: true, section: mi(section!) });
+  try {
+    const body = req.body as Record<string, unknown>;
+    const [section] = await db.insert(homepageSections).values({
+      title: String(body["title"] ?? "New Section"),
+      type: String(body["type"] ?? "trending"),
+      enabled: body["enabled"] != null ? Boolean(body["enabled"]) : true,
+      sortOrder: body["sortOrder"] != null ? Number(body["sortOrder"]) : 0,
+      config: (body["config"] as object) ?? {},
+    }).returning();
+    void cacheDel(KEYS.HOMEPAGE);
+    res.status(201).json({ success: true, section: mi(section!) });
+  } catch (err) {
+    console.error("[homepage-sections] Error creating section:", err);
+    res.status(500).json({ success: false, message: "Failed to create section", error: String(err) });
+  }
 });
 
 // PATCH /api/homepage-sections/reorder — admin, batch update sort orders
 router.patch("/reorder", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { order } = req.body as { order: Array<{ id: string; sortOrder: number }> };
-  if (!Array.isArray(order)) { res.status(400).json({ success: false, message: "order must be an array" }); return; }
-  await Promise.all(order.map(({ id, sortOrder }) =>
-    db.update(homepageSections).set({ sortOrder }).where(eq(homepageSections.id, id))
-  ));
-  void cacheDel(KEYS.HOMEPAGE);
-  res.json({ success: true });
+  try {
+    const { order } = req.body as { order: Array<{ id: string; sortOrder: number }> };
+    if (!Array.isArray(order)) { res.status(400).json({ success: false, message: "order must be an array" }); return; }
+    await Promise.all(order.map(({ id, sortOrder }) =>
+      db.update(homepageSections).set({ sortOrder }).where(eq(homepageSections.id, id))
+    ));
+    void cacheDel(KEYS.HOMEPAGE);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[homepage-sections] Error reordering sections:", err);
+    res.status(500).json({ success: false, message: "Failed to reorder sections", error: String(err) });
+  }
 });
 
 // PATCH /api/homepage-sections/:id — admin, update section
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const body = req.body as Record<string, unknown>;
-  const updates: Record<string, unknown> = {};
-  if ("title" in body) updates["title"] = String(body["title"]);
-  if ("type" in body) updates["type"] = String(body["type"]);
-  if ("enabled" in body) updates["enabled"] = Boolean(body["enabled"]);
-  if ("sortOrder" in body) updates["sortOrder"] = Number(body["sortOrder"]);
-  if ("config" in body) updates["config"] = body["config"] as object;
-  updates["updatedAt"] = new Date();
+  try {
+    const body = req.body as Record<string, unknown>;
+    const updates: Record<string, unknown> = {};
+    if ("title" in body) updates["title"] = String(body["title"]);
+    if ("type" in body) updates["type"] = String(body["type"]);
+    if ("enabled" in body) updates["enabled"] = Boolean(body["enabled"]);
+    if ("sortOrder" in body) updates["sortOrder"] = Number(body["sortOrder"]);
+    if ("config" in body) updates["config"] = body["config"] as object;
+    updates["updatedAt"] = new Date();
 
-  const [section] = await db.update(homepageSections)
-    .set(updates)
-    .where(eq(homepageSections.id, req.params["id"] as string))
-    .returning();
-  if (!section) { res.status(404).json({ success: false, message: "Section not found" }); return; }
-  void cacheDel(KEYS.HOMEPAGE);
-  res.json({ success: true, section: mi(section) });
+    const [section] = await db.update(homepageSections)
+      .set(updates)
+      .where(eq(homepageSections.id, req.params["id"] as string))
+      .returning();
+    if (!section) { res.status(404).json({ success: false, message: "Section not found" }); return; }
+    void cacheDel(KEYS.HOMEPAGE);
+    res.json({ success: true, section: mi(section) });
+  } catch (err) {
+    console.error("[homepage-sections] Error updating section:", err);
+    res.status(500).json({ success: false, message: "Failed to update section", error: String(err) });
+  }
 });
 
 // DELETE /api/homepage-sections/:id — admin, delete section
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  await db.delete(homepageSections).where(eq(homepageSections.id, req.params["id"] as string));
-  void cacheDel(KEYS.HOMEPAGE);
-  res.json({ success: true, message: "Section deleted" });
+  try {
+    await db.delete(homepageSections).where(eq(homepageSections.id, req.params["id"] as string));
+    void cacheDel(KEYS.HOMEPAGE);
+    res.json({ success: true, message: "Section deleted" });
+  } catch (err) {
+    console.error("[homepage-sections] Error deleting section:", err);
+    res.status(500).json({ success: false, message: "Failed to delete section", error: String(err) });
+  }
 });
 
 export default router;
