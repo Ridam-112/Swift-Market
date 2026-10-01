@@ -416,9 +416,9 @@ function buildMaintenanceHtml(message: string, endTime: string | null): string {
 // ─── Middleware export ────────────────────────────────────────────────────────
 
 export function maintenanceMode(req: Request, res: Response, next: NextFunction): void {
-  // Disabled by default unless explicitly enabled with MAINTENANCE_MODE=true
+  // Enabled by default unless explicitly disabled with MAINTENANCE_MODE=false
   const envVal = process.env["MAINTENANCE_MODE"];
-  const enabled = envVal !== undefined && (envVal.toLowerCase() === "true" || envVal === "1");
+  const enabled = envVal !== undefined ? (envVal.toLowerCase() === "true" || envVal === "1") : true;
   if (!enabled) { next(); return; }
 
   // Always pass through: health check, bypass endpoint, robots.txt, and sitemap.xml

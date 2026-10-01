@@ -133099,7 +133099,7 @@ function buildMaintenanceHtml(message, endTime) {
 }
 function maintenanceMode(req, res, next) {
   const envVal = process.env["MAINTENANCE_MODE"];
-  const enabled = envVal !== void 0 && (envVal.toLowerCase() === "true" || envVal === "1");
+  const enabled = envVal !== void 0 ? envVal.toLowerCase() === "true" || envVal === "1" : true;
   if (!enabled) {
     next();
     return;
