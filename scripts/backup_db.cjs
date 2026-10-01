@@ -10,6 +10,7 @@
  *   DB_INDEX=1 node scripts/backup_db.cjs  (Back up from DB 1, 2, 3, 4 or 5)
  */
 
+require('./load_env.cjs');
 const fs = require('fs');
 const path = require('path');
 const pg = require(path.join(__dirname, '../artifacts/api-server/node_modules/pg'));
@@ -18,12 +19,12 @@ const { Pool } = pg;
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const DB_URLS = [
-  process.env.DATABASE_URL || "postgresql://neondb_owner:npg_wyr4mq0sbZvV@ep-calm-glitter-aoeraspe-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
-  process.env.DATABASE2_URL || "postgresql://neondb_owner:npg_U38WKbfcFLwB@ep-lucky-shape-azpdcnzz-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
-  process.env.DATABASE3_URL || "postgresql://neondb_owner:npg_5xQCT9dNgqRS@ep-small-violet-azvsq53k-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
-  process.env.DATABASE4_URL || "postgresql://neondb_owner:npg_4enZGx0fHDIv@ep-dawn-unit-azzrimbp-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
-  process.env.DATABASE5_URL || "postgresql://neondb_owner:npg_tFHT9NoO5Cvy@ep-dark-tooth-az6x4682-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
-];
+  process.env.DATABASE_URL || process.env.DATABASE1_URL,
+  process.env.DATABASE2_URL,
+  process.env.DATABASE3_URL,
+  process.env.DATABASE4_URL,
+  process.env.DATABASE5_URL,
+].filter(Boolean);
 
 const selectedIndex = parseInt(process.env.DB_INDEX || "1", 10) - 1;
 const DB_URL = DB_URLS[selectedIndex] || DB_URLS[0];

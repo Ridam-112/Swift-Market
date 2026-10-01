@@ -117177,11 +117177,11 @@ var customCakeRequests = pgTable37("custom_cake_requests", {
 // ../../lib/db/dist/index.js
 var { Pool: Pool2 } = esm_default;
 var DB_URLS = [
-  process.env.DATABASE_URL || process.env.DATABASE1_URL || "postgresql://neondb_owner:npg_wyr4mq0sbZvV@ep-calm-glitter-aoeraspe-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
-  process.env.DATABASE2_URL || "postgresql://neondb_owner:npg_U38WKbfcFLwB@ep-lucky-shape-azpdcnzz-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
-  process.env.DATABASE3_URL || "postgresql://neondb_owner:npg_5xQCT9dNgqRS@ep-small-violet-azvsq53k-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
-  process.env.DATABASE4_URL || "postgresql://neondb_owner:npg_4enZGx0fHDIv@ep-dawn-unit-azzrimbp-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
-  process.env.DATABASE5_URL || "postgresql://neondb_owner:npg_tFHT9NoO5Cvy@ep-dark-tooth-az6x4682-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+  process.env.DATABASE_URL || process.env.DATABASE1_URL,
+  process.env.DATABASE2_URL,
+  process.env.DATABASE3_URL,
+  process.env.DATABASE4_URL,
+  process.env.DATABASE5_URL
 ].filter((url) => Boolean(url && url.trim().length > 0));
 function createPgPool(connectionString, index17) {
   const isNeon = connectionString.includes("neon") || connectionString.includes("sslmode=require");

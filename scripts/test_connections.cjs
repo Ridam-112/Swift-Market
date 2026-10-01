@@ -1,14 +1,20 @@
+require('./load_env.cjs');
 const path = require('path');
 const pg = require(path.join(__dirname, '../artifacts/api-server/node_modules/pg'));
+
 const urls = [
-  'postgresql://neondb_owner:npg_wyr4mq0sbZvV@ep-calm-glitter-aoeraspe-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
-  'postgresql://neondb_owner:npg_U38WKbfcFLwB@ep-lucky-shape-azpdcnzz-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
-  'postgresql://neondb_owner:npg_5xQCT9dNgqRS@ep-small-violet-azvsq53k-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
-  'postgresql://neondb_owner:npg_4enZGx0fHDIv@ep-dawn-unit-azzrimbp-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
-  'postgresql://neondb_owner:npg_tFHT9NoO5Cvy@ep-dark-tooth-az6x4682-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
-];
+  process.env.DATABASE_URL || process.env.DATABASE1_URL,
+  process.env.DATABASE2_URL,
+  process.env.DATABASE3_URL,
+  process.env.DATABASE4_URL,
+  process.env.DATABASE5_URL,
+].filter(Boolean);
 
 async function check() {
+  if (urls.length === 0) {
+    console.log('No DATABASE_URL environment variables configured in .env');
+    return;
+  }
   for (let i = 0; i < urls.length; i++) {
     const p = new pg.Pool({ connectionString: urls[i], ssl: { rejectUnauthorized: false } });
     try {
