@@ -7914,14 +7914,16 @@ function HomepageSectionsTab() {
           setSections([]);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.warn("[HomepageSections] /admin fetch error, trying fallback...", err);
         return api.get<{ success: boolean; sections: HomepageSectionRow[] }>('/homepage-sections')
           .then(d => {
             if (d && Array.isArray(d.sections)) {
               setSections(d.sections);
             }
           })
-          .catch(() => {
+          .catch((err2) => {
+            console.error("[HomepageSections] failed to load:", err2);
             toast.error("Failed to load sections");
           });
       })
@@ -7988,6 +7990,15 @@ function HomepageSectionsTab() {
 
   async function handleSave() {
     if (!formTitle.trim()) { toast.error("Title is required"); return; }
+    if (formType === "category" && !formCategorySlug.trim()) {
+      toast.error("Please select a category");
+      return;
+    }
+    if (formType === "manual" && formProductIds.length === 0) {
+      toast.error("Please select at least one product");
+      return;
+    }
+
     setSaving("form");
     const config: HomepageSectionRow["config"] = { limit: formLimit, layout: formLayout };
     if (formType === "category") config.categorySlug = formCategorySlug;
@@ -7999,14 +8010,15 @@ function HomepageSectionsTab() {
         await api.patch(`/homepage-sections/${secId}`, { title: formTitle, type: formType, config });
         toast.success("Section updated");
       } else {
-        const maxOrder = sections.length > 0 ? Math.max(...sections.map(s => s.sortOrder)) + 1 : 0;
+        const maxOrder = sections.length > 0 ? Math.max(...sections.map(s => Number(s.sortOrder) || 0)) + 1 : 0;
         await api.post('/homepage-sections', { title: formTitle, type: formType, config, sortOrder: maxOrder });
         toast.success("Section created");
       }
       setShowForm(false);
       load();
-    } catch {
-      toast.error("Failed to save section");
+    } catch (err: any) {
+      console.error("Failed to save section:", err);
+      toast.error(err?.message || "Failed to save section");
     } finally {
       setSaving(null);
     }

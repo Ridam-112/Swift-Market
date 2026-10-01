@@ -31,7 +31,8 @@ const TABLES = [
   'users',
   'admins',
   'delivery_partners',
-  'orders'
+  'orders',
+  'homepage_sections'
 ];
 
 async function syncDatabases() {

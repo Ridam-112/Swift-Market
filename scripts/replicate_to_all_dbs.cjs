@@ -39,7 +39,8 @@ const TABLES = [
   "notifications",
   "push_subscriptions",
   "fcm_tokens",
-  "otp_sessions"
+  "otp_sessions",
+  "homepage_sections"
 ];
 
 function chunkArray(array, size) {

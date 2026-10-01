@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { db, homepageSections, products, shops } from "@workspace/db";
+import { db, primaryDb, replicaDbs, homepageSections, products, shops } from "@workspace/db";
 import { eq, inArray, asc, and, gt, desc, sql } from "drizzle-orm";
 import { authenticate, requireRole, optionalAuth, type AuthRequest } from "../../middlewares/auth.js";
 import { mi, miArr } from "../../utils/mapId.js";
@@ -114,7 +114,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const sections = await db.select().from(homepageSections)
+  const sections = await primaryDb.select().from(homepageSections)
     .where(eq(homepageSections.enabled, true))
     .orderBy(asc(homepageSections.sortOrder));
 
@@ -132,7 +132,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 // GET /api/homepage-sections/admin — admin, all sections (no product resolution)
 router.get("/admin", optionalAuth, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const sections = await db.select().from(homepageSections).orderBy(asc(homepageSections.sortOrder));
+    const sections = await primaryDb.select().from(homepageSections).orderBy(asc(homepageSections.sortOrder));
     res.json({ success: true, sections: miArr(sections) });
   } catch (err) {
     console.error("[homepage-sections] Error fetching admin sections:", err);
@@ -148,7 +148,7 @@ router.get("/:id/products", async (req: Request, res: Response): Promise<void> =
   const limit = Math.min(40, parseInt((req.query as Record<string, string>)["limit"] ?? "8"));
   const offset = (page - 1) * limit;
 
-  const [section] = await db.select().from(homepageSections)
+  const [section] = await primaryDb.select().from(homepageSections)
     .where(eq(homepageSections.id, id)).limit(1);
   if (!section) { res.status(404).json({ success: false, message: "Section not found" }); return; }
 
@@ -163,13 +163,22 @@ router.get("/:id/products", async (req: Request, res: Response): Promise<void> =
 router.post("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const body = req.body as Record<string, unknown>;
-    const [section] = await db.insert(homepageSections).values({
+    const insertValues = {
       title: String(body["title"] ?? "New Section"),
       type: String(body["type"] ?? "trending"),
       enabled: body["enabled"] != null ? Boolean(body["enabled"]) : true,
       sortOrder: body["sortOrder"] != null ? Number(body["sortOrder"]) : 0,
       config: (body["config"] as object) ?? {},
-    }).returning();
+    };
+    const [section] = await primaryDb.insert(homepageSections).values(insertValues).returning();
+    
+    // Background sync to all replicas
+    if (section) {
+      void Promise.allSettled(
+        replicaDbs.map(rDb => rDb.insert(homepageSections).values({ ...insertValues, id: section.id }).catch(() => {}))
+      );
+    }
+
     void cacheDel(KEYS.HOMEPAGE);
     res.status(201).json({ success: true, section: mi(section!) });
   } catch (err) {
@@ -184,8 +193,16 @@ router.patch("/reorder", authenticate, A, async (req: AuthRequest, res: Response
     const { order } = req.body as { order: Array<{ id: string; sortOrder: number }> };
     if (!Array.isArray(order)) { res.status(400).json({ success: false, message: "order must be an array" }); return; }
     await Promise.all(order.map(({ id, sortOrder }) =>
-      db.update(homepageSections).set({ sortOrder }).where(eq(homepageSections.id, id))
+      primaryDb.update(homepageSections).set({ sortOrder }).where(eq(homepageSections.id, id))
     ));
+    // Background sync to all replicas
+    void Promise.allSettled(
+      replicaDbs.map(rDb =>
+        Promise.all(order.map(({ id, sortOrder }) =>
+          rDb.update(homepageSections).set({ sortOrder }).where(eq(homepageSections.id, id)).catch(() => {})
+        ))
+      )
+    );
     void cacheDel(KEYS.HOMEPAGE);
     res.json({ success: true });
   } catch (err) {
@@ -206,11 +223,18 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
     if ("config" in body) updates["config"] = body["config"] as object;
     updates["updatedAt"] = new Date();
 
-    const [section] = await db.update(homepageSections)
+    const id = req.params["id"] as string;
+    const [section] = await primaryDb.update(homepageSections)
       .set(updates)
-      .where(eq(homepageSections.id, req.params["id"] as string))
+      .where(eq(homepageSections.id, id))
       .returning();
     if (!section) { res.status(404).json({ success: false, message: "Section not found" }); return; }
+
+    // Background sync to all replicas
+    void Promise.allSettled(
+      replicaDbs.map(rDb => rDb.update(homepageSections).set(updates).where(eq(homepageSections.id, id)).catch(() => {}))
+    );
+
     void cacheDel(KEYS.HOMEPAGE);
     res.json({ success: true, section: mi(section) });
   } catch (err) {
@@ -222,7 +246,12 @@ router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): P
 // DELETE /api/homepage-sections/:id — admin, delete section
 router.delete("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    await db.delete(homepageSections).where(eq(homepageSections.id, req.params["id"] as string));
+    const id = req.params["id"] as string;
+    await primaryDb.delete(homepageSections).where(eq(homepageSections.id, id));
+    // Background sync to all replicas
+    void Promise.allSettled(
+      replicaDbs.map(rDb => rDb.delete(homepageSections).where(eq(homepageSections.id, id)).catch(() => {}))
+    );
     void cacheDel(KEYS.HOMEPAGE);
     res.json({ success: true, message: "Section deleted" });
   } catch (err) {

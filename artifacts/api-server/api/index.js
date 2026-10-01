@@ -130302,7 +130302,7 @@ router23.get("/", async (_req, res) => {
     res.json(cached);
     return;
   }
-  const sections = await db.select().from(homepageSections).where(eq27(homepageSections.enabled, true)).orderBy(asc6(homepageSections.sortOrder));
+  const sections = await primaryDb.select().from(homepageSections).where(eq27(homepageSections.enabled, true)).orderBy(asc6(homepageSections.sortOrder));
   const resolved = await Promise.all(sections.map(async (s2) => {
     const cfg = s2.config ?? {};
     const { rows, total } = await resolveProducts(s2.type, cfg, 8, 0);
@@ -130314,7 +130314,7 @@ router23.get("/", async (_req, res) => {
 });
 router23.get("/admin", optionalAuth, async (_req, res) => {
   try {
-    const sections = await db.select().from(homepageSections).orderBy(asc6(homepageSections.sortOrder));
+    const sections = await primaryDb.select().from(homepageSections).orderBy(asc6(homepageSections.sortOrder));
     res.json({ success: true, sections: miArr(sections) });
   } catch (err) {
     console.error("[homepage-sections] Error fetching admin sections:", err);
@@ -130327,7 +130327,7 @@ router23.get("/:id/products", async (req, res) => {
   const page = Math.max(1, parseInt(req.query["page"] ?? "1"));
   const limit = Math.min(40, parseInt(req.query["limit"] ?? "8"));
   const offset = (page - 1) * limit;
-  const [section] = await db.select().from(homepageSections).where(eq27(homepageSections.id, id)).limit(1);
+  const [section] = await primaryDb.select().from(homepageSections).where(eq27(homepageSections.id, id)).limit(1);
   if (!section) {
     res.status(404).json({ success: false, message: "Section not found" });
     return;
@@ -130340,13 +130340,20 @@ router23.get("/:id/products", async (req, res) => {
 router23.post("/", authenticate, A20, async (req, res) => {
   try {
     const body = req.body;
-    const [section] = await db.insert(homepageSections).values({
+    const insertValues = {
       title: String(body["title"] ?? "New Section"),
       type: String(body["type"] ?? "trending"),
       enabled: body["enabled"] != null ? Boolean(body["enabled"]) : true,
       sortOrder: body["sortOrder"] != null ? Number(body["sortOrder"]) : 0,
       config: body["config"] ?? {}
-    }).returning();
+    };
+    const [section] = await primaryDb.insert(homepageSections).values(insertValues).returning();
+    if (section) {
+      void Promise.allSettled(
+        replicaDbs.map((rDb) => rDb.insert(homepageSections).values({ ...insertValues, id: section.id }).catch(() => {
+        }))
+      );
+    }
     void cacheDel(KEYS.HOMEPAGE);
     res.status(201).json({ success: true, section: mi(section) });
   } catch (err) {
@@ -130362,8 +130369,16 @@ router23.patch("/reorder", authenticate, A20, async (req, res) => {
       return;
     }
     await Promise.all(order.map(
-      ({ id, sortOrder }) => db.update(homepageSections).set({ sortOrder }).where(eq27(homepageSections.id, id))
+      ({ id, sortOrder }) => primaryDb.update(homepageSections).set({ sortOrder }).where(eq27(homepageSections.id, id))
     ));
+    void Promise.allSettled(
+      replicaDbs.map(
+        (rDb) => Promise.all(order.map(
+          ({ id, sortOrder }) => rDb.update(homepageSections).set({ sortOrder }).where(eq27(homepageSections.id, id)).catch(() => {
+          })
+        ))
+      )
+    );
     void cacheDel(KEYS.HOMEPAGE);
     res.json({ success: true });
   } catch (err) {
@@ -130381,11 +130396,16 @@ router23.patch("/:id", authenticate, A20, async (req, res) => {
     if ("sortOrder" in body) updates["sortOrder"] = Number(body["sortOrder"]);
     if ("config" in body) updates["config"] = body["config"];
     updates["updatedAt"] = /* @__PURE__ */ new Date();
-    const [section] = await db.update(homepageSections).set(updates).where(eq27(homepageSections.id, req.params["id"])).returning();
+    const id = req.params["id"];
+    const [section] = await primaryDb.update(homepageSections).set(updates).where(eq27(homepageSections.id, id)).returning();
     if (!section) {
       res.status(404).json({ success: false, message: "Section not found" });
       return;
     }
+    void Promise.allSettled(
+      replicaDbs.map((rDb) => rDb.update(homepageSections).set(updates).where(eq27(homepageSections.id, id)).catch(() => {
+      }))
+    );
     void cacheDel(KEYS.HOMEPAGE);
     res.json({ success: true, section: mi(section) });
   } catch (err) {
@@ -130395,7 +130415,12 @@ router23.patch("/:id", authenticate, A20, async (req, res) => {
 });
 router23.delete("/:id", authenticate, A20, async (req, res) => {
   try {
-    await db.delete(homepageSections).where(eq27(homepageSections.id, req.params["id"]));
+    const id = req.params["id"];
+    await primaryDb.delete(homepageSections).where(eq27(homepageSections.id, id));
+    void Promise.allSettled(
+      replicaDbs.map((rDb) => rDb.delete(homepageSections).where(eq27(homepageSections.id, id)).catch(() => {
+      }))
+    );
     void cacheDel(KEYS.HOMEPAGE);
     res.json({ success: true, message: "Section deleted" });
   } catch (err) {

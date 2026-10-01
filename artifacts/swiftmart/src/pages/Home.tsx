@@ -218,7 +218,6 @@ const HOME_JSON_LD = [
 // navigating back to Home doesn't re-fetch static-ish data every time.
 const CACHE_TTL = 5 * 60_000; // 5 min
 let _categoriesCache: { data: DisplayCategory[]; at: number } | null = null;
-let _sectionsCache: { data: HomepageSection[]; at: number } | null = null;
 
 const VISIBLE_CATEGORIES = 8;
 
@@ -274,7 +273,8 @@ function mapProduct(p: RawProduct): Product {
 }
 
 interface HomepageSection {
-  _id: string;
+  _id?: string;
+  id?: string;
   title: string;
   type: string;
   enabled: boolean;
@@ -286,7 +286,8 @@ interface HomepageSection {
 }
 
 function DynamicSection({ section }: { section: HomepageSection }) {
-  const sectionHref = `/section/${section._id}?title=${encodeURIComponent(section.title)}`;
+  const secId = section._id || section.id || "";
+  const sectionHref = `/section/${secId}?title=${encodeURIComponent(section.title)}`;
   const isCarousel = section.config?.layout === "scroll";
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -392,20 +393,15 @@ export default function Home() {
     typeof localStorage !== "undefined" && localStorage.getItem("sm_promo_banner_v1") === "1"
   );
 
-  // Load admin-configured homepage sections (cached in memory for 5 min)
+  // Load admin-configured homepage sections
   useEffect(() => {
-    if (_sectionsCache && Date.now() - _sectionsCache.at < CACHE_TTL) {
-      setDynamicSections(_sectionsCache.data);
-      setSectionsLoading(false);
-      return;
-    }
+    setSectionsLoading(true);
     api.get<{ success: boolean; sections: Array<HomepageSection & { products: RawProduct[] }> }>('/homepage-sections')
       .then(d => {
         const mapped = (d.sections ?? []).map(s => ({
           ...s,
           products: (s.products ?? []).map(mapProduct),
         }));
-        _sectionsCache = { data: mapped, at: Date.now() };
         setDynamicSections(mapped);
       })
       .catch(() => {})
@@ -701,26 +697,7 @@ export default function Home() {
                 products: section.products.filter(p => !p.shopId || visibleShopIds.size === 0 || visibleShopIds.has(p.shopId)),
               }))
               .filter(s => s.products.length > 0)
-              .map(section => <DynamicSection key={section._id} section={section} />)
-          ) : products.length > 0 ? (
-            <section>
-              <SectionHeader
-                title="Popular & Trending Items"
-                action={
-                  <Link
-                    href="/products"
-                    className="flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80 transition-opacity"
-                  >
-                    See all <ChevronRight className="w-4 h-4" />
-                  </Link>
-                }
-              />
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
-                {products.slice(0, 12).map((product, i) => (
-                  <ProductCard key={product.id} product={product} index={i} />
-                ))}
-              </div>
-            </section>
+              .map(section => <DynamicSection key={section._id || section.id} section={section} />)
           ) : null}
 
           {/* ── AdSense Section Banner: Above FAQ ── */}
