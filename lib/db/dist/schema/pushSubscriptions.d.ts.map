@@ -1,0 +1,1 @@
+{"version":3,"file":"pushSubscriptions.d.ts","sourceRoot":"","sources":["../../src/schema/pushSubscriptions.ts"],"names":[],"mappings":"AAEA,eAAO,MAAM,iBAAiB;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAM5B,CAAC;AAEH,MAAM,MAAM,gBAAgB,GAAG,OAAO,iBAAiB,CAAC,YAAY,CAAC;AACrE,MAAM,MAAM,sBAAsB,GAAG,OAAO,iBAAiB,CAAC,YAAY,CAAC"}

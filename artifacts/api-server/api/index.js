@@ -116324,6 +116324,7 @@ import { createHash, randomBytes } from "node:crypto";
 
 // ../../lib/db/dist/index.js
 import { drizzle } from "drizzle-orm/node-postgres";
+import { withReplicas } from "drizzle-orm/pg-core";
 
 // ../../node_modules/.pnpm/pg@8.20.0/node_modules/pg/esm/index.mjs
 var import_lib = __toESM(require_lib4(), 1);
@@ -117175,42 +117176,44 @@ var customCakeRequests = pgTable37("custom_cake_requests", {
 
 // ../../lib/db/dist/index.js
 var { Pool: Pool2 } = esm_default;
-function resolveDbUrl() {
-  const candidates = [
-    process.env.DATABASE_URL,
-    process.env.AIVEN_DATABASE_URL,
-    process.env.MAIN_DB_URL,
-    process.env.DATABASE2_URL,
-    process.env.DATABASE1_URL,
-    process.env.NEON_DATABASE_URL,
-    process.env.TEMP_DB_URL,
-    process.env.AIVEN_URL
-  ];
-  for (const url of candidates) {
-    if (url && typeof url === "string" && url.trim().length > 0) {
-      return url.trim();
-    }
-  }
-  return "";
+var DB_URLS = [
+  process.env.DATABASE_URL || process.env.DATABASE1_URL || "postgresql://neondb_owner:npg_wyr4mq0sbZvV@ep-calm-glitter-aoeraspe-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+  process.env.DATABASE2_URL || "postgresql://neondb_owner:npg_U38WKbfcFLwB@ep-lucky-shape-azpdcnzz-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+  process.env.DATABASE3_URL || "postgresql://neondb_owner:npg_5xQCT9dNgqRS@ep-small-violet-azvsq53k-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+  process.env.DATABASE4_URL || "postgresql://neondb_owner:npg_4enZGx0fHDIv@ep-dawn-unit-azzrimbp-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+  process.env.DATABASE5_URL || "postgresql://neondb_owner:npg_tFHT9NoO5Cvy@ep-dark-tooth-az6x4682-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+].filter((url) => Boolean(url && url.trim().length > 0));
+function createPgPool(connectionString, index17) {
+  const isNeon = connectionString.includes("neon") || connectionString.includes("sslmode=require");
+  const poolInstance = new Pool2({
+    connectionString,
+    ssl: isNeon ? { rejectUnauthorized: false } : void 0,
+    max: 5,
+    // Keep small pool size so we never exceed Neon limits
+    idleTimeoutMillis: 15e3,
+    // 15s idle timeout: Neon auto-suspends to save 90% Compute Hours!
+    connectionTimeoutMillis: 1e4,
+    keepAlive: true
+  });
+  poolInstance.on("error", (err) => {
+    console.error(`[DB-${index17 + 1}] Idle client error:`, err.message);
+  });
+  return poolInstance;
 }
-var connectionString = resolveDbUrl();
-if (!connectionString) {
-  console.warn("[DB] \u26A0\uFE0F DATABASE_URL environment variable is not set. Ensure DATABASE_URL is provided in production.");
+var pools = DB_URLS.map((url, i2) => createPgPool(url, i2));
+var dbInstances = pools.map((p) => drizzle(p, { schema: schema_exports }));
+var pool = pools[0];
+var primaryDb = dbInstances[0];
+var replicaDbs = dbInstances.slice(1);
+var readCounter = 0;
+function getHealthyReplica(replicas) {
+  if (!replicas || replicas.length === 0)
+    return primaryDb;
+  const idx = readCounter++ % replicas.length;
+  return replicas[idx];
 }
-console.log("[DB] Connected to primary database:", connectionString.split("@")[1]?.split("/")[0] ?? "Neon DB");
-var isNeon = connectionString.includes("neon") || connectionString.includes("sslmode=require");
-var pool = new Pool2({
-  connectionString: connectionString || void 0,
-  ssl: isNeon ? { rejectUnauthorized: false } : void 0,
-  max: isNeon ? 5 : 10,
-  idleTimeoutMillis: isNeon ? 2e4 : 3e4,
-  connectionTimeoutMillis: 1e4,
-  keepAlive: true
-});
-pool.on("error", (err) => {
-  console.error("[DB] Idle client error:", err.message);
-});
-var db = drizzle(pool, { schema: schema_exports });
+var db = replicaDbs.length > 0 ? withReplicas(primaryDb, replicaDbs, (reps) => getHealthyReplica(reps)) : primaryDb;
+console.log(`[DB] 5-Database Sharded Read/Write Multi-Pool active: 1 Primary Writer + ${replicaDbs.length} Read Replicas (Total ${DB_URLS.length} Neon DBs).`);
 
 // src/routes/v1/auth.ts
 import { eq as eq3, or } from "drizzle-orm";

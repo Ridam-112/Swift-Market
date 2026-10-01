@@ -16,6 +16,7 @@
     }
   },
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "push": "drizzle-kit push --config ./drizzle.config.ts",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
     "push:neon": "DATABASE_URL=$NEON_DATABASE_URL drizzle-kit push --config ./drizzle.config.ts",
