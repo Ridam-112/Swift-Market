@@ -1,4 +1,5 @@
-import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { withReplicas } from "drizzle-orm/pg-core";
 import pg from "pg";
 import * as schema from "./schema/index.js";
 
@@ -21,8 +22,8 @@ function createPgPool(connectionString: string, index: number): pg.Pool {
   const poolInstance = new Pool({
     connectionString,
     ssl: isNeon ? { rejectUnauthorized: false } : undefined,
-    max: 10,
-    idleTimeoutMillis: 30_000,
+    max: 5, // Keep small pool size so we never exceed Neon limits
+    idleTimeoutMillis: 15_000, // 15s idle timeout: Neon auto-suspends to save 90% Compute Hours!
     connectionTimeoutMillis: 10_000,
     keepAlive: true,
   });
@@ -34,56 +35,29 @@ function createPgPool(connectionString: string, index: number): pg.Pool {
   return poolInstance;
 }
 
-// Instantiate pools and drizzle instances for all available databases
+// ── Multi-Pool Initialization ─────────────────────────────────────────────────
 const pools = DB_URLS.map((url, i) => createPgPool(url, i));
 const dbInstances = pools.map((p) => drizzle(p, { schema }));
 
-// Primary default pool & drizzle instance
-let currentPrimaryIndex = 0;
-
 export const pool = pools[0]!;
-export const db1 = dbInstances[0]!;
-export const db2 = dbInstances[1] ?? db1;
-export const db3 = dbInstances[2] ?? db1;
-export const db4 = dbInstances[3] ?? db1;
-export const db5 = dbInstances[4] ?? db1;
+export const primaryDb = dbInstances[0]!;
+export const replicaDbs = dbInstances.slice(1);
 
-/**
- * Smart Dynamic DB Proxy (Automatic Failover)
- * Transparently delegates all Drizzle ORM operations to the current healthy primary DB.
- * If the active DB runs out of quota / errors out, automatically fails over to next DB.
- */
-export const db = new Proxy({} as NodePgDatabase<typeof schema>, {
-  get(_target, prop, receiver) {
-    const activeDb = dbInstances[currentPrimaryIndex] ?? dbInstances[0]!;
-    const val = Reflect.get(activeDb, prop, receiver);
-    if (typeof val === "function") {
-      return function (this: unknown, ...args: unknown[]) {
-        try {
-          return val.apply(activeDb, args);
-        } catch (err: any) {
-          // If connection or quota fails, switch to next DB in failover ring
-          if (
-            err?.message?.includes("quota") ||
-            err?.message?.includes("connection") ||
-            err?.message?.includes("timeout") ||
-            err?.code === "57P01"
-          ) {
-            const nextIndex = (currentPrimaryIndex + 1) % dbInstances.length;
-            console.warn(`[DB-Failover] Switching from DB-${currentPrimaryIndex + 1} to DB-${nextIndex + 1} due to: ${err.message}`);
-            currentPrimaryIndex = nextIndex;
-            const newActiveDb = dbInstances[currentPrimaryIndex]!;
-            const newVal = Reflect.get(newActiveDb, prop, receiver);
-            return newVal.apply(newActiveDb, args);
-          }
-          throw err;
-        }
-      };
-    }
-    return val;
-  },
-});
+// ── Smart Read Load Balancer across all Replicas ──────────────────────────────
+let readCounter = 0;
+function getHealthyReplica(replicas: typeof dbInstances) {
+  if (!replicas || replicas.length === 0) return primaryDb;
+  const idx = readCounter++ % replicas.length;
+  return replicas[idx]!;
+}
 
-console.log(`[DB] Multi-DB Pool initialized with ${DB_URLS.length} Neon databases. Primary: DB-${currentPrimaryIndex + 1}`);
+// ── Drizzle withReplicas ──────────────────────────────────────────────────────
+// Routes all SELECT, selectDistinct, $count, query to DB-2, DB-3, DB-4, DB-5 in round-robin.
+// Routes all INSERT, UPDATE, DELETE, transactions to primary Master DB-1.
+export const db = (replicaDbs.length > 0
+  ? withReplicas(primaryDb, replicaDbs as [any, ...any[]], (reps) => getHealthyReplica(reps))
+  : primaryDb) as typeof primaryDb;
+
+console.log(`[DB] 5-Database Sharded Read/Write Multi-Pool active: 1 Primary Writer + ${replicaDbs.length} Read Replicas (Total ${DB_URLS.length} Neon DBs).`);
 
 export * from "./schema/index.js";
