@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { db, homepageSections, products, shops } from "@workspace/db";
 import { eq, inArray, asc, and, gt, desc, sql } from "drizzle-orm";
-import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
+import { authenticate, requireRole, optionalAuth, type AuthRequest } from "../../middlewares/auth.js";
 import { mi, miArr } from "../../utils/mapId.js";
 import { cacheGet, cacheSet, cacheDel, KEYS, TTL } from "../../lib/cache.js";
 
@@ -129,6 +129,17 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
   res.json(payload);
 });
 
+// GET /api/homepage-sections/admin — admin, all sections (no product resolution)
+router.get("/admin", optionalAuth, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const sections = await db.select().from(homepageSections).orderBy(asc(homepageSections.sortOrder));
+    res.json({ success: true, sections: miArr(sections) });
+  } catch (err) {
+    console.error("[homepage-sections] Error fetching admin sections:", err);
+    res.status(500).json({ success: false, message: "Failed to load sections", error: String(err) });
+  }
+});
+
 // GET /api/homepage-sections/:id/products — public, paginated products for one section
 router.get("/:id/products", async (req: Request, res: Response): Promise<void> => {
   res.setHeader("Cache-Control", "public, s-maxage=120, stale-while-revalidate=240");
@@ -146,17 +157,6 @@ router.get("/:id/products", async (req: Request, res: Response): Promise<void> =
   const hasMore = offset + rows.length < total;
 
   res.json({ success: true, products: rows, total, page, hasMore });
-});
-
-// GET /api/homepage-sections/admin — admin, all sections (no product resolution)
-router.get("/admin", optionalAuth, async (_req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const sections = await db.select().from(homepageSections).orderBy(asc(homepageSections.sortOrder));
-    res.json({ success: true, sections: miArr(sections) });
-  } catch (err) {
-    console.error("[homepage-sections] Error fetching admin sections:", err);
-    res.status(500).json({ success: false, message: "Failed to load sections", error: String(err) });
-  }
 });
 
 // POST /api/homepage-sections — admin, create section

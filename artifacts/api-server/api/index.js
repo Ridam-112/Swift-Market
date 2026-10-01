@@ -122518,7 +122518,7 @@ function requireRole(...roles) {
     next();
   };
 }
-function optionalAuth2(req, _res, next) {
+function optionalAuth(req, _res, next) {
   const authHeader = req.headers["authorization"];
   if (authHeader?.startsWith("Bearer ")) {
     try {
@@ -124553,7 +124553,7 @@ function stripSensitiveFields(shop) {
   for (const field of SENSITIVE_FIELDS) delete safe[field];
   return safe;
 }
-router5.get("/", optionalAuth2, async (req, res) => {
+router5.get("/", optionalAuth, async (req, res) => {
   try {
     const authReq = req;
     const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
@@ -124691,7 +124691,7 @@ router5.get("/:id/details", authenticate, A4, async (req, res) => {
   const owner = ownerArr[0] ? { ...ownerArr[0], _id: ownerArr[0].id } : null;
   res.json({ success: true, shop: mi(shop), products: miArr(shopProducts), orders: miArr(shopOrders), owner, totalProducts: shopProducts.length, totalOrders: shopOrders.length, revenue });
 });
-router5.get("/:id", optionalAuth2, async (req, res) => {
+router5.get("/:id", optionalAuth, async (req, res) => {
   try {
     const authReq = req;
     const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
@@ -125686,7 +125686,7 @@ function sanitizeVariants(raw) {
     };
   });
 }
-router8.get("/", optionalAuth2, async (req, res) => {
+router8.get("/", optionalAuth, async (req, res) => {
   try {
     const authReq = req;
     const isPrivileged = authReq.user?.role === "admin" || authReq.user?.role === "super_admin" || authReq.user?.role === "vendor";
@@ -125936,7 +125936,7 @@ router8.get("/trending-manager", authenticate, A7, async (req, res) => {
   }));
   res.json({ success: true, products: enriched });
 });
-router8.get("/barcode/:barcode", optionalAuth2, async (req, res) => {
+router8.get("/barcode/:barcode", optionalAuth, async (req, res) => {
   try {
     const rawBarcode = String(req.params["barcode"] || "").trim();
     if (!rawBarcode) {
@@ -125952,7 +125952,7 @@ router8.get("/barcode/:barcode", optionalAuth2, async (req, res) => {
     res.status(500).json({ success: false, status: "NOT_FOUND", message: "Failed to lookup barcode" });
   }
 });
-router8.get("/master-catalog", optionalAuth2, async (req, res) => {
+router8.get("/master-catalog", optionalAuth, async (req, res) => {
   try {
     const { search, category, limit = "30" } = req.query;
     const lm = Math.min(100, Math.max(1, parseInt(limit) || 30));
@@ -126099,7 +126099,7 @@ router8.post("/report-wrong", authenticate, async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to submit report" });
   }
 });
-router8.get("/:id", optionalAuth2, async (req, res) => {
+router8.get("/:id", optionalAuth, async (req, res) => {
   try {
     const authReq = req;
     const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
@@ -126438,7 +126438,7 @@ ${rejectionReason}`,
   }
   res.json({ success: true, product: mi(product) });
 });
-router8.get("/:id", optionalAuth2, async (req, res) => {
+router8.get("/:id", optionalAuth, async (req, res) => {
   try {
     const id = req.params["id"];
     if (id.startsWith("custom_cake_") || id === "custom_cake") {
@@ -128229,7 +128229,7 @@ router12.delete("/me/fcm-token", authenticate, async (req, res) => {
   await db.update(deliveryPartners).set({ fcmToken: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.id, partner.id));
   res.json({ success: true, message: "FCM token cleared successfully" });
 });
-router12.post("/apply", optionalAuth2, async (req, res) => {
+router12.post("/apply", optionalAuth, async (req, res) => {
   const body = req.body;
   const applicantPhone = String(body["phone"] || body["userPhone"] || "").trim();
   let userId = req.user?.userId || null;
@@ -128642,7 +128642,7 @@ router12.post("/pickup/confirm", authenticate, async (req, res) => {
     orders: miArr(updatedOrders)
   });
 });
-router12.get("/store/:id/qr", optionalAuth2, async (req, res) => {
+router12.get("/store/:id/qr", optionalAuth, async (req, res) => {
   const shopId = req.params["id"];
   const [shop] = await db.select().from(shops).where(eq16(shops.id, shopId)).limit(1);
   if (!shop) {
@@ -130312,6 +130312,15 @@ router23.get("/", async (_req, res) => {
   void cacheSet(KEYS.HOMEPAGE, payload, TTL.HOMEPAGE);
   res.json(payload);
 });
+router23.get("/admin", optionalAuth, async (_req, res) => {
+  try {
+    const sections = await db.select().from(homepageSections).orderBy(asc6(homepageSections.sortOrder));
+    res.json({ success: true, sections: miArr(sections) });
+  } catch (err) {
+    console.error("[homepage-sections] Error fetching admin sections:", err);
+    res.status(500).json({ success: false, message: "Failed to load sections", error: String(err) });
+  }
+});
 router23.get("/:id/products", async (req, res) => {
   res.setHeader("Cache-Control", "public, s-maxage=120, stale-while-revalidate=240");
   const id = req.params["id"];
@@ -130327,15 +130336,6 @@ router23.get("/:id/products", async (req, res) => {
   const { rows, total } = await resolveProducts(section.type, cfg, limit, offset);
   const hasMore = offset + rows.length < total;
   res.json({ success: true, products: rows, total, page, hasMore });
-});
-router23.get("/admin", optionalAuth, async (_req, res) => {
-  try {
-    const sections = await db.select().from(homepageSections).orderBy(asc6(homepageSections.sortOrder));
-    res.json({ success: true, sections: miArr(sections) });
-  } catch (err) {
-    console.error("[homepage-sections] Error fetching admin sections:", err);
-    res.status(500).json({ success: false, message: "Failed to load sections", error: String(err) });
-  }
 });
 router23.post("/", authenticate, A20, async (req, res) => {
   try {
