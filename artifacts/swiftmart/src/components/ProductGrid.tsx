@@ -40,7 +40,7 @@ export function ProductGrid({
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
       {products.map((product, index) => {
-        const shouldShowAd = showInFeedAds && (index + 1) % adFrequency === 0;
+        const shouldShowAd = showInFeedAds && products.length >= 8 && (index + 1) % adFrequency === 0;
         return (
           <Fragment key={product.id}>
             <ProductCard product={product} index={index} />

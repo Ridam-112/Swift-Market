@@ -10,7 +10,6 @@ import { Link } from "wouter";
 import { SectionHeader } from "@/components/SectionHeader";
 import { AddonSuggestions } from "@/components/AddonSuggestions";
 import { cartKey } from "@/context/CartContext";
-import { AdSenseSectionBanner } from "@/components/GoogleAdSense";
 
 const MINIMUM_ORDER_AMOUNT = 40;
 
@@ -89,7 +88,6 @@ export default function Cart() {
             <CartItemRow key={cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams, item.selectedVariantId)} item={item} />
           ))}
           <AddonSuggestions />
-          <AdSenseSectionBanner className="mt-4" />
         </div>
         
         <div className="w-full min-w-0 space-y-6">

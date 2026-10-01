@@ -305,10 +305,10 @@ export default function GroceryStore() {
                 {paginatedProducts.map((product, i) => (
                   <Fragment key={product.id}>
                     <ProductCard product={product} index={i % 24} />
-                    {i === 7 && (
+                    {paginatedProducts.length >= 8 && i === 7 && (
                       <AdSenseInFeedCard key="ad-groc-1" />
                     )}
-                    {i === 23 && (
+                    {paginatedProducts.length >= 24 && i === 23 && (
                       <AdSenseInFeedCard key="ad-groc-2" />
                     )}
                   </Fragment>

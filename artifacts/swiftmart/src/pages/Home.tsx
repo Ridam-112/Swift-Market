@@ -689,9 +689,6 @@ export default function Home() {
               .map(section => <DynamicSection key={section._id || section.id} section={section} />)
           ) : null}
 
-          {/* ── AdSense Section Banner ── */}
-          <AdSenseSectionBanner />
-
           {/* ── Space reserved for User Testimonials ── */}
         </>
       )}

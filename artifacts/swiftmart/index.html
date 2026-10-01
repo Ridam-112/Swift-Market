@@ -198,7 +198,31 @@
 
     <!-- Google AdSense (Verification & Asynchronous Ad Loader for Web) -->
     <meta name="google-adsense-account" content="ca-pub-3119816437064520">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3119816437064520" crossorigin="anonymous"></script>
+    <script>
+      // Load AdSense script only on valid publisher content screens.
+      // Excludes transactional, cart, checkout, auth, and under-construction pages
+      // per Google Publisher Policies (Screens without publisher content: https://support.google.com/publisherpolicies/answer/11112688)
+      (function() {
+        try {
+          var p = (window.location && window.location.pathname) ? window.location.pathname.toLowerCase() : "";
+          var restricted = [
+            "/cart", "/checkout", "/order-success", "/orders",
+            "/auth", "/complete-profile", "/profile", "/notifications",
+            "/admin", "/vendor", "/delivery", "/manager", "/delete-account", "/custom-cake-tracker"
+          ];
+          for (var i = 0; i < restricted.length; i++) {
+            if (p === restricted[i] || p.indexOf(restricted[i] + "/") === 0 || p.indexOf(restricted[i] + "?") === 0) {
+              return; // Do not load AdSense script on behavioral or utility screens
+            }
+          }
+          var s = document.createElement("script");
+          s.async = true;
+          s.crossOrigin = "anonymous";
+          s.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3119816437064520";
+          document.head.appendChild(s);
+        } catch(e) {}
+      })();
+    </script>
 
     <!-- Google Analytics (GA4) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-6YV5B74Q6Z"></script>

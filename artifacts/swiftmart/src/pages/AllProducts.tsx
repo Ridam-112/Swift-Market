@@ -178,7 +178,7 @@ export default function AllProducts() {
             {paginated.map((product, index) => (
               <Fragment key={product.id}>
                 <ProductCard product={product} index={index} />
-                {(index + 1) % 8 === 0 && (
+                {paginated.length >= 8 && (index + 1) % 8 === 0 && (
                   <AdSenseInFeedCard key={`ad-all-${index}`} />
                 )}
               </Fragment>

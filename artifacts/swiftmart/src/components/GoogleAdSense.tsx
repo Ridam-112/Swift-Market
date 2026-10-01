@@ -15,6 +15,7 @@
  */
 
 import React, { Component, useEffect, useRef, useState, type ReactNode } from "react";
+import { useLocation } from "wouter";
 import { api } from "@/lib/api";
 import { Megaphone, ExternalLink } from "lucide-react";
 
@@ -25,6 +26,44 @@ const ADSENSE_CLIENT_ID =
 
 const ADSENSE_ENABLED =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_ADSENSE_ENABLED !== "false");
+
+/**
+ * Routes where Google AdSense is STRICTLY PROHIBITED by Google Publisher Policies:
+ * - Screens without content or with low value content
+ * - Screens used for alerts, navigation or other behavioural purposes (Cart, Checkout, Auth, Orders, etc.)
+ * - Screens under construction, dashboards, or management panels
+ */
+export const RESTRICTED_ADSENSE_ROUTES = [
+  "/cart",
+  "/checkout",
+  "/order-success",
+  "/orders",
+  "/auth",
+  "/complete-profile",
+  "/profile",
+  "/notifications",
+  "/admin",
+  "/vendor",
+  "/delivery",
+  "/manager",
+  "/legal/delete-account",
+  "/delete-account",
+  "/custom-cake-tracker",
+];
+
+export function isAdSenseAllowed(currentPath: string): boolean {
+  let path = currentPath;
+  if (typeof window !== "undefined" && window.location.pathname) {
+    path = window.location.pathname;
+  }
+  const clean = (path || "").toLowerCase();
+  for (const restricted of RESTRICTED_ADSENSE_ROUTES) {
+    if (clean === restricted || clean.startsWith(restricted + "/") || clean.startsWith(restricted + "?")) {
+      return false;
+    }
+  }
+  return true;
+}
 
 interface AdSenseSlotProps {
   slotId?: string;
@@ -67,6 +106,7 @@ let scriptInjected = false;
 
 function injectAdSenseScript(clientId: string) {
   if (typeof window === "undefined" || scriptInjected) return;
+  if (!isAdSenseAllowed(window.location.pathname)) return;
   if (document.querySelector('script[src*="adsbygoogle.js"]')) {
     scriptInjected = true;
     return;
@@ -92,11 +132,12 @@ function AdSlotInner({
   className = "",
   variant = "display",
 }: AdSenseSlotProps) {
+  const [pathname] = useLocation();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isFilled, setIsFilled] = useState(false);
 
-  // Strictly disabled inside Native Capacitor App (Android/iOS) or if disabled
-  if (api.isCapacitorNative || !ADSENSE_ENABLED) {
+  // Strictly disabled inside Native Capacitor App, if disabled via env, or on prohibited routes per Google Policy
+  if (api.isCapacitorNative || !ADSENSE_ENABLED || !isAdSenseAllowed(pathname)) {
     return null;
   }
 
