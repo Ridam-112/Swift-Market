@@ -116576,7 +116576,9 @@ var products = pgTable7("products", {
   index3("products_shop_id_idx").on(t2.shopId),
   index3("products_category_idx").on(t2.category),
   index3("products_status_idx").on(t2.status),
-  index3("products_shop_id_status_idx").on(t2.shopId, t2.status)
+  index3("products_shop_id_status_idx").on(t2.shopId, t2.status),
+  index3("products_shop_cat_idx").on(t2.shopId, t2.category),
+  index3("products_created_at_idx").on(t2.createdAt)
 ]);
 
 // ../../lib/db/dist/schema/masterProducts.js
@@ -116678,7 +116680,9 @@ var orders = pgTable10("orders", {
   index6("orders_shop_id_idx").on(t2.shopId),
   index6("orders_status_idx").on(t2.status),
   index6("orders_payment_status_idx").on(t2.paymentStatus),
-  index6("orders_created_at_idx").on(t2.createdAt)
+  index6("orders_created_at_idx").on(t2.createdAt),
+  index6("orders_shop_status_idx").on(t2.shopId, t2.status),
+  index6("orders_rider_status_idx").on(t2.deliveryPartnerId, t2.status)
 ]);
 
 // ../../lib/db/dist/schema/otpSessions.js
@@ -116849,6 +116853,10 @@ var deliveryPartners = pgTable19("delivery_partners", {
   currentOrderId: text19("current_order_id"),
   currentLat: doublePrecision10("current_lat"),
   currentLon: doublePrecision10("current_lon"),
+  heading: doublePrecision10("heading"),
+  speed: doublePrecision10("speed"),
+  accuracy: doublePrecision10("accuracy"),
+  trackingStatus: text19("tracking_status").default("LIVE"),
   locationUpdatedAt: timestamp19("location_updated_at"),
   createdAt: timestamp19("created_at").notNull().defaultNow(),
   updatedAt: timestamp19("updated_at").notNull().defaultNow()
@@ -117167,10 +117175,29 @@ var customCakeRequests = pgTable37("custom_cake_requests", {
 
 // ../../lib/db/dist/index.js
 var { Pool: Pool2 } = esm_default;
-var connectionString = process.env.DATABASE1_URL ?? process.env.NEON_DATABASE_URL ?? process.env.DATABASE_URL ?? "";
-if (!connectionString) {
-  console.error("[DB Error] DATABASE_URL must be set in Environment Variables.");
+function resolveDbUrl() {
+  const candidates = [
+    process.env.DATABASE_URL,
+    process.env.AIVEN_DATABASE_URL,
+    process.env.MAIN_DB_URL,
+    process.env.DATABASE2_URL,
+    process.env.DATABASE1_URL,
+    process.env.NEON_DATABASE_URL,
+    process.env.TEMP_DB_URL,
+    process.env.AIVEN_URL
+  ];
+  for (const url of candidates) {
+    if (url && typeof url === "string" && url.trim().length > 0) {
+      return url.trim();
+    }
+  }
+  return "";
 }
+var connectionString = resolveDbUrl();
+if (!connectionString) {
+  console.warn("[DB] \u26A0\uFE0F DATABASE_URL environment variable is not set. Ensure DATABASE_URL is provided in production.");
+}
+console.log("[DB] Connected to primary database:", connectionString.split("@")[1]?.split("/")[0] ?? "Neon DB");
 var isNeon = connectionString.includes("neon") || connectionString.includes("sslmode=require");
 var pool = new Pool2({
   connectionString: connectionString || void 0,
@@ -125237,16 +125264,28 @@ import { eq as eq9, asc as asc3 } from "drizzle-orm";
 // src/lib/cache.ts
 var IORedis = __toESM(require_built3(), 1);
 var TTL = {
-  PRODUCTS: 5 * 60,
-  // 5 minutes
-  CATEGORIES: 30 * 60,
-  // 30 minutes
-  HOMEPAGE: 5 * 60
-  // 5 minutes
+  PRODUCTS: 10 * 60,
+  // 10 minutes
+  CATEGORIES: 60 * 60,
+  // 1 hour
+  HOMEPAGE: 15 * 60,
+  // 15 minutes
+  SHOPS: 15 * 60,
+  // 15 minutes
+  HERO_BANNERS: 60 * 60,
+  // 1 hour
+  PINCODES: 60 * 60,
+  // 1 hour
+  THEME_CONFIG: 60 * 60
+  // 1 hour
 };
 var KEYS = {
   CATEGORIES: "sm:categories",
   HOMEPAGE: "sm:homepage",
+  SHOPS: "sm:shops",
+  HERO_BANNERS: "sm:hero_banners",
+  PINCODES: "sm:pincodes",
+  THEME_CONFIG: "sm:theme_config",
   PRODUCTS_PREFIX: "sm:products:"
 };
 var memoryCache = /* @__PURE__ */ new Map();
@@ -132703,6 +132742,11 @@ function extractBypassToken(req) {
   }
   return null;
 }
+var BOT_USER_AGENT_REGEX = /googlebot|google-inspectiontool|pagespeed|storebot-google|mediapartners-google|adsbot-google|bingbot|yandex|duckduckbot|baiduspider|slurp|facebot|facebookexternalhit|twitterbot|linkedinbot|crawler|spider|robot|crawling|seoptimer|seositecheckup|ahrefs|semrush|moz|screaming|sitebulb|sitechecker|headlesschrome|phantomjs|puppeteer|lighthouse|w3c|validator|gtmetrix|pingdom/i;
+function isSearchCrawler(req) {
+  const ua = req.headers["user-agent"] ?? "";
+  return BOT_USER_AGENT_REGEX.test(ua);
+}
 function buildMaintenanceHtml(message, endTime) {
   const endTimeBlock = endTime ? `
       <div class="eta-box">
@@ -133062,8 +133106,7 @@ function maintenanceMode(req, res, next) {
     next();
     return;
   }
-  const BOT_REGEX = /googlebot|google-inspectiontool|pagespeed|storebot-google|mediapartners-google|adsbot-google|bingbot|yandex|duckduckbot|baiduspider|slurp|facebot|facebookexternalhit|twitterbot|linkedinbot|crawler|spider|robot|crawling/i;
-  if (BOT_REGEX.test(req.headers["user-agent"] || "") && (req.method === "GET" || req.method === "HEAD")) {
+  if (isSearchCrawler(req) && (req.method === "GET" || req.method === "HEAD")) {
     next();
     return;
   }
@@ -133268,28 +133311,63 @@ app.use("/api/uploads", import_express36.default.static(path3.join(__dirname2, "
 app.use("/api", globalApiLimiter, routes_default);
 if (process.env.NODE_ENV === "production") {
   const frontendDist = path3.join(__dirname2, "..", "..", "swiftmart", "dist", "public");
-  const ROBOTS_TXT = `User-agent: *
-Allow: /
-Disallow: /auth
-Disallow: /google-callback
-Disallow: /complete-profile
-Disallow: /cart
-Disallow: /checkout
-Disallow: /order/
-Disallow: /orders
-Disallow: /profile
-Disallow: /notifications
-Disallow: /vendor-register
-Disallow: /vendor-status
-Disallow: /vendor/
-Disallow: /admin
-Disallow: /manager-panel
-Disallow: /delivery-dashboard
-Disallow: /delivery/
-Disallow: /delete-account
-
-Sitemap: https://swiftmart.space/sitemap.xml
-`;
+  const ROBOTS_TXT = [
+    "User-agent: *",
+    "Allow: /",
+    "Allow: /sitemap.xml",
+    "Allow: /robots.txt",
+    "Disallow: /auth",
+    "Disallow: /google-callback",
+    "Disallow: /complete-profile",
+    "Disallow: /cart",
+    "Disallow: /checkout",
+    "Disallow: /order/",
+    "Disallow: /orders",
+    "Disallow: /profile",
+    "Disallow: /notifications",
+    "Disallow: /vendor-register",
+    "Disallow: /vendor-status",
+    "Disallow: /vendor/",
+    "Disallow: /admin",
+    "Disallow: /manager-panel",
+    "Disallow: /delivery-dashboard",
+    "Disallow: /delivery/",
+    "Disallow: /delete-account",
+    "",
+    "# AI Search & LLM Crawlers",
+    "User-agent: GPTBot",
+    "Allow: /",
+    "Disallow: /admin",
+    "Disallow: /cart",
+    "Disallow: /checkout",
+    "Disallow: /orders",
+    "Disallow: /profile",
+    "",
+    "User-agent: ClaudeBot",
+    "Allow: /",
+    "Disallow: /admin",
+    "Disallow: /cart",
+    "Disallow: /checkout",
+    "Disallow: /orders",
+    "Disallow: /profile",
+    "",
+    "User-agent: PerplexityBot",
+    "Allow: /",
+    "Disallow: /admin",
+    "Disallow: /cart",
+    "Disallow: /checkout",
+    "Disallow: /orders",
+    "Disallow: /profile",
+    "",
+    "User-agent: Google-Extended",
+    "Allow: /",
+    "",
+    "User-agent: Applebot",
+    "Allow: /",
+    "",
+    "Sitemap: https://swiftmart.space/sitemap.xml",
+    ""
+  ].join("\n");
   app.get("/robots.txt", (_req, res) => {
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -133322,6 +133400,8 @@ Sitemap: https://swiftmart.space/sitemap.xml
     }
     const indexPath = path3.join(frontendDist, "index.html");
     if (fs2.existsSync(indexPath)) {
+      const canonicalPath = req.path === "/" ? "/" : req.path.replace(/\/$/, "");
+      res.setHeader("Link", `<${BASE_URL}${canonicalPath}>; rel="canonical"`);
       res.setHeader("Cache-Control", "no-cache, must-revalidate");
       res.sendFile(indexPath);
     } else {

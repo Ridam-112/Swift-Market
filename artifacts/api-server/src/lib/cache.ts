@@ -17,15 +17,23 @@ const RedisClass: any = (IORedis as any).default || (IORedis as any).Redis || IO
 
 // ── TTL constants (seconds) ───────────────────────────────────────────────────
 export const TTL = {
-  PRODUCTS:   5  * 60, // 5 minutes
-  CATEGORIES: 30 * 60, // 30 minutes
-  HOMEPAGE:   5  * 60, // 5 minutes
+  PRODUCTS:     10 * 60, // 10 minutes
+  CATEGORIES:   60 * 60, // 1 hour
+  HOMEPAGE:     15 * 60, // 15 minutes
+  SHOPS:        15 * 60, // 15 minutes
+  HERO_BANNERS: 60 * 60, // 1 hour
+  PINCODES:     60 * 60, // 1 hour
+  THEME_CONFIG: 60 * 60, // 1 hour
 } as const;
 
 // ── Cache key constants ───────────────────────────────────────────────────────
 export const KEYS = {
   CATEGORIES:      "sm:categories",
   HOMEPAGE:        "sm:homepage",
+  SHOPS:           "sm:shops",
+  HERO_BANNERS:    "sm:hero_banners",
+  PINCODES:        "sm:pincodes",
+  THEME_CONFIG:    "sm:theme_config",
   PRODUCTS_PREFIX: "sm:products:",
 } as const;
 
@@ -181,6 +189,27 @@ export async function invalidateProductCaches(): Promise<void> {
  */
 export async function invalidateCategoryCache(): Promise<void> {
   await cacheDel(KEYS.CATEGORIES);
+}
+
+/**
+ * Invalidate the shops cache.
+ * Call this after any shop create / update / delete / status toggle.
+ */
+export async function invalidateShopCache(): Promise<void> {
+  await Promise.all([
+    cacheDel(KEYS.SHOPS),
+    cacheDel(KEYS.HOMEPAGE),
+  ]);
+}
+
+/**
+ * Invalidate hero banners cache.
+ */
+export async function invalidateBannerCache(): Promise<void> {
+  await Promise.all([
+    cacheDel(KEYS.HERO_BANNERS),
+    cacheDel(KEYS.HOMEPAGE),
+  ]);
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
