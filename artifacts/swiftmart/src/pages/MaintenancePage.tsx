@@ -73,7 +73,7 @@ export default function MaintenancePage() {
           </div>
 
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6 max-w-xl mx-auto">
-            Welcome to the official <strong>SwiftMart (Swift Mart)</strong> Balurghat portal. Founded by <strong>Ridam Mahanta</strong> and <strong>Abhi Das</strong>. আমাদের ওয়েবসাইটকে আরো দ্রুত এবং নতুন সব দোকান ও প্রোডাক্ট নিয়ে সাজাতে আপগ্রেডের কাজ চলছে। ৫ তারিখের পর নতুন রূপে চালু হবে। তবে আমাদের <strong>ডেলিভারি পার্টনার ও WhatsApp অর্ডার লাইন ১০০% চালু রয়েছে!</strong>
+            Welcome to the official <strong>SwiftMart (Swift Mart)</strong> Balurghat portal. Founded by <strong>Ridam Mohanta</strong> and <strong>Abhi Das</strong>. আমাদের ওয়েবসাইটকে আরো দ্রুত এবং নতুন সব দোকান ও প্রোডাক্ট নিয়ে সাজাতে আপগ্রেডের কাজ চলছে। ৫ তারিখের পর নতুন রূপে চালু হবে। তবে আমাদের <strong>ডেলিভারি পার্টনার ও WhatsApp অর্ডার লাইন ১০০% চালু রয়েছে!</strong>
           </p>
 
           {/* Feature Highlights Banner */}

@@ -36,7 +36,7 @@ const aboutJsonLd = [
     "@context": "https://schema.org",
     "@type": "AboutPage",
     "name": "About SwiftMart Balurghat",
-    "description": "Learn about SwiftMart, Balurghat's premier 10-minute quick commerce platform founded by Ridam Mahanta and Abhi Das.",
+    "description": "Learn about SwiftMart, Balurghat's premier 10-minute quick commerce platform founded by Ridam Mohanta and Abhi Das.",
     "url": "https://swiftmart.space/about",
     "mainEntity": {
       "@type": "Organization",
@@ -49,7 +49,7 @@ const aboutJsonLd = [
       "founders": [
         {
           "@type": "Person",
-          "name": "Ridam Mahanta",
+          "name": "Ridam Mohanta",
           "jobTitle": "Founder & Chief Executive Officer",
           "sameAs": "https://swiftmart.space/about#founders"
         },
@@ -129,17 +129,16 @@ const aboutJsonLd = [
 ];
 
 export default function AboutUs() {
-  // Photos can be updated when provided by setting state or asset paths
-  const [photoRidam] = useState<string | null>(null);
-  const [photoAbhi] = useState<string | null>(null);
+  const [photoRidam] = useState<string | null>("/assets/ridam-mohanta.jpg");
+  const [photoAbhi] = useState<string | null>("/assets/abhi-das.jpg");
 
   return (
     <>
       <SEO
         title="About Us | SwiftMart Balurghat - 10-Min Quick Commerce & Grocery Delivery"
-        description="SwiftMart is Balurghat's premier 10-minute delivery platform founded by Ridam Mahanta and Abhi Das, bringing groceries and essentials to your doorstep."
+        description="SwiftMart is Balurghat's premier 10-minute delivery platform founded by Ridam Mohanta and Abhi Das, bringing groceries and essentials to your doorstep."
         canonical="/about"
-        keywords="quick commerce near me, online grocery delivery balurghat, 10 minute delivery balurghat, blinkit balurghat, zepto balurghat, swiftmart founders, ridam mahanta, abhi das, fastest grocery delivery dakshin dinajpur, local commerce balurghat, buy groceries online balurghat"
+        keywords="quick commerce near me, online grocery delivery balurghat, 10 minute delivery balurghat, blinkit balurghat, zepto balurghat, swiftmart founders, ridam mohanta, abhi das, fastest grocery delivery dakshin dinajpur, local commerce balurghat, buy groceries online balurghat"
         jsonLd={aboutJsonLd}
       />
 
@@ -180,7 +179,7 @@ export default function AboutUs() {
               className="text-sm sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed"
             >
               Bringing the world-class speed of <strong>Blinkit</strong> and <strong>Zepto</strong> to Balurghat.
-              Founded by <strong>Ridam Mahanta</strong> and <strong>Abhi Das</strong>, SwiftMart combines neighborhood dukandar trust with modern instant delivery technology.
+              Founded by <strong>Ridam Mohanta</strong> and <strong>Abhi Das</strong>, SwiftMart combines neighborhood dukandar trust with modern instant delivery technology.
             </motion.p>
 
             {/* Action buttons */}
@@ -248,7 +247,7 @@ export default function AboutUs() {
                 For years, mega quick-commerce giants like <strong>Blinkit</strong>, <strong>Zepto</strong>, and <strong>Instamart</strong> focused solely on tier-1 metropolitan cities like Kolkata, Delhi, and Bangalore. Residents in towns like Balurghat were left with two inconvenient options: stepping out into the burning summer heat or monsoon rain, or ordering from platforms that took 2 to 3 days to deliver basic essentials.
               </p>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                In 2024, <strong>Ridam Mahanta</strong> and <strong>Abhi Das</strong> set out to change this paradigm. They believed that people of Balurghat deserve the exact same convenience, freshness, and lightning speed as any metro citizen.
+                In 2024, <strong>Ridam Mohanta</strong> and <strong>Abhi Das</strong> set out to change this paradigm. They believed that people of Balurghat deserve the exact same convenience, freshness, and lightning speed as any metro citizen.
               </p>
               <div className="bg-muted/40 border-l-4 border-primary rounded-r-xl p-3.5 text-xs text-foreground font-medium leading-relaxed">
                 &ldquo;SwiftMart was born right here in Balurghat with a single mission: empowering local neighborhood shopkeepers with modern technology while ensuring every family gets their daily necessities delivered to their door in 10 minutes.&rdquo;
@@ -357,20 +356,20 @@ export default function AboutUs() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
 
-              {/* Founder 1: Ridam Mahanta */}
+              {/* Founder 1: Ridam Mohanta */}
               <div className="bg-card border border-border/80 rounded-3xl p-6 sm:p-8 space-y-5 neu-card relative overflow-hidden flex flex-col justify-between group hover:border-primary/60 transition-all">
                 <div className="space-y-4">
-                  {/* Photo / Avatar Placeholder */}
+                  {/* Photo / Avatar */}
                   <div className="flex items-center gap-4">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 p-0.5 shadow-lg shadow-amber-500/20 shrink-0 relative overflow-hidden flex items-center justify-center">
+                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 p-1 shadow-lg shadow-amber-500/20 shrink-0 relative overflow-hidden flex items-center justify-center">
                       {photoRidam ? (
                         <img
                           src={photoRidam}
-                          alt="Ridam Mahanta - Founder & CEO"
-                          className="w-full h-full object-cover rounded-2xl"
+                          alt="Ridam Mohanta - Founder & CEO"
+                          className="w-full h-full object-cover object-top rounded-xl"
                         />
                       ) : (
-                        <div className="w-full h-full bg-slate-900 rounded-2xl flex flex-col items-center justify-center text-white">
+                        <div className="w-full h-full bg-slate-900 rounded-xl flex flex-col items-center justify-center text-white">
                           <span className="text-xl font-black tracking-wider text-amber-400">RM</span>
                           <span className="text-[9px] text-slate-300 font-semibold uppercase mt-0.5">Founder</span>
                         </div>
@@ -379,7 +378,7 @@ export default function AboutUs() {
 
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <h3 className="text-lg font-bold text-foreground">Ridam Mahanta</h3>
+                        <h3 className="text-lg font-bold text-foreground">Ridam Mohanta</h3>
                         <BadgeCheck className="w-4 h-4 text-primary fill-primary/20 shrink-0" />
                       </div>
                       <p className="text-xs font-semibold text-primary">Founder &amp; Chief Executive Officer</p>
@@ -413,17 +412,17 @@ export default function AboutUs() {
               {/* Founder 2: Abhi Das */}
               <div className="bg-card border border-border/80 rounded-3xl p-6 sm:p-8 space-y-5 neu-card relative overflow-hidden flex flex-col justify-between group hover:border-emerald-500/60 transition-all">
                 <div className="space-y-4">
-                  {/* Photo / Avatar Placeholder */}
+                  {/* Photo / Avatar */}
                   <div className="flex items-center gap-4">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-300 p-0.5 shadow-lg shadow-emerald-500/20 shrink-0 relative overflow-hidden flex items-center justify-center">
+                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-300 p-1 shadow-lg shadow-emerald-500/20 shrink-0 relative overflow-hidden flex items-center justify-center">
                       {photoAbhi ? (
                         <img
                           src={photoAbhi}
-                          alt="Abhi Das - Co-Founder"
-                          className="w-full h-full object-cover rounded-2xl"
+                          alt="Abhi Das - Co-Founder & Head of Operations"
+                          className="w-full h-full object-cover object-top rounded-xl"
                         />
                       ) : (
-                        <div className="w-full h-full bg-slate-900 rounded-2xl flex flex-col items-center justify-center text-white">
+                        <div className="w-full h-full bg-slate-900 rounded-xl flex flex-col items-center justify-center text-white">
                           <span className="text-xl font-black tracking-wider text-emerald-400">AD</span>
                           <span className="text-[9px] text-slate-300 font-semibold uppercase mt-0.5">Co-Founder</span>
                         </div>
@@ -525,7 +524,7 @@ export default function AboutUs() {
               <div className="bg-card border border-border/70 rounded-2xl p-4 space-y-1">
                 <p className="text-sm font-bold text-foreground">Who owns and manages SwiftMart?</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  SwiftMart is co-founded by <strong>Ridam Mahanta</strong> (Founder &amp; CEO) and <strong>Abhi Das</strong> (Co-Founder), based out of Balurghat, Dakshin Dinajpur, West Bengal.
+                  SwiftMart is co-founded by <strong>Ridam Mohanta</strong> (Founder &amp; CEO) and <strong>Abhi Das</strong> (Co-Founder), based out of Balurghat, Dakshin Dinajpur, West Bengal.
                 </p>
               </div>
             </div>

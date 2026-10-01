@@ -43,7 +43,7 @@ const HOME_JSON_LD = [
     "founders": [
       {
         "@type": "Person",
-        "name": "Ridam Mahanta",
+        "name": "Ridam Mohanta",
         "jobTitle": "Founder & Chief Executive Officer",
         "sameAs": "https://swiftmart.space/about#founders"
       },
@@ -432,7 +432,7 @@ export default function Home() {
         title="SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce | Official Site"
         description="SwiftMart (Swift Mart) Balurghat delivers fresh groceries, fruits, vegetables, medicines, and daily essentials from local shops to your door in 10 minutes."
         canonical="/"
-        keywords="SwiftMart, Swift Mart, swiftmart, swift-mart, swift mart app, swiftmart space, swiftmart balurghat, quick commerce near me, online grocery delivery balurghat, 10 minute delivery balurghat, blinkit balurghat, zepto balurghat, Balurghat Grocery, Balurghat Online Shopping, Quick Commerce Balurghat, Food Delivery Balurghat, Medicine Delivery Balurghat, Vegetable Delivery Balurghat, Local Marketplace Balurghat, ridam mahanta, abhi das"
+        keywords="SwiftMart, Swift Mart, swiftmart, swift-mart, swift mart app, swiftmart space, swiftmart balurghat, quick commerce near me, online grocery delivery balurghat, 10 minute delivery balurghat, blinkit balurghat, zepto balurghat, Balurghat Grocery, Balurghat Online Shopping, Quick Commerce Balurghat, Food Delivery Balurghat, Medicine Delivery Balurghat, Vegetable Delivery Balurghat, Local Marketplace Balurghat, ridam mohanta, abhi das"
         jsonLd={HOME_JSON_LD}
       />
       {/* ── Mobile Search Bar — tap opens full-screen overlay ── */}

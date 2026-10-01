@@ -446,7 +446,7 @@ export function SiteFooter() {
           <div className="border-t border-white/10 pt-8 mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500">
             <p className="text-center sm:text-left">
               &copy; {new Date().getFullYear()} SwiftMart. All rights reserved. Founded by{" "}
-              <span className="text-neutral-300 font-medium">Ridam Mahanta</span> &amp;{" "}
+              <span className="text-neutral-300 font-medium">Ridam Mohanta</span> &amp;{" "}
               <span className="text-neutral-300 font-medium">Abhi Das</span>.
             </p>
             <div className="flex items-center gap-3">
