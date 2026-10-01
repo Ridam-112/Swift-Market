@@ -317,3 +317,20 @@
     color: #ffffff;
   }
 }
+
+/* ── Hide scrollbar utility ─────────────────────────────────────── */
+.scrollbar-hide::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  -webkit-appearance: none !important;
+  background: transparent !important;
+}
+
+.scrollbar-hide,
+.no-scrollbar {
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important; /* Firefox */
+}
+

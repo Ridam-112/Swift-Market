@@ -15,7 +15,7 @@ import { SEO } from "@/components/SEO";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { api } from "@/lib/api";
-import { Star, ChevronRight, Zap, MapPin, Search, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Star, ChevronRight, ChevronLeft, Zap, MapPin, Search, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import type { Product } from "@/types";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -291,8 +291,14 @@ function DynamicSection({ section }: { section: HomepageSection }) {
   const isCarousel = section.config?.layout === "scroll";
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  const scrollByAmount = (delta: number) => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: delta, behavior: "smooth" });
+    }
+  };
+
   return (
-    <section className="relative">
+    <section className="relative group/section">
       <SectionHeader
         title={section.title}
         action={
@@ -313,9 +319,28 @@ function DynamicSection({ section }: { section: HomepageSection }) {
 
       {isCarousel ? (
         <div className="relative group/carousel">
+          {/* Subtle desktop navigation arrows on hover */}
+          <button
+            type="button"
+            onClick={() => scrollByAmount(-350)}
+            aria-label="Scroll left"
+            className="hidden md:flex absolute -left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-card/90 backdrop-blur border border-border shadow-lg items-center justify-center text-foreground hover:bg-card hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/carousel:opacity-100"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollByAmount(350)}
+            aria-label="Scroll right"
+            className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-card/90 backdrop-blur border border-border shadow-lg items-center justify-center text-foreground hover:bg-card hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/carousel:opacity-100"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+
           <div
             ref={scrollContainerRef}
             className="flex gap-3 overflow-x-auto pb-3 pt-1 scrollbar-hide snap-x scroll-smooth -mx-3 px-3"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
             {section.products.map((product, i) => (
               <div
