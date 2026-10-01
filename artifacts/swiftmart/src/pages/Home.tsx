@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonShopCardHorizontal } from "@/components/SkeletonShopCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SEO } from "@/components/SEO";
-import { SiteFooter } from "@/components/SiteFooter";
+import { SiteFooter, FAQ_ITEMS } from "@/components/SiteFooter";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { api } from "@/lib/api";
 import { Star, ChevronRight, ChevronLeft, Zap, MapPin, Search, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
@@ -21,41 +21,6 @@ import { Button } from "@/components/ui/button";
 import { isAddressServiceable } from "@/lib/serviceArea";
 import { MapLocationPicker, type MapLocationResult } from "@/components/MapLocationPicker";
 import { AdSenseSectionBanner } from "@/components/GoogleAdSense";
-
-const FAQ_ITEMS = [
-  {
-    q: "How fast does SwiftMart deliver in Balurghat?",
-    a: "SwiftMart delivers in as fast as 10 minutes across Balurghat (pincodes 733101 and 733103). Delivery time may vary based on shop distance and order volume.",
-  },
-  {
-    q: "What can I order on SwiftMart?",
-    a: "You can order fresh groceries, vegetables, fruits, dairy, bakery items, snacks, beverages, medicines, household essentials, and more from trusted local shops in Balurghat.",
-  },
-  {
-    q: "Which areas does SwiftMart currently serve?",
-    a: "SwiftMart currently serves Balurghat, West Bengal — pincodes 733101 and 733103, including Khadimpur, Raghunathpur, Beltala, Court More, Station More, and surrounding neighbourhoods. We are expanding to more areas soon.",
-  },
-  {
-    q: "Does SwiftMart deliver medicines at night in Balurghat?",
-    a: "Yes. SwiftMart delivers medicines and pharmacy items in Balurghat until 11:00 PM daily, subject to partner pharmacy availability. Simply search for 'medicine' or browse the Pharmacy category.",
-  },
-  {
-    q: "How much does delivery cost on SwiftMart?",
-    a: "Delivery fees vary by distance and order size. Express delivery under 2 km starts at ₹10, with a small packaging fee per order. The exact fee is shown at checkout before you confirm — no hidden charges.",
-  },
-  {
-    q: "What payment methods does SwiftMart accept?",
-    a: "SwiftMart accepts UPI (Google Pay, PhonePe, Paytm), Cash on Delivery (COD), and online payments via Razorpay. All transactions are secured with SSL encryption.",
-  },
-  {
-    q: "How do I track my order?",
-    a: "Once your order is placed, you can track it live on the Orders page. You'll see the rider's real-time location on the map when your order is out for delivery.",
-  },
-  {
-    q: "Can local shops sell on SwiftMart?",
-    a: "Yes! Local Balurghat shop owners can register as vendors on SwiftMart to reach more customers. Tap 'Become a Vendor' in your profile to get started.",
-  },
-];
 
 const HOME_JSON_LD = [
   {
@@ -459,8 +424,9 @@ export default function Home() {
   const isCityEmpty = !!selectedCity && !shopsLoading && shops.length === 0;
 
   return (
-    <div className="pb-24 pt-4 px-3 w-full max-w-7xl mx-auto space-y-6 overflow-x-hidden">
-      {/* Visually-hidden H1 anchors the page outline for crawlers */}
+    <div className="w-full flex flex-col min-h-screen">
+      <div className="pb-16 pt-4 px-3 w-full max-w-7xl mx-auto space-y-6 flex-1">
+        {/* Visually-hidden H1 anchors the page outline for crawlers */}
       <h1 className="sr-only">SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce in Balurghat</h1>
       <SEO
         title="SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce | Official Site"
@@ -723,92 +689,16 @@ export default function Home() {
               .map(section => <DynamicSection key={section._id || section.id} section={section} />)
           ) : null}
 
-          {/* ── AdSense Section Banner: Above FAQ ── */}
+          {/* ── AdSense Section Banner ── */}
           <AdSenseSectionBanner />
 
-          {/* FAQ Section */}
-          <FaqSection />
-
-          {/* Service Coverage + Map */}
-          <CoverageSection />
+          {/* ── Space reserved for User Testimonials ── */}
         </>
       )}
+      </div>
 
-      {/* About + Footer */}
+      {/* ── Global Clean Dark Footer (ABOLTABOL style) ── */}
       <SiteFooter />
     </div>
-  );
-}
-
-const COVERAGE_AREAS = [
-  "Khadimpur", "Power House More", "Raghunathpur", "Beltala",
-  "Court More", "Station More", "Deshbandhu Para", "Parbatipur",
-  "Nayananagar", "Senpara", "Madhyampara", "Netaji Colony",
-];
-
-function CoverageSection() {
-  return (
-    <section>
-      <SectionHeader title="Delivery Coverage in Balurghat" />
-      {/* OpenStreetMap embed — no API key, shows Balurghat delivery zone */}
-      <div className="rounded-2xl overflow-hidden neu-card mb-4 h-40">
-        <iframe
-          src="https://www.openstreetmap.org/export/embed.html?bbox=88.73%2C25.19%2C88.80%2C25.25&amp;layer=mapnik&amp;marker=25.2167%2C88.7667"
-          width="100%"
-          height="100%"
-          title="SwiftMart delivery zone — Balurghat, West Bengal"
-          loading="lazy"
-          className="border-0 w-full h-full"
-        />
-      </div>
-      <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-        We currently deliver across <span className="font-semibold text-foreground">Balurghat</span> (pincodes{" "}
-        <span className="font-semibold text-foreground">733101</span> &amp;{" "}
-        <span className="font-semibold text-foreground">733103</span>), covering the following areas:
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {COVERAGE_AREAS.map(area => (
-          <span
-            key={area}
-            className="text-[11px] font-medium bg-card neu-card px-3 py-1 rounded-full text-muted-foreground"
-          >
-            📍 {area}
-          </span>
-        ))}
-        <span className="text-[11px] font-medium bg-primary/10 text-primary px-3 py-1 rounded-full">
-          + more expanding soon
-        </span>
-      </div>
-    </section>
-  );
-}
-
-function FaqSection() {
-  const [open, setOpen] = useState<number | null>(null);
-  return (
-    <section>
-      <SectionHeader title="Frequently Asked Questions" />
-      <div className="space-y-2">
-        {FAQ_ITEMS.map((item, i) => (
-          <div key={i} className="bg-card rounded-xl neu-card overflow-hidden">
-            <button
-              onClick={() => setOpen(open === i ? null : i)}
-              className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
-              aria-expanded={open === i}
-            >
-              <span className="text-sm font-semibold text-foreground">{item.q}</span>
-              <ChevronRight
-                className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${open === i ? "rotate-90" : ""}`}
-              />
-            </button>
-            {open === i && (
-              <div className="px-4 pb-3 text-sm text-muted-foreground leading-relaxed border-t border-border/30 pt-2">
-                {item.a}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </section>
   );
 }
