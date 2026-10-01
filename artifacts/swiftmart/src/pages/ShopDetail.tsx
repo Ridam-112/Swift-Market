@@ -37,6 +37,8 @@ export default function ShopDetail() {
 
   const [shop, setShop] = useState<ShopListing | null>(null);
   const [fetchLoading, setFetchLoading] = useState(false);
+  const [shopProducts, setShopProducts] = useState<ReturnType<typeof useProducts>['products']>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [isCustomCakeOpen, setIsCustomCakeOpen] = useState(false);
 
@@ -47,10 +49,7 @@ export default function ShopDetail() {
     if (found) {
       setShop(found);
       setNotFound(false);
-      return;
-    }
-
-    if (!shopsLoading) {
+    } else if (!shopsLoading) {
       setFetchLoading(true);
       api.get<{ success: boolean; shop: ApiShopDetail }>(`/shops/${vendorId}`)
         .then(d => {
@@ -64,6 +63,39 @@ export default function ShopDetail() {
         .catch(() => setNotFound(true))
         .finally(() => setFetchLoading(false));
     }
+
+    setProductsLoading(true);
+    api.get<{ success: boolean; products: any[] }>(`/products?shopId=${vendorId}&limit=200&status=active`)
+      .then(d => {
+        if (d.success && Array.isArray(d.products)) {
+          setShopProducts(d.products.map(p => ({
+            id: p._id || p.id,
+            name: p.name,
+            category: p.category,
+            price: p.price,
+            discountedPrice: p.discountedPrice ?? undefined,
+            unit: p.unit ?? "1 unit",
+            image: p.images?.[0] ?? p.image ?? "/assets/product-placeholder.png",
+            images: p.images ?? (p.image ? [p.image] : []),
+            description: p.description ?? "",
+            stock: p.stock ?? 0,
+            rating: p.rating ?? 0,
+            vendorId: p.shopId ?? vendorId,
+            shopId: p.shopId ?? vendorId,
+            shopName: p.shopName || (found?.storeName ?? ""),
+            trending: p.trending ?? false,
+            colors: p.colors,
+            sizes: p.sizes,
+            colorImages: p.colorImages,
+          })));
+        }
+      })
+      .catch(err => {
+        console.error("Failed to load shop products:", err);
+      })
+      .finally(() => {
+        setProductsLoading(false);
+      });
   }, [vendorId, shops, shopsLoading]);
 
   if (shopsLoading || fetchLoading) {
@@ -106,7 +138,7 @@ export default function ShopDetail() {
 
   if (!shop) return null;
 
-  const vendorProducts = products.filter(p => p.vendorId === shop.id);
+  const vendorProducts = shopProducts.length > 0 ? shopProducts : products.filter(p => p.vendorId === shop.id);
 
   return (
     <div className="pb-24 min-h-[100dvh]">
@@ -284,8 +316,19 @@ export default function ShopDetail() {
         })()}
 
         <div className="space-y-4">
-          <h2 className="text-xl font-bold text-foreground">Our Products</h2>
-          {vendorProducts.length > 0 ? (
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-foreground">Our Products</h2>
+            {!productsLoading && vendorProducts.length > 0 && (
+              <span className="text-xs text-muted-foreground font-medium">({vendorProducts.length} items)</span>
+            )}
+          </div>
+          {productsLoading && vendorProducts.length === 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="h-56 bg-muted/60 rounded-2xl animate-pulse" />
+              ))}
+            </div>
+          ) : vendorProducts.length > 0 ? (
             <motion.div
               initial="hidden"
               animate="show"

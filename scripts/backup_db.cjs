@@ -85,9 +85,48 @@ async function backup() {
   fs.writeFileSync(filePath, JSON.stringify(backupData, null, 2));
   fs.writeFileSync(latestPath, JSON.stringify(backupData, null, 2));
 
+  function toCsv(rows) {
+    if (!rows || rows.length === 0) return '';
+    const headers = Object.keys(rows[0]);
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return '';
+      if (typeof val === 'object') return '"' + JSON.stringify(val).replace(/"/g, '""') + '"';
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return '"' + str.replace(/"/g, '""') + '"';
+      }
+      return str;
+    };
+    const headerLine = headers.join(',');
+    const dataLines = rows.map(r => headers.map(h => escapeCsv(r[h])).join(','));
+    return [headerLine, ...dataLines].join('\n');
+  }
+
+  const csvDir = path.join(backupsDir, 'csv');
+  if (!fs.existsSync(csvDir)) {
+    fs.mkdirSync(csvDir, { recursive: true });
+  }
+
+  // Export individual CSVs for all tables
+  for (const [table, rows] of Object.entries(backupData.tables)) {
+    if (rows && rows.length > 0) {
+      const tableCsv = toCsv(rows);
+      fs.writeFileSync(path.join(csvDir, `${table}.csv`), tableCsv);
+    }
+  }
+
+  // Export Google Drive formatted SwiftMart_Products_Catalog.csv
+  if (backupData.tables.products && backupData.tables.products.length > 0) {
+    const productsCsv = toCsv(backupData.tables.products);
+    const catalogPath = path.join(backupsDir, 'SwiftMart_Products_Catalog.csv');
+    fs.writeFileSync(catalogPath, productsCsv);
+    console.log(`  📊 Google Drive CSV: ${catalogPath}`);
+  }
+
   console.log(`\n🎉 Backup Completed! Total rows: ${totalRows}`);
-  console.log(`  📂 Archive: ${filePath}`);
-  console.log(`  📂 Latest:  ${latestPath}`);
+  console.log(`  📂 Archive JSON: ${filePath}`);
+  console.log(`  📂 Latest JSON:  ${latestPath}`);
+  console.log(`  📂 CSV Directory: ${csvDir}`);
 
   client.release();
   await pool.end();

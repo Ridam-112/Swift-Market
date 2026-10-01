@@ -4873,6 +4873,14 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
   const [editingStockId, setEditingStockId] = useState<string | null>(null);
   const [stockInput, setStockInput] = useState('');
 
+  // Pagination & Search
+  const [page, setPage] = useState(1);
+  const [limit] = useState(40);
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   // Per-product commission state
   const [productRules, setProductRules] = useState<Record<string, CommissionRuleRecord | undefined>>({});
   const [commEditId, setCommEditId] = useState<string | null>(null);
@@ -4893,20 +4901,25 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
     } catch { /* non-fatal */ }
   }, []);
 
-  const loadProducts = useCallback(async () => {
+  const loadProducts = useCallback(async (targetPage = page, searchStr = search, catStr = categoryFilter) => {
     setLoading(true);
     try {
-      const data = await api.get<{ success: boolean; products: ApiProductFull[] }>(
-        `/products?shopId=${shop._id}&status=all&limit=5000`
+      const sq = searchStr.trim() ? `&search=${encodeURIComponent(searchStr.trim())}` : '';
+      const cq = catStr.trim() ? `&category=${encodeURIComponent(catStr.trim())}` : '';
+      const data = await api.get<{ success: boolean; products: ApiProductFull[]; total?: number; pages?: number; page?: number }>(
+        `/products?shopId=${shop._id}&status=all&page=${targetPage}&limit=${limit}${sq}${cq}`
       );
-      setProducts(data.products);
-      await loadCommissions(data.products.map(p => p._id));
+      setProducts(data.products || []);
+      setTotalProducts(data.total ?? data.products?.length ?? 0);
+      setTotalPages(Math.max(1, data.pages ?? Math.ceil((data.total ?? 0) / limit)));
+      setPage(targetPage);
+      await loadCommissions((data.products || []).map(p => p._id));
     } catch {
       toast.error('Failed to load products');
     } finally {
       setLoading(false);
     }
-  }, [shop._id, loadCommissions]);
+  }, [shop._id, page, limit, search, categoryFilter, loadCommissions]);
 
   const openCommEdit = (p: ApiProductFull) => {
     const rule = productRules[p._id];
@@ -5219,11 +5232,57 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
         </div>
       ) : (
         <div className="bg-card rounded-3xl neu-card overflow-hidden">
-          <div className="p-5 border-b border-border flex items-center justify-between">
-            <h3 className="font-bold text-foreground">Products ({products.length})</h3>
-            <button onClick={loadProducts} className="p-2 hover:bg-muted rounded-xl text-muted-foreground transition-colors" title="Refresh">
-              <RefreshCw className="w-4 h-4" />
-            </button>
+          <div className="p-5 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-foreground">Products ({totalProducts || products.length})</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Page {page} of {totalPages} · Showing {totalProducts > 0 ? (page - 1) * limit + 1 : 0}–{Math.min(page * limit, totalProducts)} of {totalProducts}
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative min-w-[200px] flex-1 md:flex-initial">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setSearch(val);
+                    loadProducts(1, val, categoryFilter);
+                  }}
+                  placeholder="Search products..."
+                  className="pl-9 h-9 text-xs bg-background neu-inset border-none rounded-xl"
+                />
+                {search && (
+                  <button
+                    onClick={() => {
+                      setSearch('');
+                      loadProducts(1, '', categoryFilter);
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <select
+                value={categoryFilter}
+                onChange={e => {
+                  const val = e.target.value;
+                  setCategoryFilter(val);
+                  loadProducts(1, search, val);
+                }}
+                className="h-9 px-3 rounded-xl bg-background neu-inset border-none text-xs text-foreground appearance-none cursor-pointer"
+              >
+                <option value="">All Categories</option>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+              </select>
+
+              <button onClick={() => loadProducts(page, search, categoryFilter)} className="p-2 hover:bg-muted rounded-xl text-muted-foreground transition-colors" title="Refresh">
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
           <div className="divide-y divide-border/50">
             {products.map(p => {
@@ -5369,6 +5428,61 @@ function ShopProductsPanel({ shop, onBack }: { shop: ApiShopFull; onBack: () => 
               );
             })}
           </div>
+
+          {/* Pagination Footer */}
+          {totalPages > 1 && (
+            <div className="p-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 bg-muted/20">
+              <div className="text-xs text-muted-foreground">
+                Page <span className="font-semibold text-foreground">{page}</span> of <span className="font-semibold text-foreground">{totalPages}</span> ({totalProducts} total items)
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={page <= 1 || loading}
+                  onClick={() => loadProducts(page - 1, search, categoryFilter)}
+                  className="rounded-xl h-8 text-xs"
+                >
+                  Previous
+                </Button>
+
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pNum = i + 1;
+                  if (totalPages > 5) {
+                    if (page > 3 && page < totalPages - 2) {
+                      pNum = page - 2 + i;
+                    } else if (page >= totalPages - 2) {
+                      pNum = totalPages - 4 + i;
+                    }
+                  }
+                  return (
+                    <button
+                      key={pNum}
+                      onClick={() => loadProducts(pNum, search, categoryFilter)}
+                      disabled={loading}
+                      className={`w-8 h-8 rounded-xl text-xs font-semibold transition-colors ${
+                        page === pNum
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'hover:bg-muted text-foreground'
+                      }`}
+                    >
+                      {pNum}
+                    </button>
+                  );
+                })}
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={page >= totalPages || loading}
+                  onClick={() => loadProducts(page + 1, search, categoryFilter)}
+                  className="rounded-xl h-8 text-xs"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
