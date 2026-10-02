@@ -110982,7 +110982,7 @@ var require_bn = __commonJS({
         assert((this.negative | num.negative) === 0);
         return this.iuor(num);
       };
-      BN.prototype.or = function or11(num) {
+      BN.prototype.or = function or12(num) {
         if (this.length > num.length) return this.clone().ior(num);
         return num.clone().ior(this);
       };
@@ -111007,7 +111007,7 @@ var require_bn = __commonJS({
         assert((this.negative | num.negative) === 0);
         return this.iuand(num);
       };
-      BN.prototype.and = function and23(num) {
+      BN.prototype.and = function and24(num) {
         if (this.length > num.length) return this.clone().iand(num);
         return num.clone().iand(this);
       };
@@ -132044,100 +132044,196 @@ var layouts_default = router31;
 
 // src/routes/v1/adminRiders.ts
 var import_express32 = __toESM(require_express2(), 1);
-import { eq as eq35, desc as desc17 } from "drizzle-orm";
+import { eq as eq35, desc as desc17, and as and21, or as or10, ilike as ilike5, sql as sql12 } from "drizzle-orm";
 var router32 = (0, import_express32.Router)();
 var A25 = requireRole("admin", "super_admin");
+async function autoRepairRiderTable() {
+  await db.execute(sql12`
+    ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS heading double precision;
+    ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS speed double precision;
+    ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS accuracy double precision;
+    ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS tracking_status text DEFAULT 'LIVE';
+    ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS application_status text DEFAULT 'approved';
+    ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS pan_number text;
+    ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS dl_number text;
+    ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS rc_number text;
+    ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS documents jsonb DEFAULT '{}'::jsonb;
+    ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS rejection_reason text;
+  `);
+}
 router32.get("/applications", authenticate, A25, async (req, res) => {
   const statusParam = req.query["status"] ?? "pending";
-  const rows = await db.select().from(deliveryPartners).where(eq35(deliveryPartners.applicationStatus, statusParam)).orderBy(desc17(deliveryPartners.createdAt));
-  res.json({ success: true, applications: miArr(rows) });
+  try {
+    const where = statusParam === "all" ? void 0 : eq35(deliveryPartners.applicationStatus, statusParam);
+    const rows = await db.select().from(deliveryPartners).where(where).orderBy(desc17(deliveryPartners.createdAt));
+    res.json({ success: true, applications: miArr(rows) });
+  } catch (err) {
+    logger.error({ err: err?.message || err }, "GET /api/admin/riders/applications failed \u2014 attempting table auto-repair");
+    try {
+      await autoRepairRiderTable();
+      const where = statusParam === "all" ? void 0 : eq35(deliveryPartners.applicationStatus, statusParam);
+      const rows = await db.select().from(deliveryPartners).where(where).orderBy(desc17(deliveryPartners.createdAt));
+      res.json({ success: true, applications: miArr(rows) });
+    } catch (retryErr) {
+      logger.error({ retryErr: retryErr?.message || retryErr }, "GET /api/admin/riders/applications retry failed");
+      res.status(500).json({ success: false, message: "Failed to load rider applications", error: retryErr?.message });
+    }
+  }
 });
 router32.post("/:id/approve", authenticate, A25, validateUuidParams("id"), async (req, res) => {
   const id = req.params["id"];
-  const [updated] = await db.update(deliveryPartners).set({
-    applicationStatus: "approved",
-    status: "active",
-    isAvailable: true,
-    updatedAt: /* @__PURE__ */ new Date()
-  }).where(eq35(deliveryPartners.id, id)).returning();
-  if (!updated) {
-    res.status(404).json({ success: false, message: "Rider partner application not found" });
-    return;
-  }
-  let targetUserId = updated.userId;
-  if (!targetUserId && updated.phone) {
-    const [userRow] = await db.select({ id: users.id }).from(users).where(eq35(users.phone, updated.phone)).limit(1);
-    if (userRow) {
-      targetUserId = userRow.id;
-      await db.update(deliveryPartners).set({ userId: targetUserId }).where(eq35(deliveryPartners.id, updated.id));
+  try {
+    const [updated] = await db.update(deliveryPartners).set({
+      applicationStatus: "approved",
+      status: "active",
+      isAvailable: true,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq35(deliveryPartners.id, id)).returning();
+    if (!updated) {
+      res.status(404).json({ success: false, message: "Rider partner application not found" });
+      return;
     }
-  }
-  if (targetUserId) {
-    const [userRow] = await db.select().from(users).where(eq35(users.id, targetUserId)).limit(1);
-    if (userRow) {
-      await db.update(users).set({
-        role: "rider",
-        updatedAt: /* @__PURE__ */ new Date()
-      }).where(eq35(users.id, targetUserId));
+    let targetUserId = updated.userId;
+    if (!targetUserId && updated.phone) {
+      const [userRow] = await db.select({ id: users.id }).from(users).where(eq35(users.phone, updated.phone)).limit(1);
+      if (userRow) {
+        targetUserId = userRow.id;
+        await db.update(deliveryPartners).set({ userId: targetUserId }).where(eq35(deliveryPartners.id, updated.id));
+      }
     }
+    if (targetUserId) {
+      const [userRow] = await db.select().from(users).where(eq35(users.id, targetUserId)).limit(1);
+      if (userRow) {
+        await db.update(users).set({
+          role: "rider",
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq35(users.id, targetUserId));
+      }
+    }
+    res.json({
+      success: true,
+      message: `Rider '${updated.name}' application approved successfully`,
+      partner: mi(updated)
+    });
+  } catch (err) {
+    logger.error({ err: err?.message || err }, "POST /api/admin/riders/:id/approve failed");
+    res.status(500).json({ success: false, message: "Failed to approve rider", error: err?.message });
   }
-  res.json({
-    success: true,
-    message: `Rider '${updated.name}' application approved successfully`,
-    partner: mi(updated)
-  });
 });
 router32.post("/:id/reject", authenticate, A25, validateUuidParams("id"), async (req, res) => {
   const id = req.params["id"];
   const { reason } = req.body;
-  const [updated] = await db.update(deliveryPartners).set({
-    applicationStatus: "rejected",
-    status: "inactive",
-    rejectionReason: reason ?? "Application rejected by admin",
-    updatedAt: /* @__PURE__ */ new Date()
-  }).where(eq35(deliveryPartners.id, id)).returning();
-  if (!updated) {
-    res.status(404).json({ success: false, message: "Rider partner application not found" });
-    return;
+  try {
+    const [updated] = await db.update(deliveryPartners).set({
+      applicationStatus: "rejected",
+      status: "inactive",
+      rejectionReason: reason ?? "Application rejected by admin",
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq35(deliveryPartners.id, id)).returning();
+    if (!updated) {
+      res.status(404).json({ success: false, message: "Rider partner application not found" });
+      return;
+    }
+    res.json({
+      success: true,
+      message: `Rider '${updated.name}' application rejected`,
+      partner: mi(updated)
+    });
+  } catch (err) {
+    logger.error({ err: err?.message || err }, "POST /api/admin/riders/:id/reject failed");
+    res.status(500).json({ success: false, message: "Failed to reject rider", error: err?.message });
   }
-  res.json({
-    success: true,
-    message: `Rider '${updated.name}' application rejected`,
-    partner: mi(updated)
-  });
+});
+router32.patch("/:id/status", authenticate, A25, validateUuidParams("id"), async (req, res) => {
+  const id = req.params["id"];
+  const { status, isAvailable } = req.body;
+  try {
+    const patchData = { updatedAt: /* @__PURE__ */ new Date() };
+    if (typeof status === "string") patchData["status"] = status;
+    if (typeof isAvailable === "boolean") patchData["isAvailable"] = isAvailable;
+    const [updated] = await db.update(deliveryPartners).set(patchData).where(eq35(deliveryPartners.id, id)).returning();
+    if (!updated) {
+      res.status(404).json({ success: false, message: "Rider not found" });
+      return;
+    }
+    res.json({
+      success: true,
+      message: `Rider '${updated.name}' status updated`,
+      rider: mi(updated)
+    });
+  } catch (err) {
+    logger.error({ err: err?.message || err }, "PATCH /api/admin/riders/:id/status failed");
+    res.status(500).json({ success: false, message: "Failed to update rider status", error: err?.message });
+  }
 });
 var getLiveLocationsHandler = async (_req, res) => {
-  const rows = await db.select({
-    id: deliveryPartners.id,
-    name: deliveryPartners.name,
-    phone: deliveryPartners.phone,
-    vehicle: deliveryPartners.vehicle,
-    status: deliveryPartners.status,
-    isAvailable: deliveryPartners.isAvailable,
-    currentLat: deliveryPartners.currentLat,
-    currentLon: deliveryPartners.currentLon,
-    currentOrderId: deliveryPartners.currentOrderId,
-    locationUpdatedAt: deliveryPartners.locationUpdatedAt
-  }).from(deliveryPartners).orderBy(desc17(deliveryPartners.locationUpdatedAt));
-  res.json({
-    success: true,
-    riders: miArr(rows)
-  });
+  try {
+    const rows = await db.select({
+      id: deliveryPartners.id,
+      name: deliveryPartners.name,
+      phone: deliveryPartners.phone,
+      vehicle: deliveryPartners.vehicle,
+      status: deliveryPartners.status,
+      isAvailable: deliveryPartners.isAvailable,
+      currentLat: deliveryPartners.currentLat,
+      currentLon: deliveryPartners.currentLon,
+      currentOrderId: deliveryPartners.currentOrderId,
+      locationUpdatedAt: deliveryPartners.locationUpdatedAt
+    }).from(deliveryPartners).orderBy(desc17(deliveryPartners.locationUpdatedAt));
+    res.json({
+      success: true,
+      riders: miArr(rows)
+    });
+  } catch (err) {
+    logger.error({ err: err?.message || err }, "GET /api/admin/riders/live-location failed");
+    res.status(500).json({ success: false, message: "Failed to get live locations", error: err?.message });
+  }
 };
 router32.get("/live-location", authenticate, A25, getLiveLocationsHandler);
 router32.get("/live-locations", authenticate, A25, getLiveLocationsHandler);
-router32.get("/", authenticate, A25, async (_req, res) => {
-  const rows = await db.select().from(deliveryPartners).orderBy(desc17(deliveryPartners.createdAt));
-  res.json({
-    success: true,
-    riders: miArr(rows)
-  });
+router32.get("/", authenticate, A25, async (req, res) => {
+  try {
+    const { city, status, applicationStatus } = req.query;
+    const conditions = [];
+    if (applicationStatus && applicationStatus !== "all") {
+      conditions.push(eq35(deliveryPartners.applicationStatus, applicationStatus));
+    }
+    if (status && status !== "all") {
+      conditions.push(eq35(deliveryPartners.status, status));
+    }
+    if (city && city !== "all") {
+      conditions.push(or10(
+        ilike5(deliveryPartners.cityId, `%${city}%`),
+        sql12`${deliveryPartners.cityId} IS NULL`,
+        sql12`${deliveryPartners.cityId} = ''`
+      ));
+    }
+    const where = conditions.length ? and21(...conditions) : void 0;
+    const rows = await db.select().from(deliveryPartners).where(where).orderBy(desc17(deliveryPartners.createdAt));
+    res.json({
+      success: true,
+      riders: miArr(rows)
+    });
+  } catch (err) {
+    logger.error({ err: err?.message || err }, "GET /api/admin/riders failed \u2014 attempting table auto-repair");
+    try {
+      await autoRepairRiderTable();
+      const rows = await db.select().from(deliveryPartners).orderBy(desc17(deliveryPartners.createdAt));
+      res.json({
+        success: true,
+        riders: miArr(rows)
+      });
+    } catch (retryErr) {
+      logger.error({ retryErr: retryErr?.message || retryErr }, "GET /api/admin/riders retry failed");
+      res.status(500).json({ success: false, message: "Failed to load riders", error: retryErr?.message });
+    }
+  }
 });
 var adminRiders_default = router32;
 
 // src/routes/v1/customCakes.ts
 var import_express33 = __toESM(require_express2(), 1);
-import { eq as eq36, desc as desc18, and as and21, or as or10, ilike as ilike5 } from "drizzle-orm";
+import { eq as eq36, desc as desc18, and as and22, or as or11, ilike as ilike6 } from "drizzle-orm";
 var router33 = (0, import_express33.Router)();
 async function getCustomCakeDeliveryFee() {
   try {
@@ -132311,7 +132407,7 @@ router33.get("/shop-requests", authenticate, async (req, res) => {
     if (status && status !== "all") {
       conditions.push(eq36(customCakeRequests.status, status));
     }
-    const requests = await db.select().from(customCakeRequests).where(and21(...conditions)).orderBy(desc18(customCakeRequests.createdAt));
+    const requests = await db.select().from(customCakeRequests).where(and22(...conditions)).orderBy(desc18(customCakeRequests.createdAt));
     res.json({
       success: true,
       requests: requests.map(formatCustomCake)
@@ -132332,16 +132428,16 @@ router33.get("/admin/all", authenticate, requireRole("admin", "super_admin"), as
     }
     if (search) {
       conditions.push(
-        or10(
-          ilike5(customCakeRequests.customerName, `%${search}%`),
-          ilike5(customCakeRequests.customerPhone, `%${search}%`),
-          ilike5(customCakeRequests.shopName, `%${search}%`),
-          ilike5(customCakeRequests.flavour, `%${search}%`),
-          ilike5(customCakeRequests.occasion, `%${search}%`)
+        or11(
+          ilike6(customCakeRequests.customerName, `%${search}%`),
+          ilike6(customCakeRequests.customerPhone, `%${search}%`),
+          ilike6(customCakeRequests.shopName, `%${search}%`),
+          ilike6(customCakeRequests.flavour, `%${search}%`),
+          ilike6(customCakeRequests.occasion, `%${search}%`)
         )
       );
     }
-    const where = conditions.length ? and21(...conditions) : void 0;
+    const where = conditions.length ? and22(...conditions) : void 0;
     const requests = await db.select().from(customCakeRequests).where(where).orderBy(desc18(customCakeRequests.createdAt));
     const allRequests = await db.select().from(customCakeRequests);
     const stats = {
@@ -132714,11 +132810,11 @@ router33.post("/:id/verify-pickup", authenticate, async (req, res) => {
 var customCakes_default = router33;
 
 // src/routes/v1/index.ts
-import { eq as eq37, and as and22, asc as asc8 } from "drizzle-orm";
+import { eq as eq37, and as and23, asc as asc8 } from "drizzle-orm";
 var router34 = (0, import_express34.Router)();
 router34.get("/home-filters", async (_req, res) => {
   try {
-    const list = await db.select().from(categories).where(and22(eq37(categories.isActive, true), eq37(categories.showOnHome, true))).orderBy(asc8(categories.filterOrder));
+    const list = await db.select().from(categories).where(and23(eq37(categories.isActive, true), eq37(categories.showOnHome, true))).orderBy(asc8(categories.filterOrder));
     const mapped = miArr(list);
     const grouped = {
       swiftmart: [],

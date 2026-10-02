@@ -9333,26 +9333,28 @@ interface RiderItem {
   createdAt?: string;
 }
 
-function AllRidersTabContent() {
+function AllRidersTabContent({ onCountUpdate }: { onCountUpdate?: (count: number) => void }) {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [riders, setRiders] = useState<RiderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchRiders = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const res = await api.get<{ success: boolean; riders: RiderItem[] }>('/admin/riders?city=balurghat');
+      const res = await api.get<{ success: boolean; riders: RiderItem[] }>('/admin/riders');
       if (res.success && Array.isArray(res.riders)) {
         setRiders(res.riders);
+        onCountUpdate?.(res.riders.length);
       }
     } catch {
-      // silent catch on auto-refresh to prevent UI error toasts on transient network glitch
+      if (!isSilent) toast.error("Failed to load riders");
     } finally {
       if (!isSilent) setLoading(false);
     }
-  }, []);
+  }, [onCountUpdate]);
 
   useEffect(() => {
     fetchRiders(false);
@@ -9365,6 +9367,22 @@ function AllRidersTabContent() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [fetchRiders]);
+
+  const handleToggleStatus = async (r: RiderItem) => {
+    const riderId = r._id || r.id;
+    if (!riderId) return;
+    const nextStatus = r.status === 'active' ? 'inactive' : 'active';
+    setTogglingId(riderId);
+    try {
+      await api.patch(`/admin/riders/${riderId}/status`, { status: nextStatus });
+      toast.success(`${r.name} marked as ${nextStatus}`);
+      fetchRiders(true);
+    } catch {
+      toast.error("Failed to update rider status");
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const filteredRiders = useMemo(() => {
     const q = search.toLowerCase();
@@ -9397,6 +9415,15 @@ function AllRidersTabContent() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => fetchRiders(false)}
+            className="h-8 gap-1.5 rounded-xl text-xs neu-card"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <span className="text-xs text-muted-foreground font-mono hidden md:inline">
             Auto-refresh 15s 🟢
           </span>
@@ -9442,15 +9469,17 @@ function AllRidersTabContent() {
                   <th className="px-5 py-3.5">Current Order</th>
                   <th className="px-5 py-3.5">Vehicle</th>
                   <th className="px-5 py-3.5">Rating</th>
-                  <th className="px-5 py-3.5 text-right">Last Location Update</th>
+                  <th className="px-5 py-3.5">Last Location Update</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
                 {filteredRiders.map(r => {
                   const isOnDelivery = Boolean(r.currentOrderId);
                   const isOnline = r.isAvailable && r.status === 'active';
+                  const riderId = r._id || r.id || "";
                   return (
-                    <tr key={r._id || r.id} className="hover:bg-muted/20 transition-colors">
+                    <tr key={riderId} className="hover:bg-muted/20 transition-colors">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           {r.photoUrl ? (
@@ -9498,8 +9527,34 @@ function AllRidersTabContent() {
                       <td className="px-5 py-4 font-bold text-amber-500 flex items-center gap-1">
                         ★ {r.rating ?? 4.8}
                       </td>
-                      <td className="px-5 py-4 text-right text-xs font-mono text-muted-foreground">
+                      <td className="px-5 py-4 text-xs font-mono text-muted-foreground">
                         {formatAgo(r.locationUpdatedAt)}
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <a
+                            href={`tel:${r.phone}`}
+                            className="p-1.5 rounded-xl bg-muted/60 hover:bg-muted text-primary transition-colors inline-flex items-center justify-center"
+                            title="Call rider"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                          </a>
+                          <Button
+                            size="sm"
+                            variant={r.status === 'active' ? 'outline' : 'default'}
+                            disabled={togglingId === riderId}
+                            onClick={() => handleToggleStatus(r)}
+                            className="h-7 px-2.5 text-xs rounded-xl font-medium"
+                          >
+                            {togglingId === riderId ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : r.status === 'active' ? (
+                              'Suspend'
+                            ) : (
+                              'Activate'
+                            )}
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -9514,8 +9569,9 @@ function AllRidersTabContent() {
 }
 
 function RidersSectionTab() {
-  const [subTab, setSubTab] = useState<'applications' | 'all'>('applications');
+  const [subTab, setSubTab] = useState<'applications' | 'all'>('all');
   const [applications, setApplications] = useState<RiderApplication[]>([]);
+  const [approvedCount, setApprovedCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDocs, setSelectedDocs] = useState<RiderApplication | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
@@ -9526,7 +9582,11 @@ function RidersSectionTab() {
     setLoading(true);
     try {
       const res = await api.get<{ success: boolean; applications: RiderApplication[] }>('/admin/riders/applications?status=pending');
-      setApplications(res.applications ?? []);
+      const apps = res.applications ?? [];
+      setApplications(apps);
+      if (apps.length > 0) {
+        setSubTab('applications');
+      }
     } catch {
       toast.error("Failed to load rider applications");
     } finally {
@@ -9534,9 +9594,21 @@ function RidersSectionTab() {
     }
   }, []);
 
+  const fetchApprovedCount = useCallback(async () => {
+    try {
+      const res = await api.get<{ success: boolean; riders: RiderItem[] }>('/admin/riders');
+      if (res.success && Array.isArray(res.riders)) {
+        setApprovedCount(res.riders.length);
+      }
+    } catch {
+      // silent
+    }
+  }, []);
+
   useEffect(() => {
     fetchApplications();
-  }, [fetchApplications]);
+    fetchApprovedCount();
+  }, [fetchApplications, fetchApprovedCount]);
 
   const handleApprove = async (id: string) => {
     setActionLoading(id);
@@ -9544,6 +9616,7 @@ function RidersSectionTab() {
       await api.post(`/admin/riders/${id}/approve`);
       toast.success("Rider application approved!");
       fetchApplications();
+      fetchApprovedCount();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to approve rider");
     } finally {
@@ -9585,20 +9658,20 @@ function RidersSectionTab() {
       {/* Sub Tabs */}
       <div className="flex gap-2 p-1 bg-background neu-inset rounded-xl max-w-fit">
         <button
-          onClick={() => setSubTab('applications')}
-          className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
-            subTab === 'applications' ? 'bg-primary text-primary-foreground neu-card' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Applications ({applications.length})
-        </button>
-        <button
           onClick={() => setSubTab('all')}
           className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
             subTab === 'all' ? 'bg-primary text-primary-foreground neu-card' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          All Riders
+          All Approved Riders {approvedCount !== null ? `(${approvedCount})` : ''}
+        </button>
+        <button
+          onClick={() => setSubTab('applications')}
+          className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
+            subTab === 'applications' ? 'bg-primary text-primary-foreground neu-card' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Pending Applications ({applications.length})
         </button>
       </div>
 
@@ -9679,7 +9752,7 @@ function RidersSectionTab() {
           )}
         </div>
       ) : (
-        <AllRidersTabContent />
+        <AllRidersTabContent onCountUpdate={setApprovedCount} />
       )}
 
       {/* View Documents Modal */}
