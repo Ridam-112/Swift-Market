@@ -15,7 +15,7 @@ import { globalApiLimiter } from "./middlewares/rateLimiter.js";
 import { maintenanceMode } from "./middlewares/maintenanceMode.js";
 import { db } from "@workspace/db";
 import * as schema from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BASE_URL = "https://swiftmart.space";
@@ -52,8 +52,8 @@ async function buildSitemap(): Promise<string> {
   const today = new Date().toISOString().split("T")[0]!;
 
   const [shopRows, productRows, categoryRows] = await Promise.all([
-    db.select({ id: schema.shops.id, updatedAt: schema.shops.updatedAt })
-      .from(schema.shops).where(eq(schema.shops.status, "approved")),
+    db.select({ id: schema.shops.id, shopName: schema.shops.shopName, updatedAt: schema.shops.updatedAt })
+      .from(schema.shops).where(or(eq(schema.shops.status, "approved"), eq(schema.shops.status, "active"))),
     db.select({ id: schema.products.id, updatedAt: schema.products.updatedAt })
       .from(schema.products).where(eq(schema.products.status, "active")),
     db.select({ slug: schema.categories.slug, updatedAt: schema.categories.updatedAt })
@@ -64,9 +64,22 @@ async function buildSitemap(): Promise<string> {
     ...STATIC_SITEMAP_URLS.map(u =>
       `  <url><loc>${u.loc}</loc><lastmod>${today}</lastmod><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`
     ),
-    ...shopRows.map((s: { id: string; updatedAt: Date | null }) =>
-      `  <url><loc>${BASE_URL}/shop/${s.id}</loc><lastmod>${fmt(s.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`
-    ),
+    ...shopRows.flatMap((s: { id: string; shopName: string | null; updatedAt: Date | null }) => {
+      const slug = (s.shopName || "")
+        .toLowerCase()
+        .trim()
+        .replace(/[^\p{L}\p{N}\s-]/gu, "")
+        .replace(/[\s_]+/gu, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/gu, "");
+      const tags = [
+        `  <url><loc>${BASE_URL}/shop/${s.id}</loc><lastmod>${fmt(s.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
+      ];
+      if (slug) {
+        tags.unshift(`  <url><loc>${BASE_URL}/${slug}</loc><lastmod>${fmt(s.updatedAt)}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`);
+      }
+      return tags;
+    }),
     ...productRows.map((p: { id: string; updatedAt: Date | null }) =>
       `  <url><loc>${BASE_URL}/product/${p.id}</loc><lastmod>${fmt(p.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
     ),

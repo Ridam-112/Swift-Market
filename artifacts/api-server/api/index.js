@@ -110982,7 +110982,7 @@ var require_bn = __commonJS({
         assert((this.negative | num.negative) === 0);
         return this.iuor(num);
       };
-      BN.prototype.or = function or12(num) {
+      BN.prototype.or = function or13(num) {
         if (this.length > num.length) return this.clone().ior(num);
         return num.clone().ior(this);
       };
@@ -133295,7 +133295,7 @@ function maintenanceMode(req, res, next) {
 }
 
 // src/app.ts
-import { eq as eq38 } from "drizzle-orm";
+import { eq as eq38, or as or12 } from "drizzle-orm";
 var helmet3 = helmet || helmet_exports;
 var compression = compressionModule.default || compressionModule;
 var pinoHttp = pinoHttpModule.default || pinoHttpModule;
@@ -133323,7 +133323,7 @@ async function buildSitemap() {
   const fmt = (d) => d ? new Date(d).toISOString().split("T")[0] : (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const [shopRows, productRows, categoryRows] = await Promise.all([
-    db.select({ id: shops.id, updatedAt: shops.updatedAt }).from(shops).where(eq38(shops.status, "approved")),
+    db.select({ id: shops.id, shopName: shops.shopName, updatedAt: shops.updatedAt }).from(shops).where(or12(eq38(shops.status, "approved"), eq38(shops.status, "active"))),
     db.select({ id: products.id, updatedAt: products.updatedAt }).from(products).where(eq38(products.status, "active")),
     db.select({ slug: categories.slug, updatedAt: categories.updatedAt }).from(categories).where(eq38(categories.isActive, true))
   ]);
@@ -133331,9 +133331,16 @@ async function buildSitemap() {
     ...STATIC_SITEMAP_URLS.map(
       (u) => `  <url><loc>${u.loc}</loc><lastmod>${today}</lastmod><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`
     ),
-    ...shopRows.map(
-      (s2) => `  <url><loc>${BASE_URL}/shop/${s2.id}</loc><lastmod>${fmt(s2.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`
-    ),
+    ...shopRows.flatMap((s2) => {
+      const slug = (s2.shopName || "").toLowerCase().trim().replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/[\s_]+/gu, "-").replace(/-+/g, "-").replace(/^-+|-+$/gu, "");
+      const tags = [
+        `  <url><loc>${BASE_URL}/shop/${s2.id}</loc><lastmod>${fmt(s2.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
+      ];
+      if (slug) {
+        tags.unshift(`  <url><loc>${BASE_URL}/${slug}</loc><lastmod>${fmt(s2.updatedAt)}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`);
+      }
+      return tags;
+    }),
     ...productRows.map(
       (p) => `  <url><loc>${BASE_URL}/product/${p.id}</loc><lastmod>${fmt(p.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
     ),
