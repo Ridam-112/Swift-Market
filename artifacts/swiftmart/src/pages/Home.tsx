@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { isAddressServiceable } from "@/lib/serviceArea";
 import { MapLocationPicker, type MapLocationResult } from "@/components/MapLocationPicker";
 import { AdSenseSectionBanner } from "@/components/GoogleAdSense";
+import { getShopUrl } from "@/lib/shopUrl";
 
 const HOME_JSON_LD = [
   {
@@ -632,7 +633,7 @@ export default function Home() {
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
                 {popularShops.map((shop) => (
-                  <Link key={shop.id} href={`/shop/${shop.id}`} className="snap-start shrink-0 block w-[calc(75vw)] max-w-[260px] min-w-[200px]">
+                  <Link key={shop.id} href={getShopUrl(shop)} className="snap-start shrink-0 block w-[calc(75vw)] max-w-[260px] min-w-[200px]">
                     <div className="bg-card rounded-2xl p-3 neu-card flex gap-3 items-center h-full">
                       <div className="w-14 h-14 rounded-xl overflow-hidden bg-background neu-inset flex-shrink-0">
                         <img src={shop.image} alt={shop.storeName} className="w-full h-full object-cover" />

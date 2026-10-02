@@ -174,11 +174,48 @@ router.get("/:id", optionalAuth, async (req: Request, res: Response): Promise<vo
   try {
     const authReq = req as AuthRequest;
     const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
-    const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"] as string)).limit(1);
+    const rawParam = String(req.params["id"] || "").trim();
+    if (!rawParam) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+
+    // 1. Try finding by exact ID first
+    let [shop] = await db.select().from(shops).where(eq(shops.id, rawParam)).limit(1);
+
+    // 2. If not found, try slug / shopName matching
+    if (!shop) {
+      const decoded = decodeURIComponent(rawParam).trim();
+      const withSpaces = decoded.replace(/[-_]+/g, " ").trim();
+
+      // Look up candidate shops by ILIKE comparison
+      const candidates = await db.select().from(shops).where(
+        or(
+          ilike(shops.shopName, `%${decoded}%`),
+          ilike(shops.shopName, `%${withSpaces}%`)
+        )
+      ).limit(20);
+
+      const targetSlug = decoded
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s-]/gu, "")
+        .replace(/[\s_]+/gu, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/gu, "");
+
+      shop = candidates.find(s => {
+        const sName = (s.shopName || "").trim().toLowerCase();
+        const sSlug = sName
+          .replace(/[^\p{L}\p{N}\s-]/gu, "")
+          .replace(/[\s_]+/gu, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-+|-+$/gu, "");
+        return (targetSlug && sSlug === targetSlug) || sName === decoded.toLowerCase() || sName === withSpaces.toLowerCase();
+      }) || (candidates.length === 1 ? candidates[0] : undefined);
+    }
+
     if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
     const mapped = mi(shop) as Record<string, unknown>;
     res.json({ success: true, shop: isAdmin ? mapped : stripSensitiveFields(mapped) });
-  } catch {
+  } catch (err: any) {
+    logger.error({ err: err?.message || err }, "GET /api/shops/:id failed");
     res.status(500).json({ success: false, message: "Failed to load shop. Please try again." });
   }
 });

@@ -7,6 +7,7 @@ import { Star, Clock, SlidersHorizontal, X, Search, Zap } from "lucide-react";
 import { useShops } from "@/hooks/useShops";
 import { useAuth } from "@/hooks/useAuth";
 import { SkeletonShopCardGrid } from "@/components/SkeletonShopCard";
+import { getShopUrl } from "@/lib/shopUrl";
 
 function formatCategory(slug: string) {
   return slug
@@ -201,7 +202,7 @@ export default function Shops() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04, duration: 0.25 }}
               >
-                <Link href={`/shop/${vendor.id}`} className="block">
+                <Link href={getShopUrl(vendor)} className="block">
                   <div className="bg-card rounded-2xl p-4 neu-card flex gap-4 items-center group hover:scale-[1.02] transition-transform">
                     <div className="w-20 h-20 rounded-xl overflow-hidden bg-background neu-inset flex-shrink-0">
                       <img

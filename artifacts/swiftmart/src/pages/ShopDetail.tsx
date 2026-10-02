@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRoute } from "wouter";
 import { Link } from "wouter";
 import { SEO } from "@/components/SEO";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import { CustomCakeModal } from "@/components/CustomCakeModal";
+import { toShopSlug, getShopUrl } from "@/lib/shopUrl";
 
 interface ApiShopDetail {
   _id: string;
@@ -30,8 +31,11 @@ interface ApiShopDetail {
 }
 
 export default function ShopDetail() {
-  const [, params] = useRoute("/shop/:vendorId");
-  const vendorId = params?.vendorId;
+  const [, shopParams] = useRoute("/shop/:vendorId");
+  const [, rootParams] = useRoute("/:shopSlug");
+  const rawIdentifier = shopParams?.vendorId || rootParams?.shopSlug;
+  const identifier = rawIdentifier ? decodeURIComponent(rawIdentifier).trim() : "";
+
   const { shops, isLoading: shopsLoading } = useShops();
   const { products } = useProducts();
 
@@ -42,30 +46,9 @@ export default function ShopDetail() {
   const [notFound, setNotFound] = useState(false);
   const [isCustomCakeOpen, setIsCustomCakeOpen] = useState(false);
 
-  useEffect(() => {
-    if (!vendorId) return;
-
-    const found = shops.find(s => s.id === vendorId);
-    if (found) {
-      setShop(found);
-      setNotFound(false);
-    } else if (!shopsLoading) {
-      setFetchLoading(true);
-      api.get<{ success: boolean; shop: ApiShopDetail }>(`/shops/${vendorId}`)
-        .then(d => {
-          if (d.success && d.shop) {
-            setShop(mapApiShop(d.shop as Parameters<typeof mapApiShop>[0]));
-            setNotFound(false);
-          } else {
-            setNotFound(true);
-          }
-        })
-        .catch(() => setNotFound(true))
-        .finally(() => setFetchLoading(false));
-    }
-
+  const loadProducts = useCallback((shopId: string, storeName?: string) => {
     setProductsLoading(true);
-    api.get<{ success: boolean; products: any[] }>(`/products?shopId=${vendorId}&limit=200&status=active`)
+    api.get<{ success: boolean; products: any[] }>(`/products?shopId=${encodeURIComponent(shopId)}&limit=200&status=active`)
       .then(d => {
         if (d.success && Array.isArray(d.products)) {
           setShopProducts(d.products.map(p => ({
@@ -80,9 +63,9 @@ export default function ShopDetail() {
             description: p.description ?? "",
             stock: p.stock ?? 0,
             rating: p.rating ?? 0,
-            vendorId: p.shopId ?? vendorId,
-            shopId: p.shopId ?? vendorId,
-            shopName: p.shopName || (found?.storeName ?? ""),
+            vendorId: p.shopId ?? shopId,
+            shopId: p.shopId ?? shopId,
+            shopName: p.shopName || (storeName ?? ""),
             trending: p.trending ?? false,
             colors: p.colors,
             sizes: p.sizes,
@@ -96,7 +79,42 @@ export default function ShopDetail() {
       .finally(() => {
         setProductsLoading(false);
       });
-  }, [vendorId, shops, shopsLoading]);
+  }, []);
+
+  useEffect(() => {
+    if (!identifier) return;
+
+    const targetSlug = toShopSlug(identifier);
+    const found = shops.find(s =>
+      s.id === identifier ||
+      (targetSlug && toShopSlug(s.storeName) === targetSlug) ||
+      s.storeName.trim().toLowerCase() === identifier.toLowerCase()
+    );
+
+    if (found) {
+      setShop(found);
+      setNotFound(false);
+      loadProducts(found.id, found.storeName);
+      return;
+    }
+
+    if (shopsLoading) return;
+
+    setFetchLoading(true);
+    api.get<{ success: boolean; shop: ApiShopDetail }>(`/shops/${encodeURIComponent(identifier)}`)
+      .then(d => {
+        if (d.success && d.shop) {
+          const mapped = mapApiShop(d.shop as Parameters<typeof mapApiShop>[0]);
+          setShop(mapped);
+          setNotFound(false);
+          loadProducts(mapped.id, mapped.storeName);
+        } else {
+          setNotFound(true);
+        }
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setFetchLoading(false));
+  }, [identifier, shops, shopsLoading, loadProducts]);
 
   if (shopsLoading || fetchLoading) {
     return (
@@ -145,7 +163,7 @@ export default function ShopDetail() {
       <SEO
         title={shop.storeName}
         description={`Order from ${shop.storeName} in Balurghat on SwiftMart. ${shop.category ? `${shop.category} — ` : ""}Fast local delivery in 10 minutes. ${vendorProducts.length > 0 ? `${vendorProducts.length} products available.` : ""}`}
-        canonical={`/shop/${vendorId}`}
+        canonical={getShopUrl(shop)}
         ogImage={shop.image && shop.image !== "/assets/shop-placeholder.png" ? shop.image : undefined}
         jsonLd={{
           "@context": "https://schema.org",
@@ -153,7 +171,7 @@ export default function ShopDetail() {
           "name": shop.storeName,
           "description": `${shop.storeName} — ${shop.category || "local shop"} in Balurghat. Order on SwiftMart for fast delivery.`,
           "image": shop.image && shop.image !== "/assets/shop-placeholder.png" ? shop.image : undefined,
-          "url": `https://swiftmart.space/shop/${vendorId}`,
+          "url": `https://swiftmart.space${getShopUrl(shop)}`,
           "address": {
             "@type": "PostalAddress",
             "addressLocality": shop.city || "Balurghat",

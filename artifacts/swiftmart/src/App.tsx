@@ -441,6 +441,11 @@ function Router() {
           </AdminLayout>
         </Route>
 
+        {/* Root-level shop vanity URL: swiftmart.space/(shop-name) */}
+        <Route path="/:shopSlug">
+          <PublicLayout><ShopDetail /></PublicLayout>
+        </Route>
+
         <Route>
           <PublicLayout><NotFound /></PublicLayout>
         </Route>

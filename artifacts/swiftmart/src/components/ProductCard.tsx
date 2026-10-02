@@ -11,6 +11,7 @@ import { categories } from "@/data/categories";
 import { cartKey } from "@/context/CartContext";
 import { Store } from "lucide-react";
 import { parseUnit, weightPresets, priceForWeight, formatWeight, isProductWeightBased } from "@/lib/weightUtils";
+import { getShopUrl } from "@/lib/shopUrl";
 
 interface ProductCardProps {
   product: Product;
@@ -75,7 +76,7 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
     }
     if (isCustomCake) {
       if (product.shopId) {
-        navigate(`/shop/${product.shopId}`);
+        navigate(getShopUrl({ id: product.shopId, shopName: product.shopName }));
       } else {
         navigate('/shops');
       }
@@ -162,7 +163,7 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
           {product.name}
         </Link>
         {product.shopName && (
-          <Link href={`/shop/${product.shopId}`} className="flex items-center gap-1 mb-1.5 w-max max-w-full">
+          <Link href={getShopUrl({ id: product.shopId, shopName: product.shopName })} className="flex items-center gap-1 mb-1.5 w-max max-w-full">
             <Store className="w-2.5 h-2.5 text-primary shrink-0" />
             <span className="text-[10px] text-primary font-medium truncate hover:underline">
               {product.shopName}

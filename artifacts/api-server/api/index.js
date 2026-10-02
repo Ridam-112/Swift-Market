@@ -124695,14 +124695,36 @@ router5.get("/:id", optionalAuth, async (req, res) => {
   try {
     const authReq = req;
     const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
-    const [shop] = await db.select().from(shops).where(eq7(shops.id, req.params["id"])).limit(1);
+    const rawParam = String(req.params["id"] || "").trim();
+    if (!rawParam) {
+      res.status(404).json({ success: false, message: "Shop not found" });
+      return;
+    }
+    let [shop] = await db.select().from(shops).where(eq7(shops.id, rawParam)).limit(1);
+    if (!shop) {
+      const decoded = decodeURIComponent(rawParam).trim();
+      const withSpaces = decoded.replace(/[-_]+/g, " ").trim();
+      const candidates = await db.select().from(shops).where(
+        or3(
+          ilike2(shops.shopName, `%${decoded}%`),
+          ilike2(shops.shopName, `%${withSpaces}%`)
+        )
+      ).limit(20);
+      const targetSlug = decoded.toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/[\s_]+/gu, "-").replace(/-+/g, "-").replace(/^-+|-+$/gu, "");
+      shop = candidates.find((s2) => {
+        const sName = (s2.shopName || "").trim().toLowerCase();
+        const sSlug = sName.replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/[\s_]+/gu, "-").replace(/-+/g, "-").replace(/^-+|-+$/gu, "");
+        return targetSlug && sSlug === targetSlug || sName === decoded.toLowerCase() || sName === withSpaces.toLowerCase();
+      }) || (candidates.length === 1 ? candidates[0] : void 0);
+    }
     if (!shop) {
       res.status(404).json({ success: false, message: "Shop not found" });
       return;
     }
     const mapped = mi(shop);
     res.json({ success: true, shop: isAdmin ? mapped : stripSensitiveFields(mapped) });
-  } catch {
+  } catch (err) {
+    logger.error({ err: err?.message || err }, "GET /api/shops/:id failed");
     res.status(500).json({ success: false, message: "Failed to load shop. Please try again." });
   }
 });
