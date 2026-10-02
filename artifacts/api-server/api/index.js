@@ -124700,7 +124700,8 @@ router5.get("/:id", optionalAuth, async (req, res) => {
       res.status(404).json({ success: false, message: "Shop not found" });
       return;
     }
-    let [shop] = await db.select().from(shops).where(eq7(shops.id, rawParam)).limit(1);
+    const initialShopRows = await db.select().from(shops).where(eq7(shops.id, rawParam)).limit(1);
+    let shop = initialShopRows[0];
     if (!shop) {
       const decoded = decodeURIComponent(rawParam).trim();
       const withSpaces = decoded.replace(/[-_]+/g, " ").trim();
@@ -130260,7 +130261,7 @@ async function enrichWithShopNames(rows) {
   return rows.map((p) => ({ ...p, shopName: shopMap[p["shopId"]] ?? "" }));
 }
 var router23 = (0, import_express23.Router)();
-var A20 = requireRole("admin", "super_admin", "manager");
+var A20 = requireRole("admin", "super_admin", "city_manager");
 var leanProductColumns = {
   id: products.id,
   name: products.name,

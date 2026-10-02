@@ -15,7 +15,7 @@ async function enrichWithShopNames(rows: Record<string, unknown>[]) {
 }
 
 const router = Router();
-const A = requireRole("admin", "super_admin", "manager");
+const A = requireRole("admin", "super_admin", "city_manager");
 
 type SectionConfig = {
   categorySlug?: string;

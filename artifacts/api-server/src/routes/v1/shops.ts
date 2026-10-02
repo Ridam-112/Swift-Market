@@ -178,7 +178,8 @@ router.get("/:id", optionalAuth, async (req: Request, res: Response): Promise<vo
     if (!rawParam) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
 
     // 1. Try finding by exact ID first
-    let [shop] = await db.select().from(shops).where(eq(shops.id, rawParam)).limit(1);
+    const initialShopRows = await db.select().from(shops).where(eq(shops.id, rawParam)).limit(1);
+    let shop: typeof shops.$inferSelect | undefined = initialShopRows[0];
 
     // 2. If not found, try slug / shopName matching
     if (!shop) {
