@@ -77,6 +77,7 @@ const AllProducts     = lazy(() => import("@/pages/AllProducts"));
 const SectionProducts = lazy(() => import("@/pages/SectionProducts"));
 const GroceryStore    = lazy(() => import("@/pages/GroceryStore"));
 const CustomCakeTracker = lazy(() => import("@/pages/CustomCakeTracker"));
+const ServiceCorner   = lazy(() => import("@/pages/ServiceCorner"));
 
 const queryClient = new QueryClient();
 
@@ -366,6 +367,12 @@ function Router() {
         </Route>
         <Route path="/product/:id">
           <PublicLayout><Product /></PublicLayout>
+        </Route>
+        <Route path="/services">
+          <PublicLayout><ServiceCorner /></PublicLayout>
+        </Route>
+        <Route path="/service-corner">
+          <PublicLayout><ServiceCorner /></PublicLayout>
         </Route>
 
         {/* ── Cart page — accessible to guests, checkout requires login ── */}

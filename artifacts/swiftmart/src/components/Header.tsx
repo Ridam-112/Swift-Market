@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, MapPin, ShoppingBag, Store, Clock, User, Shield, LayoutDashboard, Package, ClipboardList, Plus, Bell, LogIn, ArrowRight } from "lucide-react";
+import { Search, MapPin, ShoppingBag, Store, Clock, User, Shield, LayoutDashboard, Package, ClipboardList, Plus, Bell, LogIn, ArrowRight, Wrench } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { useProducts } from "@/hooks/useProducts";
@@ -267,6 +267,7 @@ export function Header() {
               <nav className="hidden md:flex items-center gap-1">
                 {[
                   { href: "/", icon: Store, label: "Home" },
+                  { href: "/services", icon: Wrench, label: "Services" },
                   { href: "/orders", icon: Clock, label: "Orders" },
                   { href: "/profile", icon: User, label: "Profile" },
                 ].map(({ href, icon: Icon, label }) => {

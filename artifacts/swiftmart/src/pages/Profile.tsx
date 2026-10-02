@@ -11,7 +11,7 @@ import { AddressCard } from "@/components/AddressCard";
 import { AddressForm } from "@/components/AddressForm";
 import { PincodeSelector } from "@/components/PincodeSelector";
 import { toast } from "sonner";
-import { LogOut, MapPin, Store, Clock, XCircle, Shield, HelpCircle, ChevronDown, ChevronUp, Send, Bike, Briefcase } from "lucide-react";
+import { LogOut, MapPin, Store, Clock, XCircle, Shield, HelpCircle, ChevronDown, ChevronUp, Send, Bike, Briefcase, Wrench, ChevronRight } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
@@ -330,6 +330,27 @@ export default function Profile() {
           </Link>
         </section>
       )}
+
+      {/* Service Corner (Upahar Electronics Lab) */}
+      <section>
+        <Link href="/services">
+          <button
+            type="button"
+            className="w-full rounded-3xl p-4 neu-card bg-card text-foreground border border-primary/20 hover:border-primary/40 flex items-center justify-between text-left transition-all cursor-pointer group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Wrench className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="block font-bold text-sm text-foreground">Service Corner (হোম সার্ভিসিং)</span>
+                <span className="block text-[11px] text-muted-foreground">TV, AC, ফ্রিজ রিপেয়ার ও টেকনিশিয়ান বুকিং</span>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+          </button>
+        </Link>
+      </section>
 
       {/* Help & Complaints */}
       <section className="bg-card p-5 rounded-3xl neu-card space-y-4">

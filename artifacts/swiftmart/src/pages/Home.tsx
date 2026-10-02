@@ -570,6 +570,42 @@ export default function Home() {
             </div>
           </Link>
 
+          {/* ── SwiftMart Service Corner Banner (Upahar Electronics Lab) ─────────────────── */}
+          <Link href="/services">
+            <div className="relative rounded-2xl overflow-hidden cursor-pointer group border border-blue-500/30 shadow-xs">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-700 via-indigo-600 to-sky-500" />
+              <div
+                className="absolute inset-0 opacity-10"
+                style={{
+                  backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)",
+                  backgroundSize: "24px 24px",
+                }}
+              />
+              <div className="relative flex items-center justify-between px-4 py-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex -space-x-2">
+                    {["📺", "❄️", "🧊", "🔊"].map((em, i) => (
+                      <div key={i} className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-base shadow-sm" style={{ zIndex: 4 - i }}>
+                        {em}
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-white font-extrabold text-sm leading-tight">Service Corner 🛠️</p>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-400 text-slate-900">Upahar Lab</span>
+                    </div>
+                    <p className="text-white/85 text-xs mt-0.5">TV · AC · Fridge · Home Theatre · Fan Repair</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 bg-white text-blue-800 font-bold text-xs px-3 py-1.5 rounded-full shadow-md group-hover:scale-105 transition-transform shrink-0">
+                  বুক করুন
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                </div>
+              </div>
+            </div>
+          </Link>
+
           {/* ── Category bubble list ───────────────────────────────── */}
           <section className="w-full">
             <div className="flex justify-between items-center mb-3">

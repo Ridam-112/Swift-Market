@@ -14,7 +14,7 @@ import {
   Flag, BarChart2, LogOut, Menu, X, Package, RefreshCw, Bell, BellRing, Send,
   ImageIcon, Plus, Edit2, Tag, Loader2, HelpCircle, MessageSquare, Flame, Coffee, ArrowUpDown, Home, Mail,
   Layers, GripVertical, ToggleLeft, ToggleRight, Grid2X2, ScrollText, MapPin, Truck, Bike, List, Phone,
-  UserCheck, Gift, QrCode, Upload, Palette, LayoutGrid, Smartphone, Cake,
+  UserCheck, Gift, QrCode, Upload, Palette, LayoutGrid, Smartphone, Cake, Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { generateShopSticker } from "@/lib/shopSticker";
@@ -149,7 +149,7 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'shops-map' | 'users' | 'orders' | 'custom-cakes' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config' | 'theme-config' | 'app-home-builder' | 'app-superstore-builder' | 'app-cafe-builder' | 'riders';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'shops-map' | 'users' | 'orders' | 'custom-cakes' | 'service-corner' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config' | 'theme-config' | 'app-home-builder' | 'app-superstore-builder' | 'app-cafe-builder' | 'riders';
 
 import { SEO } from "@/components/SEO";
 import FleetMapTab from "@/components/FleetMapTab";
@@ -157,6 +157,7 @@ import ShopsMapTab from "@/components/ShopsMapTab";
 import { ThemeConfigTab } from "./admin/ThemeConfigTab";
 import { LayoutBuilderTab } from "./admin/LayoutBuilderTab";
 import { AdminCustomCakesTab } from "./admin/AdminCustomCakesTab";
+import { AdminServiceCornerTab } from "./admin/AdminServiceCornerTab";
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -230,6 +231,7 @@ export default function Admin() {
               {activeSection === 'users' && <UsersTab />}
               {activeSection === 'orders' && <OrdersTab onNavigate={setActiveSection} />}
               {activeSection === 'custom-cakes' && <AdminCustomCakesTab />}
+              {activeSection === 'service-corner' && <AdminServiceCornerTab />}
               {activeSection === 'reports' && <ReportsTab />}
               {activeSection === 'analytics' && <AnalyticsTab />}
               {activeSection === 'transactions' && <TransactionsTab />}
@@ -289,6 +291,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
   const [pendingOrders, setPendingOrders] = useState(0);
   const [pendingRiders, setPendingRiders] = useState(0);
   const [pendingCustomCakes, setPendingCustomCakes] = useState(0);
+  const [pendingServices, setPendingServices] = useState(0);
   const { reports, user } = useAuth();
   const openReports = reports.filter(r => r.status === 'open').length;
 
@@ -307,6 +310,11 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
         if (d.stats) setPendingCustomCakes((d.stats.requested || 0) + (d.stats.confirmed || 0));
       })
       .catch(() => {});
+    api.get<{ success: boolean; statusCounts?: { requested: number } }>('/services/admin/bookings?status=requested')
+      .then(d => {
+        if (d.statusCounts) setPendingServices(d.statusCounts.requested || 0);
+      })
+      .catch(() => {});
   }, []);
 
   const navItems: { id: AdminSection; label: string; icon: LucideIcon; badge?: number }[] = [
@@ -317,6 +325,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'users', label: 'Users', icon: Users },
     { id: 'orders', label: 'Orders', icon: ShoppingBag, badge: pendingOrders },
     { id: 'custom-cakes', label: 'Custom Cakes', icon: Cake, badge: pendingCustomCakes },
+    { id: 'service-corner', label: 'Service Corner', icon: Wrench, badge: pendingServices },
     { id: 'riders', label: 'Riders', icon: Truck, badge: pendingRiders },
     { id: 'reports', label: 'Reports', icon: Flag, badge: openReports },
     { id: 'analytics', label: 'Analytics', icon: BarChart2 },

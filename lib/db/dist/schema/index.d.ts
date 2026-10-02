@@ -35,4 +35,5 @@ export * from "./appLayouts.js";
 export * from "./pickupVerificationSessions.js";
 export * from "./pickupScanLogs.js";
 export * from "./customCakes.js";
+export * from "./serviceBookings.js";
 //# sourceMappingURL=index.d.ts.map
