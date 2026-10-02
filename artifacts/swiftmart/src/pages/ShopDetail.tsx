@@ -158,24 +158,41 @@ export default function ShopDetail() {
 
   const vendorProducts = shopProducts.length > 0 ? shopProducts : products.filter(p => p.vendorId === shop.id);
 
+  const isFoodShop = ['restaurant', 'cafe', 'cloud-kitchen', 'sweet-shop', 'bakery', 'fast-food', 'food', 'food_junction', 'cake'].some(t => 
+    (shop.shopType || '').toLowerCase().includes(t) || 
+    (shop.category || '').toLowerCase().includes(t) ||
+    (shop.storeName || '').toLowerCase().includes('cake') ||
+    (shop.storeName || '').toLowerCase().includes('roll')
+  );
+
+  const shopUrlPath = getShopUrl(shop);
+  const seoTitle = `${shop.storeName}, Balurghat — Order Online Menu & Delivery | SwiftMart`;
+  const seoDescription = `Order online from ${shop.storeName} in Balurghat on SwiftMart. ${shop.category ? `${shop.category} · ` : ""}View menu, prices & fast 10-minute delivery. ${vendorProducts.length > 0 ? `${vendorProducts.length} items available.` : ""}`;
+  const seoKeywords = `${shop.storeName}, ${shop.storeName} Balurghat, ${shop.storeName} menu, order ${shop.storeName} online, food delivery balurghat, SwiftMart Balurghat`;
+
   return (
     <div className="pb-24 min-h-[100dvh]">
       <SEO
-        title={shop.storeName}
-        description={`Order from ${shop.storeName} in Balurghat on SwiftMart. ${shop.category ? `${shop.category} — ` : ""}Fast local delivery in 10 minutes. ${vendorProducts.length > 0 ? `${vendorProducts.length} products available.` : ""}`}
-        canonical={getShopUrl(shop)}
+        title={seoTitle}
+        description={seoDescription}
+        canonical={shopUrlPath}
+        keywords={seoKeywords}
         ogImage={shop.image && shop.image !== "/assets/shop-placeholder.png" ? shop.image : undefined}
         jsonLd={{
           "@context": "https://schema.org",
-          "@type": "LocalBusiness",
+          "@type": isFoodShop ? ["Restaurant", "FoodEstablishment", "LocalBusiness"] : ["LocalBusiness", "Store"],
           "name": shop.storeName,
-          "description": `${shop.storeName} — ${shop.category || "local shop"} in Balurghat. Order on SwiftMart for fast delivery.`,
+          "description": seoDescription,
           "image": shop.image && shop.image !== "/assets/shop-placeholder.png" ? shop.image : undefined,
-          "url": `https://swiftmart.space${getShopUrl(shop)}`,
+          "url": `https://swiftmart.space${shopUrlPath}`,
+          "telephone": shop.phone || "+91 62961 18949",
+          "priceRange": "₹₹",
+          "currenciesAccepted": "INR",
+          "servesCuisine": isFoodShop ? (shop.category || "Fast Food, Bakery, Indian") : undefined,
           "address": {
             "@type": "PostalAddress",
             "addressLocality": shop.city || "Balurghat",
-            "postalCode": shop.pincode || undefined,
+            "postalCode": shop.pincode || "733103",
             "addressRegion": "West Bengal",
             "addressCountry": "IN"
           },
@@ -189,9 +206,47 @@ export default function ShopDetail() {
               "ratingValue": shop.rating.toFixed(1),
               "bestRating": "5",
               "worstRating": "1",
-              "ratingCount": 1
+              "ratingCount": Math.max(shop.totalOrders || 1, 1)
             }
           }),
+          ...(isFoodShop && vendorProducts.length > 0 && {
+            "hasMenu": {
+              "@type": "Menu",
+              "name": `${shop.storeName} Menu`,
+              "hasMenuSection": [
+                {
+                  "@type": "MenuSection",
+                  "name": "Dishes & Items",
+                  "hasMenuItem": vendorProducts.slice(0, 30).map(p => ({
+                    "@type": "MenuItem",
+                    "name": p.name,
+                    "description": p.description || `${p.name} from ${shop.storeName} in Balurghat`,
+                    "image": p.image && !p.image.includes('placeholder') ? p.image : undefined,
+                    "offers": {
+                      "@type": "Offer",
+                      "price": p.discountedPrice && p.discountedPrice > 0 ? p.discountedPrice : p.price,
+                      "priceCurrency": "INR"
+                    }
+                  }))
+                }
+              ]
+            }
+          }),
+          "potentialAction": {
+            "@type": "OrderAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": `https://swiftmart.space${shopUrlPath}`,
+              "inLanguage": "en-IN",
+              "actionPlatform": [
+                "http://schema.org/DesktopWebPlatform",
+                "http://schema.org/MobileWebPlatform",
+                "http://schema.org/AndroidPlatform",
+                "http://schema.org/IOSPlatform"
+              ]
+            },
+            "deliveryMethod": ["http://purl.org/goodrelations/v1#DeliveryModeOwnFleet"]
+          },
           "hasOfferCatalog": vendorProducts.length > 0 ? {
             "@type": "OfferCatalog",
             "name": `${shop.storeName} Products`,
