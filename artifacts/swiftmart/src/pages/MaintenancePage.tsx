@@ -54,26 +54,26 @@ export default function MaintenancePage() {
           {/* Animated badge */}
           <div className="inline-flex items-center gap-2 bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-bold tracking-wide px-4 py-1.5 rounded-full mb-4 animate-pulse">
             <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>WEBSITE UPDATE IN PROGRESS · ৫ তারিখের পর শুরু</span>
+            <span>WEBSITE UPDATE IN PROGRESS · LAUNCHING SOON</span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-snug mb-3">
-            ওয়েবসাইট আপডেট হচ্ছে 🚀
+            Platform Upgrade in Progress 🚀
           </h1>
           
           {/* Date announcement box */}
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-5 text-center">
             <div className="flex items-center justify-center gap-2 text-amber-400 font-extrabold text-sm sm:text-base mb-1">
               <Calendar className="w-5 h-5" />
-              <span>৫ তারিখের পর শুরু হবে পুরোদমে!</span>
+              <span>Full Platform Relaunch Coming Soon!</span>
             </div>
             <p className="text-xs sm:text-sm text-slate-200 font-medium">
-              অনেক নতুন দোকান এবং সব রকমের প্রোডাক্ট (New Shops &amp; All Products) নিয়ে আমরা শীঘ্রই আবার লাইভ হচ্ছি।
+              We are expanding our catalog with verified neighborhood partner stores and hundreds of new products.
             </p>
           </div>
 
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6 max-w-xl mx-auto">
-            Welcome to the official <strong>SwiftMart (Swift Mart)</strong> Balurghat portal. Founded by <strong>Ridam Mohanta</strong> and <strong>Abhi Das</strong>. আমাদের ওয়েবসাইটকে আরো দ্রুত এবং নতুন সব দোকান ও প্রোডাক্ট নিয়ে সাজাতে আপগ্রেডের কাজ চলছে। ৫ তারিখের পর নতুন রূপে চালু হবে। তবে আমাদের <strong>ডেলিভারি পার্টনার ও WhatsApp অর্ডার লাইন ১০০% চালু রয়েছে!</strong>
+            Welcome to the official <strong>SwiftMart (Swift Mart)</strong> Balurghat portal. Founded by <strong>Ridam Mohanta</strong> and <strong>Abhi Das</strong>. We are upgrading our platform for ultra-fast performance, real-time inventory, and wider merchant onboarding across Balurghat. Our <strong>delivery fleet and instant WhatsApp ordering line are 100% operational!</strong>
           </p>
 
           {/* Feature Highlights Banner */}
@@ -83,8 +83,8 @@ export default function MaintenancePage() {
                 <Store className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-xs font-bold text-white">নতুন অনেক দোকান</h3>
-                <p className="text-[11px] text-amber-200/80">চকভবানী, গৌড়ল মাঠ ও রঘুনাথপুরের সেরা সব নতুন লোকাল স্টোর যুক্ত হচ্ছে।</p>
+                <h3 className="text-xs font-bold text-white">Verified Local Stores</h3>
+                <p className="text-[11px] text-amber-200/80">Top partner merchants from Chakbhabani, Gourlo Math, and Raghunathpur.</p>
               </div>
             </div>
 
@@ -93,8 +93,8 @@ export default function MaintenancePage() {
                 <CheckCircle2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-xs font-bold text-white">সব রকমের প্রোডাক্ট</h3>
-                <p className="text-[11px] text-emerald-200/80">মুদি, শাকসবজি, ফল, ওষুধ, মিষ্টি, কেক ও ডেইলি এসেনশিয়ালসের বিশাল সমাহার।</p>
+                <h3 className="text-xs font-bold text-white">Comprehensive Catalog</h3>
+                <p className="text-[11px] text-emerald-200/80">Fresh vegetables, daily dairy, groceries, OTC medicines, sweets, and bakery goods.</p>
               </div>
             </div>
 
@@ -103,8 +103,8 @@ export default function MaintenancePage() {
                 <Smartphone className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-xs font-bold text-white">SwiftMart Android App আসছে!</h3>
-                <p className="text-[11px] text-indigo-200/80">Play Store এ খুব শীঘ্রই অফিশিয়াল অ্যান্ড্রয়েড ও সুপারফাস্ট ওয়েব অ্যাপ উন্মুক্ত করা হবে।</p>
+                <h3 className="text-xs font-bold text-white">SwiftMart Android &amp; Web App</h3>
+                <p className="text-[11px] text-indigo-200/80">Ultra-fast experience with instant real-time order tracking and local support.</p>
               </div>
             </div>
           </div>
@@ -113,11 +113,11 @@ export default function MaintenancePage() {
           <div className="bg-gradient-to-b from-emerald-950/70 to-emerald-900/30 border-2 border-emerald-500/50 rounded-2xl p-5 mb-6 text-left shadow-xl shadow-emerald-950/40">
             <div className="flex items-center gap-2 text-emerald-400 font-extrabold text-sm uppercase tracking-wide mb-1.5">
               <ShoppingBag className="w-4 h-4 text-emerald-400" />
-              <span>জরুরি অর্ডার করতে চান? Instant WhatsApp Order চালু আছে</span>
+              <span>Need Urgent Delivery? Instant WhatsApp Ordering is Active</span>
             </div>
             
             <p className="text-xs text-slate-200 mb-4 font-medium leading-relaxed">
-              ওয়েবসাইট আপডেট চলাকালীন যেকোনো মুদি সামগ্রী, মিষ্টি, কেক, ওষুধ, শাকসবজি বা ফল অর্ডার করতে সরাসরি আমাদের WhatsApp-এ মেসেজ পাঠান। আমাদের ডেলিভারি টিম ১০-১৫ মিনিটে পৌঁছে দেবে:
+              While the catalog is updating, you can order groceries, dairy, vegetables, sweets, cakes, or OTC medicines directly via WhatsApp. Our delivery team delivers within 10-15 minutes across Balurghat:
             </p>
 
             <div className="flex flex-col sm:flex-row gap-2.5">
@@ -128,7 +128,7 @@ export default function MaintenancePage() {
                 className="flex-1 inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-5 py-3.5 rounded-xl shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] text-sm"
               >
                 <MessageCircle className="w-4 h-4 fill-current" />
-                <span>WhatsApp এ অর্ডার করুন</span>
+                <span>Order via WhatsApp</span>
               </a>
 
               <a
@@ -141,7 +141,7 @@ export default function MaintenancePage() {
             </div>
 
             <div className="mt-3.5 text-center sm:text-left flex items-center justify-between text-[11px] text-emerald-400/90 pt-2.5 border-t border-emerald-500/25">
-              <span>📱 হেল্পলাইন ও WhatsApp: <strong>{formattedPhone}</strong></span>
+              <span>📱 Helpline &amp; WhatsApp: <strong>{formattedPhone}</strong></span>
               <button 
                 onClick={copyPhone}
                 type="button"
@@ -210,7 +210,7 @@ export default function MaintenancePage() {
               className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white px-4 py-2 rounded-lg bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 transition-colors cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>পেজ রিফ্রেশ করুন (Check Status)</span>
+              <span>Refresh Page (Check Status)</span>
             </button>
           </div>
 

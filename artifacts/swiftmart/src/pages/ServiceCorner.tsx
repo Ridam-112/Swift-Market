@@ -298,22 +298,22 @@ export default function ServiceCorner() {
                   SwiftMart <span className="text-primary">Service Corner</span> 🛠️
                 </h1>
                 <p className="mt-2 text-sm sm:text-base text-muted-foreground max-w-xl">
-                  টিভি, এসি, ফ্রিজ, হোম থিয়েটার কিংবা ফ্যান — অভিজ্ঞ টেকনিশিয়ানের মাধ্যমে আপনার ঘরে বসেই বিশ্বস্ত রিপেয়ার সার্ভিস বুক করুন।
+                  Book verified doorstep repair services for TV, AC, Refrigerator, Home Theatre and Fans by expert technicians in Balurghat.
                 </p>
 
                 {/* Key value propositions */}
                 <div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-medium text-foreground">
                   <div className="flex items-center gap-1.5 bg-card/80 px-2.5 py-1 rounded-md border border-border">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>ডোরস্টেপ ইন্সপেকশন (Doorstep Visit)</span>
+                    <span>Doorstep Inspection</span>
                   </div>
                   <div className="flex items-center gap-1.5 bg-card/80 px-2.5 py-1 rounded-md border border-border">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>১০০% আসল পার্টস ও ওয়ারেন্টি</span>
+                    <span>100% Genuine Parts & Warranty</span>
                   </div>
                   <div className="flex items-center gap-1.5 bg-card/80 px-2.5 py-1 rounded-md border border-border">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>ইন্সপেকশন করে অনলাইনে স্বচ্ছ বিল</span>
+                    <span>Transparent Online Bill Quote</span>
                   </div>
                 </div>
               </div>
@@ -329,7 +329,7 @@ export default function ServiceCorner() {
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  🛠️ সকল সার্ভিস (All Services)
+                  🛠️ All Services
                 </button>
                 <button
                   type="button"
@@ -347,7 +347,7 @@ export default function ServiceCorner() {
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <span>📋 আমার বুকিং (My Bookings)</span>
+                  <span>📋 My Bookings</span>
                   {myBookings.length > 0 && (
                     <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-bold">
                       {myBookings.length}
@@ -368,47 +368,47 @@ export default function ServiceCorner() {
                 <div className="flex items-center gap-2 mb-4">
                   <Sparkles className="w-4 h-4 text-primary" />
                   <h3 className="font-bold text-sm sm:text-base text-foreground">
-                    কীভাবে সার্ভিস বুক করবেন? (How It Works)
+                    How It Works
                   </h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/40 border border-border/50">
                     <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary font-extrabold flex items-center justify-center shrink-0 text-sm">
-                      ১
+                      1
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-foreground">সার্ভিস বুক করুন</h4>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">আপনার সমস্যা ও পছন্দের তারিখ নির্বাচন করে স্লট বুক করুন।</p>
+                      <h4 className="text-xs font-bold text-foreground">Book Service</h4>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Select your appliance issue and choose a convenient inspection slot.</p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/40 border border-border/50">
                     <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 font-extrabold flex items-center justify-center shrink-0 text-sm">
-                      ২
+                      2
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-foreground">বাড়ি পরিদর্শন</h4>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">উপহার ইলেকট্রনিক্স ল্যাবের টেকনিশিয়ান এসে পরীক্ষা করবেন।</p>
+                      <h4 className="text-xs font-bold text-foreground">Home Inspection</h4>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Upahar Electronics Lab technician visits your home to inspect.</p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/40 border border-border/50">
                     <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-500 font-extrabold flex items-center justify-center shrink-0 text-sm">
-                      ৩
+                      3
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-foreground">অনলাইন কোটেশন</h4>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">সমস্যার ভিত্তিতে পার্টস ও সার্ভিসের পুরো প্রাইস অনলাইনে দেওয়া হবে।</p>
+                      <h4 className="text-xs font-bold text-foreground">Online Quotation</h4>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Get transparent parts & service charges quoted online after diagnosis.</p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/40 border border-border/50">
                     <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 font-extrabold flex items-center justify-center shrink-0 text-sm">
-                      ৪
+                      4
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-foreground">রিপেয়ার ও পেমেন্ট</h4>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">কাজ সম্পন্ন হওয়ার পর আপনি ক্যাশ বা অনলাইনে পে করবেন।</p>
+                      <h4 className="text-xs font-bold text-foreground">Repair & Payment</h4>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Once approved, technician repairs your appliance. Pay cash or online.</p>
                     </div>
                   </div>
                 </div>
@@ -419,10 +419,10 @@ export default function ServiceCorner() {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h2 className="text-lg sm:text-xl font-extrabold text-foreground">
-                      উপলব্ধ ইলেকট্রনিক্স ও রিপেয়ার সার্ভিসেস
+                      Available Electronics &amp; Repair Services
                     </h2>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      আপনার প্রয়োজনীয় সার্ভিসটি বেছে নিন এবং বুক করুন
+                      Select the service you need and book doorstep inspection
                     </p>
                   </div>
                 </div>
@@ -467,7 +467,7 @@ export default function ServiceCorner() {
                           {/* Quick Symptoms / Presets */}
                           <div className="mt-3">
                             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                              সাধারণ সমস্যা ও সমাধান:
+                              Common Issues &amp; Symptoms:
                             </span>
                             <div className="flex flex-wrap gap-1.5">
                               {service.presets.slice(0, 3).map((p, idx) => (
@@ -488,7 +488,7 @@ export default function ServiceCorner() {
 
                           {/* Brands covered */}
                           <p className="mt-3 text-[11px] text-muted-foreground/90 italic">
-                            <span className="font-semibold text-foreground/70 not-italic">ব্র্যান্ডস: </span>
+                            <span className="font-semibold text-foreground/70 not-italic">Brands: </span>
                             {service.brandsCovered}
                           </p>
                         </div>
@@ -496,8 +496,8 @@ export default function ServiceCorner() {
                         {/* Action Bar */}
                         <div className="mt-5 pt-3.5 border-t border-border/60 flex items-center justify-between gap-2">
                           <div className="text-left">
-                            <span className="text-[10px] text-muted-foreground block font-medium">ইন্সপেকশন চার্জ</span>
-                            <span className="text-xs font-bold text-emerald-600">টেকনিশিয়ান দেখে বিল দেবে</span>
+                            <span className="text-[10px] text-muted-foreground block font-medium">Inspection Fee</span>
+                            <span className="text-xs font-bold text-emerald-600">Quote after home visit</span>
                           </div>
 
                           <Button
@@ -506,7 +506,7 @@ export default function ServiceCorner() {
                             size="sm"
                             className="font-bold text-xs gap-1.5 rounded-xl shadow-xs"
                           >
-                            <span>বুক করুন (Book Now)</span>
+                            <span>Book Now</span>
                             <ChevronRight className="w-3.5 h-3.5" />
                           </Button>
                         </div>
@@ -525,17 +525,17 @@ export default function ServiceCorner() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="font-extrabold text-base text-foreground">
-                        Upahar Electronics Lab (উপহার ইলেকট্রনিক্স ল্যাব)
+                        Upahar Electronics Lab
                       </h4>
                       <ShieldCheck className="w-4 h-4 text-emerald-500" />
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      বালুরঘাটের অন্যতম নির্ভরযোগ্য ইলেকট্রনিক্স রিপেয়ার সেন্টার। দীর্ঘদিনের অভিজ্ঞতা এবং দক্ষ কারিগর দ্বারা সেবা প্রদান করা হয়।
+                      Balurghat's leading verified repair lab. Years of technical expertise with specialized diagnostic tools.
                     </p>
                     <div className="mt-2 flex items-center gap-3 text-xs text-foreground/80 font-medium">
-                      <span>📍 বালুরঘাট সদর</span>
-                      <span>⭐ ৪.৮+ গ্রাহক সন্তুষ্টি</span>
-                      <span>⚡ দ্রুত সার্ভিসিং</span>
+                      <span>📍 Balurghat Hub</span>
+                      <span>⭐ 4.8+ Customer Rating</span>
+                      <span>⚡ Fast Turnaround</span>
                     </div>
                   </div>
                 </div>
@@ -546,7 +546,7 @@ export default function ServiceCorner() {
                   onClick={() => setLocation("/uphar-electronics-lab")}
                   className="rounded-xl shrink-0 gap-1.5 text-xs font-bold"
                 >
-                  <span>দোকানের প্রোফাইল দেখুন</span>
+                  <span>View Store Profile</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </Button>
               </div>
@@ -557,10 +557,10 @@ export default function ServiceCorner() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg sm:text-xl font-extrabold text-foreground">
-                    আমার সার্ভিস বুকিংস (My Service Bookings)
+                    My Service Bookings
                   </h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    আপনার পূর্বে করা বুকিং-এর বর্তমান অবস্থা এবং কোটেশন দেখুন
+                    Track inspection status and view dynamic price quotations
                   </p>
                 </div>
 
@@ -572,7 +572,7 @@ export default function ServiceCorner() {
                   className="gap-1.5 rounded-xl text-xs"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loadingBookings ? "animate-spin" : ""}`} />
-                  <span>রিফ্রেশ করুন</span>
+                  <span>Refresh</span>
                 </Button>
               </div>
 
@@ -587,15 +587,15 @@ export default function ServiceCorner() {
                   <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto text-muted-foreground mb-3">
                     <Wrench className="w-7 h-7" />
                   </div>
-                  <h3 className="text-base font-bold text-foreground">কোনো সার্ভিস বুকিং পাওয়া যায়নি</h3>
+                  <h3 className="text-base font-bold text-foreground">No service bookings found</h3>
                   <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                    আপনার টিভি, ফ্রিজ বা এসির কোনো সমস্যা থাকলে আজই উপহার ল্যাব-এর দক্ষ টেকনিশিয়ান বুক করুন।
+                    Need an appliance repaired? Book an expert technician from Upahar Electronics Lab today.
                   </p>
                   <Button
                     onClick={() => setActiveTab("services")}
                     className="mt-4 rounded-xl text-xs font-bold"
                   >
-                    সার্ভিস তালিকা দেখুন
+                    Browse Services
                   </Button>
                 </div>
               ) : (
@@ -620,7 +620,7 @@ export default function ServiceCorner() {
                         </div>
 
                         <div className="text-right">
-                          <span className="text-[11px] text-muted-foreground block">বুকিং তারিখ</span>
+                          <span className="text-[11px] text-muted-foreground block">Booking Date</span>
                           <span className="text-xs font-semibold text-foreground">
                             {new Date(b.createdAt).toLocaleDateString("en-IN", {
                               day: "numeric",
@@ -634,14 +634,14 @@ export default function ServiceCorner() {
                       {/* Middle Details */}
                       <div className="py-3.5 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                         <div>
-                          <span className="text-[11px] text-muted-foreground font-medium block mb-0.5">সমস্যার বিবরণ:</span>
+                          <span className="text-[11px] text-muted-foreground font-medium block mb-0.5">Problem Description:</span>
                           <p className="text-foreground font-medium bg-muted/40 p-2.5 rounded-xl border border-border/50">
                             {b.problemDescription}
                           </p>
                         </div>
 
                         <div>
-                          <span className="text-[11px] text-muted-foreground font-medium block mb-0.5">পরিদর্শনের সময় ও ঠিকানা:</span>
+                          <span className="text-[11px] text-muted-foreground font-medium block mb-0.5">Inspection Slot &amp; Address:</span>
                           <div className="space-y-1 text-foreground/90 font-medium">
                             <div className="flex items-center gap-1.5">
                               <Calendar className="w-3.5 h-3.5 text-primary" />
@@ -656,7 +656,7 @@ export default function ServiceCorner() {
 
                         {/* Assigned Technician Card */}
                         <div>
-                          <span className="text-[11px] text-muted-foreground font-medium block mb-0.5">অ্যাসাইন করা টেকনিশিয়ান:</span>
+                          <span className="text-[11px] text-muted-foreground font-medium block mb-0.5">Assigned Technician:</span>
                           {b.technicianName ? (
                             <div className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl">
                               <div className="flex items-center justify-between">
@@ -673,14 +673,14 @@ export default function ServiceCorner() {
                                     className="px-2.5 py-1 rounded-lg bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs hover:bg-emerald-600 transition-colors"
                                   >
                                     <Phone className="w-3 h-3" />
-                                    <span>কল করুন</span>
+                                    <span>Call</span>
                                   </a>
                                 )}
                               </div>
                             </div>
                           ) : (
                             <div className="bg-muted/40 border border-border/50 p-2.5 rounded-xl text-muted-foreground text-[11px]">
-                              ⏳ টেকনিশিয়ান শিডিউল পর্যালোচনা করা হচ্ছে। খুব শীঘ্রই অ্যাসাইন করা হবে।
+                              ⏳ Technician schedule under review. An expert will be assigned shortly.
                             </div>
                           )}
                         </div>
@@ -692,11 +692,11 @@ export default function ServiceCorner() {
                           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                             <span className="text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
                               <IndianRupee className="w-3.5 h-3.5" />
-                              <span>অনলাইন কোটেশন ও সার্ভিস বিল (Estimated Bill)</span>
+                              <span>Online Quotation &amp; Estimated Bill</span>
                             </span>
 
                             <div className="text-right">
-                              <span className="text-[11px] text-muted-foreground">সর্বমোট চার্জ: </span>
+                              <span className="text-[11px] text-muted-foreground">Total Bill: </span>
                               <span className="text-base font-extrabold text-primary">₹{b.totalAmount}</span>
                             </div>
                           </div>
@@ -704,22 +704,22 @@ export default function ServiceCorner() {
                           {/* Breakdown */}
                           <div className="grid grid-cols-3 gap-2 text-[11px] bg-card p-2 rounded-lg border border-border/50 text-foreground">
                             <div>
-                              <span className="text-muted-foreground block">ভিজিট ফি:</span>
+                              <span className="text-muted-foreground block">Visiting Fee:</span>
                               <span className="font-semibold">₹{b.visitingFee || 0}</span>
                             </div>
                             <div>
-                              <span className="text-muted-foreground block">পার্টস খরচ:</span>
+                              <span className="text-muted-foreground block">Parts Cost:</span>
                               <span className="font-semibold">₹{b.partsCost || 0}</span>
                             </div>
                             <div>
-                              <span className="text-muted-foreground block">সার্ভিসিং চার্জ:</span>
+                              <span className="text-muted-foreground block">Service Charge:</span>
                               <span className="font-semibold">₹{b.serviceCharge || 0}</span>
                             </div>
                           </div>
 
                           {b.quoteNotes && (
                             <p className="mt-2 text-xs text-foreground/90 italic bg-card/60 p-2 rounded-lg border border-border/40">
-                              <span className="font-semibold text-purple-600 not-italic">টেকনিশিয়ান রিপোর্ট: </span>
+                              <span className="font-semibold text-purple-600 not-italic">Technician Report: </span>
                               "{b.quoteNotes}"
                             </p>
                           )}
@@ -729,7 +729,7 @@ export default function ServiceCorner() {
                       {/* Action footer */}
                       <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between text-xs">
                         <span className="text-muted-foreground text-[11px]">
-                          সার্ভিস প্রোভাইডার: <strong className="text-foreground">Upahar Electronics Lab</strong>
+                          Service Partner: <strong className="text-foreground">Upahar Electronics Lab</strong>
                         </span>
 
                         {(b.status === "requested" || b.status === "inspection_scheduled") && (
@@ -738,7 +738,7 @@ export default function ServiceCorner() {
                             onClick={() => handleCancelBooking(b.id)}
                             className="text-rose-500 hover:text-rose-600 font-bold text-[11px] transition-colors"
                           >
-                            বুকিং বাতিল করুন
+                            Cancel Booking
                           </button>
                         )}
                       </div>
@@ -768,10 +768,10 @@ export default function ServiceCorner() {
                     </div>
                     <div>
                       <h3 className="font-bold text-base text-foreground">
-                        {selectedService.title} বুকিং
+                        Book {selectedService.title}
                       </h3>
                       <p className="text-xs text-muted-foreground">
-                        উপহার ইলেকট্রনিক্স ল্যাব • বালুরঘাট
+                        Upahar Electronics Lab • Balurghat
                       </p>
                     </div>
                   </div>
@@ -790,7 +790,7 @@ export default function ServiceCorner() {
                   {/* Quick Preset Symptoms */}
                   <div>
                     <label className="font-semibold text-foreground block mb-1.5">
-                      লক্ষণ / সমস্যা দ্রুত বেছে নিন (Quick Select Symptom):
+                      Common Issues &amp; Quick Select:
                     </label>
                     <div className="flex flex-wrap gap-1.5">
                       {selectedService.presets.map((preset, idx) => (
@@ -809,7 +809,7 @@ export default function ServiceCorner() {
                   {/* Appliance Brand & Model */}
                   <div>
                     <label className="font-semibold text-foreground block mb-1">
-                      ডিভাইস ব্র্যান্ড বা মডেল (যেমন: LG 43 Smart TV / Whirlpool 190L Fridge):
+                      Appliance Brand &amp; Model (e.g. LG 43" Smart TV / Whirlpool 190L Fridge):
                     </label>
                     <input
                       type="text"
@@ -823,12 +823,12 @@ export default function ServiceCorner() {
                   {/* Problem Description */}
                   <div>
                     <label className="font-semibold text-foreground block mb-1">
-                      সমস্যার বিস্তারিত বিবরণ (Problem Description) <span className="text-rose-500">*</span>:
+                      Problem Description <span className="text-rose-500">*</span>:
                     </label>
                     <textarea
                       rows={2}
                       required
-                      placeholder="কী সমস্যা হচ্ছে তা লিখুন (যেমন: ডিসপ্লেতে কোনো ছবি নেই, শুধু সাউন্ড হচ্ছে...)"
+                      placeholder="Describe what issue you are facing (e.g. sound is working but screen is black...)"
                       value={problemDescription}
                       onChange={(e) => setProblemDescription(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-background border border-border focus:outline-hidden focus:ring-1 focus:ring-primary text-xs"
@@ -839,7 +839,7 @@ export default function ServiceCorner() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="font-semibold text-foreground block mb-1">
-                        পরিদর্শনের তারিখ (Preferred Date) <span className="text-rose-500">*</span>:
+                        Preferred Inspection Date <span className="text-rose-500">*</span>:
                       </label>
                       <input
                         type="date"
@@ -853,16 +853,16 @@ export default function ServiceCorner() {
 
                     <div>
                       <label className="font-semibold text-foreground block mb-1">
-                        সময় স্লট (Time Slot) <span className="text-rose-500">*</span>:
+                        Preferred Time Slot <span className="text-rose-500">*</span>:
                       </label>
                       <select
                         value={preferredSlot}
                         onChange={(e) => setPreferredSlot(e.target.value)}
                         className="w-full px-3 py-2 rounded-xl bg-background border border-border focus:outline-hidden focus:ring-1 focus:ring-primary text-xs"
                       >
-                        <option value="morning">সকাল (10:00 AM – 01:00 PM)</option>
-                        <option value="afternoon">দুপুর (01:00 PM – 05:00 PM)</option>
-                        <option value="evening">বিকেল/সন্ধ্যা (05:00 PM – 08:00 PM)</option>
+                        <option value="morning">Morning (10:00 AM – 01:00 PM)</option>
+                        <option value="afternoon">Afternoon (01:00 PM – 05:00 PM)</option>
+                        <option value="evening">Evening (05:00 PM – 08:00 PM)</option>
                       </select>
                     </div>
                   </div>
@@ -871,12 +871,12 @@ export default function ServiceCorner() {
                   <div className="space-y-3 pt-2 border-t border-border/60">
                     <div>
                       <label className="font-semibold text-foreground block mb-1">
-                        আপনার ঠিকানা (Service Address) <span className="text-rose-500">*</span>:
+                        Service Address <span className="text-rose-500">*</span>:
                       </label>
                       <input
                         type="text"
                         required
-                        placeholder="বাড়ি নং, রাস্তার নাম, এলাকা"
+                        placeholder="House / Flat No., Street, Landmark / Area"
                         value={serviceAddress}
                         onChange={(e) => setServiceAddress(e.target.value)}
                         className="w-full px-3 py-2 rounded-xl bg-background border border-border focus:outline-hidden focus:ring-1 focus:ring-primary text-xs"
@@ -886,11 +886,11 @@ export default function ServiceCorner() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="font-semibold text-foreground block mb-1">
-                          ল্যান্ডমার্ক (Landmark):
+                          Landmark (Optional):
                         </label>
                         <input
                           type="text"
-                          placeholder="কাছের মন্দির / স্কুল"
+                          placeholder="Near Temple / School / Club"
                           value={landmark}
                           onChange={(e) => setLandmark(e.target.value)}
                           className="w-full px-3 py-2 rounded-xl bg-background border border-border focus:outline-hidden focus:ring-1 focus:ring-primary text-xs"
@@ -898,7 +898,7 @@ export default function ServiceCorner() {
                       </div>
                       <div>
                         <label className="font-semibold text-foreground block mb-1">
-                          মোবাইল নম্বর <span className="text-rose-500">*</span>:
+                          Phone Number <span className="text-rose-500">*</span>:
                         </label>
                         <input
                           type="tel"
@@ -914,7 +914,7 @@ export default function ServiceCorner() {
 
                   {/* Transparent Pricing Notice */}
                   <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-800 dark:text-amber-300">
-                    ℹ️ <strong>মূল্য নির্ধারণ পলিসি:</strong> এখনই কোনো টাকা দিতে হবে না। টেকনিশিয়ান আপনার বাড়িতে এসে সমস্যাটি পরীক্ষা করবেন এবং পুরো খরচের হিসাব (Parts + Labor) অনলাইনে জানাবেন। আপনি রাজি থাকলে তবেই মেরামত শুরু হবে।
+                    ℹ️ <strong>Transparent Pricing Policy:</strong> No advance payment required today. An expert technician will inspect your appliance at home and provide a clear quotation (Parts + Service) online. Work begins only after your approval.
                   </div>
 
                   {/* Modal Footer */}
@@ -926,7 +926,7 @@ export default function ServiceCorner() {
                       onClick={() => setBookingModalOpen(false)}
                       className="rounded-xl text-xs"
                     >
-                      বাতিল
+                      Cancel
                     </Button>
                     <Button
                       type="submit"
@@ -937,10 +937,10 @@ export default function ServiceCorner() {
                       {isSubmitting ? (
                         <>
                           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          <span>বুকিং প্রসেস হচ্ছে...</span>
+                          <span>Processing Booking...</span>
                         </>
                       ) : (
-                        <span>কনফার্ম ও বুক করুন</span>
+                        <span>Confirm &amp; Book Now</span>
                       )}
                     </Button>
                   </div>
@@ -965,19 +965,19 @@ export default function ServiceCorner() {
                 </div>
 
                 <h3 className="text-xl font-extrabold text-foreground">
-                  সার্ভিস বুকিং সফল হয়েছে! 🎉
+                  Service Booking Confirmed! 🎉
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  বুকিং রেফারেন্স নম্বর:
+                  Booking Reference Number:
                 </p>
                 <div className="mt-2 inline-block px-3 py-1 rounded-lg bg-primary/10 text-primary font-mono font-bold text-sm">
                   #{successBooking.bookingNumber}
                 </div>
 
                 <p className="mt-4 text-xs text-foreground/80 bg-muted/40 p-3 rounded-xl border border-border/50 text-left">
-                  📅 <strong>পরিদর্শন সময়:</strong> {successBooking.preferredDate} ({successBooking.preferredTimeSlot.toUpperCase()})<br />
-                  🏠 <strong>ঠিকানা:</strong> {successBooking.serviceAddress}<br />
-                  👨‍🔧 <strong>সার্ভিস পার্টনার:</strong> Upahar Electronics Lab
+                  📅 <strong>Inspection Date &amp; Slot:</strong> {successBooking.preferredDate} ({successBooking.preferredTimeSlot.toUpperCase()})<br />
+                  🏠 <strong>Address:</strong> {successBooking.serviceAddress}<br />
+                  👨‍🔧 <strong>Service Partner:</strong> Upahar Electronics Lab
                 </p>
 
                 <div className="mt-6 flex flex-col sm:flex-row gap-2">
@@ -988,14 +988,14 @@ export default function ServiceCorner() {
                     }}
                     className="flex-1 rounded-xl text-xs font-bold"
                   >
-                    বুকিং ট্র্যাক করুন (Track Booking)
+                    Track Booking
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => setSuccessBooking(null)}
                     className="rounded-xl text-xs font-bold"
                   >
-                    ঠিক আছে
+                    Done
                   </Button>
                 </div>
               </motion.div>

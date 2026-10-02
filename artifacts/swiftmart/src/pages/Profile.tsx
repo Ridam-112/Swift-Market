@@ -343,8 +343,8 @@ export default function Profile() {
                 <Wrench className="w-5 h-5" />
               </div>
               <div>
-                <span className="block font-bold text-sm text-foreground">Service Corner (হোম সার্ভিসিং)</span>
-                <span className="block text-[11px] text-muted-foreground">TV, AC, ফ্রিজ রিপেয়ার ও টেকনিশিয়ান বুকিং</span>
+                <span className="block font-bold text-sm text-foreground">Service Corner (Appliance Repair)</span>
+                <span className="block text-[11px] text-muted-foreground">TV, AC, Fridge, Sound System & Fan Technician</span>
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />

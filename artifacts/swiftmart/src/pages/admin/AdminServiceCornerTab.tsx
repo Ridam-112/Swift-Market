@@ -259,14 +259,14 @@ export function AdminServiceCornerTab() {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl sm:text-2xl font-black text-foreground">
-              🛠️ Service Corner (উপহার ইলেকট্রনিক্স ল্যাব)
+              🛠️ Service Corner (Upahar Electronics Lab)
             </h2>
             <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
               Official Partner
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            টিভি, এসি, ফ্রিজ, হোম থিয়েটার ও ফ্যান রিপেয়ার সার্ভিসের গ্রাহক বুকিংস ও অনলাইন প্রাইস কোটেশন ম্যানেজার
+            Manage customer doorstep repair bookings, technician assignments, and post-inspection online quotations
           </p>
         </div>
 
@@ -627,12 +627,12 @@ export function AdminServiceCornerTab() {
                     onChange={(e) => setEditStatus(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs focus:outline-hidden font-semibold"
                   >
-                    <option value="requested">🟡 Requested (নতুন বুকিং পর্যালোচনা প্রয়োজন)</option>
-                    <option value="inspection_scheduled">🔵 Inspection Scheduled (টেকনিশিয়ান ভিজিটিং কনফার্ম)</option>
-                    <option value="quote_provided">🟣 Quote Provided (গ্রাহককে অনলাইনে বিল পাঠানো হয়েছে)</option>
-                    <option value="in_progress">🟠 In Progress (মেরামতের কাজ চলছে)</option>
-                    <option value="completed">🟢 Completed (কাজ সম্পন্ন হয়েছে)</option>
-                    <option value="cancelled">🔴 Cancelled (বাতিল)</option>
+                    <option value="requested">🟡 Requested (New booking, needs review)</option>
+                    <option value="inspection_scheduled">🔵 Inspection Scheduled (Technician visit confirmed)</option>
+                    <option value="quote_provided">🟣 Quote Provided (Online price quote sent to customer)</option>
+                    <option value="in_progress">🟠 In Progress (Repair in progress)</option>
+                    <option value="completed">🟢 Completed (Work finished)</option>
+                    <option value="cancelled">🔴 Cancelled</option>
                   </select>
                 </div>
 
@@ -645,7 +645,7 @@ export function AdminServiceCornerTab() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-muted-foreground block mb-1">টেকনিশিয়ানের নাম (Technician Name):</label>
+                      <label className="text-muted-foreground block mb-1">Technician Name:</label>
                       <input
                         type="text"
                         placeholder="e.g. Subhashish Roy"
@@ -655,7 +655,7 @@ export function AdminServiceCornerTab() {
                       />
                     </div>
                     <div>
-                      <label className="text-muted-foreground block mb-1">ফোন নম্বর (Technician Phone):</label>
+                      <label className="text-muted-foreground block mb-1">Technician Phone:</label>
                       <input
                         type="tel"
                         placeholder="e.g. 9876543210"
@@ -671,12 +671,12 @@ export function AdminServiceCornerTab() {
                 <div className="p-3.5 rounded-xl bg-purple-500/5 border border-purple-500/30 space-y-3">
                   <span className="font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5 text-xs">
                     <IndianRupee className="w-4 h-4" />
-                    <span>অনলাইন কোটেশন ও সার্ভিস বিল এডিটর (Post-Inspection Quote):</span>
+                    <span>Post-Inspection Online Bill &amp; Quotation Editor:</span>
                   </span>
 
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="text-[11px] text-muted-foreground block mb-1">ভিজিট ফি (₹):</label>
+                      <label className="text-[11px] text-muted-foreground block mb-1">Visiting Fee (₹):</label>
                       <input
                         type="number"
                         min="0"
@@ -692,7 +692,7 @@ export function AdminServiceCornerTab() {
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] text-muted-foreground block mb-1">পার্টস খরচ (₹):</label>
+                      <label className="text-[11px] text-muted-foreground block mb-1">Parts Cost (₹):</label>
                       <input
                         type="number"
                         min="0"
@@ -708,7 +708,7 @@ export function AdminServiceCornerTab() {
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] text-muted-foreground block mb-1">সার্ভিসিং চার্জ (₹):</label>
+                      <label className="text-[11px] text-muted-foreground block mb-1">Service Fee (₹):</label>
                       <input
                         type="number"
                         min="0"
@@ -727,7 +727,7 @@ export function AdminServiceCornerTab() {
 
                   {/* Total Amount Override */}
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-card border border-border">
-                    <span className="font-bold text-foreground text-xs">সর্বমোট বিল (Total Quoted Bill):</span>
+                    <span className="font-bold text-foreground text-xs">Total Quoted Bill:</span>
                     <div className="flex items-center gap-1">
                       <span className="font-bold text-primary text-base">₹</span>
                       <input
@@ -750,7 +750,7 @@ export function AdminServiceCornerTab() {
                       className="rounded border-border text-primary w-4 h-4 cursor-pointer"
                     />
                     <label htmlFor="isPaidCheck" className="text-xs font-semibold text-foreground cursor-pointer">
-                      Payment Collected / Paid (পেমেন্ট গ্রহণ করা হয়েছে)
+                      Payment Collected / Paid
                     </label>
                   </div>
                 </div>
@@ -758,11 +758,11 @@ export function AdminServiceCornerTab() {
                 {/* Customer Visible Diagnosis / Quote Notes */}
                 <div>
                   <label className="font-bold text-foreground block mb-1">
-                    গ্রাহকের জন্য নোট ও ওয়ারেন্টি বিবরণ (Shown Online to Customer):
+                    Diagnosis / Warranty Notes (Shown Online to Customer):
                   </label>
                   <textarea
                     rows={2}
-                    placeholder="e.g. টিভি মাদারবোর্ড আইসি পরিবর্তন করা হয়েছে। ৩ মাসের সার্ভিস ওয়ারেন্টি প্রযোজ্য।"
+                    placeholder="e.g. TV motherboard IC replaced. 3 months service warranty applicable."
                     value={quoteNotes}
                     onChange={(e) => setQuoteNotes(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-background border border-border text-xs"
@@ -772,7 +772,7 @@ export function AdminServiceCornerTab() {
                 {/* Internal Admin Notes */}
                 <div>
                   <label className="font-bold text-muted-foreground block mb-1">
-                    অভ্যন্তরীণ অ্যাডমিন নোট (Internal Admin Notes only):
+                    Internal Admin Notes (Only visible to admin):
                   </label>
                   <input
                     type="text"

@@ -530,81 +530,90 @@ export default function Home() {
           {/* Admin-curated highlighted bucket bundles */}
           <BucketBanner />
 
-          {/* ── Grocery mini-banner ─────────────────────────────────── */}
-          <Link href="/grocery">
-            <div className="relative rounded-2xl overflow-hidden cursor-pointer group">
-              {/* gradient background */}
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-green-500 to-teal-400" />
-              {/* subtle pattern overlay */}
-              <div
-                className="absolute inset-0 opacity-10"
-                style={{
-                  backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px), radial-gradient(circle at 60% 80%, white 1px, transparent 1px)",
-                  backgroundSize: "30px 30px",
-                }}
-              />
-              {/* decorative blob */}
-              <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full" />
-              <div className="absolute right-16 -bottom-4 w-20 h-20 bg-white/10 rounded-full" />
+          {/* ── Quick Access Row: Fresh Grocery & Service Corner (Side-by-Side Square Cards) ── */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {/* 1. Fresh Grocery Card */}
+            <Link href="/grocery" className="block group">
+              <div className="relative h-full min-h-[148px] sm:min-h-[164px] p-3.5 sm:p-4 rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between border border-emerald-500/20 shadow-xs transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md">
+                {/* gradient background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500" />
+                {/* pattern overlay */}
+                <div
+                  className="absolute inset-0 opacity-15 pointer-events-none"
+                  style={{
+                    backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)",
+                    backgroundSize: "20px 20px",
+                  }}
+                />
+                <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full pointer-events-none" />
 
-              <div className="relative flex items-center justify-between px-4 py-3.5">
-                <div className="flex items-center gap-3">
-                  {/* icon cluster */}
-                  <div className="flex -space-x-2">
-                    {["🥛", "🥦", "🍎", "🛒"].map((em, i) => (
-                      <div key={i} className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-base shadow-sm" style={{ zIndex: 4 - i }}>
+                {/* Top: Icons & Badge */}
+                <div className="relative z-10 flex items-center justify-between">
+                  <div className="flex -space-x-1.5">
+                    {["🥛", "🥦", "🍎"].map((em, i) => (
+                      <div key={i} className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-sm sm:text-base shadow-xs" style={{ zIndex: 3 - i }}>
                         {em}
                       </div>
                     ))}
                   </div>
-                  <div>
-                    <p className="text-white font-extrabold text-sm leading-tight">Fresh Grocery Store</p>
-                    <p className="text-white/80 text-xs mt-0.5">Dairy · Veggies · Snacks · Daily needs</p>
+                  <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-white/25 text-white backdrop-blur-xs">
+                    10-15m
+                  </span>
+                </div>
+
+                {/* Bottom: Text & Button */}
+                <div className="relative z-10 mt-3">
+                  <p className="text-white font-extrabold text-sm sm:text-base leading-tight">Fresh Grocery</p>
+                  <p className="text-white/85 text-[11px] sm:text-xs mt-0.5 line-clamp-1">Veggies, Dairy & Snacks</p>
+                  <div className="mt-2.5 flex items-center gap-1 text-[11px] sm:text-xs font-bold text-emerald-950 bg-white hover:bg-emerald-50 w-fit px-2.5 py-1 rounded-lg shadow-xs transition-colors">
+                    <span>Shop Now</span>
+                    <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 bg-white text-emerald-700 font-bold text-xs px-3 py-1.5 rounded-full shadow-md group-hover:scale-105 transition-transform shrink-0">
-                  Shop Now
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
-                </div>
               </div>
-            </div>
-          </Link>
+            </Link>
 
-          {/* ── SwiftMart Service Corner Banner (Upahar Electronics Lab) ─────────────────── */}
-          <Link href="/services">
-            <div className="relative rounded-2xl overflow-hidden cursor-pointer group border border-blue-500/30 shadow-xs">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-700 via-indigo-600 to-sky-500" />
-              <div
-                className="absolute inset-0 opacity-10"
-                style={{
-                  backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)",
-                  backgroundSize: "24px 24px",
-                }}
-              />
-              <div className="relative flex items-center justify-between px-4 py-3.5">
-                <div className="flex items-center gap-3">
-                  <div className="flex -space-x-2">
-                    {["📺", "❄️", "🧊", "🔊"].map((em, i) => (
-                      <div key={i} className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-base shadow-sm" style={{ zIndex: 4 - i }}>
+            {/* 2. Service Corner Card */}
+            <Link href="/services" className="block group">
+              <div className="relative h-full min-h-[148px] sm:min-h-[164px] p-3.5 sm:p-4 rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between border border-blue-500/30 shadow-xs transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md">
+                {/* gradient background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-700 via-indigo-600 to-sky-500" />
+                {/* pattern overlay */}
+                <div
+                  className="absolute inset-0 opacity-15 pointer-events-none"
+                  style={{
+                    backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)",
+                    backgroundSize: "20px 20px",
+                  }}
+                />
+                <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full pointer-events-none" />
+
+                {/* Top: Icons & Badge */}
+                <div className="relative z-10 flex items-center justify-between">
+                  <div className="flex -space-x-1.5">
+                    {["📺", "❄️", "🧊"].map((em, i) => (
+                      <div key={i} className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-sm sm:text-base shadow-xs" style={{ zIndex: 3 - i }}>
                         {em}
                       </div>
                     ))}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-white font-extrabold text-sm leading-tight">Service Corner 🛠️</p>
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-400 text-slate-900">Upahar Lab</span>
-                    </div>
-                    <p className="text-white/85 text-xs mt-0.5">TV · AC · Fridge · Home Theatre · Fan Repair</p>
+                  <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-400 text-slate-900 shadow-xs">
+                    Upahar Lab
+                  </span>
+                </div>
+
+                {/* Bottom: Text & Button */}
+                <div className="relative z-10 mt-3">
+                  <p className="text-white font-extrabold text-sm sm:text-base leading-tight">Service Corner 🛠️</p>
+                  <p className="text-white/85 text-[11px] sm:text-xs mt-0.5 line-clamp-1">TV, AC, Fridge Repair</p>
+                  <div className="mt-2.5 flex items-center gap-1 text-[11px] sm:text-xs font-bold text-blue-950 bg-white hover:bg-blue-50 w-fit px-2.5 py-1 rounded-lg shadow-xs transition-colors">
+                    <span>Book Now</span>
+                    <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 bg-white text-blue-800 font-bold text-xs px-3 py-1.5 rounded-full shadow-md group-hover:scale-105 transition-transform shrink-0">
-                  বুক করুন
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
-                </div>
               </div>
-            </div>
-          </Link>
+            </Link>
+          </div>
 
           {/* ── Category bubble list ───────────────────────────────── */}
           <section className="w-full">

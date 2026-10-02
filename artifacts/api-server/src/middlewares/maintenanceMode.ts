@@ -350,40 +350,40 @@ function buildMaintenanceHtml(message: string, endTime: string | null): string {
     </div>
 
     <!-- Status badge -->
-    <div class="badge">🚀 Major Upgrade in Progress / কাজ চলছে</div>
+    <div class="badge">🚀 Major Upgrade in Progress</div>
 
     <h1>We'll be back soon!</h1>
 
     <p class="message" style="color: #fcd34d; font-weight: 700; font-size: 15px; margin-bottom: 6px;">
-      ওয়েবসাইটে বড় ধরনের আপগ্রেডের কাজ চলছে!
+      Platform Upgrade in Progress!
     </p>
     <p class="message" style="color: #cbd5e1; font-size: 13px; line-height: 1.6; margin-bottom: 16px;">
-      SwiftMart Mobile App খুব শীঘ্রই আসছে এবং আরো অনেক নতুন দোকান ও প্রোডাক্ট যুক্ত হচ্ছে। আপনাদের আরও ভালো শপিং অভিজ্ঞতা দিতে সিস্টেম অপ্টিমাইজ করা হচ্ছে — অনুগ্রহ করে সাথে থাকুন!
+      SwiftMart is expanding with verified partner stores and hundreds of new products. System optimization is underway to deliver a lightning-fast experience — please stay tuned!
     </p>
 
     <!-- Highlights -->
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; text-align: left;">
       <div style="background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 10px;">
-        <p style="color: #fff; font-weight: 700; font-size: 12px; margin: 0 0 2px 0;">📱 Mobile App আসছে!</p>
-        <p style="color: #a5b4fc; font-size: 11px; margin: 0;">Play Store এ দ্রুত লঞ্চ হচ্ছে।</p>
+        <p style="color: #fff; font-weight: 700; font-size: 12px; margin: 0 0 2px 0;">📱 Mobile App Coming Soon</p>
+        <p style="color: #a5b4fc; font-size: 11px; margin: 0;">Launching soon on Google Play Store.</p>
       </div>
       <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 10px;">
-        <p style="color: #fff; font-weight: 700; font-size: 12px; margin: 0 0 2px 0;">🏬 নতুন দোকান যুক্ত হচ্ছে!</p>
-        <p style="color: #fde68a; font-size: 11px; margin: 0;">হাজারো নতুন আইটেম আসছে।</p>
+        <p style="color: #fff; font-weight: 700; font-size: 12px; margin: 0 0 2px 0;">🏬 New Stores Onboarding</p>
+        <p style="color: #fde68a; font-size: 11px; margin: 0;">Thousands of items being added.</p>
       </div>
     </div>
 
     <!-- WhatsApp Order Box -->
     <div style="background: rgba(16, 185, 129, 0.12); border: 2px solid rgba(16, 185, 129, 0.4); border-radius: 16px; padding: 18px; margin: 18px 0; text-align: center;">
       <p style="color: #34d399; font-weight: 800; font-size: 14px; margin: 0 0 6px 0; text-transform: uppercase;">
-        📦 জরুরি অর্ডার করতে চান?
+        📦 Need Urgent Grocery Delivery?
       </p>
       <p style="color: #e2e8f0; font-size: 13px; margin: 0 0 14px 0;">
-        ওয়েবসাইটে কাজ চলাকালীন যেকোনো অর্ডার সরাসরি WhatsApp-এ মেসেজ দিয়ে প্লেস করুন:
+        Our delivery fleet remains operational. Place your urgent grocery or essential orders directly via WhatsApp:
       </p>
       <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-        <a href="https://wa.me/916296118949?text=Hello%20SwiftMart!%20Ami%20ekta%20order%20dite%20chai." target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 8px; background: #10b981; color: #052e16; font-weight: 800; font-size: 14px; padding: 12px 22px; border-radius: 12px; text-decoration: none; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
-          📲 WhatsApp এ অর্ডার করুন (6296118949)
+        <a href="https://wa.me/916296118949?text=Hello%20SwiftMart!%20I%20would%20like%20to%20place%20an%20order." target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 8px; background: #10b981; color: #052e16; font-weight: 800; font-size: 14px; padding: 12px 22px; border-radius: 12px; text-decoration: none; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
+          📲 Order via WhatsApp (6296118949)
         </a>
         <a href="tel:6296118949" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.08); color: #fff; font-weight: 700; font-size: 14px; padding: 12px 18px; border-radius: 12px; text-decoration: none; border: 1px solid rgba(255,255,255,0.15);">
           📞 Call: 6296118949

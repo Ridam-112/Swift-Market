@@ -471,61 +471,6 @@
         animation: swm-slide-up 0.4s 1.1s both;
       }
     </style>
-
-    <script>
-      // ── Smart Device Router: Mobile Phone -> Flutter App, PC / Desktop -> React Web ──
-      (function() {
-        try {
-          var isMaintenanceMode = true; // Set to true while in maintenance
-          var params = new URLSearchParams(window.location.search);
-          var hasBypass = params.get('bypass') === 'admin' || localStorage.getItem('sm_maintenance_bypass') === 'true';
-          var isBot = /googlebot|google-inspectiontool|pagespeed|storebot-google|mediapartners-google|adsbot-google|bingbot|yandex|duckduckbot|baiduspider|slurp|facebot|facebookexternalhit|twitterbot|linkedinbot|crawler|spider|robot|crawling|seoptimer|seositecheckup|ahrefs|semrush|moz|screaming|sitebulb|sitechecker|headlesschrome|phantomjs|puppeteer|lighthouse|w3c|validator|gtmetrix|pingdom/i.test(navigator.userAgent || '');
-
-          // If maintenance mode is active, block human visitors (let React render MaintenancePage),
-          // but allow search crawlers (Googlebot, Bingbot, etc.) and admin bypass through to crawl SEO pages
-          if (isMaintenanceMode && !hasBypass && !isBot) {
-            return; // Let React render the Maintenance page
-          }
-
-          // Search bots must always index the React Web application, never redirect bots to /app/
-          if (isBot) {
-            return;
-          }
-
-          var viewParam = params.get('view');
-          if (viewParam === 'desktop') {
-            localStorage.setItem('swiftmart_preferred_view', 'desktop');
-            return;
-          }
-          if (viewParam === 'mobile') {
-            localStorage.removeItem('swiftmart_preferred_view');
-          }
-          if (localStorage.getItem('swiftmart_preferred_view') === 'desktop') {
-            return;
-          }
-
-          var path = window.location.pathname.toLowerCase();
-          // Never redirect admin / vendor / delivery / manager / legal / callback routes
-          var isExcludedRoute =
-            path.startsWith('/admin') ||
-            path.startsWith('/vendor') ||
-            path.startsWith('/manager') ||
-            path.startsWith('/delivery') ||
-            path.startsWith('/app') ||
-            path.startsWith('/auth/google/callback');
-
-          if (isExcludedRoute) return;
-
-          // Detect Mobile device or narrow viewport
-          var isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-          var isNarrowScreen = window.innerWidth > 0 && window.innerWidth < 768;
-
-          if (isMobileUA || isNarrowScreen) {
-            window.location.replace('/app/');
-          }
-        } catch (e) {}
-      })();
-    </script>
   </head>
   <body>
     <!-- Meta Pixel Fallback (noscript) -->
@@ -547,7 +492,8 @@
         }
       }, 3500);
     </script>
-    <div id="root">
+    <div id="root"></div>
+    <noscript>
       <div id="swm-seo-preamble" class="swm-preamble-wrap">
         <header class="swm-preamble-header">
           <h1 class="swm-preamble-h1">
@@ -665,7 +611,7 @@
           <p>&copy; 2024-2026 SwiftMart (Swift Mart). All rights reserved. Gourlo Math, Balurghat, West Bengal 733103.</p>
         </footer>
       </div>
-    </div>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
