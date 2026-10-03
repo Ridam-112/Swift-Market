@@ -240,7 +240,7 @@ async function main() {
     }
   });
 
-  // Background job: cancel online-payment orders stuck pending > 15 min
+  // Background job: cancel online-payment orders stuck pending > 15 min (run once at boot)
   const runCleanup = async () => {
     try {
       const count = await cleanupAbandonedOrders();
@@ -250,7 +250,6 @@ async function main() {
     }
   };
   void runCleanup();
-  setInterval(runCleanup, 10 * 60 * 1000);
 }
 
 main().catch((err) => {

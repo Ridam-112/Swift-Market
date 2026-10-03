@@ -24,6 +24,7 @@ export const TTL = {
   HERO_BANNERS: 60 * 60, // 1 hour
   PINCODES:     60 * 60, // 1 hour
   THEME_CONFIG: 60 * 60, // 1 hour
+  LAYOUTS:      15 * 60, // 15 minutes
 } as const;
 
 // ── Cache key constants ───────────────────────────────────────────────────────
@@ -35,6 +36,7 @@ export const KEYS = {
   PINCODES:        "sm:pincodes",
   THEME_CONFIG:    "sm:theme_config",
   PRODUCTS_PREFIX: "sm:products:",
+  LAYOUTS_PREFIX:  "sm:layout:",
 } as const;
 
 // ── In-Memory L1 Cache (Always active, 0 DB transfer) ─────────────────────────
@@ -210,6 +212,17 @@ export async function invalidateBannerCache(): Promise<void> {
     cacheDel(KEYS.HERO_BANNERS),
     cacheDel(KEYS.HOMEPAGE),
   ]);
+}
+
+/**
+ * Invalidate layout cache for a specific page or all layout screens.
+ */
+export async function invalidateLayoutCache(pageName?: string): Promise<void> {
+  if (pageName) {
+    await cacheDel(`${KEYS.LAYOUTS_PREFIX}${pageName}`);
+  } else {
+    await cacheDelPattern(`${KEYS.LAYOUTS_PREFIX}*`);
+  }
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────

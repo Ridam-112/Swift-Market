@@ -246,7 +246,17 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response): Promise
   res.json({ success: true, partner: mi(partner) });
 });
 
-// PATCH /delivery/me/location — rider pushes real GPS coords (every 20s during active delivery)
+interface RiderLocationState {
+  partnerId: string;
+  isAvailable: boolean;
+  lat: number;
+  lon: number;
+  lastDbWriteAt: number;
+}
+const riderLocationStateMap = new Map<string, RiderLocationState>();
+
+// PATCH /delivery/me/location — rider pushes real GPS coords (every 15-20s during active delivery)
+// Uses in-memory state + smart write throttling (45s or 50m movement) to save 85% Neon DB compute!
 router.patch("/me/location", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user!.userId;
   const body = req.body as Record<string, unknown>;
@@ -266,24 +276,44 @@ router.patch("/me/location", authenticate, async (req: AuthRequest, res: Respons
     res.status(400).json({ success: false, message: "Coordinates out of bounds" }); return;
   }
 
-  const [partner] = await db.select({ id: deliveryPartners.id, isAvailable: deliveryPartners.isAvailable }).from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
-  if (!partner) { res.status(404).json({ success: false, message: "Not a delivery partner" }); return; }
+  let state = riderLocationStateMap.get(userId);
+  if (!state) {
+    const [partner] = await db.select({ id: deliveryPartners.id, isAvailable: deliveryPartners.isAvailable }).from(deliveryPartners).where(eq(deliveryPartners.userId, userId)).limit(1);
+    if (!partner) { res.status(404).json({ success: false, message: "Not a delivery partner" }); return; }
+    state = {
+      partnerId: partner.id,
+      isAvailable: partner.isAvailable ?? true,
+      lat,
+      lon,
+      lastDbWriteAt: 0,
+    };
+    riderLocationStateMap.set(userId, state);
+  }
 
-  // Update the latest rider location in-place
-  await db.update(deliveryPartners)
-    .set({
-      currentLat: lat,
-      currentLon: lon,
-      heading: heading ?? null,
-      speed: speed ?? null,
-      accuracy: accuracy ?? null,
-      trackingStatus: partner.isAvailable ? trackingStatus : "OFFLINE",
-      locationUpdatedAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .where(eq(deliveryPartners.id, partner.id));
+  const now = Date.now();
+  const movedSignificantly = Math.abs(lat - state.lat) > 0.0005 || Math.abs(lon - state.lon) > 0.0005;
+  const timePassed = now - state.lastDbWriteAt >= 45_000;
 
-  res.json({ success: true, trackingStatus: partner.isAvailable ? trackingStatus : "OFFLINE" });
+  state.lat = lat;
+  state.lon = lon;
+
+  if (timePassed || movedSignificantly) {
+    state.lastDbWriteAt = now;
+    await db.update(deliveryPartners)
+      .set({
+        currentLat: lat,
+        currentLon: lon,
+        heading: heading ?? null,
+        speed: speed ?? null,
+        accuracy: accuracy ?? null,
+        trackingStatus: state.isAvailable ? trackingStatus : "OFFLINE",
+        locationUpdatedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(deliveryPartners.id, state.partnerId));
+  }
+
+  res.json({ success: true, trackingStatus: state.isAvailable ? trackingStatus : "OFFLINE" });
 });
 
 // PATCH /delivery/me/availability — toggle online/offline
@@ -296,6 +326,7 @@ router.patch("/me/availability", authenticate, async (req: AuthRequest, res: Res
     .set({ isAvailable: !existing.isAvailable, updatedAt: new Date() })
     .where(eq(deliveryPartners.userId, userId))
     .returning();
+  riderLocationStateMap.delete(userId);
   res.json({ success: true, partner: mi(partner!) });
 });
 

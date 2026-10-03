@@ -6,6 +6,7 @@ import { logger } from "../../lib/logger.js";
 import { authenticate, requireRole, optionalAuth, type AuthRequest } from "../../middlewares/auth.js";
 import { createNotificationLimited } from "../../utils/notification.js";
 import { mi, miArr } from "../../utils/mapId.js";
+import { cacheGet, cacheSet, invalidateShopCache, KEYS, TTL } from "../../lib/cache.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -30,11 +31,21 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
 
   const pg = Math.max(1, parseInt(page) || 1);
   const lm = Math.min(200, Math.max(1, parseInt(limit) || 20));
-  const conditions = [];
 
-  // Sanitize JSONB query inputs — pincode must be numeric-only, city capped at 100 chars
   const safeCity    = typeof city    === "string" ? city.trim().replace(/[%_\\]/g, "").slice(0, 100) : "";
   const safePincode = typeof pincode === "string" ? pincode.replace(/\D/g, "").slice(0, 6)           : "";
+
+  // Check L1 In-Memory cache for standard public shop listings (zero DB compute)
+  const isPublicCatalogQuery = !isAdmin && !status && !ownerId && !search && pg === 1 && !safeCity && !safePincode && !shopType && !category;
+  if (isPublicCatalogQuery) {
+    const cached = await cacheGet(KEYS.SHOPS);
+    if (cached) {
+      res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
+      res.json(cached);
+      return;
+    }
+  }
+  const conditions = [];
 
   if (status) {
     if (status === "approved" || status === "active") {
@@ -78,7 +89,11 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     name: s.shopName || s.name || s.ownerName || "Shop",
   }));
   const sanitised = isAdmin ? mapped : mapped.map(s => stripSensitiveFields(s as Record<string, unknown>));
-  res.json({ success: true, shops: sanitised, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
+  const payload = { success: true, shops: sanitised, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) };
+  if (isPublicCatalogQuery) {
+    await cacheSet(KEYS.SHOPS, payload, TTL.SHOPS);
+  }
+  res.json(payload);
   } catch (err: any) {
     logger.error({ err: err?.message || err }, "GET /api/shops initial query failed — attempting schema auto-repair");
     try {

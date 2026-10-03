@@ -3,6 +3,7 @@ import { db, appLayouts, products as productsTable, shops as shopsTable, type La
 import { eq, inArray, and, or } from "drizzle-orm";
 import { authenticate, requireRole } from "../../middlewares/auth.js";
 import { logger } from "../../lib/logger.js";
+import { cacheGet, cacheSet, invalidateLayoutCache, KEYS, TTL } from "../../lib/cache.js";
 
 const router = Router();
 
@@ -518,11 +519,18 @@ async function resolveLayoutBlocks(blocks: LayoutBlock[]): Promise<LayoutBlock[]
 // ─── GET /api/v1/layout/:pageName ─────────────────────────────────────
 // Public SDUI layout API endpoint — returns sorted active layout blocks
 router.get("/:pageName", async (req: Request, res: Response): Promise<void> => {
-    res.setHeader("Cache-Control", "public, s-maxage=180, stale-while-revalidate=360");
+    res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
     const rawParam = req.params["pageName"];
     const pageName = String(Array.isArray(rawParam) ? rawParam[0] : (rawParam || "home")).toLowerCase();
 
   try {
+    const cacheKey = `${KEYS.LAYOUTS_PREFIX}${pageName}`;
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+
     const [layout] = await db
       .select()
       .from(appLayouts)
@@ -534,13 +542,15 @@ router.get("/:pageName", async (req: Request, res: Response): Promise<void> => {
     if (!layout) {
       const defaultBlocks = getDefaultBlocksForPage(pageName);
       const resolvedDefaults = await resolveLayoutBlocks(defaultBlocks);
-      res.json({
+      const defaultResponse = {
         success: true,
         pageName,
         isDefault: true,
         blocks: resolvedDefaults,
         allBlocks: resolvedDefaults,
-      });
+      };
+      await cacheSet(cacheKey, defaultResponse, TTL.LAYOUTS);
+      res.json(defaultResponse);
       return;
     }
 
@@ -558,14 +568,17 @@ router.get("/:pageName", async (req: Request, res: Response): Promise<void> => {
       allBlocks.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     );
 
-    res.json({
+    const layoutResponse = {
       success: true,
       pageName,
       isDefault: false,
       blocks: resolvedActiveBlocks,
       allBlocks: resolvedAllBlocks,
       updatedAt: layout.updatedAt,
-    });
+    };
+
+    await cacheSet(cacheKey, layoutResponse, TTL.LAYOUTS);
+    res.json(layoutResponse);
   } catch (err) {
     logger.error({ err, pageName }, "Failed to fetch layout — returning fallback");
     const fallbackBlocks = getDefaultBlocksForPage(pageName);
@@ -621,6 +634,7 @@ router.put(
           },
         });
 
+      await invalidateLayoutCache(pageName);
       logger.info({ pageName, blockCount: sanitizedBlocks.length }, "Page layout updated successfully");
 
       res.json({

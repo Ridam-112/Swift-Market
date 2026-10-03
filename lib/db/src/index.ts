@@ -15,7 +15,20 @@ export const DB_URLS = [
   process.env.DATABASE5_URL,
 ].filter((url): url is string => Boolean(url && url.trim().length > 0));
 
-function createPgPool(connectionString: string, index: number): pg.Pool {
+function toNeonPoolerUrl(url: string): string {
+  try {
+    // If it's a Neon direct URL (e.g. ep-xyz.region.aws.neon.tech), automatically
+    // route through Neon's PgBouncer transaction pooler (ep-xyz-pooler.region.aws.neon.tech)
+    // to multiplex connections and maximize scale-to-zero compute savings.
+    if (url.includes(".neon.tech") && !url.includes("-pooler.")) {
+      return url.replace(/\.([a-z0-9-]+)\.neon\.tech/i, "-pooler.$1.neon.tech");
+    }
+  } catch {}
+  return url;
+}
+
+function createPgPool(rawConnectionString: string, index: number): pg.Pool {
+  const connectionString = toNeonPoolerUrl(rawConnectionString);
   const isNeon =
     connectionString.includes("neon") ||
     connectionString.includes("sslmode=require");
@@ -23,10 +36,11 @@ function createPgPool(connectionString: string, index: number): pg.Pool {
   const poolInstance = new Pool({
     connectionString,
     ssl: isNeon ? { rejectUnauthorized: false } : undefined,
-    max: 5, // Keep small pool size so we never exceed Neon limits
-    idleTimeoutMillis: 15_000, // 15s idle timeout: Neon auto-suspends to save 90% Compute Hours!
-    connectionTimeoutMillis: 10_000,
-    keepAlive: true,
+    max: 3, // Conservative pool per DB to stay well within Neon free tier connection limits
+    idleTimeoutMillis: 5_000, // 5s idle timeout: lets Neon scale-to-zero immediately when traffic pauses!
+    connectionTimeoutMillis: 8_000,
+    keepAlive: false, // Do NOT send TCP keepalives — allows Neon compute auto-suspend
+    allowExitOnIdle: true, // Allow node process to release sockets without lingering
   });
 
   poolInstance.on("error", (err) => {
