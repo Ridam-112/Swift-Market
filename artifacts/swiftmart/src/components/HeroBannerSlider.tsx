@@ -16,7 +16,7 @@ const staticSlides = [
   {
     id: 1,
     title: "Fresh Groceries Delivered",
-    subtitle: "Rice, Dal, Vegetables & more in 10 minutes",
+    subtitle: "Rice, Dal, Vegetables & more in 30–45 minutes",
     emoji: "🛒",
     gradient: "from-lime-400 to-green-600",
     tag: "Grocery & Daily Needs",
@@ -51,12 +51,12 @@ const staticSlides = [
   },
   {
     id: 5,
-    title: "Support Your Local Shops",
-    subtitle: "Services, repairs, hardware & more near you",
-    emoji: "🏪",
+    title: "Upahar Electronics Lab Services",
+    subtitle: "TV, AC, Fridge, Fan & Home Theatre repair by certified experts",
+    emoji: "🛠️",
     gradient: "from-teal-400 to-cyan-600",
-    tag: "Local Shops & Services",
-    decoration: "🔧🪴🐾",
+    tag: "Electronics Repair Partner",
+    decoration: "📺❄️🧊",
   },
 ];
 

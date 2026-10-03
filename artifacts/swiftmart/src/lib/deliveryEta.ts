@@ -137,8 +137,8 @@ export function computeSingleShopEta(
       distanceKm,
       customerCoordsUsed,
     },
-    rangeMin: Math.max(8, totalMin - 5),
-    rangeMax: totalMin + 5,
+    rangeMin: Math.max(30, totalMin - 5),
+    rangeMax: Math.max(45, totalMin + 5),
   };
 }
 

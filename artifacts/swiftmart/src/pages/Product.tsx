@@ -9,7 +9,7 @@ import { formatINR } from "@/lib/currency";
 import { QuantityStepper } from "@/components/QuantityStepper";
 import { WeightStepper } from "@/components/WeightStepper";
 import { Button } from "@/components/ui/button";
-import { Loader2, Star, ShieldCheck, Clock, AlertTriangle } from "lucide-react";
+import { Loader2, Star, ShieldCheck, Clock, AlertTriangle, Truck } from "lucide-react";
 import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { categories } from "@/data/categories";
@@ -133,12 +133,21 @@ export default function Product() {
 
   if (!product) return <div className="p-8 text-center text-muted-foreground">Product not found</div>;
 
+  const isHeavyItem = Boolean(
+    (product as any).deliveryType === "heavy_1_3d" ||
+    (product as any).isHeavy === true ||
+    (product as any).deliveryDays > 0 ||
+    /\b(25\s?kg|50\s?kg|sack|almirah|refrigerator|fridge|washing machine|cooler|wardrobe|bed|sofa|cylinder|mattress)\b/i.test(
+      `${product.name} ${product.unit || ""} ${product.description || ""}`
+    )
+  );
+
   const category = categories.find(c => c.id === product.category);
   const productSeo = {
     title: product.name,
     description: product.description
       ? `${product.description.substring(0, 140)}… Buy ${product.name} from local shops in Balurghat on SwiftMart.`
-      : `Buy ${product.name} from local shops in Balurghat on SwiftMart. Fast 10-minute delivery.`,
+      : `Buy ${product.name} from local shops in Balurghat on SwiftMart. ${isHeavyItem ? "Delivered in 1–3 days." : "Fast 30–45 minute express delivery."}`,
     image: product.image && !product.image.includes("placeholder") ? product.image : undefined,
     jsonLd: [
       {
@@ -526,6 +535,28 @@ export default function Product() {
               </span>
             </div>
           )}
+
+          {/* Delivery Promise Badge */}
+          <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-muted/40 border border-border/60 mb-5 neu-inset">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isHeavyItem ? "bg-amber-500/10 text-amber-600" : "bg-emerald-500/10 text-emerald-600"}`}>
+              {isHeavyItem ? <Truck className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-sm text-foreground">
+                  {isHeavyItem ? "Heavy Logistics Delivery (1–3 Days)" : "Express Delivery in 30–45 Mins"}
+                </span>
+                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${isHeavyItem ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" : "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"}`}>
+                  {isHeavyItem ? "Bulky Fleet" : "⚡ Local Q-Commerce"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isHeavyItem
+                  ? "Delivered safely across Balurghat via SwiftMart permanent heavy vehicle fleet."
+                  : "Swift local delivery dispatched immediately by our bike/scooter gig delivery partners."}
+              </p>
+            </div>
+          </div>
 
           <div ref={ctaRef} className="mt-auto">
             {isOutOfStock ? (

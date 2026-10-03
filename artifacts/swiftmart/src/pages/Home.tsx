@@ -527,11 +527,11 @@ export default function Home() {
 
           <HeroBannerSlider />
 
-          {/* SwiftMart 10-Minute Balurghat Delivery Highlights */}
+          {/* SwiftMart Local Q-Commerce Delivery Highlights */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center" aria-label="SwiftMart Delivery Highlights">
             <div className="bg-card/60 border border-border/40 rounded-xl p-2.5 neu-inset">
-              <span className="text-xs font-bold text-foreground block">⚡ 10-Minute Delivery</span>
-              <span className="text-[10px] text-muted-foreground">Balurghat Express Service</span>
+              <span className="text-xs font-bold text-foreground block">⚡ 30–45 Min Express</span>
+              <span className="text-[10px] text-muted-foreground">Local Q-Commerce Fleet</span>
             </div>
             <div className="bg-card/60 border border-border/40 rounded-xl p-2.5 neu-inset">
               <span className="text-xs font-bold text-foreground block">🥦 Fresh Groceries</span>
@@ -542,8 +542,8 @@ export default function Home() {
               <span className="text-[10px] text-muted-foreground">Direct Trusted Retailers</span>
             </div>
             <div className="bg-card/60 border border-border/40 rounded-xl p-2.5 neu-inset">
-              <span className="text-xs font-bold text-foreground block">🛡️ Verified Daily Essentials</span>
-              <span className="text-[10px] text-muted-foreground">Safe Contactless Delivery</span>
+              <span className="text-xs font-bold text-foreground block">🚚 Heavy Logistics (1–3d)</span>
+              <span className="text-[10px] text-muted-foreground">Bulky Goods Transport</span>
             </div>
           </div>
 
@@ -577,7 +577,7 @@ export default function Home() {
                     ))}
                   </div>
                   <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-white/25 text-white backdrop-blur-xs">
-                    10-15m
+                    30–45m
                   </span>
                 </div>
 

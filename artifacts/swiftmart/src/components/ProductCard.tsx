@@ -69,6 +69,15 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
 
   const isCustomCake = (product as any).isCustomizable || (product as any).customCake || product.id.startsWith("custom_cake_");
 
+  const isHeavyItem = Boolean(
+    (product as any).deliveryType === "heavy_1_3d" ||
+    (product as any).isHeavy === true ||
+    (product as any).deliveryDays > 0 ||
+    /\b(25\s?kg|50\s?kg|sack|almirah|refrigerator|fridge|washing machine|cooler|wardrobe|bed|sofa|cylinder|mattress)\b/i.test(
+      `${product.name} ${product.unit || ""} ${product.description || ""}`
+    )
+  );
+
   const handleAdd = () => {
     if (!user) {
       openLoginModal("Please log in to add items to your cart");
@@ -156,8 +165,21 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
       </Link>
 
       <div className="flex-1 flex flex-col">
-        <div className="text-xs text-muted-foreground mb-1 font-medium bg-background/50 w-max px-2 py-0.5 rounded-md neu-inset">
-          {product.unit}
+        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+          {product.unit && (
+            <span className="text-[10px] text-muted-foreground font-medium bg-background/50 px-1.5 py-0.5 rounded-md neu-inset">
+              {product.unit}
+            </span>
+          )}
+          {isHeavyItem ? (
+            <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-md">
+              🚚 1–3 Days
+            </span>
+          ) : (
+            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
+              ⚡ 30–45m
+            </span>
+          )}
         </div>
         <Link href={`/product/${product.id}`} className="font-semibold text-sm text-foreground line-clamp-2 leading-tight mb-1 hover:text-primary transition-colors cursor-pointer">
           {product.name}
