@@ -16,14 +16,8 @@ export const DB_URLS = [
 ].filter((url): url is string => Boolean(url && url.trim().length > 0));
 
 function toNeonPoolerUrl(url: string): string {
-  try {
-    // If it's a Neon direct URL (e.g. ep-xyz.region.aws.neon.tech), automatically
-    // route through Neon's PgBouncer transaction pooler (ep-xyz-pooler.region.aws.neon.tech)
-    // to multiplex connections and maximize scale-to-zero compute savings.
-    if (url.includes(".neon.tech") && !url.includes("-pooler.")) {
-      return url.replace(/\.([a-z0-9-]+)\.neon\.tech/i, "-pooler.$1.neon.tech");
-    }
-  } catch {}
+  // Use connection string as provided by user/environment directly.
+  // Never rewrite the domain to prevent DNS ENOTFOUND host errors.
   return url;
 }
 

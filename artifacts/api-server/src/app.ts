@@ -525,147 +525,161 @@ if (process.env.NODE_ENV === "production") {
   }));
 
   app.get("/{*splat}", async (req: Request, res: Response) => {
-    // Never serve SPA for dotfiles or scanner paths (already blocked above,
-    // but guard here too so static middleware bypasses don't sneak through)
-    if (/\/\./.test(req.path) || SCANNER_RE.test(req.path)) {
-      res.status(404).end();
-      return;
-    }
-    const indexPath = path.join(frontendDist, "index.html");
-    if (!fs.existsSync(indexPath)) {
-      res.status(200).json({ ok: true, message: "SwiftMart API Server is running" });
-      return;
-    }
-
-    const canonicalPath = req.path === "/" ? "/" : req.path.replace(/\/$/, "");
-    const canonicalUrl = `${BASE_URL}${canonicalPath}`;
-    res.setHeader("Link", `<${canonicalUrl}>; rel="canonical"`);
-    res.setHeader("Cache-Control", "no-cache, must-revalidate");
-
-    const cleanPath = req.path.replace(/^\/+|\/+$/g, "");
-    let matchedShop: ShopSeoMeta | undefined;
-
     try {
-      if (cleanPath.startsWith("shop/")) {
-        const shopId = cleanPath.slice(5).trim();
-        const maps = await getShopSeoMaps();
-        matchedShop = maps.byId.get(shopId);
-      } else if (cleanPath && !RESERVED_ROOT_PATHS.has(cleanPath.toLowerCase()) && !cleanPath.includes("/")) {
-        const maps = await getShopSeoMaps();
-        matchedShop = maps.bySlug.get(cleanPath.toLowerCase());
-      }
-
-      if (matchedShop) {
-        let html = await fs.promises.readFile(indexPath, "utf8");
-        const title = `${matchedShop.name} (Balurghat) — Official Storefront & Online Ordering | SwiftMart`;
-        const desc = `Order directly from ${matchedShop.name}'s official online storefront in Balurghat on SwiftMart. ${matchedShop.category ? `${matchedShop.category} · ` : ""}Instant 10-15 min local delivery across Balurghat Pincodes 733101 & 733103. Live menu, verified prices, discounts & deals.`;
-        const img = matchedShop.image.startsWith("http")
-          ? matchedShop.image
-          : `${BASE_URL}${matchedShop.image.startsWith("/") ? "" : "/"}${matchedShop.image}`;
-
-        const shopJsonLd = {
-          "@context": "https://schema.org",
-          "@graph": [
-            {
-              "@type": matchedShop.isFoodShop
-                ? ["Restaurant", "FoodEstablishment", "LocalBusiness"]
-                : ["Store", "LocalBusiness", "OnlineStore"],
-              "@id": `${canonicalUrl}#storefront`,
-              "name": matchedShop.name,
-              "legalName": `${matchedShop.name} — SwiftMart Official Storefront`,
-              "alternateName": [
-                matchedShop.name,
-                `${matchedShop.name} Balurghat`,
-                `${matchedShop.name} Storefront`,
-                `${matchedShop.name} Online Store`,
-                `${matchedShop.name} Menu`
-              ],
-              "description": desc,
-              "image": img,
-              "url": canonicalUrl,
-              "telephone": matchedShop.phone,
-              "priceRange": "₹₹",
-              "currenciesAccepted": "INR",
-              "paymentAccepted": "Cash on Delivery, UPI, Cards, Net Banking",
-              "parentOrganization": {
-                "@type": "OnlineBusiness",
-                "name": "SwiftMart",
-                "url": BASE_URL
-              },
-              "address": {
-                "@type": "PostalAddress",
-                "streetAddress": matchedShop.addressText,
-                "addressLocality": "Balurghat",
-                "postalCode": "733101",
-                "addressRegion": "West Bengal",
-                "addressCountry": "IN"
-              },
-              "geo": {
-                "@type": "GeoCoordinates",
-                "latitude": 25.2167,
-                "longitude": 88.7667
-              },
-              "aggregateRating": {
-                "@type": "AggregateRating",
-                "ratingValue": Number((matchedShop.rating || 4.8).toFixed(1)),
-                "reviewCount": 120,
-                "bestRating": 5,
-                "worstRating": 1
-              }
-            },
-            {
-              "@type": "BreadcrumbList",
-              "itemListElement": [
-                { "@type": "ListItem", "position": 1, "name": "SwiftMart Home", "item": `${BASE_URL}/` },
-                { "@type": "ListItem", "position": 2, "name": "Balurghat Stores", "item": `${BASE_URL}/shops` },
-                { "@type": "ListItem", "position": 3, "name": `${matchedShop.name} Storefront`, "item": canonicalUrl }
-              ]
-            }
-          ]
-        };
-
-        const escapeAttr = (s: string) =>
-          s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-        // Inject dynamic Title
-        html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(title)}</title>`);
-        // Inject dynamic Meta Description
-        html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(desc)}" />`);
-        // Inject dynamic Canonical
-        html = html.replace(/<link rel="canonical"[^>]*href=".*?"\s*\/?>/i, `<link rel="canonical" data-rh="true" href="${canonicalUrl}" />`);
-        // Inject Open Graph tags
-        html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(title)}" />`);
-        html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(desc)}" />`);
-        html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
-        html = html.replace(/<meta property="og:image" content=".*?"\s*\/?>/i, `<meta property="og:image" content="${escapeAttr(img)}" />`);
-        // Inject Twitter tags
-        html = html.replace(/<meta name="twitter:title" content=".*?"\s*\/?>/i, `<meta name="twitter:title" content="${escapeAttr(title)}" />`);
-        html = html.replace(/<meta name="twitter:description" content=".*?"\s*\/?>/i, `<meta name="twitter:description" content="${escapeAttr(desc)}" />`);
-        html = html.replace(/<meta name="twitter:image" content=".*?"\s*\/?>/i, `<meta name="twitter:image" content="${escapeAttr(img)}" />`);
-
-        // Inject Shop Schema.org JSON-LD before </head>
-        const ldJsonTag = `\n    <script type="application/ld+json">\n    ${JSON.stringify(shopJsonLd, null, 2)}\n    </script>\n  </head>`;
-        html = html.replace(/<\/head>/i, ldJsonTag);
-
-        // Prepend visible noscript storefront banner for non-JS crawlers
-        const storefrontNoscriptBanner = `
-        <header class="swm-preamble-header" style="border:2px solid #f59e0b; padding:16px; border-radius:12px; margin-bottom:20px; background:#fffbeb;">
-          <div style="font-size:12px; font-weight:bold; color:#b45309; text-transform:uppercase; letter-spacing:1px;">🏪 Official Online Storefront</div>
-          <h1 style="font-size:24px; font-weight:800; color:#1e293b; margin:6px 0;">${escapeAttr(matchedShop.name)} — Balurghat Storefront &amp; Menu</h1>
-          <p style="font-size:14px; color:#475569;">${escapeAttr(desc)}</p>
-          <p style="font-size:13px; color:#64748b;">📍 ${escapeAttr(matchedShop.addressText)}, Balurghat, West Bengal &bull; Fast 10-15 Min Express Doorstep Delivery by SwiftMart.</p>
-        </header>`;
-        html = html.replace(/(<noscript[^>]*>\s*<div[^>]*>)/i, `$1${storefrontNoscriptBanner}`);
-
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        res.send(html);
+      if (req.path.startsWith("/api")) {
+        res.status(404).json({ success: false, message: "API endpoint not found" });
         return;
       }
-    } catch (injectionErr) {
-      logger.error({ injectionErr }, "Failed to inject shop storefront meta tags into index.html; falling back to static");
-    }
+      // Never serve SPA for dotfiles or scanner paths (already blocked above,
+      // but guard here too so static middleware bypasses don't sneak through)
+      if (/\/\./.test(req.path) || SCANNER_RE.test(req.path)) {
+        res.status(404).end();
+        return;
+      }
+      const indexPath = path.join(frontendDist, "index.html");
+      if (!fs.existsSync(indexPath)) {
+        res.status(200).json({ ok: true, message: "SwiftMart API Server is running" });
+        return;
+      }
 
-    res.sendFile(indexPath);
+      const canonicalPath = req.path === "/" ? "/" : req.path.replace(/\/$/, "");
+      const canonicalUrl = `${BASE_URL}${canonicalPath}`;
+      res.setHeader("Link", `<${canonicalUrl}>; rel="canonical"`);
+      res.setHeader("Cache-Control", "no-cache, must-revalidate");
+
+      const cleanPath = req.path.replace(/^\/+|\/+$/g, "");
+      let matchedShop: ShopSeoMeta | undefined;
+
+      try {
+        if (cleanPath.startsWith("shop/")) {
+          const shopId = cleanPath.slice(5).trim();
+          const maps = await getShopSeoMaps();
+          matchedShop = maps.byId.get(shopId);
+        } else if (cleanPath && !RESERVED_ROOT_PATHS.has(cleanPath.toLowerCase()) && !cleanPath.includes("/")) {
+          const maps = await getShopSeoMaps();
+          matchedShop = maps.bySlug.get(cleanPath.toLowerCase());
+        }
+
+        if (matchedShop) {
+          let html = await fs.promises.readFile(indexPath, "utf8");
+          const title = `${matchedShop.name} (Balurghat) — Official Storefront & Online Ordering | SwiftMart`;
+          const desc = `Order directly from ${matchedShop.name}'s official online storefront in Balurghat on SwiftMart. ${matchedShop.category ? `${matchedShop.category} · ` : ""}Instant 10-15 min local delivery across Balurghat Pincodes 733101 & 733103. Live menu, verified prices, discounts & deals.`;
+          const img = matchedShop.image.startsWith("http")
+            ? matchedShop.image
+            : `${BASE_URL}${matchedShop.image.startsWith("/") ? "" : "/"}${matchedShop.image}`;
+
+          const shopJsonLd = {
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": matchedShop.isFoodShop
+                  ? ["Restaurant", "FoodEstablishment", "LocalBusiness"]
+                  : ["Store", "LocalBusiness", "OnlineStore"],
+                "@id": `${canonicalUrl}#storefront`,
+                "name": matchedShop.name,
+                "legalName": `${matchedShop.name} — SwiftMart Official Storefront`,
+                "alternateName": [
+                  matchedShop.name,
+                  `${matchedShop.name} Balurghat`,
+                  `${matchedShop.name} Storefront`,
+                  `${matchedShop.name} Online Store`,
+                  `${matchedShop.name} Menu`
+                ],
+                "description": desc,
+                "image": img,
+                "url": canonicalUrl,
+                "telephone": matchedShop.phone,
+                "priceRange": "₹₹",
+                "currenciesAccepted": "INR",
+                "paymentAccepted": "Cash on Delivery, UPI, Cards, Net Banking",
+                "parentOrganization": {
+                  "@type": "OnlineBusiness",
+                  "name": "SwiftMart",
+                  "url": BASE_URL
+                },
+                "address": {
+                  "@type": "PostalAddress",
+                  "streetAddress": matchedShop.addressText,
+                  "addressLocality": "Balurghat",
+                  "postalCode": "733101",
+                  "addressRegion": "West Bengal",
+                  "addressCountry": "IN"
+                },
+                "geo": {
+                  "@type": "GeoCoordinates",
+                  "latitude": 25.2167,
+                  "longitude": 88.7667
+                },
+                "aggregateRating": {
+                  "@type": "AggregateRating",
+                  "ratingValue": Number((matchedShop.rating || 4.8).toFixed(1)),
+                  "reviewCount": 120,
+                  "bestRating": 5,
+                  "worstRating": 1
+                }
+              },
+              {
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                  { "@type": "ListItem", "position": 1, "name": "SwiftMart Home", "item": `${BASE_URL}/` },
+                  { "@type": "ListItem", "position": 2, "name": "Balurghat Stores", "item": `${BASE_URL}/shops` },
+                  { "@type": "ListItem", "position": 3, "name": `${matchedShop.name} Storefront`, "item": canonicalUrl }
+                ]
+              }
+            ]
+          };
+
+          const escapeAttr = (s: string) =>
+            s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+          // Inject dynamic Title
+          html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(title)}</title>`);
+          // Inject dynamic Meta Description
+          html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(desc)}" />`);
+          // Inject dynamic Canonical
+          html = html.replace(/<link rel="canonical"[^>]*href=".*?"\s*\/?>/i, `<link rel="canonical" data-rh="true" href="${canonicalUrl}" />`);
+          // Inject Open Graph tags
+          html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(title)}" />`);
+          html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(desc)}" />`);
+          html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
+          html = html.replace(/<meta property="og:image" content=".*?"\s*\/?>/i, `<meta property="og:image" content="${escapeAttr(img)}" />`);
+          // Inject Twitter tags
+          html = html.replace(/<meta name="twitter:title" content=".*?"\s*\/?>/i, `<meta name="twitter:title" content="${escapeAttr(title)}" />`);
+          html = html.replace(/<meta name="twitter:description" content=".*?"\s*\/?>/i, `<meta name="twitter:description" content="${escapeAttr(desc)}" />`);
+          html = html.replace(/<meta name="twitter:image" content=".*?"\s*\/?>/i, `<meta name="twitter:image" content="${escapeAttr(img)}" />`);
+
+          // Inject Shop Schema.org JSON-LD before </head>
+          const ldJsonTag = `\n    <script type="application/ld+json">\n    ${JSON.stringify(shopJsonLd, null, 2)}\n    </script>\n  </head>`;
+          html = html.replace(/<\/head>/i, ldJsonTag);
+
+          // Prepend visible noscript storefront banner for non-JS crawlers
+          const storefrontNoscriptBanner = `
+          <header class="swm-preamble-header" style="border:2px solid #f59e0b; padding:16px; border-radius:12px; margin-bottom:20px; background:#fffbeb;">
+            <div style="font-size:12px; font-weight:bold; color:#b45309; text-transform:uppercase; letter-spacing:1px;">🏪 Official Online Storefront</div>
+            <h1 style="font-size:24px; font-weight:800; color:#1e293b; margin:6px 0;">${escapeAttr(matchedShop.name)} — Balurghat Storefront &amp; Menu</h1>
+            <p style="font-size:14px; color:#475569;">${escapeAttr(desc)}</p>
+            <p style="font-size:13px; color:#64748b;">📍 ${escapeAttr(matchedShop.addressText)}, Balurghat, West Bengal &bull; Fast 10-15 Min Express Doorstep Delivery by SwiftMart.</p>
+          </header>`;
+          html = html.replace(/(<noscript[^>]*>\s*<div[^>]*>)/i, `$1${storefrontNoscriptBanner}`);
+
+          res.setHeader("Content-Type", "text/html; charset=utf-8");
+          res.send(html);
+          return;
+        }
+      } catch (injectionErr) {
+        logger.error({ injectionErr }, "Failed to inject shop storefront meta tags into index.html; falling back to static");
+      }
+
+      res.sendFile(indexPath);
+    } catch (topErr) {
+      logger.error({ topErr }, "Error in SPA fallback handler; serving static index.html");
+      const indexPath = path.join(frontendDist, "index.html");
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(200).json({ ok: true, message: "SwiftMart API Server is running" });
+      }
+    }
   });
 }
 

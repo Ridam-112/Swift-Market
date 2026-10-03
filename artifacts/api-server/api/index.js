@@ -124601,6 +124601,138 @@ async function trimNotificationsForUser(userId) {
   }
 }
 
+// src/lib/cache.ts
+var IORedis = __toESM(require_built3(), 1);
+var TTL = {
+  PRODUCTS: 10 * 60,
+  // 10 minutes
+  CATEGORIES: 60 * 60,
+  // 1 hour
+  HOMEPAGE: 15 * 60,
+  // 15 minutes
+  SHOPS: 15 * 60,
+  // 15 minutes
+  HERO_BANNERS: 60 * 60,
+  // 1 hour
+  PINCODES: 60 * 60,
+  // 1 hour
+  THEME_CONFIG: 60 * 60,
+  // 1 hour
+  LAYOUTS: 15 * 60
+  // 15 minutes
+};
+var KEYS = {
+  CATEGORIES: "sm:categories",
+  HOMEPAGE: "sm:homepage",
+  SHOPS: "sm:shops",
+  HERO_BANNERS: "sm:hero_banners",
+  PINCODES: "sm:pincodes",
+  THEME_CONFIG: "sm:theme_config",
+  PRODUCTS_PREFIX: "sm:products:",
+  LAYOUTS_PREFIX: "sm:layout:"
+};
+var memoryCache = /* @__PURE__ */ new Map();
+var MAX_MEMORY_CACHE_ITEMS = 500;
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of memoryCache) {
+    if (v.expiresAt <= now) memoryCache.delete(k);
+  }
+}, 6e4);
+var redis = null;
+var available = false;
+function productsCacheKey(query) {
+  const sorted = Object.keys(query).sort().reduce((acc, k) => {
+    acc[k] = query[k];
+    return acc;
+  }, {});
+  return KEYS.PRODUCTS_PREFIX + JSON.stringify(sorted);
+}
+async function cacheGet(key) {
+  const now = Date.now();
+  const mem = memoryCache.get(key);
+  if (mem) {
+    if (mem.expiresAt > now) {
+      return mem.value;
+    }
+    memoryCache.delete(key);
+  }
+  if (redis && available) {
+    try {
+      const raw = await redis.get(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        memoryCache.set(key, { value: parsed, expiresAt: now + 6e4 });
+        return parsed;
+      }
+    } catch {
+    }
+  }
+  return null;
+}
+async function cacheSet(key, value, ttlSeconds) {
+  const now = Date.now();
+  if (memoryCache.size >= MAX_MEMORY_CACHE_ITEMS) {
+    const first = memoryCache.keys().next().value;
+    if (first !== void 0) memoryCache.delete(first);
+  }
+  memoryCache.set(key, { value, expiresAt: now + ttlSeconds * 1e3 });
+  if (redis && available) {
+    try {
+      await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
+    } catch {
+    }
+  }
+}
+async function cacheDel(...keys) {
+  for (const k of keys) {
+    memoryCache.delete(k);
+  }
+  if (redis && available && keys.length > 0) {
+    try {
+      await redis.del(...keys);
+    } catch {
+    }
+  }
+}
+async function cacheDelPattern(pattern) {
+  const regex = new RegExp("^" + pattern.replace(/\*/g, ".*") + "$");
+  for (const k of memoryCache.keys()) {
+    if (regex.test(k)) {
+      memoryCache.delete(k);
+    }
+  }
+  if (redis && available) {
+    try {
+      let cursor = "0";
+      do {
+        const [next, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 200);
+        cursor = next;
+        if (keys.length > 0) {
+          await redis.del(...keys);
+        }
+      } while (cursor !== "0");
+    } catch {
+    }
+  }
+}
+async function invalidateProductCaches() {
+  await Promise.all([
+    cacheDelPattern(KEYS.PRODUCTS_PREFIX + "*"),
+    cacheDel(KEYS.HOMEPAGE)
+  ]);
+}
+async function invalidateCategoryCache() {
+  await cacheDel(KEYS.CATEGORIES);
+}
+async function invalidateLayoutCache(pageName) {
+  if (pageName) {
+    await cacheDel(`${KEYS.LAYOUTS_PREFIX}${pageName}`);
+  } else {
+    await cacheDelPattern(`${KEYS.LAYOUTS_PREFIX}*`);
+  }
+}
+
 // src/routes/v1/shops.ts
 var router5 = (0, import_express5.Router)();
 var A4 = requireRole("admin", "super_admin");
@@ -124618,9 +124750,18 @@ router5.get("/", optionalAuth, async (req, res) => {
     const { status, shopType, city, ownerId, pincode, page = "1", limit = "20", search, category } = req.query;
     const pg2 = Math.max(1, parseInt(page) || 1);
     const lm = Math.min(200, Math.max(1, parseInt(limit) || 20));
-    const conditions = [];
     const safeCity = typeof city === "string" ? city.trim().replace(/[%_\\]/g, "").slice(0, 100) : "";
     const safePincode = typeof pincode === "string" ? pincode.replace(/\D/g, "").slice(0, 6) : "";
+    const isPublicCatalogQuery = !isAdmin && !status && !ownerId && !search && pg2 === 1 && !safeCity && !safePincode && !shopType && !category;
+    if (isPublicCatalogQuery) {
+      const cached = await cacheGet(KEYS.SHOPS);
+      if (cached) {
+        res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
+        res.json(cached);
+        return;
+      }
+    }
+    const conditions = [];
     if (status) {
       if (status === "approved" || status === "active") {
         conditions.push(or3(eq7(shops.status, "approved"), eq7(shops.status, "active")));
@@ -124656,7 +124797,11 @@ router5.get("/", optionalAuth, async (req, res) => {
       name: s2.shopName || s2.name || s2.ownerName || "Shop"
     }));
     const sanitised = isAdmin ? mapped : mapped.map((s2) => stripSensitiveFields(s2));
-    res.json({ success: true, shops: sanitised, total: Number(total), page: pg2, pages: Math.ceil(Number(total) / lm) });
+    const payload = { success: true, shops: sanitised, total: Number(total), page: pg2, pages: Math.ceil(Number(total) / lm) };
+    if (isPublicCatalogQuery) {
+      await cacheSet(KEYS.SHOPS, payload, TTL.SHOPS);
+    }
+    res.json(payload);
   } catch (err) {
     logger.error({ err: err?.message || err }, "GET /api/shops initial query failed \u2014 attempting schema auto-repair");
     try {
@@ -125344,130 +125489,6 @@ var shopTypes_default = router6;
 // src/routes/v1/categories.ts
 var import_express7 = __toESM(require_express2(), 1);
 import { eq as eq9, asc as asc3 } from "drizzle-orm";
-
-// src/lib/cache.ts
-var IORedis = __toESM(require_built3(), 1);
-var TTL = {
-  PRODUCTS: 10 * 60,
-  // 10 minutes
-  CATEGORIES: 60 * 60,
-  // 1 hour
-  HOMEPAGE: 15 * 60,
-  // 15 minutes
-  SHOPS: 15 * 60,
-  // 15 minutes
-  HERO_BANNERS: 60 * 60,
-  // 1 hour
-  PINCODES: 60 * 60,
-  // 1 hour
-  THEME_CONFIG: 60 * 60
-  // 1 hour
-};
-var KEYS = {
-  CATEGORIES: "sm:categories",
-  HOMEPAGE: "sm:homepage",
-  SHOPS: "sm:shops",
-  HERO_BANNERS: "sm:hero_banners",
-  PINCODES: "sm:pincodes",
-  THEME_CONFIG: "sm:theme_config",
-  PRODUCTS_PREFIX: "sm:products:"
-};
-var memoryCache = /* @__PURE__ */ new Map();
-var MAX_MEMORY_CACHE_ITEMS = 500;
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of memoryCache) {
-    if (v.expiresAt <= now) memoryCache.delete(k);
-  }
-}, 6e4);
-var redis = null;
-var available = false;
-function productsCacheKey(query) {
-  const sorted = Object.keys(query).sort().reduce((acc, k) => {
-    acc[k] = query[k];
-    return acc;
-  }, {});
-  return KEYS.PRODUCTS_PREFIX + JSON.stringify(sorted);
-}
-async function cacheGet(key) {
-  const now = Date.now();
-  const mem = memoryCache.get(key);
-  if (mem) {
-    if (mem.expiresAt > now) {
-      return mem.value;
-    }
-    memoryCache.delete(key);
-  }
-  if (redis && available) {
-    try {
-      const raw = await redis.get(key);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        memoryCache.set(key, { value: parsed, expiresAt: now + 6e4 });
-        return parsed;
-      }
-    } catch {
-    }
-  }
-  return null;
-}
-async function cacheSet(key, value, ttlSeconds) {
-  const now = Date.now();
-  if (memoryCache.size >= MAX_MEMORY_CACHE_ITEMS) {
-    const first = memoryCache.keys().next().value;
-    if (first !== void 0) memoryCache.delete(first);
-  }
-  memoryCache.set(key, { value, expiresAt: now + ttlSeconds * 1e3 });
-  if (redis && available) {
-    try {
-      await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
-    } catch {
-    }
-  }
-}
-async function cacheDel(...keys) {
-  for (const k of keys) {
-    memoryCache.delete(k);
-  }
-  if (redis && available && keys.length > 0) {
-    try {
-      await redis.del(...keys);
-    } catch {
-    }
-  }
-}
-async function cacheDelPattern(pattern) {
-  const regex = new RegExp("^" + pattern.replace(/\*/g, ".*") + "$");
-  for (const k of memoryCache.keys()) {
-    if (regex.test(k)) {
-      memoryCache.delete(k);
-    }
-  }
-  if (redis && available) {
-    try {
-      let cursor = "0";
-      do {
-        const [next, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 200);
-        cursor = next;
-        if (keys.length > 0) {
-          await redis.del(...keys);
-        }
-      } while (cursor !== "0");
-    } catch {
-    }
-  }
-}
-async function invalidateProductCaches() {
-  await Promise.all([
-    cacheDelPattern(KEYS.PRODUCTS_PREFIX + "*"),
-    cacheDel(KEYS.HOMEPAGE)
-  ]);
-}
-async function invalidateCategoryCache() {
-  await cacheDel(KEYS.CATEGORIES);
-}
-
-// src/routes/v1/categories.ts
 var router7 = (0, import_express7.Router)();
 var A6 = requireRole("admin", "super_admin");
 router7.get("/", async (_req, res) => {
@@ -127966,6 +127987,7 @@ router12.get("/me", authenticate, async (req, res) => {
   }
   res.json({ success: true, partner: mi(partner) });
 });
+var riderLocationStateMap = /* @__PURE__ */ new Map();
 router12.patch("/me/location", authenticate, async (req, res) => {
   const userId = req.user.userId;
   const body = req.body;
@@ -127983,22 +128005,41 @@ router12.patch("/me/location", authenticate, async (req, res) => {
     res.status(400).json({ success: false, message: "Coordinates out of bounds" });
     return;
   }
-  const [partner] = await db.select({ id: deliveryPartners.id, isAvailable: deliveryPartners.isAvailable }).from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
-  if (!partner) {
-    res.status(404).json({ success: false, message: "Not a delivery partner" });
-    return;
+  let state = riderLocationStateMap.get(userId);
+  if (!state) {
+    const [partner] = await db.select({ id: deliveryPartners.id, isAvailable: deliveryPartners.isAvailable }).from(deliveryPartners).where(eq16(deliveryPartners.userId, userId)).limit(1);
+    if (!partner) {
+      res.status(404).json({ success: false, message: "Not a delivery partner" });
+      return;
+    }
+    state = {
+      partnerId: partner.id,
+      isAvailable: partner.isAvailable ?? true,
+      lat,
+      lon,
+      lastDbWriteAt: 0
+    };
+    riderLocationStateMap.set(userId, state);
   }
-  await db.update(deliveryPartners).set({
-    currentLat: lat,
-    currentLon: lon,
-    heading: heading ?? null,
-    speed: speed ?? null,
-    accuracy: accuracy ?? null,
-    trackingStatus: partner.isAvailable ? trackingStatus : "OFFLINE",
-    locationUpdatedAt: /* @__PURE__ */ new Date(),
-    updatedAt: /* @__PURE__ */ new Date()
-  }).where(eq16(deliveryPartners.id, partner.id));
-  res.json({ success: true, trackingStatus: partner.isAvailable ? trackingStatus : "OFFLINE" });
+  const now = Date.now();
+  const movedSignificantly = Math.abs(lat - state.lat) > 5e-4 || Math.abs(lon - state.lon) > 5e-4;
+  const timePassed = now - state.lastDbWriteAt >= 45e3;
+  state.lat = lat;
+  state.lon = lon;
+  if (timePassed || movedSignificantly) {
+    state.lastDbWriteAt = now;
+    await db.update(deliveryPartners).set({
+      currentLat: lat,
+      currentLon: lon,
+      heading: heading ?? null,
+      speed: speed ?? null,
+      accuracy: accuracy ?? null,
+      trackingStatus: state.isAvailable ? trackingStatus : "OFFLINE",
+      locationUpdatedAt: /* @__PURE__ */ new Date(),
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq16(deliveryPartners.id, state.partnerId));
+  }
+  res.json({ success: true, trackingStatus: state.isAvailable ? trackingStatus : "OFFLINE" });
 });
 router12.patch("/me/availability", authenticate, async (req, res) => {
   const userId = req.user.userId;
@@ -128012,6 +128053,7 @@ router12.patch("/me/availability", authenticate, async (req, res) => {
     return;
   }
   const [partner] = await db.update(deliveryPartners).set({ isAvailable: !existing.isAvailable, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(deliveryPartners.userId, userId)).returning();
+  riderLocationStateMap.delete(userId);
   res.json({ success: true, partner: mi(partner) });
 });
 router12.get("/me/orders", authenticate, async (req, res) => {
@@ -132039,21 +132081,29 @@ async function resolveLayoutBlocks(blocks) {
   );
 }
 router31.get("/:pageName", async (req, res) => {
-  res.setHeader("Cache-Control", "public, s-maxage=180, stale-while-revalidate=360");
+  res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
   const rawParam = req.params["pageName"];
   const pageName = String(Array.isArray(rawParam) ? rawParam[0] : rawParam || "home").toLowerCase();
   try {
+    const cacheKey = `${KEYS.LAYOUTS_PREFIX}${pageName}`;
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
     const [layout] = await db.select().from(appLayouts).where(eq34(appLayouts.pageName, pageName)).limit(1);
     if (!layout) {
       const defaultBlocks = getDefaultBlocksForPage(pageName);
       const resolvedDefaults = await resolveLayoutBlocks(defaultBlocks);
-      res.json({
+      const defaultResponse = {
         success: true,
         pageName,
         isDefault: true,
         blocks: resolvedDefaults,
         allBlocks: resolvedDefaults
-      });
+      };
+      await cacheSet(cacheKey, defaultResponse, TTL.LAYOUTS);
+      res.json(defaultResponse);
       return;
     }
     const allBlocks = Array.isArray(layout.blocks) ? layout.blocks : [];
@@ -132062,14 +132112,16 @@ router31.get("/:pageName", async (req, res) => {
     const resolvedAllBlocks = await resolveLayoutBlocks(
       allBlocks.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     );
-    res.json({
+    const layoutResponse = {
       success: true,
       pageName,
       isDefault: false,
       blocks: resolvedActiveBlocks,
       allBlocks: resolvedAllBlocks,
       updatedAt: layout.updatedAt
-    });
+    };
+    await cacheSet(cacheKey, layoutResponse, TTL.LAYOUTS);
+    res.json(layoutResponse);
   } catch (err) {
     logger.error({ err, pageName }, "Failed to fetch layout \u2014 returning fallback");
     const fallbackBlocks = getDefaultBlocksForPage(pageName);
@@ -132114,6 +132166,7 @@ router31.put(
           updatedAt: /* @__PURE__ */ new Date()
         }
       });
+      await invalidateLayoutCache(pageName);
       logger.info({ pageName, blockCount: sanitizedBlocks.length }, "Page layout updated successfully");
       res.json({
         success: true,
@@ -133912,6 +133965,95 @@ async function buildSitemap() {
   sitemapCache = { xml, builtAt: Date.now() };
   return xml;
 }
+var shopSeoCache = null;
+var SHOP_SEO_TTL_MS = 30 * 60 * 1e3;
+async function getShopSeoMaps() {
+  if (shopSeoCache && Date.now() - shopSeoCache.cachedAt < SHOP_SEO_TTL_MS) {
+    return shopSeoCache;
+  }
+  try {
+    const shopRows = await db.select({
+      id: shops.id,
+      shopName: shops.shopName,
+      shopType: shops.shopType,
+      category: shops.category,
+      description: shops.description,
+      image: shops.image,
+      banner: shops.banner,
+      address: shops.address,
+      rating: shops.rating,
+      phone: shops.phone
+    }).from(shops).where(or13(eq39(shops.status, "approved"), eq39(shops.status, "active")));
+    const bySlug = /* @__PURE__ */ new Map();
+    const byId = /* @__PURE__ */ new Map();
+    for (const s2 of shopRows) {
+      const slug = (s2.shopName || "").toLowerCase().trim().replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/[\s_]+/gu, "-").replace(/-+/g, "-").replace(/^-+|-+$/gu, "");
+      const isFood = ["restaurant", "cafe", "cloud-kitchen", "sweet-shop", "bakery", "fast-food", "food", "food_junction", "cake"].some(
+        (t2) => (s2.shopType || "").toLowerCase().includes(t2) || (s2.category || "").toLowerCase().includes(t2) || (s2.shopName || "").toLowerCase().includes("cake") || (s2.shopName || "").toLowerCase().includes("roll")
+      );
+      const addr = s2.address;
+      const addrLine = addr?.line1 || addr?.city || "Balurghat";
+      const info = {
+        id: s2.id,
+        name: s2.shopName || "Local Store",
+        slug,
+        description: s2.description || `Official online storefront for ${s2.shopName} in Balurghat. Browse live products, verified prices, daily discounts, and order online with 10-15 minute delivery on SwiftMart.`,
+        category: s2.category || "Grocery & Essentials",
+        image: s2.image || s2.banner || `${BASE_URL}/opengraph.jpg`,
+        addressText: addrLine,
+        rating: s2.rating || 4.8,
+        phone: s2.phone || "+91 62961 18949",
+        isFoodShop: isFood
+      };
+      byId.set(s2.id, info);
+      if (slug) {
+        bySlug.set(slug, info);
+      }
+    }
+    shopSeoCache = { bySlug, byId, cachedAt: Date.now() };
+    return shopSeoCache;
+  } catch (err) {
+    logger.error({ err }, "Failed to load shop SEO cache");
+    return shopSeoCache || { bySlug: /* @__PURE__ */ new Map(), byId: /* @__PURE__ */ new Map() };
+  }
+}
+var RESERVED_ROOT_PATHS = /* @__PURE__ */ new Set([
+  "",
+  "api",
+  "assets",
+  "auth",
+  "admin",
+  "cart",
+  "checkout",
+  "orders",
+  "profile",
+  "vendor",
+  "vendor-register",
+  "vendor-status",
+  "delivery",
+  "delivery-dashboard",
+  "manager-panel",
+  "privacy",
+  "terms",
+  "about",
+  "contact-support",
+  "refund-cancellation",
+  "search",
+  "categories",
+  "products",
+  "shops",
+  "grocery",
+  "sitemap",
+  "health",
+  "robots.txt",
+  "sitemap.xml",
+  "favicon.ico",
+  "manifest.json",
+  "sw.js",
+  "complete-profile",
+  "google-callback",
+  "delete-account"
+]);
 var app = (0, import_express37.default)();
 app.use(compression({ threshold: 1024 }));
 app.use(
@@ -133999,15 +134141,6 @@ app.use(import_express37.default.urlencoded({ extended: true }));
 app.get("/health", (_req, res) => {
   res.status(200).json({ ok: true, service: "swiftmart-api" });
 });
-app.use(maintenanceMode);
-var SCANNER_RE = /^\/(\.git|\.env|\.htaccess|wp-admin|wp-includes|wp-content|xmlrpc\.php|phpmyadmin|cgi-bin|admin\.php|config\.php)/i;
-app.use((req, res, next) => {
-  if (SCANNER_RE.test(req.path)) {
-    res.status(404).end();
-    return;
-  }
-  next();
-});
 app.use((req, res, next) => {
   const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "").split(",")[0]?.trim() ?? "";
   if (host.startsWith("www.")) {
@@ -134022,6 +134155,15 @@ app.use((req, res, next) => {
   if (req.path.length > 1 && req.path.endsWith("/")) {
     const qs = req.url.slice(req.path.length);
     res.redirect(301, req.path.slice(0, -1) + qs);
+    return;
+  }
+  next();
+});
+app.use(maintenanceMode);
+var SCANNER_RE = /^\/(\.git|\.env|\.htaccess|wp-admin|wp-includes|wp-content|xmlrpc\.php|phpmyadmin|cgi-bin|admin\.php|config\.php)/i;
+app.use((req, res, next) => {
+  if (SCANNER_RE.test(req.path)) {
+    res.status(404).end();
     return;
   }
   next();
@@ -134116,19 +134258,140 @@ if (process.env.NODE_ENV === "production") {
       }
     }
   }));
-  app.get("/{*splat}", (req, res) => {
-    if (/\/\./.test(req.path) || SCANNER_RE.test(req.path)) {
-      res.status(404).end();
-      return;
-    }
-    const indexPath = path3.join(frontendDist, "index.html");
-    if (fs2.existsSync(indexPath)) {
+  app.get("/{*splat}", async (req, res) => {
+    try {
+      if (req.path.startsWith("/api")) {
+        res.status(404).json({ success: false, message: "API endpoint not found" });
+        return;
+      }
+      if (/\/\./.test(req.path) || SCANNER_RE.test(req.path)) {
+        res.status(404).end();
+        return;
+      }
+      const indexPath = path3.join(frontendDist, "index.html");
+      if (!fs2.existsSync(indexPath)) {
+        res.status(200).json({ ok: true, message: "SwiftMart API Server is running" });
+        return;
+      }
       const canonicalPath = req.path === "/" ? "/" : req.path.replace(/\/$/, "");
-      res.setHeader("Link", `<${BASE_URL}${canonicalPath}>; rel="canonical"`);
+      const canonicalUrl = `${BASE_URL}${canonicalPath}`;
+      res.setHeader("Link", `<${canonicalUrl}>; rel="canonical"`);
       res.setHeader("Cache-Control", "no-cache, must-revalidate");
+      const cleanPath = req.path.replace(/^\/+|\/+$/g, "");
+      let matchedShop;
+      try {
+        if (cleanPath.startsWith("shop/")) {
+          const shopId = cleanPath.slice(5).trim();
+          const maps = await getShopSeoMaps();
+          matchedShop = maps.byId.get(shopId);
+        } else if (cleanPath && !RESERVED_ROOT_PATHS.has(cleanPath.toLowerCase()) && !cleanPath.includes("/")) {
+          const maps = await getShopSeoMaps();
+          matchedShop = maps.bySlug.get(cleanPath.toLowerCase());
+        }
+        if (matchedShop) {
+          let html = await fs2.promises.readFile(indexPath, "utf8");
+          const title = `${matchedShop.name} (Balurghat) \u2014 Official Storefront & Online Ordering | SwiftMart`;
+          const desc20 = `Order directly from ${matchedShop.name}'s official online storefront in Balurghat on SwiftMart. ${matchedShop.category ? `${matchedShop.category} \xB7 ` : ""}Instant 10-15 min local delivery across Balurghat Pincodes 733101 & 733103. Live menu, verified prices, discounts & deals.`;
+          const img = matchedShop.image.startsWith("http") ? matchedShop.image : `${BASE_URL}${matchedShop.image.startsWith("/") ? "" : "/"}${matchedShop.image}`;
+          const shopJsonLd = {
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": matchedShop.isFoodShop ? ["Restaurant", "FoodEstablishment", "LocalBusiness"] : ["Store", "LocalBusiness", "OnlineStore"],
+                "@id": `${canonicalUrl}#storefront`,
+                "name": matchedShop.name,
+                "legalName": `${matchedShop.name} \u2014 SwiftMart Official Storefront`,
+                "alternateName": [
+                  matchedShop.name,
+                  `${matchedShop.name} Balurghat`,
+                  `${matchedShop.name} Storefront`,
+                  `${matchedShop.name} Online Store`,
+                  `${matchedShop.name} Menu`
+                ],
+                "description": desc20,
+                "image": img,
+                "url": canonicalUrl,
+                "telephone": matchedShop.phone,
+                "priceRange": "\u20B9\u20B9",
+                "currenciesAccepted": "INR",
+                "paymentAccepted": "Cash on Delivery, UPI, Cards, Net Banking",
+                "parentOrganization": {
+                  "@type": "OnlineBusiness",
+                  "name": "SwiftMart",
+                  "url": BASE_URL
+                },
+                "address": {
+                  "@type": "PostalAddress",
+                  "streetAddress": matchedShop.addressText,
+                  "addressLocality": "Balurghat",
+                  "postalCode": "733101",
+                  "addressRegion": "West Bengal",
+                  "addressCountry": "IN"
+                },
+                "geo": {
+                  "@type": "GeoCoordinates",
+                  "latitude": 25.2167,
+                  "longitude": 88.7667
+                },
+                "aggregateRating": {
+                  "@type": "AggregateRating",
+                  "ratingValue": Number((matchedShop.rating || 4.8).toFixed(1)),
+                  "reviewCount": 120,
+                  "bestRating": 5,
+                  "worstRating": 1
+                }
+              },
+              {
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                  { "@type": "ListItem", "position": 1, "name": "SwiftMart Home", "item": `${BASE_URL}/` },
+                  { "@type": "ListItem", "position": 2, "name": "Balurghat Stores", "item": `${BASE_URL}/shops` },
+                  { "@type": "ListItem", "position": 3, "name": `${matchedShop.name} Storefront`, "item": canonicalUrl }
+                ]
+              }
+            ]
+          };
+          const escapeAttr = (s2) => s2.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(title)}</title>`);
+          html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(desc20)}" />`);
+          html = html.replace(/<link rel="canonical"[^>]*href=".*?"\s*\/?>/i, `<link rel="canonical" data-rh="true" href="${canonicalUrl}" />`);
+          html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(title)}" />`);
+          html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(desc20)}" />`);
+          html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
+          html = html.replace(/<meta property="og:image" content=".*?"\s*\/?>/i, `<meta property="og:image" content="${escapeAttr(img)}" />`);
+          html = html.replace(/<meta name="twitter:title" content=".*?"\s*\/?>/i, `<meta name="twitter:title" content="${escapeAttr(title)}" />`);
+          html = html.replace(/<meta name="twitter:description" content=".*?"\s*\/?>/i, `<meta name="twitter:description" content="${escapeAttr(desc20)}" />`);
+          html = html.replace(/<meta name="twitter:image" content=".*?"\s*\/?>/i, `<meta name="twitter:image" content="${escapeAttr(img)}" />`);
+          const ldJsonTag = `
+    <script type="application/ld+json">
+    ${JSON.stringify(shopJsonLd, null, 2)}
+    </script>
+  </head>`;
+          html = html.replace(/<\/head>/i, ldJsonTag);
+          const storefrontNoscriptBanner = `
+          <header class="swm-preamble-header" style="border:2px solid #f59e0b; padding:16px; border-radius:12px; margin-bottom:20px; background:#fffbeb;">
+            <div style="font-size:12px; font-weight:bold; color:#b45309; text-transform:uppercase; letter-spacing:1px;">\u{1F3EA} Official Online Storefront</div>
+            <h1 style="font-size:24px; font-weight:800; color:#1e293b; margin:6px 0;">${escapeAttr(matchedShop.name)} \u2014 Balurghat Storefront &amp; Menu</h1>
+            <p style="font-size:14px; color:#475569;">${escapeAttr(desc20)}</p>
+            <p style="font-size:13px; color:#64748b;">\u{1F4CD} ${escapeAttr(matchedShop.addressText)}, Balurghat, West Bengal &bull; Fast 10-15 Min Express Doorstep Delivery by SwiftMart.</p>
+          </header>`;
+          html = html.replace(/(<noscript[^>]*>\s*<div[^>]*>)/i, `$1${storefrontNoscriptBanner}`);
+          res.setHeader("Content-Type", "text/html; charset=utf-8");
+          res.send(html);
+          return;
+        }
+      } catch (injectionErr) {
+        logger.error({ injectionErr }, "Failed to inject shop storefront meta tags into index.html; falling back to static");
+      }
       res.sendFile(indexPath);
-    } else {
-      res.status(200).json({ ok: true, message: "SwiftMart API Server is running" });
+    } catch (topErr) {
+      logger.error({ topErr }, "Error in SPA fallback handler; serving static index.html");
+      const indexPath = path3.join(frontendDist, "index.html");
+      if (fs2.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(200).json({ ok: true, message: "SwiftMart API Server is running" });
+      }
     }
   });
 }
