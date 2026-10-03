@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- react-helmet-async manages all per-page title/meta/canonical/JSON-LD.
          These tags are fallbacks used only before React hydrates (e.g. opengraph crawlers
          that don't execute JS). Do NOT add duplicate meta here. -->
@@ -12,11 +12,11 @@
     <!-- All public pages are indexable. Private routes override this via RobotsManager in React. -->
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
 
-    <!-- Static canonical fallback — overridden per-page by react-helmet-async.
+    <!-- Static canonical fallback — overridden per-page by react-helmet-async via data-rh="true".
          Needed for crawlers / link-previewers that don't execute JS: without this
          every page (including /shop/:id, /product/:id, etc.) appears to share
          the same URL, causing "Duplicate without user-selected canonical". -->
-    <link rel="canonical" href="https://swiftmart.space/" />
+    <link rel="canonical" data-rh="true" href="https://swiftmart.space/" />
 
     <!-- Open Graph (static fallback — overridden per-page by react-helmet-async) -->
     <meta property="og:type" content="website" />
@@ -194,10 +194,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SwiftMart" />
 
-    <!-- Fonts -->
+    <!-- Fonts (Non-render-blocking with font-display: swap) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Dancing+Script:wght@700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Dancing+Script:wght@700&display=swap" media="print" onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Dancing+Script:wght@700&display=swap" />
+    </noscript>
 
     <!-- Razorpay — defer so it never blocks the HTML parser -->
     <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
@@ -507,13 +511,36 @@
         }
       }, 3500);
     </script>
-    <div id="root"></div>
-    <noscript>
-      <div id="swm-seo-preamble" class="swm-preamble-wrap">
+    <div id="root">
+      <!-- Semantic static shell for immediate crawler indexing & LLM readability (GEO) -->
+      <div id="swm-initial-shell" class="swm-preamble-wrap">
         <header class="swm-preamble-header">
           <h1 class="swm-preamble-h1">
             SwiftMart (Swift Mart) — 10-Minute Hyperlocal Grocery &amp; Quick Commerce Delivery in Balurghat
           </h1>
+          <p class="swm-preamble-lead">
+            Welcome to the official portal of <strong>SwiftMart</strong> (also widely known as <strong>Swift Mart</strong>), Balurghat&apos;s leading on-demand quick commerce platform. Built exclusively for the residents of Balurghat, West Bengal, SwiftMart bridges the gap between beloved neighborhood retail merchants and digital consumers by delivering everyday groceries, farm-fresh vegetables, medicines, and daily essentials to your doorstep in just 10 to 15 minutes.
+          </p>
+          <p class="swm-preamble-sub">
+            Founded by <strong>Ridam Mohanta</strong> (Founder &amp; Chief Executive Officer) and <strong>Abhi Das</strong> (Co-Founder &amp; Head of Operations), SwiftMart combines cutting-edge logistics with hyperlocal community care.
+          </p>
+        </header>
+        <section class="swm-preamble-section">
+          <h2 class="swm-preamble-h2">
+            Verified Local Grocery &amp; Essentials Quick Commerce in Balurghat
+          </h2>
+          <p class="swm-preamble-p">
+            SwiftMart operates as a verified physical business in Balurghat, Dakshin Dinajpur (Pincodes 733101 &amp; 733103). Delivering groceries, fresh vegetables, fruits, dairy, and medicines in 10 minutes from Gourlo Math, Chakbhabani, Mangalpur, and Raghunathpur.
+          </p>
+        </section>
+      </div>
+    </div>
+    <noscript>
+      <div id="swm-seo-preamble" class="swm-preamble-wrap">
+        <header class="swm-preamble-header">
+          <div class="swm-preamble-h1" role="heading" aria-level="1">
+            SwiftMart (Swift Mart) — 10-Minute Hyperlocal Grocery &amp; Quick Commerce Delivery in Balurghat
+          </div>
           <p class="swm-preamble-lead">
             Welcome to the official portal of <strong>SwiftMart</strong> (also widely known as <strong>Swift Mart</strong>), Balurghat&apos;s leading on-demand quick commerce platform. Built exclusively for the residents of Balurghat, West Bengal, SwiftMart bridges the gap between beloved neighborhood retail merchants and digital consumers by delivering everyday groceries, farm-fresh vegetables, medicines, and daily essentials to your doorstep in just 10 to 15 minutes.
           </p>
@@ -597,11 +624,11 @@
           <nav aria-label="SwiftMart Social Channels">
             <h3 class="swm-preamble-h3">Official Social Media Channels</h3>
             <ul class="swm-preamble-social">
-              <li><a href="https://www.facebook.com/swiftmart.balurghat" class="swm-preamble-link" target="_blank" rel="noopener noreferrer">Facebook Page</a></li>
-              <li><a href="https://www.instagram.com/swiftmart.balurghat" class="swm-preamble-link" target="_blank" rel="noopener noreferrer">Instagram Profile</a></li>
-              <li><a href="https://x.com/SwiftMart_IN" class="swm-preamble-link" target="_blank" rel="noopener noreferrer">X (Twitter) Profile</a></li>
-              <li><a href="https://www.linkedin.com/company/swiftmart-balurghat" class="swm-preamble-link" target="_blank" rel="noopener noreferrer">LinkedIn Company</a></li>
-              <li><a href="https://www.youtube.com/@SwiftMartBalurghat" class="swm-preamble-link" target="_blank" rel="noopener noreferrer">YouTube Channel</a></li>
+              <li><a href="https://www.facebook.com/swiftmart.balurghat" class="swm-preamble-link" target="_blank" rel="noopener noreferrer nofollow">Facebook Page</a></li>
+              <li><a href="https://www.instagram.com/swiftmart.balurghat" class="swm-preamble-link" target="_blank" rel="noopener noreferrer nofollow">Instagram Profile</a></li>
+              <li><a href="https://x.com/SwiftMart_IN" class="swm-preamble-link" target="_blank" rel="noopener noreferrer nofollow">X (Twitter) Profile</a></li>
+              <li><a href="https://www.linkedin.com/company/swiftmart-balurghat" class="swm-preamble-link" target="_blank" rel="noopener noreferrer nofollow">LinkedIn Company</a></li>
+              <li><a href="https://www.youtube.com/@SwiftMartBalurghat" class="swm-preamble-link" target="_blank" rel="noopener noreferrer nofollow">YouTube Channel</a></li>
             </ul>
           </nav>
         </section>

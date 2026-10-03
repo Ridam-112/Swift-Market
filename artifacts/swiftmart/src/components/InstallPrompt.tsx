@@ -97,7 +97,7 @@ export function InstallPrompt() {
             <div className="flex flex-col items-center text-center gap-5">
               {/* App icon */}
               <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg">
-                <img src="/logo.png" alt="SwiftMart" className="w-full h-full object-cover" />
+                <img src="/logo.png" alt="SwiftMart" width={64} height={64} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               </div>
 
               <div className="space-y-1.5">

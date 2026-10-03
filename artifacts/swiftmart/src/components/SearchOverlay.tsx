@@ -231,8 +231,11 @@ export function SearchOverlay({ isOpen, onClose }: Props) {
                           <img
                             src={image}
                             alt={product.name}
+                            width={56}
+                            height={56}
                             className="w-full h-full object-cover"
                             loading="lazy"
+                            decoding="async"
                           />
                         </div>
 

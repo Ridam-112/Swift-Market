@@ -98,7 +98,7 @@ export function PincodeSelector({ onDone, compact = false }: PincodeSelectorProp
           <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center text-primary mx-auto neu-inset mb-4">
             <MapPin className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Set Your Delivery Area</h1>
+          <h2 className="text-2xl font-bold text-foreground">Set Your Delivery Area</h2>
           <p className="text-muted-foreground text-sm">
             Enter your address so we can show shops near you.
           </p>

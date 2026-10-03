@@ -428,7 +428,7 @@ export default function Home() {
     <div className="w-full flex flex-col min-h-screen">
       <div className="pb-16 pt-4 px-3 w-full max-w-7xl mx-auto space-y-6 flex-1">
         {/* Visually-hidden H1 anchors the page outline for crawlers */}
-      <h1 className="sr-only">SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce in Balurghat</h1>
+      <h1 className="sr-only">SwiftMart (Swift Mart) — 10-Minute Delivery | Balurghat</h1>
       <SEO
         title="SwiftMart (Swift Mart) — 10-Minute Delivery | Balurghat"
         description="SwiftMart (Swift Mart) Balurghat delivers fresh groceries, fruits, vegetables, medicines, and daily essentials from local shops to your door in 10 minutes."
@@ -527,6 +527,26 @@ export default function Home() {
 
           <HeroBannerSlider />
 
+          {/* SwiftMart 10-Minute Balurghat Delivery Highlights */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center" aria-label="SwiftMart Delivery Highlights">
+            <div className="bg-card/60 border border-border/40 rounded-xl p-2.5 neu-inset">
+              <span className="text-xs font-bold text-foreground block">⚡ 10-Minute Delivery</span>
+              <span className="text-[10px] text-muted-foreground">Balurghat Express Service</span>
+            </div>
+            <div className="bg-card/60 border border-border/40 rounded-xl p-2.5 neu-inset">
+              <span className="text-xs font-bold text-foreground block">🥦 Fresh Groceries</span>
+              <span className="text-[10px] text-muted-foreground">Local Farm Daily Staples</span>
+            </div>
+            <div className="bg-card/60 border border-border/40 rounded-xl p-2.5 neu-inset">
+              <span className="text-xs font-bold text-foreground block">🏪 Balurghat Local Shops</span>
+              <span className="text-[10px] text-muted-foreground">Direct Trusted Retailers</span>
+            </div>
+            <div className="bg-card/60 border border-border/40 rounded-xl p-2.5 neu-inset">
+              <span className="text-xs font-bold text-foreground block">🛡️ Verified Daily Essentials</span>
+              <span className="text-[10px] text-muted-foreground">Safe Contactless Delivery</span>
+            </div>
+          </div>
+
           {/* Admin-curated highlighted bucket bundles */}
           <BucketBanner />
 
@@ -618,7 +638,7 @@ export default function Home() {
           {/* ── Category bubble list ───────────────────────────────── */}
           <section className="w-full">
             <div className="flex justify-between items-center mb-3">
-              <h2 className="text-[15px] font-extrabold text-foreground tracking-tight">Shop by Category</h2>
+              <h2 className="text-[15px] font-extrabold text-foreground tracking-tight">Shop Grocery &amp; Daily Essentials by Category</h2>
             </div>
             <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-x-2.5 gap-y-4">
               {(categoriesExpanded ? apiCategories : apiCategories.slice(0, 16)).map(cat => (
@@ -652,7 +672,7 @@ export default function Home() {
           {/* ── Popular Shops ─────────────────────────────────────── */}
           <section>
             <SectionHeader
-              title="Shops in Your Area"
+              title="Local Balurghat Grocery Shops &amp; Supermarkets"
               action={
                 shops.length > SHOPS_PREVIEW ? (
                   <Link
@@ -682,7 +702,7 @@ export default function Home() {
                   <Link key={shop.id} href={getShopUrl(shop)} className="snap-start shrink-0 block w-[calc(75vw)] max-w-[260px] min-w-[200px]">
                     <div className="bg-card rounded-2xl p-3 neu-card flex gap-3 items-center h-full">
                       <div className="w-14 h-14 rounded-xl overflow-hidden bg-background neu-inset flex-shrink-0">
-                        <img src={shop.image} alt={shop.storeName} className="w-full h-full object-cover" />
+                        <img src={shop.image} alt={shop.storeName} width={56} height={56} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-sm truncate text-foreground">{shop.storeName}</h3>

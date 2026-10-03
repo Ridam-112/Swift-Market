@@ -168,7 +168,7 @@ export function AddonSuggestions() {
                       "w-[60px] h-[60px] rounded-xl overflow-hidden border-2 transition-all",
                       inCart ? "border-green-500/70 opacity-60" : "border-white/10"
                     )}>
-                      <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                      <img src={p.image} alt={p.name} width={60} height={60} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     </div>
                     {inCart && (
                       <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-500 flex items-center justify-center shadow">
@@ -234,7 +234,7 @@ export function AddonSuggestions() {
                   className="snap-start shrink-0 w-28 bg-background rounded-xl p-2.5 neu-inset flex flex-col gap-1"
                 >
                   <div className="w-full aspect-square rounded-lg overflow-hidden bg-muted">
-                    <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                    <img src={product.image} alt={product.name} width={90} height={90} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                   {product.shopName && (
                     <p className="text-[9px] text-muted-foreground truncate font-semibold">{product.shopName}</p>

@@ -38,7 +38,7 @@ export function CartItemRow({ item }: { item: CartItem }) {
   return (
     <div className="flex gap-3 p-3 bg-card rounded-2xl neu-card mb-3 items-center">
       <div className="w-16 h-16 rounded-xl bg-background neu-inset p-2 flex-shrink-0 relative">
-        <img src={product.image} alt={product.name} className="w-full h-full object-contain" />
+        <img src={product.image} alt={product.name} width={64} height={64} loading="lazy" decoding="async" className="w-full h-full object-contain" />
         {selectedColor && (
           <span
             className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-background shadow"

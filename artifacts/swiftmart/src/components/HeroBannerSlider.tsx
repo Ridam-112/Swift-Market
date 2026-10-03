@@ -222,9 +222,13 @@ export function HeroBannerSlider() {
         >
           <img
             src={b.imageUrl}
-            alt={b.title || "SwiftMart Promotion"}
+            alt={b.title || "SwiftMart 10-Minute Delivery Balurghat"}
+            width={1200}
+            height={400}
+            decoding="async"
             className="w-full h-full object-cover object-center"
             loading={i === 0 ? "eager" : "lazy"}
+            fetchPriority={i === 0 ? "high" : "low"}
           />
           {(b.title || b.subtitle || b.buttonText) && (
             <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-transparent flex items-center px-5 md:px-8">

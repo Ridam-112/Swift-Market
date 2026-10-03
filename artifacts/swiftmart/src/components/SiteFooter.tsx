@@ -164,30 +164,30 @@ export function SiteFooter() {
               </div>
 
               {/* Yellow squircle social buttons matching reference image */}
-              <div className="pt-2 flex items-center gap-2.5">
-                {/* LinkedIn */}
+              <div className="pt-2 flex items-center gap-2.5 flex-wrap">
+                {/* YouTube Channel */}
                 <a
-                  href="https://www.linkedin.com/company/swiftmart-balurghat"
+                  href="https://www.youtube.com/@SwiftMartBalurghat"
                   target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="SwiftMart on LinkedIn"
+                  rel="noopener noreferrer nofollow"
+                  aria-label="SwiftMart on YouTube"
                   className="w-8 h-8 rounded-lg bg-[#FACC15] text-black flex items-center justify-center hover:opacity-90 hover:scale-105 active:scale-95 transition-all shadow-sm"
                 >
                   <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
-                    <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                   </svg>
                 </a>
 
-                {/* Twitter / X */}
+                {/* Facebook */}
                 <a
-                  href="https://x.com/SwiftMart_IN"
+                  href="https://www.facebook.com/swiftmart.balurghat"
                   target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="SwiftMart on X (Twitter)"
+                  rel="noopener noreferrer nofollow"
+                  aria-label="SwiftMart on Facebook"
                   className="w-8 h-8 rounded-lg bg-[#FACC15] text-black flex items-center justify-center hover:opacity-90 hover:scale-105 active:scale-95 transition-all shadow-sm"
                 >
                   <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/>
                   </svg>
                 </a>
 
@@ -195,7 +195,7 @@ export function SiteFooter() {
                 <a
                   href="https://www.instagram.com/swiftmart.balurghat"
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noopener noreferrer nofollow"
                   aria-label="SwiftMart on Instagram"
                   className="w-8 h-8 rounded-lg bg-[#FACC15] text-black flex items-center justify-center hover:opacity-90 hover:scale-105 active:scale-95 transition-all shadow-sm"
                 >
@@ -204,29 +204,42 @@ export function SiteFooter() {
                   </svg>
                 </a>
 
+                {/* Twitter / X */}
+                <a
+                  href="https://x.com/SwiftMart_IN"
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  aria-label="SwiftMart on X (Twitter)"
+                  className="w-8 h-8 rounded-lg bg-[#FACC15] text-black flex items-center justify-center hover:opacity-90 hover:scale-105 active:scale-95 transition-all shadow-sm"
+                >
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                </a>
+
+                {/* LinkedIn */}
+                <a
+                  href="https://www.linkedin.com/company/swiftmart-balurghat"
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  aria-label="SwiftMart on LinkedIn"
+                  className="w-8 h-8 rounded-lg bg-[#FACC15] text-black flex items-center justify-center hover:opacity-90 hover:scale-105 active:scale-95 transition-all shadow-sm"
+                >
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
+                    <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+                  </svg>
+                </a>
+
                 {/* WhatsApp */}
                 <a
                   href="https://wa.me/916296118949"
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noopener noreferrer nofollow"
                   aria-label="SwiftMart on WhatsApp"
                   className="w-8 h-8 rounded-lg bg-[#FACC15] text-black flex items-center justify-center hover:opacity-90 hover:scale-105 active:scale-95 transition-all shadow-sm"
                 >
                   <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
                     <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24M8.53 7.33c-.16 0-.43.06-.66.31-.22.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.56.13.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.53.59.19 1.13.16 1.56.1.47-.07 1.46-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.17-.48-.29-.25-.13-1.46-.72-1.69-.8-.23-.09-.4-.13-.56.13-.17.25-.66.8-.8 1-.15.19-.3.22-.55.09-.25-.13-1.07-.39-2.04-1.25-.75-.67-1.26-1.5-1.41-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.12-.14.17-.25.25-.41.08-.17.04-.31-.02-.44-.06-.12-.56-1.35-.77-1.84-.2-.48-.41-.42-.56-.43h-.48z"/>
-                  </svg>
-                </a>
-
-                {/* Facebook */}
-                <a
-                  href="https://www.facebook.com/swiftmart.balurghat"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="SwiftMart on Facebook"
-                  className="w-8 h-8 rounded-lg bg-[#FACC15] text-black flex items-center justify-center hover:opacity-90 hover:scale-105 active:scale-95 transition-all shadow-sm"
-                >
-                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
-                    <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/>
                   </svg>
                 </a>
               </div>

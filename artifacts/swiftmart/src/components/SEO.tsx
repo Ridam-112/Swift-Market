@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import { Helmet } from "react-helmet-async";
+import { useEffect } from "react";
 
 const SITE_NAME = "SwiftMart";
 const BASE_URL = "https://swiftmart.space";
@@ -35,6 +36,16 @@ export function SEO({
   // from the current route so every page self-references correctly.
   const canonicalPath = canonical ?? (location.split("?")[0].replace(/\/$/, "") || "/");
   const canonicalUrl = `${BASE_URL}${canonicalPath}`;
+
+  useEffect(() => {
+    // Audit safeguard: ensure exactly 1 canonical tag exists in document head
+    const canonicals = document.querySelectorAll('link[rel="canonical"]');
+    if (canonicals.length > 1) {
+      for (let i = 0; i < canonicals.length - 1; i++) {
+        canonicals[i].remove();
+      }
+    }
+  }, [canonicalUrl]);
 
   return (
     <Helmet>

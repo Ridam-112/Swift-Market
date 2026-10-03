@@ -121,7 +121,7 @@ export function Header() {
         <div className="max-w-7xl mx-auto flex items-center gap-2 md:gap-4">
           {/* Logo — always visible */}
           <Link href="/" className="shrink-0 flex items-center">
-            <img src="/logo.png" alt="SwiftMart" className="h-9 w-auto object-contain" />
+            <img src="/logo.png" alt="SwiftMart" width={140} height={36} className="h-9 w-auto object-contain" />
           </Link>
 
           {/* Location pill — customer only, takes remaining space on mobile */}
@@ -204,7 +204,11 @@ export function Header() {
                           >
                             <img
                               src={prod.image || "/assets/product-placeholder.png"}
-                              alt=""
+                              alt={prod.name}
+                              width={32}
+                              height={32}
+                              loading="lazy"
+                              decoding="async"
                               className="w-8 h-8 object-contain rounded-lg bg-card p-0.5 border border-border/40 shrink-0"
                             />
                             <div className="flex-1 min-w-0">
