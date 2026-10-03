@@ -55,6 +55,8 @@ export function SEO({
       <meta property="og:type" content={ogType} />
       <meta property="og:site_name" content={SITE_NAME} />
       <meta property="og:url" content={canonicalUrl} />
+      <meta property="og:updated_time" content="2026-10-03T12:00:00+05:30" />
+      <meta property="article:modified_time" content="2026-10-03T12:00:00+05:30" />
 
       {/* Twitter Card */}
       <meta name="twitter:card" content="summary_large_image" />

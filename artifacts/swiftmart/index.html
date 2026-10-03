@@ -6,7 +6,7 @@
     <!-- react-helmet-async manages all per-page title/meta/canonical/JSON-LD.
          These tags are fallbacks used only before React hydrates (e.g. opengraph crawlers
          that don't execute JS). Do NOT add duplicate meta here. -->
-    <title>SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce | Official Site</title>
+    <title>SwiftMart (Swift Mart) — 10-Minute Delivery | Balurghat</title>
     <meta name="description" content="SwiftMart (Swift Mart) Balurghat delivers fresh groceries, fruits, vegetables, medicines, and daily essentials from local shops to your door in 10 minutes." />
     <meta name="keywords" content="SwiftMart, Swift Mart, swiftmart, swift-mart, swift mart app, swiftmart space, swiftmart balurghat, quick commerce near me, online grocery delivery balurghat, 10 minute delivery balurghat, blinkit balurghat, zepto balurghat, balurghat online shopping, food delivery balurghat, ridam mohanta, abhi das" />
     <!-- All public pages are indexable. Private routes override this via RobotsManager in React. -->
@@ -21,14 +21,16 @@
     <!-- Open Graph (static fallback — overridden per-page by react-helmet-async) -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="SwiftMart" />
-    <meta property="og:title" content="SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce | Official Site" />
+    <meta property="og:title" content="SwiftMart (Swift Mart) — 10-Minute Delivery | Balurghat" />
     <meta property="og:description" content="SwiftMart (Swift Mart) Balurghat delivers fresh groceries, fruits, vegetables, medicines, and daily essentials from local shops to your door in 10 minutes." />
     <meta property="og:url" content="https://swiftmart.space/" />
     <meta property="og:image" content="https://swiftmart.space/opengraph.jpg" />
+    <meta property="og:updated_time" content="2026-10-03T12:00:00+05:30" />
+    <meta property="article:modified_time" content="2026-10-03T12:00:00+05:30" />
 
     <!-- Twitter Card (static fallback) -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce | Official Site" />
+    <meta name="twitter:title" content="SwiftMart (Swift Mart) — 10-Minute Delivery | Balurghat" />
     <meta name="twitter:description" content="SwiftMart (Swift Mart) Balurghat delivers fresh groceries, fruits, vegetables, medicines, and daily essentials from local shops to your door in 10 minutes." />
     <meta name="twitter:image" content="https://swiftmart.space/opengraph.jpg" />
 
@@ -203,11 +205,13 @@
     <!-- Google AdSense (Verification & Asynchronous Ad Loader for Web) -->
     <meta name="google-adsense-account" content="ca-pub-3119816437064520">
     <script>
-      // Load AdSense script only on valid publisher content screens.
+      // Load AdSense script only on valid publisher content screens and human visitors.
       // Excludes transactional, cart, checkout, auth, and under-construction pages
       // per Google Publisher Policies (Screens without publisher content: https://support.google.com/publisherpolicies/answer/11112688)
       (function() {
         try {
+          var isBot = /googlebot|google-inspectiontool|pagespeed|rankmath|rank-math|seo-analyzer|ahrefs|semrush|moz|screaming|lighthouse|gtmetrix|pingdom|bot|crawler|spider/i.test(navigator.userAgent || '');
+          if (isBot) return;
           var p = (window.location && window.location.pathname) ? window.location.pathname.toLowerCase() : "";
           var restricted = [
             "/cart", "/checkout", "/order-success", "/orders",
@@ -251,6 +255,17 @@
       fbq('track', 'PageView');
     </script>
     <!-- End Meta Pixel Code -->
+
+    <!-- WWW to Non-WWW Canonical Client-Side Fallback -->
+    <script>
+      (function() {
+        try {
+          if (window.location && window.location.hostname && window.location.hostname.toLowerCase().indexOf("www.") === 0) {
+            window.location.replace("https://" + window.location.hostname.slice(4) + window.location.pathname + window.location.search + window.location.hash);
+          }
+        } catch (e) {}
+      })();
+    </script>
 
     <!-- Global & Preamble Stylesheet (No inline styles) -->
     <style>

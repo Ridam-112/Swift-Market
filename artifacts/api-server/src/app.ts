@@ -236,28 +236,9 @@ app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ ok: true, service: "swiftmart-api" });
 });
 
-// ─── Maintenance mode ─────────────────────────────────────────────────────────
-// Placed after helmet/CORS/body-parser (so the bypass cookie can be read and
-// headers are already set) but before API routes and static serving.
-// /health and /api/maintenance-bypass are explicitly allowed through.
-app.use(maintenanceMode);
-
-// ─── Block scanner / exploit paths ───────────────────────────────────────────
-const SCANNER_RE = /^\/(\.git|\.env|\.htaccess|wp-admin|wp-includes|wp-content|xmlrpc\.php|phpmyadmin|cgi-bin|admin\.php|config\.php)/i;
-app.use((req: Request, res: Response, next: NextFunction): void => {
-  if (SCANNER_RE.test(req.path)) {
-    res.status(404).end();
-    return;
-  }
-  next();
-});
-
 // ─── www → non-www canonical redirect ────────────────────────────────────────
 // www.swiftmart.space/... → swiftmart.space/... (301 permanent)
-// Without this Google crawls both www and non-www, triggering "Duplicate without
-// user-selected canonical" in Search Console even when the <link rel="canonical">
-// in the HTML points to the non-www version.
-// We read x-forwarded-host because Replit's reverse proxy strips the Host header.
+// Without this Google & SEO analyzers crawl both www and non-www.
 app.use((req: Request, res: Response, next: NextFunction): void => {
   const host = (
     (req.headers["x-forwarded-host"] as string | undefined) ?? req.headers.host ?? ""
@@ -276,12 +257,24 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
 
 // ─── Trailing-slash redirect ──────────────────────────────────────────────────
 // /shops/ → /shops  (301 permanent)
-// Prevents Google from treating /path and /path/ as separate duplicate pages.
-// The root "/" is explicitly excluded so it is never redirected to "".
 app.use((req: Request, res: Response, next: NextFunction): void => {
   if (req.path.length > 1 && req.path.endsWith("/")) {
     const qs = req.url.slice(req.path.length); // preserve query string / hash
     res.redirect(301, req.path.slice(0, -1) + qs);
+    return;
+  }
+  next();
+});
+
+// ─── Maintenance mode ─────────────────────────────────────────────────────────
+// Placed after canonical redirects & body-parser but before API routes and static serving.
+app.use(maintenanceMode);
+
+// ─── Block scanner / exploit paths ───────────────────────────────────────────
+const SCANNER_RE = /^\/(\.git|\.env|\.htaccess|wp-admin|wp-includes|wp-content|xmlrpc\.php|phpmyadmin|cgi-bin|admin\.php|config\.php)/i;
+app.use((req: Request, res: Response, next: NextFunction): void => {
+  if (SCANNER_RE.test(req.path)) {
+    res.status(404).end();
     return;
   }
   next();

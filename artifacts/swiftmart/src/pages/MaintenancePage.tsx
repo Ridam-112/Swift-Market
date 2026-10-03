@@ -18,9 +18,11 @@ export default function MaintenancePage() {
   return (
     <>
       <Helmet>
-        <title>SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce | Official Site</title>
+        <title>SwiftMart (Swift Mart) — 10-Minute Delivery | Balurghat</title>
         <meta name="description" content="SwiftMart (Swift Mart) Balurghat website is currently undergoing a major platform upgrade. We are launching after 5th with many new partner shops and every product. WhatsApp ordering is 100% active at 6296118949." />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+        <meta property="og:updated_time" content="2026-10-03T12:00:00+05:30" />
+        <meta property="article:modified_time" content="2026-10-03T12:00:00+05:30" />
         <link rel="canonical" href="https://swiftmart.space/" />
       </Helmet>
 

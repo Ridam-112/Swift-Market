@@ -430,7 +430,7 @@ export default function Home() {
         {/* Visually-hidden H1 anchors the page outline for crawlers */}
       <h1 className="sr-only">SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce in Balurghat</h1>
       <SEO
-        title="SwiftMart (Swift Mart) — 10-Minute Grocery Delivery &amp; Quick Commerce | Official Site"
+        title="SwiftMart (Swift Mart) — 10-Minute Delivery | Balurghat"
         description="SwiftMart (Swift Mart) Balurghat delivers fresh groceries, fruits, vegetables, medicines, and daily essentials from local shops to your door in 10 minutes."
         canonical="/"
         keywords="SwiftMart, Swift Mart, swiftmart, swift-mart, swift mart app, swiftmart space, swiftmart balurghat, quick commerce near me, online grocery delivery balurghat, 10 minute delivery balurghat, blinkit balurghat, zepto balurghat, Balurghat Grocery, Balurghat Online Shopping, Quick Commerce Balurghat, Food Delivery Balurghat, Medicine Delivery Balurghat, Vegetable Delivery Balurghat, Local Marketplace Balurghat, ridam mohanta, abhi das"
