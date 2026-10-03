@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRoute } from "wouter";
 import { Link } from "wouter";
 import { SEO } from "@/components/SEO";
@@ -7,8 +7,9 @@ import { useShops } from "@/hooks/useShops";
 import { useProducts } from "@/hooks/useProducts";
 import { ProductGrid } from "@/components/ProductGrid";
 import { EmptyState } from "@/components/EmptyState";
-import { ArrowLeft, Star, Clock, MapPin, PackageOpen, Store, AlertCircle, Sparkles } from "lucide-react";
+import { ArrowLeft, Star, Clock, MapPin, PackageOpen, Store, AlertCircle, Sparkles, Search, Share2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import { CustomCakeModal } from "@/components/CustomCakeModal";
@@ -45,6 +46,8 @@ export default function ShopDetail() {
   const [productsLoading, setProductsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [isCustomCakeOpen, setIsCustomCakeOpen] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const loadProducts = useCallback((shopId: string, storeName?: string) => {
     setProductsLoading(true);
@@ -166,9 +169,36 @@ export default function ShopDetail() {
   );
 
   const shopUrlPath = getShopUrl(shop);
-  const seoTitle = `${shop.storeName}, Balurghat — Order Online Menu & Delivery | SwiftMart`;
-  const seoDescription = `Order online from ${shop.storeName} in Balurghat on SwiftMart. ${shop.category ? `${shop.category} · ` : ""}View menu, prices & fast 10-minute delivery. ${vendorProducts.length > 0 ? `${vendorProducts.length} items available.` : ""}`;
-  const seoKeywords = `${shop.storeName}, ${shop.storeName} Balurghat, ${shop.storeName} menu, order ${shop.storeName} online, food delivery balurghat, SwiftMart Balurghat`;
+  const shopCanonicalUrl = `https://swiftmart.space${shopUrlPath}`;
+  const seoTitle = `${shop.storeName} (Balurghat) — Official Storefront & Online Ordering | SwiftMart`;
+  const seoDescription = `Order directly from ${shop.storeName}'s official online storefront in Balurghat on SwiftMart. ${shop.category ? `${shop.category} · ` : ""}Instant 10-15 min local delivery across Balurghat Pincodes 733101 & 733103. Live menu, verified prices, discounts & deals. ${vendorProducts.length > 0 ? `${vendorProducts.length} items available.` : ""}`;
+  const seoKeywords = `${shop.storeName}, ${shop.storeName} Balurghat, ${shop.storeName} storefront, ${shop.storeName} online shop, ${shop.storeName} menu, ${shop.storeName} delivery, order ${shop.storeName} online, SwiftMart Balurghat, Balurghat quick commerce, ${shop.category || 'grocery store'}`;
+
+  const filteredProducts = useMemo(() => {
+    if (!productSearch.trim()) return vendorProducts;
+    const q = productSearch.toLowerCase().trim();
+    return vendorProducts.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      (p.description || "").toLowerCase().includes(q) ||
+      (p.category || "").toLowerCase().includes(q)
+    );
+  }, [vendorProducts, productSearch]);
+
+  const handleShare = () => {
+    const fullUrl = shopCanonicalUrl;
+    const shareText = `Order directly from ${shop.storeName}'s official online storefront in Balurghat with 10-15 min delivery on SwiftMart!`;
+    if (navigator.share) {
+      navigator.share({
+        title: `${shop.storeName} — Official Storefront | SwiftMart`,
+        text: shareText,
+        url: fullUrl,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(fullUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   return (
     <div className="pb-24 min-h-[100dvh]">
@@ -177,97 +207,165 @@ export default function ShopDetail() {
         description={seoDescription}
         canonical={shopUrlPath}
         keywords={seoKeywords}
-        ogImage={shop.image && shop.image !== "/assets/shop-placeholder.png" ? shop.image : undefined}
-        jsonLd={{
-          "@context": "https://schema.org",
-          "@type": isFoodShop ? ["Restaurant", "FoodEstablishment", "LocalBusiness"] : ["LocalBusiness", "Store"],
-          "name": shop.storeName,
-          "description": seoDescription,
-          "image": shop.image && shop.image !== "/assets/shop-placeholder.png" ? shop.image : undefined,
-          "url": `https://swiftmart.space${shopUrlPath}`,
-          "telephone": shop.phone || "+91 62961 18949",
-          "priceRange": "₹₹",
-          "currenciesAccepted": "INR",
-          "servesCuisine": isFoodShop ? (shop.category || "Fast Food, Bakery, Indian") : undefined,
-          "address": {
-            "@type": "PostalAddress",
-            "addressLocality": shop.city || "Balurghat",
-            "postalCode": shop.pincode || "733103",
-            "addressRegion": "West Bengal",
-            "addressCountry": "IN"
-          },
-          "areaServed": {
-            "@type": "City",
-            "name": shop.city || "Balurghat"
-          },
-          ...(shop.rating > 0 && {
-            "aggregateRating": {
-              "@type": "AggregateRating",
-              "ratingValue": shop.rating.toFixed(1),
-              "bestRating": "5",
-              "worstRating": "1",
-              "ratingCount": Math.max(shop.totalOrders || 1, 1)
-            }
-          }),
-          ...(isFoodShop && vendorProducts.length > 0 && {
-            "hasMenu": {
-              "@type": "Menu",
-              "name": `${shop.storeName} Menu`,
-              "hasMenuSection": [
-                {
-                  "@type": "MenuSection",
-                  "name": "Dishes & Items",
-                  "hasMenuItem": vendorProducts.slice(0, 30).map(p => ({
-                    "@type": "MenuItem",
+        ogImage={shop.image && shop.image !== "/assets/shop-placeholder.png" ? shop.image : "https://swiftmart.space/opengraph.jpg"}
+        jsonLd={[
+          {
+            "@type": isFoodShop
+              ? ["Restaurant", "FoodEstablishment", "LocalBusiness"]
+              : ["Store", "LocalBusiness", "OnlineStore"],
+            "@id": `${shopCanonicalUrl}#storefront`,
+            "name": shop.storeName,
+            "legalName": `${shop.storeName} — SwiftMart Official Storefront`,
+            "alternateName": [
+              shop.storeName,
+              `${shop.storeName} Balurghat`,
+              `${shop.storeName} Storefront`,
+              `${shop.storeName} Online Store`,
+              `${shop.storeName} Menu`
+            ],
+            "description": seoDescription,
+            "image": shop.image && shop.image !== "/assets/shop-placeholder.png" ? shop.image : "https://swiftmart.space/opengraph.jpg",
+            "url": shopCanonicalUrl,
+            "telephone": shop.phone || "+91 62961 18949",
+            "priceRange": "₹₹",
+            "currenciesAccepted": "INR",
+            "paymentAccepted": "Cash on Delivery, UPI, Cards, Net Banking",
+            "servesCuisine": isFoodShop ? (shop.category || "Fast Food, Bakery, Sweets, Indian") : undefined,
+            "parentOrganization": {
+              "@type": "OnlineBusiness",
+              "name": "SwiftMart",
+              "url": "https://swiftmart.space"
+            },
+            "branchOf": {
+              "@type": "OnlineBusiness",
+              "name": "SwiftMart",
+              "url": "https://swiftmart.space"
+            },
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": shop.address?.line1 || shop.address?.city || "Gourlo Math",
+              "addressLocality": shop.city || "Balurghat",
+              "postalCode": shop.pincode || "733103",
+              "addressRegion": "West Bengal",
+              "addressCountry": "IN"
+            },
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 25.2167,
+              "longitude": 88.7667
+            },
+            "hasMap": `https://maps.google.com/?q=${encodeURIComponent(shop.storeName + " Balurghat")}`,
+            "openingHoursSpecification": {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+              "opens": "07:00",
+              "closes": "23:00"
+            },
+            "areaServed": {
+              "@type": "City",
+              "name": "Balurghat"
+            },
+            ...(shop.rating > 0 && {
+              "aggregateRating": {
+                "@type": "AggregateRating",
+                "ratingValue": shop.rating.toFixed(1),
+                "bestRating": "5",
+                "worstRating": "1",
+                "ratingCount": Math.max(shop.totalOrders || 1, 1)
+              }
+            }),
+            "potentialAction": {
+              "@type": "OrderAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": shopCanonicalUrl,
+                "inLanguage": "en-IN",
+                "actionPlatform": [
+                  "http://schema.org/DesktopWebPlatform",
+                  "http://schema.org/MobileWebPlatform",
+                  "http://schema.org/AndroidPlatform",
+                  "http://schema.org/IOSPlatform"
+                ]
+              },
+              "deliveryMethod": ["http://purl.org/goodrelations/v1#DeliveryModeOwnFleet"]
+            },
+            ...(vendorProducts.length > 0 && {
+              "hasOfferCatalog": {
+                "@type": "OfferCatalog",
+                "name": `${shop.storeName} Live Catalog & Menu`,
+                "numberOfItems": vendorProducts.length,
+                "itemListElement": vendorProducts.slice(0, 25).map(p => ({
+                  "@type": "Offer",
+                  "itemOffered": {
+                    "@type": "Product",
                     "name": p.name,
                     "description": p.description || `${p.name} from ${shop.storeName} in Balurghat`,
-                    "image": p.image && !p.image.includes('placeholder') ? p.image : undefined,
-                    "offers": {
-                      "@type": "Offer",
-                      "price": p.discountedPrice && p.discountedPrice > 0 ? p.discountedPrice : p.price,
-                      "priceCurrency": "INR"
-                    }
-                  }))
-                }
-              ]
-            }
-          }),
-          "potentialAction": {
-            "@type": "OrderAction",
-            "target": {
-              "@type": "EntryPoint",
-              "urlTemplate": `https://swiftmart.space${shopUrlPath}`,
-              "inLanguage": "en-IN",
-              "actionPlatform": [
-                "http://schema.org/DesktopWebPlatform",
-                "http://schema.org/MobileWebPlatform",
-                "http://schema.org/AndroidPlatform",
-                "http://schema.org/IOSPlatform"
-              ]
-            },
-            "deliveryMethod": ["http://purl.org/goodrelations/v1#DeliveryModeOwnFleet"]
+                    "image": p.image && !p.image.includes('placeholder') ? p.image : undefined
+                  },
+                  "price": p.discountedPrice && p.discountedPrice > 0 ? p.discountedPrice : p.price,
+                  "priceCurrency": "INR",
+                  "availability": p.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+                }))
+              }
+            })
           },
-          "hasOfferCatalog": vendorProducts.length > 0 ? {
-            "@type": "OfferCatalog",
-            "name": `${shop.storeName} Products`,
-            "numberOfItems": vendorProducts.length
-          } : undefined
-        }}
+          {
+            "@type": "BreadcrumbList",
+            "@id": `${shopCanonicalUrl}#breadcrumb`,
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "SwiftMart",
+                "item": "https://swiftmart.space/"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Balurghat Stores",
+                "item": "https://swiftmart.space/shops"
+              },
+              {
+                "@type": "ListItem",
+                "position": 3,
+                "name": shop.storeName,
+                "item": shopCanonicalUrl
+              }
+            ]
+          }
+        ]}
       />
+      {/* ── Breadcrumb Navigation Outline for Search Engines & Users ── */}
+      <nav aria-label="Breadcrumb" className="max-w-7xl mx-auto px-4 pt-3 pb-2 flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
+        <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
+        <span aria-hidden="true">/</span>
+        <Link href="/shops" className="hover:text-foreground transition-colors">Balurghat Stores</Link>
+        <span aria-hidden="true">/</span>
+        <span className="text-foreground font-bold truncate">{shop.storeName} Storefront</span>
+      </nav>
+
+      {/* ── Storefront Hero Banner ── */}
       <div className="relative h-48 md:h-64 w-full bg-muted">
         <img
           src={shop.image}
-          alt={`${shop.storeName} — local shop in Balurghat`}
+          alt={`${shop.storeName} — Official Storefront in Balurghat`}
+          width={1200}
+          height={400}
+          loading="eager"
+          decoding="async"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/20" />
 
-        <Link href="/shops" className="absolute top-4 left-4 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-colors">
+        <Link href="/shops" className="absolute top-4 left-4 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-colors" aria-label="Back to all shops">
           <ArrowLeft className="w-5 h-5" />
         </Link>
 
         <div className="absolute bottom-4 left-4 right-4 text-white">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span className="bg-amber-400 text-black text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+              <Store className="w-3 h-3" /> Official Storefront
+            </span>
             <span className="bg-primary/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
               {shop.category}
             </span>
@@ -275,48 +373,70 @@ export default function ShopDetail() {
               {shop.isOpen ? 'OPEN' : 'CLOSED'}
             </span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold mb-1 leading-tight">{shop.storeName}</h1>
-          <p className="text-sm text-white/80 line-clamp-1">by {shop.ownerName}</p>
+          <h1 className="text-2xl md:text-3xl font-black mb-1 leading-tight text-white drop-shadow-sm">{shop.storeName}</h1>
+          <p className="text-xs md:text-sm text-white/90 line-clamp-1">
+            Official Balurghat Storefront · 10-15 Min Express Delivery by SwiftMart · {shop.city || "Balurghat"}
+          </p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 pt-6 space-y-8">
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-2 bg-card neu-card px-4 py-2 rounded-xl">
-            <Star className="w-5 h-5 text-yellow-500 fill-current" />
-            <div className="flex flex-col">
-              <span className="font-bold text-sm leading-none text-foreground">
-                {shop.rating > 0 ? shop.rating.toFixed(1) : "New"}
-              </span>
-              <span className="text-[10px] text-muted-foreground">{shop.totalOrders}+ orders</span>
+      <div className="max-w-7xl mx-auto px-4 pt-6 space-y-6">
+        {/* ── Storefront Details Strip & Share Actions ── */}
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-card neu-card p-4 rounded-2xl border border-border/50">
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-yellow-500 fill-current" />
+              <div className="flex flex-col">
+                <span className="font-bold text-sm leading-none text-foreground">
+                  {shop.rating > 0 ? shop.rating.toFixed(1) : "New"}
+                </span>
+                <span className="text-[10px] text-muted-foreground">{shop.totalOrders}+ orders</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              <div className="flex flex-col">
+                <span className="font-bold text-sm leading-none text-foreground">{shop.eta}</span>
+                <span className="text-[10px] text-muted-foreground">Delivery time</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-muted-foreground" />
+              <div className="flex flex-col">
+                <span className="font-bold text-sm leading-none text-foreground truncate max-w-[140px]">
+                  {shop.city || "Balurghat"}
+                </span>
+                <span className="text-[10px] text-muted-foreground">Pincode {shop.pincode || "733103"}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 px-3 py-1.5 rounded-xl">
+              <span className="text-green-700 dark:text-green-400 text-sm leading-none" aria-hidden="true">✅</span>
+              <span className="font-bold text-[11px] text-green-700 dark:text-green-400">Verified Partner</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-card neu-card px-4 py-2 rounded-xl">
-            <Clock className="w-5 h-5 text-primary" />
-            <div className="flex flex-col">
-              <span className="font-bold text-sm leading-none text-foreground">{shop.eta}</span>
-              <span className="text-[10px] text-muted-foreground">Delivery time</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 bg-card neu-card px-4 py-2 rounded-xl">
-            <MapPin className="w-5 h-5 text-muted-foreground" />
-            <div className="flex flex-col">
-              <span className="font-bold text-sm leading-none text-foreground truncate max-w-[120px]">
-                {shop.city || "N/A"}
-              </span>
-              <span className="text-[10px] text-muted-foreground">Location</span>
-            </div>
-          </div>
-
-          {/* FSSAI compliance trust badge */}
-          <div className="flex items-center gap-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 px-3 py-2 rounded-xl">
-            <span className="text-green-700 dark:text-green-400 text-base leading-none" aria-hidden="true">✅</span>
-            <div className="flex flex-col">
-              <span className="font-bold text-[11px] leading-none text-green-700 dark:text-green-400">FSSAI Registered</span>
-              <span className="text-[10px] text-muted-foreground">Verified vendor</span>
-            </div>
+          {/* Share Storefront Buttons */}
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleShare}
+              variant="outline"
+              size="sm"
+              className="rounded-full text-xs font-bold gap-1.5 h-9 bg-background/80"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Share2 className="w-3.5 h-3.5" />}
+              {copied ? "Link Copied!" : "Share Storefront"}
+            </Button>
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(`Order online directly from ${shop.storeName}'s official storefront in Balurghat with 10-15 min delivery on SwiftMart! ${shopCanonicalUrl}`)}`}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="inline-flex items-center gap-1.5 bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold px-3.5 py-2 rounded-full transition-colors shadow-xs"
+            >
+              <span>WhatsApp</span>
+            </a>
           </div>
         </div>
 
@@ -388,11 +508,28 @@ export default function ShopDetail() {
           );
         })()}
 
+        {/* ── In-Store Product Search ── */}
+        {vendorProducts.length > 4 && (
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              type="text"
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              placeholder={`Search products inside ${shop.storeName}...`}
+              className="pl-10 h-11 bg-card rounded-2xl border-border/60 text-sm"
+            />
+          </div>
+        )}
+
+        {/* ── Products Grid ── */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-foreground">Our Products</h2>
-            {!productsLoading && vendorProducts.length > 0 && (
-              <span className="text-xs text-muted-foreground font-medium">({vendorProducts.length} items)</span>
+            <h2 className="text-xl font-bold text-foreground">
+              {productSearch.trim() ? `Search Results in ${shop.storeName}` : "Store Products & Menu"}
+            </h2>
+            {!productsLoading && filteredProducts.length > 0 && (
+              <span className="text-xs text-muted-foreground font-medium">({filteredProducts.length} items)</span>
             )}
           </div>
           {productsLoading && vendorProducts.length === 0 ? (
@@ -401,7 +538,7 @@ export default function ShopDetail() {
                 <div key={i} className="h-56 bg-muted/60 rounded-2xl animate-pulse" />
               ))}
             </div>
-          ) : vendorProducts.length > 0 ? (
+          ) : filteredProducts.length > 0 ? (
             <motion.div
               initial="hidden"
               animate="show"
@@ -413,16 +550,41 @@ export default function ShopDetail() {
                 }
               }}
             >
-              <ProductGrid products={vendorProducts} />
+              <ProductGrid products={filteredProducts} />
             </motion.div>
           ) : (
             <EmptyState
               icon={PackageOpen}
-              title="No products listed"
-              description="This vendor hasn't listed any products yet. Check back later!"
+              title={productSearch.trim() ? "No matching products found" : "No products listed"}
+              description={productSearch.trim() ? `No items matched "${productSearch}" in ${shop.storeName}.` : "This vendor hasn't listed any products yet. Check back later!"}
             />
           )}
         </div>
+
+        {/* ── Hyperlocal Storefront Information Card for Google Crawlers & Shoppers ── */}
+        <section aria-label="Storefront Information" className="mt-12 bg-card/60 border border-border/50 rounded-2xl p-5 space-y-3">
+          <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+            <Store className="w-4 h-4 text-primary" />
+            About {shop.storeName} Online Storefront on SwiftMart
+          </h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Welcome to the official verified online storefront of <strong>{shop.storeName}</strong> on SwiftMart. Serving customers across <strong>Balurghat, West Bengal</strong>, {shop.storeName} partners with SwiftMart to deliver {shop.category || 'fresh grocery, food, sweets, and daily essentials'} directly to customer doorsteps in 10 to 15 minutes.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+            <div className="bg-background/60 p-3 rounded-xl border border-border/40">
+              <span className="font-bold text-foreground block mb-0.5">⚡ Delivery Guarantee</span>
+              <span className="text-[11px] text-muted-foreground">Dispatched instantly via SwiftMart delivery fleet across Balurghat Pincodes 733101 &amp; 733103.</span>
+            </div>
+            <div className="bg-background/60 p-3 rounded-xl border border-border/40">
+              <span className="font-bold text-foreground block mb-0.5">💳 Payment Options</span>
+              <span className="text-[11px] text-muted-foreground">Cash on Delivery (COD), UPI (GPay, PhonePe, Paytm), and Net Banking accepted.</span>
+            </div>
+            <div className="bg-background/60 p-3 rounded-xl border border-border/40">
+              <span className="font-bold text-foreground block mb-0.5">📞 Direct Helpdesk</span>
+              <span className="text-[11px] text-muted-foreground">Store helpline: <a href="tel:+916296118949" className="text-primary font-bold">+91 62961 18949</a> (07:00 AM &ndash; 11:00 PM).</span>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );
