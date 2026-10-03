@@ -39,7 +39,38 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
   res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
   const hit = getBannerCache();
   if (hit) { res.json(hit); return; }
-  const banners = await db.select().from(heroBanners).where(eq(heroBanners.isActive, true)).orderBy(asc(heroBanners.displayOrder));
+  let banners = await db.select().from(heroBanners).where(eq(heroBanners.isActive, true)).orderBy(asc(heroBanners.displayOrder));
+
+  if (banners.length === 0) {
+    try {
+      await db.insert(heroBanners).values([
+        {
+          imageUrl: "/banners/swiftmart-main-banner.jpg",
+          title: "",
+          subtitle: "",
+          buttonText: "",
+          redirectType: "internal",
+          redirectValue: "/grocery",
+          displayOrder: 1,
+          isActive: true,
+        },
+        {
+          imageUrl: "/banners/service-corner-banner.jpg",
+          title: "",
+          subtitle: "",
+          buttonText: "",
+          redirectType: "internal",
+          redirectValue: "/services",
+          displayOrder: 2,
+          isActive: true,
+        },
+      ]);
+      banners = await db.select().from(heroBanners).where(eq(heroBanners.isActive, true)).orderBy(asc(heroBanners.displayOrder));
+    } catch {
+      // Fallback silently if table insert fails
+    }
+  }
+
   const payload = { success: true, banners: miArr(banners) };
   setBannerCache(payload);
   res.json(payload);

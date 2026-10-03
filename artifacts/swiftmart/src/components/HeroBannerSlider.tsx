@@ -60,6 +60,27 @@ const staticSlides = [
   },
 ];
 
+const DEFAULT_HERO_BANNERS: ApiBanner[] = [
+  {
+    _id: "default-swiftmart-main",
+    imageUrl: "/banners/swiftmart-main-banner.jpg",
+    title: "",
+    subtitle: "",
+    buttonText: "",
+    redirectType: "internal",
+    redirectValue: "/grocery",
+  },
+  {
+    _id: "default-service-corner",
+    imageUrl: "/banners/service-corner-banner.jpg",
+    title: "",
+    subtitle: "",
+    buttonText: "",
+    redirectType: "internal",
+    redirectValue: "/services",
+  },
+];
+
 // Module-level cache — avoids re-fetching banners on every Home re-mount.
 const BANNER_TTL = 5 * 60_000; // 5 min
 let _bannersCache: { data: ApiBanner[]; at: number } | null = null;
@@ -67,7 +88,11 @@ let _bannersCache: { data: ApiBanner[]; at: number } | null = null;
 export function HeroBannerSlider() {
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [banners, setBanners] = useState<ApiBanner[] | null>(null);
+  const [banners, setBanners] = useState<ApiBanner[]>(
+    _bannersCache && Date.now() - _bannersCache.at < BANNER_TTL
+      ? _bannersCache.data
+      : DEFAULT_HERO_BANNERS
+  );
   const [, setLocation] = useLocation();
   const viewTrackedRef = useRef(false);
   const touchStartX = useRef<number | null>(null);
@@ -82,13 +107,13 @@ export function HeroBannerSlider() {
     fetch("/api/hero-banners")
       .then(r => r.json())
       .then((data: { success: boolean; banners: ApiBanner[] }) => {
-        const result = data.success && data.banners.length > 0 ? data.banners : [];
+        const result = data.success && data.banners.length > 0 ? data.banners : DEFAULT_HERO_BANNERS;
         _bannersCache = { data: result, at: Date.now() };
         setBanners(result);
       })
       .catch(() => {
-        _bannersCache = { data: [], at: Date.now() };
-        setBanners([]);
+        _bannersCache = { data: DEFAULT_HERO_BANNERS, at: Date.now() };
+        setBanners(DEFAULT_HERO_BANNERS);
       });
   }, []);
 
@@ -102,7 +127,7 @@ export function HeroBannerSlider() {
     }).catch(() => {});
   }, [banners]);
 
-  const usingApi = banners !== null && banners.length > 0;
+  const usingApi = banners.length > 0;
   const count = usingApi ? banners.length : staticSlides.length;
 
   const next = useCallback(() => setCurrent(c => (c + 1) % count), [count]);
@@ -125,12 +150,6 @@ export function HeroBannerSlider() {
     }
   }, [setLocation]);
 
-  if (banners === null) {
-    return (
-      <div className="w-full aspect-video max-h-64 rounded-2xl bg-muted animate-pulse my-2" />
-    );
-  }
-
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
@@ -152,7 +171,7 @@ export function HeroBannerSlider() {
 
   const sharedContainer = (children: React.ReactNode, slideCount: number) => (
     <div
-      className="relative w-full aspect-video max-h-64 rounded-2xl overflow-hidden my-2 select-none"
+      className="relative w-full aspect-[16/9] sm:aspect-[21/9] md:aspect-[2.3/1] max-h-72 sm:max-h-80 md:max-h-96 rounded-2xl overflow-hidden my-2 select-none shadow-xs border border-border/40"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={handleTouchStart}
@@ -162,7 +181,7 @@ export function HeroBannerSlider() {
 
       <button
         onClick={prev}
-        className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 md:w-9 md:h-9 rounded-full bg-white/25 hover:bg-white/40 backdrop-blur-sm text-white flex items-center justify-center transition-all z-10"
+        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 md:w-9 md:h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white flex items-center justify-center transition-all z-10 shadow-md cursor-pointer active:scale-95"
         aria-label="Previous slide"
       >
         <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
@@ -170,7 +189,7 @@ export function HeroBannerSlider() {
 
       <button
         onClick={next}
-        className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 md:w-9 md:h-9 rounded-full bg-white/25 hover:bg-white/40 backdrop-blur-sm text-white flex items-center justify-center transition-all z-10"
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 md:w-9 md:h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white flex items-center justify-center transition-all z-10 shadow-md cursor-pointer active:scale-95"
         aria-label="Next slide"
       >
         <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
@@ -181,8 +200,8 @@ export function HeroBannerSlider() {
           <button
             key={i}
             onClick={() => setCurrent(i)}
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              i === current ? "w-6 bg-white" : "w-1.5 bg-white/50"
+            className={`h-1.5 rounded-full transition-all duration-300 drop-shadow-sm ${
+              i === current ? "w-6 bg-white shadow-sm" : "w-1.5 bg-white/60 hover:bg-white/80"
             }`}
             aria-label={`Go to slide ${i + 1}`}
           />
@@ -201,7 +220,12 @@ export function HeroBannerSlider() {
           }`}
           onClick={() => handleBannerClick(b)}
         >
-          <img src={b.imageUrl} alt={b.title ?? "Banner"} className="w-full h-full object-cover" />
+          <img
+            src={b.imageUrl}
+            alt={b.title || "SwiftMart Promotion"}
+            className="w-full h-full object-cover object-center"
+            loading={i === 0 ? "eager" : "lazy"}
+          />
           {(b.title || b.subtitle || b.buttonText) && (
             <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-transparent flex items-center px-5 md:px-8">
               <div className="flex flex-col gap-2 max-w-[65%]">

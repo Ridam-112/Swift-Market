@@ -645,6 +645,20 @@ export default function Home() {
             )}
           </section>
 
+          {/* ── Featured Service Corner Promo Banner ───────────────── */}
+          <section className="w-full my-1">
+            <Link href="/services" className="block group">
+              <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] md:aspect-[2.5/1] max-h-72 sm:max-h-80 rounded-2xl overflow-hidden border border-blue-500/25 shadow-xs hover:shadow-md transition-all duration-300 group-hover:border-blue-500/50 cursor-pointer">
+                <img
+                  src="/banners/service-corner-banner.jpg"
+                  alt="SwiftMart Service Corner - Upahar Electronics Lab"
+                  className="w-full h-full object-cover object-center group-hover:scale-[1.01] transition-transform duration-300"
+                  loading="lazy"
+                />
+              </div>
+            </Link>
+          </section>
+
           {/* ── AdSense Section Banner: Category & Shops Divider ── */}
           <AdSenseSectionBanner />
 
