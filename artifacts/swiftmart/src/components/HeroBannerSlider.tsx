@@ -135,7 +135,7 @@ export function HeroBannerSlider() {
 
   useEffect(() => {
     if (paused) return;
-    const interval = setInterval(next, 5000);
+    const interval = setInterval(next, 3000);
     return () => clearInterval(interval);
   }, [next, paused]);
 
