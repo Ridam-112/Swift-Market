@@ -298,6 +298,207 @@ class WhatsAppService {
 
     return this.sendMessage(vendorPhone, message);
   }
+
+  /**
+   * Determine if an order is an E-Commerce / Mall order (vs Quick Commerce)
+   */
+  public isEcommerceOrder(order: {
+    deliveryType?: string | null;
+    items?: any;
+    shopType?: string | null;
+  }): boolean {
+    const dt = (order.deliveryType || "").toLowerCase();
+    if (
+      dt.includes("ecom") ||
+      dt.includes("mall") ||
+      dt.includes("courier") ||
+      dt.includes("post") ||
+      dt.includes("pan_india") ||
+      dt.includes("heavy") ||
+      dt.includes("7day") ||
+      dt.includes("standard_ecom")
+    ) {
+      return true;
+    }
+
+    const st = (order.shopType || "").toLowerCase();
+    if (st.includes("mall") || st.includes("ecommerce") || st.includes("super_store")) {
+      return true;
+    }
+
+    if (Array.isArray(order.items)) {
+      const hasMallOrHeavy = order.items.some((it: any) =>
+        it.isHeavy === true ||
+        it.deliveryType === "heavy_1_3d" ||
+        it.deliveryType === "ecommerce" ||
+        (typeof it.deliveryDays === "number" && it.deliveryDays >= 3)
+      );
+      if (hasMallOrHeavy) return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Sends an automated WhatsApp alert to the CUSTOMER when their order is accepted by the shop owner.
+   * - Quick Commerce: Estimated delivery 30–45 mins
+   * - E-Commerce: Estimated delivery in 5–7 days
+   */
+  public async sendOrderAcceptedToCustomer(params: {
+    customerPhone: string;
+    customerName: string;
+    shopName: string;
+    orderNumber: string;
+    orderId: string;
+    isEcommerce?: boolean;
+    netAmount?: number;
+    items?: Array<{ productName?: string; name?: string; qty?: number }>;
+  }): Promise<boolean> {
+    const {
+      customerPhone,
+      customerName,
+      shopName,
+      orderNumber,
+      orderId,
+      isEcommerce = false,
+      netAmount,
+      items,
+    } = params;
+
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    const trackUrl = `${baseUrl}/orders?track=${orderId}`;
+
+    let itemsPreview = "";
+    if (Array.isArray(items) && items.length > 0) {
+      const names = items
+        .slice(0, 3)
+        .map(i => `${i.productName || i.name || "Item"} (×${i.qty || 1})`)
+        .join(", ");
+      const extra = items.length > 3 ? ` +${items.length - 3} more` : "";
+      itemsPreview = `\n📋 *Items:* ${names}${extra}`;
+    }
+
+    const amountLine = netAmount != null ? `\n💰 *Total Amount:* ₹${netAmount}` : "";
+
+    const message = isEcommerce
+      ? [
+          `🔔 *ORDER ACCEPTED — SWIFTMART* 📦`,
+          `━━━━━━━━━━━━━━━━━━━━━━`,
+          `Hello *${customerName || "Customer"}*, your order from *${shopName}* has been accepted!`,
+          ``,
+          `📦 *Order ID:* #${orderNumber}`,
+          `🚚 *Delivery Estimate:* 5–7 Days (Standard Dispatch)`,
+          `📋 *Status:* Confirmed & being prepared for shipment${itemsPreview}${amountLine}`,
+          `━━━━━━━━━━━━━━━━━━━━━━`,
+          `You will receive another update when your package is handed over to the courier partner.`,
+          `👉 *Track Order:* ${trackUrl}`,
+          ``,
+          `_Thank you for choosing SwiftMart!_`,
+        ].join("\n")
+      : [
+          `🔔 *ORDER ACCEPTED — SWIFTMART* 🚀`,
+          `━━━━━━━━━━━━━━━━━━━━━━`,
+          `Hello *${customerName || "Customer"}*, your order from *${shopName}* has been accepted!`,
+          ``,
+          `📦 *Order ID:* #${orderNumber}`,
+          `⏱️ *Delivery Estimate:* Within 30–45 Mins`,
+          `🛵 *Status:* Confirmed & being packed${itemsPreview}${amountLine}`,
+          `━━━━━━━━━━━━━━━━━━━━━━`,
+          `A delivery partner will pick up and deliver your order shortly.`,
+          `👉 *Track Live Order:* ${trackUrl}`,
+          ``,
+          `_Thank you for choosing SwiftMart!_`,
+        ].join("\n");
+
+    return this.sendMessage(customerPhone, message);
+  }
+
+  /**
+   * Sends an automated WhatsApp alert to the CUSTOMER when an E-Commerce order is shipped.
+   */
+  public async sendOrderShippedToCustomer(params: {
+    customerPhone: string;
+    customerName: string;
+    shopName: string;
+    orderNumber: string;
+    orderId: string;
+    courierName?: string;
+    trackingNumber?: string;
+  }): Promise<boolean> {
+    const {
+      customerPhone,
+      customerName,
+      shopName,
+      orderNumber,
+      orderId,
+      courierName,
+      trackingNumber,
+    } = params;
+
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    const trackUrl = `${baseUrl}/orders?track=${orderId}`;
+
+    const courierDetails = [
+      courierName ? `🚛 *Courier Partner:* ${courierName}` : null,
+      trackingNumber ? `🔍 *Tracking No:* ${trackingNumber}` : null,
+    ].filter(Boolean).join("\n");
+
+    const message = [
+      `🚚 *ORDER SHIPPED! — SWIFTMART* 📦`,
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `Hello *${customerName || "Customer"}*, your order #${orderNumber} from *${shopName}* has been shipped!`,
+      ``,
+      `📦 *Order ID:* #${orderNumber}`,
+      `📅 *Estimated Delivery:* Within 5–7 Days`,
+      courierDetails ? `${courierDetails}` : null,
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `👉 *Track Your Shipment:* ${trackUrl}`,
+      ``,
+      `_Thank you for shopping on SwiftMart!_`,
+    ].filter(Boolean).join("\n");
+
+    return this.sendMessage(customerPhone, message);
+  }
+
+  /**
+   * Sends an automated WhatsApp alert to the CUSTOMER when their order is delivered,
+   * asking for a review and rating.
+   */
+  public async sendOrderDeliveredToCustomer(params: {
+    customerPhone: string;
+    customerName: string;
+    shopName: string;
+    orderNumber: string;
+    orderId: string;
+  }): Promise<boolean> {
+    const {
+      customerPhone,
+      customerName,
+      shopName,
+      orderNumber,
+      orderId,
+    } = params;
+
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    const reviewUrl = `${baseUrl}/orders?review=${orderId}`;
+
+    const message = [
+      `🎉 *ORDER DELIVERED! — SWIFTMART* ✨`,
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `Hello *${customerName || "Customer"}*, your order #${orderNumber} from *${shopName}* has been successfully delivered!`,
+      ``,
+      `We hope you loved your items! 🥰`,
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `⭐ *HOW WAS YOUR EXPERIENCE?*`,
+      `Please take a moment to share your review and rating for the shop & products. Your feedback helps our community!`,
+      ``,
+      `👉 *Leave a Review:* ${reviewUrl}`,
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `_Thank you for supporting local businesses on SwiftMart!_`,
+    ].join("\n");
+
+    return this.sendMessage(customerPhone, message);
+  }
 }
 
 export const whatsappService = new WhatsAppService();

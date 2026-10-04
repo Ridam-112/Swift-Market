@@ -267855,6 +267855,146 @@ var WhatsAppService = class {
     ].join("\n");
     return this.sendMessage(vendorPhone, message);
   }
+  /**
+   * Determine if an order is an E-Commerce / Mall order (vs Quick Commerce)
+   */
+  isEcommerceOrder(order) {
+    const dt = (order.deliveryType || "").toLowerCase();
+    if (dt.includes("ecom") || dt.includes("mall") || dt.includes("courier") || dt.includes("post") || dt.includes("pan_india") || dt.includes("heavy") || dt.includes("7day") || dt.includes("standard_ecom")) {
+      return true;
+    }
+    const st = (order.shopType || "").toLowerCase();
+    if (st.includes("mall") || st.includes("ecommerce") || st.includes("super_store")) {
+      return true;
+    }
+    if (Array.isArray(order.items)) {
+      const hasMallOrHeavy = order.items.some(
+        (it) => it.isHeavy === true || it.deliveryType === "heavy_1_3d" || it.deliveryType === "ecommerce" || typeof it.deliveryDays === "number" && it.deliveryDays >= 3
+      );
+      if (hasMallOrHeavy) return true;
+    }
+    return false;
+  }
+  /**
+   * Sends an automated WhatsApp alert to the CUSTOMER when their order is accepted by the shop owner.
+   * - Quick Commerce: Estimated delivery 30–45 mins
+   * - E-Commerce: Estimated delivery in 5–7 days
+   */
+  async sendOrderAcceptedToCustomer(params) {
+    const {
+      customerPhone,
+      customerName,
+      shopName,
+      orderNumber,
+      orderId,
+      isEcommerce = false,
+      netAmount,
+      items
+    } = params;
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    const trackUrl = `${baseUrl}/orders?track=${orderId}`;
+    let itemsPreview = "";
+    if (Array.isArray(items) && items.length > 0) {
+      const names = items.slice(0, 3).map((i2) => `${i2.productName || i2.name || "Item"} (\xD7${i2.qty || 1})`).join(", ");
+      const extra = items.length > 3 ? ` +${items.length - 3} more` : "";
+      itemsPreview = `
+\u{1F4CB} *Items:* ${names}${extra}`;
+    }
+    const amountLine = netAmount != null ? `
+\u{1F4B0} *Total Amount:* \u20B9${netAmount}` : "";
+    const message = isEcommerce ? [
+      `\u{1F514} *ORDER ACCEPTED \u2014 SWIFTMART* \u{1F4E6}`,
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `Hello *${customerName || "Customer"}*, your order from *${shopName}* has been accepted!`,
+      ``,
+      `\u{1F4E6} *Order ID:* #${orderNumber}`,
+      `\u{1F69A} *Delivery Estimate:* 5\u20137 Days (Standard Dispatch)`,
+      `\u{1F4CB} *Status:* Confirmed & being prepared for shipment${itemsPreview}${amountLine}`,
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `You will receive another update when your package is handed over to the courier partner.`,
+      `\u{1F449} *Track Order:* ${trackUrl}`,
+      ``,
+      `_Thank you for choosing SwiftMart!_`
+    ].join("\n") : [
+      `\u{1F514} *ORDER ACCEPTED \u2014 SWIFTMART* \u{1F680}`,
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `Hello *${customerName || "Customer"}*, your order from *${shopName}* has been accepted!`,
+      ``,
+      `\u{1F4E6} *Order ID:* #${orderNumber}`,
+      `\u23F1\uFE0F *Delivery Estimate:* Within 30\u201345 Mins`,
+      `\u{1F6F5} *Status:* Confirmed & being packed${itemsPreview}${amountLine}`,
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `A delivery partner will pick up and deliver your order shortly.`,
+      `\u{1F449} *Track Live Order:* ${trackUrl}`,
+      ``,
+      `_Thank you for choosing SwiftMart!_`
+    ].join("\n");
+    return this.sendMessage(customerPhone, message);
+  }
+  /**
+   * Sends an automated WhatsApp alert to the CUSTOMER when an E-Commerce order is shipped.
+   */
+  async sendOrderShippedToCustomer(params) {
+    const {
+      customerPhone,
+      customerName,
+      shopName,
+      orderNumber,
+      orderId,
+      courierName,
+      trackingNumber
+    } = params;
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    const trackUrl = `${baseUrl}/orders?track=${orderId}`;
+    const courierDetails = [
+      courierName ? `\u{1F69B} *Courier Partner:* ${courierName}` : null,
+      trackingNumber ? `\u{1F50D} *Tracking No:* ${trackingNumber}` : null
+    ].filter(Boolean).join("\n");
+    const message = [
+      `\u{1F69A} *ORDER SHIPPED! \u2014 SWIFTMART* \u{1F4E6}`,
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `Hello *${customerName || "Customer"}*, your order #${orderNumber} from *${shopName}* has been shipped!`,
+      ``,
+      `\u{1F4E6} *Order ID:* #${orderNumber}`,
+      `\u{1F4C5} *Estimated Delivery:* Within 5\u20137 Days`,
+      courierDetails ? `${courierDetails}` : null,
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `\u{1F449} *Track Your Shipment:* ${trackUrl}`,
+      ``,
+      `_Thank you for shopping on SwiftMart!_`
+    ].filter(Boolean).join("\n");
+    return this.sendMessage(customerPhone, message);
+  }
+  /**
+   * Sends an automated WhatsApp alert to the CUSTOMER when their order is delivered,
+   * asking for a review and rating.
+   */
+  async sendOrderDeliveredToCustomer(params) {
+    const {
+      customerPhone,
+      customerName,
+      shopName,
+      orderNumber,
+      orderId
+    } = params;
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    const reviewUrl = `${baseUrl}/orders?review=${orderId}`;
+    const message = [
+      `\u{1F389} *ORDER DELIVERED! \u2014 SWIFTMART* \u2728`,
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `Hello *${customerName || "Customer"}*, your order #${orderNumber} from *${shopName}* has been successfully delivered!`,
+      ``,
+      `We hope you loved your items! \u{1F970}`,
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `\u2B50 *HOW WAS YOUR EXPERIENCE?*`,
+      `Please take a moment to share your review and rating for the shop & products. Your feedback helps our community!`,
+      ``,
+      `\u{1F449} *Leave a Review:* ${reviewUrl}`,
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `_Thank you for supporting local businesses on SwiftMart!_`
+    ].join("\n");
+    return this.sendMessage(customerPhone, message);
+  }
 };
 var whatsappService = new WhatsAppService();
 
@@ -267951,6 +268091,7 @@ var STATUS_MESSAGES = {
   preparing: { title: "Order Being Prepared", message: "The shop is preparing your order." },
   confirmed: { title: "Order Confirmed", message: "Your order has been confirmed by the shop." },
   packed: { title: "Order Packed", message: "Your order is packed and ready for pickup." },
+  shipped: { title: "Order Shipped \u{1F69A}", message: "Your order has been shipped. Estimated delivery in 5\u20137 days." },
   out_for_delivery: { title: "Out for Delivery", message: "Your order is on the way! \u{1F69A}" },
   delivered: { title: "Order Delivered", message: "Your order has been delivered. Enjoy!" },
   cancelled: { title: "Order Cancelled", message: "Your order has been cancelled." },
@@ -267963,6 +268104,7 @@ var VALID_STATUSES = /* @__PURE__ */ new Set([
   "preparing",
   "confirmed",
   "packed",
+  "shipped",
   "out_for_delivery",
   "delivered",
   "cancelled",
@@ -268605,6 +268747,44 @@ router9.patch("/:id/status", authenticate, validateUuidParams("id"), async (req,
       });
     }
   } catch {
+  }
+  try {
+    if (order.customerPhone) {
+      const isEcommerce = whatsappService.isEcommerceOrder({
+        deliveryType: order.deliveryType,
+        items: order.items
+      });
+      if (status === "accepted" || status === "confirmed") {
+        whatsappService.sendOrderAcceptedToCustomer({
+          customerPhone: order.customerPhone,
+          customerName: order.customerName,
+          shopName: order.shopName,
+          orderNumber: order.id.slice(-6).toUpperCase(),
+          orderId: order.id,
+          isEcommerce,
+          netAmount: order.netAmount,
+          items: order.items || []
+        }).catch((err) => logger.warn({ err }, "[WhatsApp] Background customer alert error on accept"));
+      } else if (status === "shipped") {
+        whatsappService.sendOrderShippedToCustomer({
+          customerPhone: order.customerPhone,
+          customerName: order.customerName,
+          shopName: order.shopName,
+          orderNumber: order.id.slice(-6).toUpperCase(),
+          orderId: order.id
+        }).catch((err) => logger.warn({ err }, "[WhatsApp] Background customer alert error on ship"));
+      } else if (status === "delivered") {
+        whatsappService.sendOrderDeliveredToCustomer({
+          customerPhone: order.customerPhone,
+          customerName: order.customerName,
+          shopName: order.shopName,
+          orderNumber: order.id.slice(-6).toUpperCase(),
+          orderId: order.id
+        }).catch((err) => logger.warn({ err }, "[WhatsApp] Background customer alert error on delivery"));
+      }
+    }
+  } catch (waErr) {
+    logger.warn({ waErr }, "[WhatsApp] Failed to dispatch customer order WhatsApp notification");
   }
   res.json({ success: true, order: mi(order) });
 });
@@ -269359,6 +269539,17 @@ router12.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams
       data: { orderId, url: `/orders/${orderId}` }
     });
   } catch {
+  }
+  if (order.customerPhone) {
+    whatsappService.sendOrderDeliveredToCustomer({
+      customerPhone: order.customerPhone,
+      customerName: order.customerName,
+      shopName: order.shopName,
+      orderNumber: order.id.slice(-6).toUpperCase(),
+      orderId: order.id
+    }).catch((err) => {
+      logger.warn({ err }, "[WhatsApp] Background delivery WhatsApp alert failed");
+    });
   }
   res.json({ success: true, order: mi(updated) });
 });
@@ -274719,6 +274910,24 @@ router35.get("/order-action", async (req, res) => {
         return;
       }
       await db.update(orders).set({ status: "confirmed", updatedAt: /* @__PURE__ */ new Date() }).where(eq38(orders.id, orderId));
+      if (order.customerPhone) {
+        const isEcommerce = whatsappService.isEcommerceOrder({
+          deliveryType: order.deliveryType,
+          items: order.items
+        });
+        whatsappService.sendOrderAcceptedToCustomer({
+          customerPhone: order.customerPhone,
+          customerName: order.customerName,
+          shopName: order.shopName,
+          orderNumber: order.id.slice(-6).toUpperCase(),
+          orderId: order.id,
+          isEcommerce,
+          netAmount: order.netAmount,
+          items: order.items || []
+        }).catch((err) => {
+          logger.warn({ err }, "[WhatsApp] Background customer alert error on accept");
+        });
+      }
       res.send(`
         <!DOCTYPE html>
         <html>

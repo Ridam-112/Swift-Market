@@ -5,6 +5,8 @@ import { authenticate, optionalAuth, requireRole, type AuthRequest } from "../..
 import { validateUuidParams } from "../../middlewares/validateUuid.js";
 import { mi, miArr } from "../../utils/mapId.js";
 import { createNotificationLimited } from "../../utils/notification.js";
+import { whatsappService } from "../../services/whatsapp.js";
+import { logger } from "../../lib/logger.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -479,6 +481,19 @@ router.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams("
       data: { orderId, url: `/orders/${orderId}` },
     });
   } catch { /* ignore */ }
+
+  // Instant WhatsApp delivery notification to customer with review link
+  if (order.customerPhone) {
+    whatsappService.sendOrderDeliveredToCustomer({
+      customerPhone: order.customerPhone,
+      customerName: order.customerName,
+      shopName: order.shopName,
+      orderNumber: order.id.slice(-6).toUpperCase(),
+      orderId: order.id,
+    }).catch((err) => {
+      logger.warn({ err }, "[WhatsApp] Background delivery WhatsApp alert failed");
+    });
+  }
 
   res.json({ success: true, order: mi(updated!) });
 });

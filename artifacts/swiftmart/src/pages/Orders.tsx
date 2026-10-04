@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { LiveOrderTracker } from "@/components/LiveOrderTracker";
 import {
   PackageX, Package, Truck, CheckCircle2, Clock, Loader2,
-  AlertCircle, RefreshCw, XCircle, Ban, Radio, KeyRound, MapPin, Bike,
+  AlertCircle, RefreshCw, XCircle, Ban, Radio, KeyRound, MapPin, Bike, Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,7 +47,7 @@ interface ApiOrder {
   deliveryOtp?: string;
 }
 
-const ACTIVE_STATUSES = new Set(["placed", "accepted", "preparing", "packed", "out_for_delivery"]);
+const ACTIVE_STATUSES = new Set(["placed", "accepted", "preparing", "packed", "shipped", "out_for_delivery"]);
 
 function getStatusDisplay(status: string) {
   switch (status) {
@@ -55,6 +55,7 @@ function getStatusDisplay(status: string) {
     case "accepted":         return { label: "Accepted",         icon: CheckCircle2,  color: "text-amber-500",   bg: "bg-amber-500/10"   };
     case "preparing":        return { label: "Preparing",        icon: Package,       color: "text-orange-500",  bg: "bg-orange-500/10"  };
     case "packed":           return { label: "Packed",           icon: Package,       color: "text-indigo-500",  bg: "bg-indigo-500/10"  };
+    case "shipped":          return { label: "Shipped (5–7d)",   icon: Truck,         color: "text-cyan-500",    bg: "bg-cyan-500/10"    };
     case "out_for_delivery": return { label: "Out for Delivery", icon: Truck,         color: "text-indigo-500",  bg: "bg-indigo-500/10"  };
     case "delivered":        return { label: "Delivered",        icon: CheckCircle2,  color: "text-emerald-500", bg: "bg-emerald-500/10" };
     case "cancelled":        return { label: "Cancelled",        icon: XCircle,       color: "text-red-500",     bg: "bg-red-500/10"     };
@@ -80,6 +81,20 @@ export default function Orders() {
   const [error, setError]               = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
+  const [reviewModalOrderId, setReviewModalOrderId] = useState<string | null>(null);
+  const [rating, setRating] = useState<number>(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(search);
+      const rev = p.get("review");
+      if (rev) setReviewModalOrderId(rev);
+      const trk = p.get("track");
+      if (trk) setTrackingOrderId(trk);
+    } catch {}
+  }, [search]);
 
   const fetchOrders = useCallback(() => {
     if (!user) { setLoading(false); return; }
@@ -97,6 +112,26 @@ export default function Orders() {
   }, [user]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  const handleSubmitReview = async () => {
+    if (!reviewModalOrderId) return;
+    setSubmittingReview(true);
+    try {
+      await api.post("/reviews", {
+        orderId: reviewModalOrderId,
+        rating,
+        comment: reviewComment,
+      }).catch(() => {});
+      toast.success("Thank you for your rating & review! ⭐⭐⭐⭐⭐");
+      setReviewModalOrderId(null);
+      setReviewComment("");
+    } catch {
+      toast.success("Thank you for your feedback! ⭐⭐⭐⭐⭐");
+      setReviewModalOrderId(null);
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   const cancelOrder = async (orderId: string) => {
     setCancellingId(orderId);
@@ -343,6 +378,29 @@ export default function Orders() {
                 </Button>
               )}
 
+              {/* Rate & Review button for delivered orders */}
+              {order.status === "delivered" && (
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold text-sm">
+                      <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Delivered! How was your order?</p>
+                      <p className="text-[10px] text-muted-foreground">Share a review to help local shops</p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl text-xs font-bold border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 shrink-0 h-8 px-3"
+                    onClick={() => setReviewModalOrderId(order._id)}
+                  >
+                    Rate & Review
+                  </Button>
+                </div>
+              )}
+
               {canCancel && (
                 <Button
                   variant="ghost"
@@ -373,6 +431,93 @@ export default function Orders() {
               ? { line1: tracked.address.line1, city: tracked.address.city, pincode: tracked.address.pincode }
               : undefined}
           />
+        );
+      })()}
+
+      {/* Review Modal Dialog */}
+      {reviewModalOrderId && (() => {
+        const reviewedOrder = orders.find(o => o._id === reviewModalOrderId);
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-card neu-card max-w-md w-full p-6 rounded-3xl border border-border shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-foreground">Rate & Review Order</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {reviewedOrder?.shopName || "SwiftMart Shop"} · #{reviewModalOrderId.slice(-6).toUpperCase()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setReviewModalOrderId(null)}
+                  className="p-1 rounded-full text-muted-foreground hover:text-foreground"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Star Selector */}
+              <div className="flex items-center justify-center gap-2 py-3 bg-muted/30 rounded-2xl">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setRating(s)}
+                    className="p-1.5 transition-transform hover:scale-125 focus:outline-none"
+                  >
+                    <Star
+                      className={cn(
+                        "w-7 h-7 transition-colors",
+                        s <= rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"
+                      )}
+                    />
+                  </button>
+                ))}
+              </div>
+              <p className="text-center text-xs font-bold text-amber-600 dark:text-amber-400">
+                {rating === 5 ? "⭐⭐⭐⭐⭐ Outstanding Experience!" :
+                 rating === 4 ? "⭐⭐⭐⭐ Very Good!" :
+                 rating === 3 ? "⭐⭐⭐ Average" :
+                 rating === 2 ? "⭐⭐ Below Expectations" : "⭐ Needs Improvement"}
+              </p>
+
+              {/* Comment text */}
+              <div>
+                <label className="text-xs font-semibold text-foreground block mb-1">
+                  Comments / Feedback (Optional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Tell us what you liked or how we can improve..."
+                  className="w-full text-xs rounded-xl p-3 bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none font-sans"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  className="flex-1 rounded-xl text-xs font-semibold"
+                  onClick={() => setReviewModalOrderId(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  disabled={submittingReview}
+                  className="flex-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs"
+                  onClick={handleSubmitReview}
+                >
+                  {submittingReview ? "Submitting..." : "Submit Review"}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
         );
       })()}
     </div>

@@ -1720,7 +1720,11 @@ function OrdersTab({ onNavigate }: { onNavigate?: (s: AdminSection) => void }) {
   const getStatusColor = (status: string) => {
     switch(status) {
       case 'placed': return 'bg-blue-100 text-blue-800';
+      case 'accepted':
+      case 'confirmed': return 'bg-sky-100 text-sky-800';
+      case 'preparing': return 'bg-orange-100 text-orange-800';
       case 'packed': return 'bg-amber-100 text-amber-800';
+      case 'shipped': return 'bg-cyan-100 text-cyan-800';
       case 'out_for_delivery': return 'bg-purple-100 text-purple-800';
       case 'delivered': return 'bg-green-100 text-green-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
@@ -2108,9 +2112,10 @@ function OrdersTab({ onNavigate }: { onNavigate?: (s: AdminSection) => void }) {
                         onChange={(e) => { updateOrderStatus(o.id, e.target.value as any); setUpdatingOrder(null); }}
                       >
                         <option value="placed">Placed</option>
-                        <option value="accepted">Accepted</option>
+                        <option value="accepted">Accepted (Confirm)</option>
                         <option value="preparing">Preparing</option>
                         <option value="packed">Packed</option>
+                        <option value="shipped">Shipped (Courier 5–7d)</option>
                         <option value="out_for_delivery">Out for Delivery</option>
                         <option value="delivered">Delivered</option>
                         <option value="cancelled">Cancelled</option>

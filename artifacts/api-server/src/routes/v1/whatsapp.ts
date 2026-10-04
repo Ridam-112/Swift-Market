@@ -120,6 +120,26 @@ router.get("/order-action", async (req, res: Response): Promise<void> => {
 
       await db.update(orders).set({ status: "confirmed", updatedAt: new Date() }).where(eq(orders.id, orderId));
 
+      // Instant WhatsApp notification to Customer on order accept
+      if (order.customerPhone) {
+        const isEcommerce = whatsappService.isEcommerceOrder({
+          deliveryType: order.deliveryType,
+          items: order.items,
+        });
+        whatsappService.sendOrderAcceptedToCustomer({
+          customerPhone: order.customerPhone,
+          customerName: order.customerName,
+          shopName: order.shopName,
+          orderNumber: order.id.slice(-6).toUpperCase(),
+          orderId: order.id,
+          isEcommerce,
+          netAmount: order.netAmount,
+          items: (order.items as any[]) || [],
+        }).catch((err) => {
+          logger.warn({ err }, "[WhatsApp] Background customer alert error on accept");
+        });
+      }
+
       res.send(`
         <!DOCTYPE html>
         <html>
