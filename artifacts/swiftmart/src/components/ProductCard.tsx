@@ -24,7 +24,7 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
   const { items, addToCart, updateQty, updateWeight, productLimits } = useCart();
   const [, navigate] = useLocation();
 
-  const hasCustomVariants = (product.variants?.length ?? 0) > 0;
+  const hasCustomVariants = Array.isArray(product.variants) && product.variants.length > 0;
   const hasVariants = (product.colors?.length ?? 0) > 0 || (product.sizes?.length ?? 0) > 0 || hasCustomVariants;
   const unitInfo = parseUnit(product.unit);
   const isWeightBased = isProductWeightBased(product);
@@ -41,7 +41,7 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
   const isOutOfStock = product.stock === 0;
   const isLowStock = product.stock > 0 && product.stock <= 5;
 
-  const resolvedMaxQtyPerCart = maxQtyPerCart ?? productLimits[product.id];
+  const resolvedMaxQtyPerCart = maxQtyPerCart ?? (product.id ? productLimits[product.id] : undefined);
   // Bucket offer limit: cap how many can be added to cart
   const effectiveMaxQty: number | undefined = resolvedMaxQtyPerCart != null
     ? (product.stock > 0 ? Math.min(resolvedMaxQtyPerCart, product.stock) : resolvedMaxQtyPerCart)
@@ -56,25 +56,35 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
   const weightInCart = isWeightBased && selectedGrams != null && selectedGrams > 0;
 
   const lowestVariantPrice = hasCustomVariants
-    ? Math.min(...product.variants!.map(v => (v.discountedPrice && v.discountedPrice < v.price ? v.discountedPrice : v.price)))
+    ? Math.min(
+        ...product.variants!
+          .filter(v => v && typeof v === "object" && typeof (v.discountedPrice ?? v.price) === "number")
+          .map(v => (v.discountedPrice && v.discountedPrice < v.price ? v.discountedPrice : v.price))
+      )
     : null;
 
-  const effectivePrice = lowestVariantPrice ?? (product.discountedPrice && product.discountedPrice < product.price
-    ? product.discountedPrice
-    : product.price);
+  const effectivePrice = (lowestVariantPrice != null && isFinite(lowestVariantPrice))
+    ? lowestVariantPrice
+    : (product.discountedPrice && product.discountedPrice < product.price
+        ? product.discountedPrice
+        : product.price);
 
   const displayPrice = isWeightBased && weightInCart && selectedGrams
     ? priceForWeight(effectivePrice, baseGrams, selectedGrams)
     : effectivePrice;
 
-  const isCustomCake = (product as any).isCustomizable || (product as any).customCake || product.id.startsWith("custom_cake_");
+  const isCustomCake = Boolean(
+    (product as any)?.isCustomizable ||
+    (product as any)?.customCake ||
+    (typeof product?.id === "string" && product.id.startsWith("custom_cake_"))
+  );
 
   const isHeavyItem = Boolean(
-    (product as any).deliveryType === "heavy_1_3d" ||
-    (product as any).isHeavy === true ||
-    (product as any).deliveryDays > 0 ||
+    (product as any)?.deliveryType === "heavy_1_3d" ||
+    (product as any)?.isHeavy === true ||
+    ((product as any)?.deliveryDays || 0) > 0 ||
     /\b(25\s?kg|50\s?kg|sack|almirah|refrigerator|fridge|washing machine|cooler|wardrobe|bed|sofa|cylinder|mattress)\b/i.test(
-      `${product.name} ${product.unit || ""} ${product.description || ""}`
+      `${product.name || ""} ${product.unit || ""} ${product.description || ""}`
     )
   );
 
@@ -140,7 +150,7 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
           height={200}
           className={`w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? "opacity-40" : ""}`}
         />
-        {product.discountedPrice && product.discountedPrice < product.price && !isOutOfStock && (
+        {product.price > 0 && product.discountedPrice && product.discountedPrice < product.price && !isOutOfStock && (
           <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
             {Math.round((1 - product.discountedPrice / product.price) * 100)}% off
           </div>

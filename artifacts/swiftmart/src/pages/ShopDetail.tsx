@@ -35,8 +35,13 @@ export default function ShopDetail() {
   const [, shopParams] = useRoute("/shop/:vendorId");
   const [, shopsParams] = useRoute("/shops/:vendorId");
   const [, rootParams] = useRoute("/:shopSlug");
-  const rawIdentifier = shopParams?.vendorId || shopsParams?.vendorId || rootParams?.shopSlug;
-  const identifier = rawIdentifier ? decodeURIComponent(rawIdentifier).trim() : "";
+  const rawIdentifier = shopParams?.vendorId || shopsParams?.vendorId || rootParams?.shopSlug || "";
+  let identifier = "";
+  try {
+    identifier = rawIdentifier ? decodeURIComponent(rawIdentifier).trim() : "";
+  } catch {
+    identifier = rawIdentifier.trim();
+  }
 
   const { shops, allShops, isLoading: shopsLoading } = useShops();
   const { products } = useProducts();
@@ -69,27 +74,29 @@ export default function ShopDetail() {
     )
       .then(d => {
         if (d.success && Array.isArray(d.products)) {
-          const mapped = d.products.map(p => ({
-            id: p._id || p.id,
-            name: p.name,
-            category: p.category,
-            price: Number(p.price) || 0,
-            discountedPrice: p.discountedPrice != null ? Number(p.discountedPrice) : undefined,
-            unit: p.unit ?? "1 unit",
-            image: p.images?.[0] ?? p.image ?? "/assets/product-placeholder.png",
-            images: p.images ?? (p.image ? [p.image] : []),
-            description: p.description ?? "",
-            stock: Number(p.stock) || 0,
-            rating: Number(p.rating) || 0,
-            vendorId: p.shopId ?? shopId,
-            shopId: p.shopId ?? shopId,
-            shopName: p.shopName || (storeName ?? ""),
-            trending: p.trending ?? false,
-            colors: p.colors,
-            sizes: p.sizes,
-            colorImages: p.colorImages,
-            variants: p.variants,
-          }));
+          const mapped = d.products
+            .filter(p => p && typeof p === "object")
+            .map(p => ({
+              id: String(p._id || p.id || ""),
+              name: String(p.name || "Product"),
+              category: String(p.category || ""),
+              price: Number(p.price) || 0,
+              discountedPrice: p.discountedPrice != null ? Number(p.discountedPrice) : undefined,
+              unit: typeof p.unit === "string" ? p.unit : "1 unit",
+              image: typeof p.images?.[0] === "string" ? p.images[0] : (typeof p.image === "string" ? p.image : "/assets/product-placeholder.png"),
+              images: Array.isArray(p.images) ? p.images : (typeof p.image === "string" ? [p.image] : []),
+              description: typeof p.description === "string" ? p.description : "",
+              stock: Number(p.stock) || 0,
+              rating: Number(p.rating) || 0,
+              vendorId: String(p.shopId ?? shopId),
+              shopId: String(p.shopId ?? shopId),
+              shopName: String(p.shopName || (storeName ?? "")),
+              trending: Boolean(p.trending),
+              colors: Array.isArray(p.colors) ? p.colors : undefined,
+              sizes: Array.isArray(p.sizes) ? p.sizes : undefined,
+              colorImages: p.colorImages,
+              variants: p.variants,
+            }));
 
           if (isInitial) {
             setShopProducts(mapped);
@@ -120,8 +127,9 @@ export default function ShopDetail() {
     const targetSlug = toShopSlug(identifier);
     const identifierWithSpaces = identifier.replace(/[-_]+/g, " ").trim().toLowerCase();
 
-    const found = candidateList.find(s => {
-      const sId = s.id ? s.id.toLowerCase() : "";
+    const found = (candidateList || []).find(s => {
+      if (!s) return false;
+      const sId = s.id ? String(s.id).toLowerCase() : "";
       const sName = (s.storeName || "").trim().toLowerCase();
       const sSlug = toShopSlug(s.storeName);
       return (
@@ -167,9 +175,10 @@ export default function ShopDetail() {
   // Infinite scroll / lazy loading observer for storefront products
   useEffect(() => {
     if (!productsHasMore || productsLoading || productsLoadingMore || !shop?.id) return;
+    if (typeof IntersectionObserver === "undefined") return;
 
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) {
+      if (entries && entries[0] && entries[0].isIntersecting) {
         loadProducts(shop.id, shop.storeName, productsPage + 1, false);
       }
     }, { threshold: 0.1, rootMargin: "300px" });
@@ -222,7 +231,11 @@ export default function ShopDetail() {
 
   if (!shop) return null;
 
-  const vendorProducts = shopProducts.length > 0 ? shopProducts : products.filter(p => p.vendorId === shop.id);
+  const vendorProducts = useMemo(() => {
+    if (shopProducts.length > 0) return shopProducts;
+    if (!Array.isArray(products) || !shop?.id) return [];
+    return products.filter(p => Boolean(p && (p.vendorId === shop.id || p.shopId === shop.id)));
+  }, [shopProducts, products, shop?.id]);
 
   const isFoodShop = ['restaurant', 'cafe', 'cloud-kitchen', 'sweet-shop', 'bakery', 'fast-food', 'food', 'food_junction', 'cake'].some(t => 
     (shop.shopType || '').toLowerCase().includes(t) || 
@@ -233,17 +246,17 @@ export default function ShopDetail() {
 
   const shopUrlPath = getShopUrl(shop);
   const shopCanonicalUrl = `https://swiftmart.space${shopUrlPath}`;
-  const seoTitle = `${shop.storeName} (Balurghat) — Official Storefront & Online Ordering | SwiftMart`;
-  const seoDescription = `Order directly from ${shop.storeName}'s official online storefront in Balurghat on SwiftMart. ${shop.category ? `${shop.category} · ` : ""}Instant 10-15 min local delivery across Balurghat Pincodes 733101 & 733103. Live menu, verified prices, discounts & deals. ${vendorProducts.length > 0 ? `${vendorProducts.length} items available.` : ""}`;
-  const seoKeywords = `${shop.storeName}, ${shop.storeName} Balurghat, ${shop.storeName} storefront, ${shop.storeName} online shop, ${shop.storeName} menu, ${shop.storeName} delivery, order ${shop.storeName} online, SwiftMart Balurghat, Balurghat quick commerce, ${shop.category || 'grocery store'}`;
+  const seoTitle = `${shop.storeName || "Shop"} (Balurghat) — Official Storefront & Online Ordering | SwiftMart`;
+  const seoDescription = `Order directly from ${shop.storeName || "Shop"}'s official online storefront in Balurghat on SwiftMart. ${shop.category ? `${shop.category} · ` : ""}Instant 10-15 min local delivery across Balurghat Pincodes 733101 & 733103. Live menu, verified prices, discounts & deals. ${vendorProducts.length > 0 ? `${vendorProducts.length} items available.` : ""}`;
+  const seoKeywords = `${shop.storeName || "Shop"}, ${shop.storeName || "Shop"} Balurghat, ${shop.storeName || "Shop"} storefront, ${shop.storeName || "Shop"} online shop, ${shop.storeName || "Shop"} menu, ${shop.storeName || "Shop"} delivery, order ${shop.storeName || "Shop"} online, SwiftMart Balurghat, Balurghat quick commerce, ${shop.category || 'grocery store'}`;
 
   const filteredProducts = useMemo(() => {
     if (!productSearch.trim()) return vendorProducts;
     const q = productSearch.toLowerCase().trim();
     return vendorProducts.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      (p.description || "").toLowerCase().includes(q) ||
-      (p.category || "").toLowerCase().includes(q)
+      (p?.name || "").toLowerCase().includes(q) ||
+      (p?.description || "").toLowerCase().includes(q) ||
+      (p?.category || "").toLowerCase().includes(q)
     );
   }, [vendorProducts, productSearch]);
 
@@ -355,19 +368,19 @@ export default function ShopDetail() {
             ...(vendorProducts.length > 0 && {
               "hasOfferCatalog": {
                 "@type": "OfferCatalog",
-                "name": `${shop.storeName} Live Catalog & Menu`,
+                "name": `${shop.storeName || "Store"} Live Catalog & Menu`,
                 "numberOfItems": vendorProducts.length,
                 "itemListElement": vendorProducts.slice(0, 25).map(p => ({
                   "@type": "Offer",
                   "itemOffered": {
                     "@type": "Product",
-                    "name": p.name,
-                    "description": p.description || `${p.name} from ${shop.storeName} in Balurghat`,
-                    "image": p.image && !p.image.includes('placeholder') ? p.image : undefined
+                    "name": p?.name || "Product",
+                    "description": p?.description || `${p?.name || "Product"} from ${shop.storeName || "Store"} in Balurghat`,
+                    "image": typeof p?.image === "string" && !p.image.includes('placeholder') ? p.image : undefined
                   },
-                  "price": p.discountedPrice && p.discountedPrice > 0 ? p.discountedPrice : p.price,
+                  "price": (p?.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : (p?.price || 0),
                   "priceCurrency": "INR",
-                  "availability": p.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+                  "availability": (p?.stock && p.stock > 0) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
                 }))
               }
             })
@@ -391,7 +404,7 @@ export default function ShopDetail() {
               {
                 "@type": "ListItem",
                 "position": 3,
-                "name": shop.storeName,
+                "name": shop.storeName || "Store",
                 "item": shopCanonicalUrl
               }
             ]
@@ -404,14 +417,14 @@ export default function ShopDetail() {
         <span aria-hidden="true">/</span>
         <Link href="/shops" className="hover:text-foreground transition-colors">Balurghat Stores</Link>
         <span aria-hidden="true">/</span>
-        <span className="text-foreground font-bold truncate">{shop.storeName} Storefront</span>
+        <span className="text-foreground font-bold truncate">{shop.storeName || "Store"} Storefront</span>
       </nav>
 
       {/* ── Storefront Hero Banner ── */}
       <div className="relative h-48 md:h-64 w-full bg-muted">
         <img
-          src={shop.image}
-          alt={`${shop.storeName} — Official Storefront in Balurghat`}
+          src={shop.image || "/assets/shop-placeholder.png"}
+          alt={`${shop.storeName || "Store"} — Official Storefront in Balurghat`}
           width={1200}
           height={400}
           loading="eager"
@@ -453,14 +466,14 @@ export default function ShopDetail() {
                 <span className="font-bold text-sm leading-none text-foreground">
                   {Number(shop.rating || 0) > 0 ? Number(shop.rating).toFixed(1) : "New"}
                 </span>
-                <span className="text-[10px] text-muted-foreground">{shop.totalOrders}+ orders</span>
+                <span className="text-[10px] text-muted-foreground">{(shop.totalOrders || 0)}+ orders</span>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
               <div className="flex flex-col">
-                <span className="font-bold text-sm leading-none text-foreground">{shop.eta}</span>
+                <span className="font-bold text-sm leading-none text-foreground">{shop.eta || "15-20 min"}</span>
                 <span className="text-[10px] text-muted-foreground">Delivery time</span>
               </div>
             </div>
@@ -493,7 +506,7 @@ export default function ShopDetail() {
               {copied ? "Link Copied!" : "Share Storefront"}
             </Button>
             <a
-              href={`https://wa.me/?text=${encodeURIComponent(`Order online directly from ${shop.storeName}'s official storefront in Balurghat with 10-15 min delivery on SwiftMart! ${shopCanonicalUrl}`)}`}
+              href={`https://wa.me/?text=${encodeURIComponent(`Order online directly from ${shop.storeName || "Store"}'s official storefront in Balurghat with 10-15 min delivery on SwiftMart! ${shopCanonicalUrl}`)}`}
               target="_blank"
               rel="noopener noreferrer nofollow"
               className="inline-flex items-center gap-1.5 bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold px-3.5 py-2 rounded-full transition-colors shadow-xs"
@@ -540,7 +553,7 @@ export default function ShopDetail() {
                     <Sparkles className="w-3.5 h-3.5" /> Customized Designer Cakes
                   </div>
                   <h3 className="text-xl md:text-2xl font-black tracking-tight">
-                    🎂 Customize Your Cake with {shop.storeName}
+                    🎂 Customize Your Cake with {shop.storeName || "Store"}
                   </h3>
                   <p className="text-white/85 text-xs max-w-xl">
                     Select flavour, weight, tiers & attach reference photo. Choose Doorstep Delivery or Free Store Pickup!
@@ -560,7 +573,7 @@ export default function ShopDetail() {
                 onClose={() => setIsCustomCakeOpen(false)}
                 shop={{
                   id: shop.id,
-                  shopName: shop.storeName,
+                  shopName: shop.storeName || "Bakery",
                   address: {
                     city: shop.city,
                     pincode: shop.pincode,
@@ -579,7 +592,7 @@ export default function ShopDetail() {
               type="text"
               value={productSearch}
               onChange={(e) => setProductSearch(e.target.value)}
-              placeholder={`Search products inside ${shop.storeName}...`}
+              placeholder={`Search products inside ${shop.storeName || "Store"}...`}
               className="pl-10 h-11 bg-card rounded-2xl border-border/60 text-sm"
             />
           </div>
@@ -589,7 +602,7 @@ export default function ShopDetail() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-foreground">
-              {productSearch.trim() ? `Search Results in ${shop.storeName}` : "Store Products & Menu"}
+              {productSearch.trim() ? `Search Results in ${shop.storeName || "Store"}` : "Store Products & Menu"}
             </h2>
             {!productsLoading && filteredProducts.length > 0 && (
               <span className="text-xs text-muted-foreground font-medium">({filteredProducts.length} items)</span>
@@ -644,7 +657,7 @@ export default function ShopDetail() {
             <EmptyState
               icon={PackageOpen}
               title={productSearch.trim() ? "No matching products found" : "No products listed"}
-              description={productSearch.trim() ? `No items matched "${productSearch}" in ${shop.storeName}.` : "This vendor hasn't listed any products yet. Check back later!"}
+              description={productSearch.trim() ? `No items matched "${productSearch}" in ${shop.storeName || "Store"}.` : "This vendor hasn't listed any products yet. Check back later!"}
             />
           )}
         </div>
@@ -653,10 +666,10 @@ export default function ShopDetail() {
         <section aria-label="Storefront Information" className="mt-12 bg-card/60 border border-border/50 rounded-2xl p-5 space-y-3">
           <h2 className="text-base font-bold text-foreground flex items-center gap-2">
             <Store className="w-4 h-4 text-primary" />
-            About {shop.storeName} Online Storefront on SwiftMart
+            About {shop.storeName || "Store"} Online Storefront on SwiftMart
           </h2>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Welcome to the official verified online storefront of <strong>{shop.storeName}</strong> on SwiftMart. Serving customers across <strong>Balurghat, West Bengal</strong>, {shop.storeName} partners with SwiftMart to deliver {shop.category || 'fresh grocery, food, sweets, and daily essentials'} directly to customer doorsteps in 10 to 15 minutes.
+            Welcome to the official verified online storefront of <strong>{shop.storeName || "Store"}</strong> on SwiftMart. Serving customers across <strong>Balurghat, West Bengal</strong>, {shop.storeName || "Store"} partners with SwiftMart to deliver {shop.category || 'fresh grocery, food, sweets, and daily essentials'} directly to customer doorsteps in 10 to 15 minutes.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
             <div className="bg-background/60 p-3 rounded-xl border border-border/40">
