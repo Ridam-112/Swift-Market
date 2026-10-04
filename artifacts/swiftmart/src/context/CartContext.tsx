@@ -49,11 +49,12 @@ interface CartContextType {
 export const CartContext = createContext<CartContextType | null>(null);
 
 function itemPrice(item: CartItem): number {
+  if (!item || !item.product) return 0;
   if (item.selectedVariant) {
     const vPrice = item.selectedVariant.discountedPrice != null && item.selectedVariant.discountedPrice > 0 && item.selectedVariant.discountedPrice < item.selectedVariant.price
       ? item.selectedVariant.discountedPrice
       : item.selectedVariant.price;
-    return vPrice * item.qty;
+    return (Number(vPrice) || 0) * (item.qty || 1);
   }
   const p = item.product;
   const unitPrice = p.discountedPrice != null && p.discountedPrice < p.price
@@ -62,10 +63,10 @@ function itemPrice(item: CartItem): number {
   if (item.selectedGrams && isProductWeightBased(p)) {
     const parsed = parseUnit(p.unit);
     if (parsed.type === "weight" && parsed.baseGrams > 0) {
-      return priceForWeight(unitPrice, parsed.baseGrams, item.selectedGrams) * item.qty;
+      return priceForWeight(Number(unitPrice) || 0, parsed.baseGrams, item.selectedGrams) * (item.qty || 1);
     }
   }
-  return unitPrice * item.qty;
+  return (Number(unitPrice) || 0) * (item.qty || 1);
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
@@ -76,11 +77,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const parsed = JSON.parse(saved) as CartItem[];
       // Backfill the stable variant identifier for carts created before
       // variant IDs were persisted. This keeps old local carts usable.
-      return parsed.map(item => (
-        item.selectedGrams && !item.selectedVariantId
-          ? { ...item, selectedVariantId: weightVariantId(item.product.id, item.selectedGrams) }
-          : item
-      ));
+      return (Array.isArray(parsed) ? parsed : [])
+        .filter(item => item && item.product && item.product.id)
+        .map(item => (
+          item.selectedGrams && !item.selectedVariantId
+            ? { ...item, selectedVariantId: weightVariantId(item.product.id, item.selectedGrams) }
+            : item
+        ));
     } catch {
       return [];
     }
@@ -180,6 +183,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const matchesKey = (item: CartItem, targetKey: string): boolean => {
+    if (!item?.product?.id) return false;
     const fullKey = cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams, item.selectedVariantId);
     const shortKey = cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams);
     const vIdKey = cartKey(item.product.id, item.selectedColor, item.selectedSize, undefined, item.selectedVariantId);

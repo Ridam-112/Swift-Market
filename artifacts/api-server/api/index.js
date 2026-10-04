@@ -126220,17 +126220,42 @@ router8.get("/:id", optionalAuth, async (req, res) => {
   try {
     const authReq = req;
     const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
-    const [product] = await db.select().from(products).where(eq11(products.id, req.params["id"])).limit(1);
-    if (!product) {
-      res.status(404).json({ success: false, message: "Not found" });
+    const id = req.params["id"];
+    if (id.startsWith("custom_cake_") || id === "custom_cake") {
+      const targetShopId = id.replace("custom_cake_", "");
+      let shopName2 = "Bakery & Cake Shop";
+      if (targetShopId && targetShopId !== "custom_cake") {
+        const [shop] = await db.select({ shopName: shops.shopName }).from(shops).where(eq11(shops.id, targetShopId)).limit(1);
+        if (shop) shopName2 = shop.shopName;
+      }
+      res.json({
+        success: true,
+        product: buildCustomCakeProduct(targetShopId || "bakery", shopName2)
+      });
       return;
     }
-    const mapped = mi(product);
+    const [product] = await db.select().from(products).where(eq11(products.id, id)).limit(1);
+    if (!product) {
+      res.status(404).json({ success: false, message: "Product not found" });
+      return;
+    }
+    let shopName = "";
+    try {
+      if (product.shopId) {
+        const [shop] = await db.select({ shopName: shops.shopName }).from(shops).where(eq11(shops.id, product.shopId)).limit(1);
+        if (shop) shopName = shop.shopName;
+      }
+    } catch (_) {
+    }
+    const mapped = { ...mi(product), shopName };
     if (!isAdmin) {
       delete mapped["rejectionReason"];
       delete mapped["commissionRate"];
     }
-    res.json({ success: true, product: mapped });
+    res.json({
+      success: true,
+      product: mapped
+    });
   } catch {
     res.status(500).json({ success: false, message: "Failed to load product. Please try again." });
   }
@@ -126554,41 +126579,6 @@ ${rejectionReason}`,
   } catch {
   }
   res.json({ success: true, product: mi(product) });
-});
-router8.get("/:id", optionalAuth, async (req, res) => {
-  try {
-    const id = req.params["id"];
-    if (id.startsWith("custom_cake_") || id === "custom_cake") {
-      const targetShopId = id.replace("custom_cake_", "");
-      let shopName2 = "Bakery & Cake Shop";
-      if (targetShopId && targetShopId !== "custom_cake") {
-        const [shop] = await db.select({ shopName: shops.shopName }).from(shops).where(eq11(shops.id, targetShopId)).limit(1);
-        if (shop) shopName2 = shop.shopName;
-      }
-      res.json({
-        success: true,
-        product: buildCustomCakeProduct(targetShopId || "bakery", shopName2)
-      });
-      return;
-    }
-    const [product] = await db.select().from(products).where(eq11(products.id, id)).limit(1);
-    if (!product) {
-      res.status(404).json({ success: false, message: "Product not found" });
-      return;
-    }
-    let shopName = "";
-    try {
-      const [shop] = await db.select({ shopName: shops.shopName }).from(shops).where(eq11(shops.id, product.shopId)).limit(1);
-      if (shop) shopName = shop.shopName;
-    } catch (_) {
-    }
-    res.json({
-      success: true,
-      product: { ...mi(product), shopName }
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to fetch product" });
-  }
 });
 router8.patch("/:id", authenticate, V, vendorWriteLimiter, async (req, res) => {
   const isAdmin = req.user.role === "admin" || req.user.role === "super_admin";
@@ -129514,33 +129504,43 @@ router17.get("/", async (_req, res) => {
   let banners = await db.select().from(heroBanners).where(eq20(heroBanners.isActive, true)).orderBy(asc5(heroBanners.displayOrder));
   if (banners.length === 0) {
     try {
-      await db.insert(heroBanners).values([
-        {
-          imageUrl: "/banners/swiftmart-main-banner.jpg",
-          title: "",
-          subtitle: "",
-          buttonText: "",
-          redirectType: "internal",
-          redirectValue: "/grocery",
-          displayOrder: 1,
-          isActive: true
-        },
-        {
-          imageUrl: "/banners/service-corner-banner.jpg",
-          title: "",
-          subtitle: "",
-          buttonText: "",
-          redirectType: "internal",
-          redirectValue: "/services",
-          displayOrder: 2,
-          isActive: true
-        }
-      ]);
-      banners = await db.select().from(heroBanners).where(eq20(heroBanners.isActive, true)).orderBy(asc5(heroBanners.displayOrder));
+      const anyBanners = await db.select().from(heroBanners).limit(1);
+      if (anyBanners.length === 0) {
+        await db.insert(heroBanners).values([
+          {
+            imageUrl: "/banners/swiftmart-main-banner.jpg",
+            title: "",
+            subtitle: "",
+            buttonText: "",
+            redirectType: "internal",
+            redirectValue: "/grocery",
+            displayOrder: 1,
+            isActive: true
+          },
+          {
+            imageUrl: "/banners/service-corner-banner.jpg",
+            title: "",
+            subtitle: "",
+            buttonText: "",
+            redirectType: "internal",
+            redirectValue: "/services",
+            displayOrder: 2,
+            isActive: true
+          }
+        ]);
+        banners = await db.select().from(heroBanners).where(eq20(heroBanners.isActive, true)).orderBy(asc5(heroBanners.displayOrder));
+      }
     } catch {
     }
   }
-  const payload = { success: true, banners: miArr(banners) };
+  const seenImageUrls = /* @__PURE__ */ new Set();
+  const uniqueBanners = banners.filter((b) => {
+    const key = (b.imageUrl || "").trim().toLowerCase();
+    if (!key || seenImageUrls.has(key)) return false;
+    seenImageUrls.add(key);
+    return true;
+  });
+  const payload = { success: true, banners: miArr(uniqueBanners) };
   setBannerCache(payload);
   res.json(payload);
 });

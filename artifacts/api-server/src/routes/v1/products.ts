@@ -543,20 +543,51 @@ router.post("/report-wrong", authenticate, async (req: AuthRequest, res: Respons
   }
 });
 
-// GET /api/products/:id
-// L4 fix: strip admin-only fields (rejectionReason, commissionRate) for public/non-admin callers
+// GET /api/products/:id — Fetch single product details (supports custom cake products, strips admin-only fields)
 router.get("/:id", optionalAuth, async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthRequest;
     const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
-    const [product] = await db.select().from(products).where(eq(products.id, req.params["id"] as string)).limit(1);
-    if (!product) { res.status(404).json({ success: false, message: "Not found" }); return; }
-    const mapped = mi(product) as Record<string, unknown>;
+    const id = req.params["id"] as string;
+
+    if (id.startsWith("custom_cake_") || id === "custom_cake") {
+      const targetShopId = id.replace("custom_cake_", "");
+      let shopName = "Bakery & Cake Shop";
+      if (targetShopId && targetShopId !== "custom_cake") {
+        const [shop] = await db.select({ shopName: shops.shopName }).from(shops).where(eq(shops.id, targetShopId)).limit(1);
+        if (shop) shopName = shop.shopName;
+      }
+      res.json({
+        success: true,
+        product: buildCustomCakeProduct(targetShopId || "bakery", shopName),
+      });
+      return;
+    }
+
+    const [product] = await db.select().from(products).where(eq(products.id, id)).limit(1);
+    if (!product) {
+      res.status(404).json({ success: false, message: "Product not found" });
+      return;
+    }
+
+    let shopName = "";
+    try {
+      if (product.shopId) {
+        const [shop] = await db.select({ shopName: shops.shopName }).from(shops).where(eq(shops.id, product.shopId)).limit(1);
+        if (shop) shopName = shop.shopName;
+      }
+    } catch (_) {}
+
+    const mapped = { ...mi(product), shopName } as Record<string, unknown>;
     if (!isAdmin) {
       delete mapped["rejectionReason"];
       delete mapped["commissionRate"];
     }
-    res.json({ success: true, product: mapped });
+
+    res.json({
+      success: true,
+      product: mapped,
+    });
   } catch {
     res.status(500).json({ success: false, message: "Failed to load product. Please try again." });
   }
@@ -932,45 +963,6 @@ router.patch("/:id/approval", authenticate, A, async (req: AuthRequest, res: Res
   }
 
   res.json({ success: true, product: mi(product) });
-});
-
-// GET /api/products/:id — Fetch single product details (supports custom cake products)
-router.get("/:id", optionalAuth, async (req: Request, res: Response): Promise<void> => {
-  try {
-    const id = req.params["id"] as string;
-    if (id.startsWith("custom_cake_") || id === "custom_cake") {
-      const targetShopId = id.replace("custom_cake_", "");
-      let shopName = "Bakery & Cake Shop";
-      if (targetShopId && targetShopId !== "custom_cake") {
-        const [shop] = await db.select({ shopName: shops.shopName }).from(shops).where(eq(shops.id, targetShopId)).limit(1);
-        if (shop) shopName = shop.shopName;
-      }
-      res.json({
-        success: true,
-        product: buildCustomCakeProduct(targetShopId || "bakery", shopName),
-      });
-      return;
-    }
-
-    const [product] = await db.select().from(products).where(eq(products.id, id)).limit(1);
-    if (!product) {
-      res.status(404).json({ success: false, message: "Product not found" });
-      return;
-    }
-
-    let shopName = "";
-    try {
-      const [shop] = await db.select({ shopName: shops.shopName }).from(shops).where(eq(shops.id, product.shopId)).limit(1);
-      if (shop) shopName = shop.shopName;
-    } catch (_) {}
-
-    res.json({
-      success: true,
-      product: { ...mi(product), shopName },
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to fetch product" });
-  }
 });
 
 // PATCH /api/products/:id — vendor/admin edit

@@ -29,12 +29,12 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
   const unitInfo = parseUnit(product.unit);
   const isWeightBased = isProductWeightBased(product);
 
-  const cartItem = items.find(item => item.product.id === product.id && !item.selectedColor && !item.selectedSize);
+  const cartItem = items.find(item => item?.product?.id === product.id && !item.selectedColor && !item.selectedSize);
   const simpleKey = cartKey(product.id, undefined, undefined, cartItem?.selectedGrams, cartItem?.selectedVariantId);
 
   // For variant products, sum qty across all variants for display
   const totalQtyInCart = hasVariants
-    ? items.filter(item => item.product.id === product.id).reduce((s, i) => s + i.qty, 0)
+    ? items.filter(item => item?.product?.id === product.id).reduce((s, i) => s + (i.qty || 0), 0)
     : (cartItem?.qty ?? 0);
 
   const category = categories.find(c => c.id === product.category);

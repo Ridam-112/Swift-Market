@@ -22,13 +22,14 @@ interface ApiProduct {
   images?: string[];
   stock?: number;
   shopId?: string;
-  status?: "pending" | "active" | "inactive" | "rejected" | "out_of_stock";
+  status?: "pending" | "active" | "approved" | "inactive" | "rejected" | "out_of_stock";
   rejectionReason?: string;
 }
 
 const STATUS_CONFIG = {
   pending:     { label: "Pending Review", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400", icon: Clock },
   active:      { label: "Active",         color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400", icon: CheckCircle },
+  approved:    { label: "Active",         color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400", icon: CheckCircle },
   inactive:    { label: "Inactive",       color: "bg-muted text-muted-foreground", icon: XCircle },
   rejected:    { label: "Rejected",       color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400", icon: XCircle },
   out_of_stock:{ label: "Out of Stock",   color: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400", icon: AlertCircle },
@@ -53,7 +54,7 @@ export default function VendorProducts() {
       const d = await api.get<{ success: boolean; products: ApiProduct[] }>(
         `/products?shopId=${sid}&status=all&limit=5000`
       );
-      setProducts(d.products);
+      setProducts(d.products ?? []);
     } catch {
       setError("Failed to load products. Please refresh.");
     } finally {
@@ -94,18 +95,20 @@ export default function VendorProducts() {
     }
   };
 
-  const filtered = products.filter(p => {
+  const filtered = (products || []).filter(p => {
     if (filter === "all") return true;
-    if (filter === "low_stock") return (p.stock ?? 0) < 20 && p.status === "active";
+    const isAct = p.status === "active" || p.status === "approved";
+    if (filter === "low_stock") return (p.stock ?? 0) < 20 && isAct;
+    if (filter === "active") return isAct;
     return p.status === filter;
   });
 
   const counts = {
-    all: products.length,
-    pending: products.filter(p => p.status === "pending").length,
-    active: products.filter(p => p.status === "active").length,
-    rejected: products.filter(p => p.status === "rejected").length,
-    low_stock: products.filter(p => (p.stock ?? 0) < 20 && p.status === "active").length,
+    all: (products || []).length,
+    pending: (products || []).filter(p => p.status === "pending").length,
+    active: (products || []).filter(p => p.status === "active" || p.status === "approved").length,
+    rejected: (products || []).filter(p => p.status === "rejected").length,
+    low_stock: (products || []).filter(p => (p.stock ?? 0) < 20 && (p.status === "active" || p.status === "approved")).length,
   };
 
   if (loading) {
@@ -208,8 +211,8 @@ export default function VendorProducts() {
         <div className="grid gap-4">
           {filtered.map(product => {
             const thumb = product.image ?? product.images?.[0];
-            const cfg = STATUS_CONFIG[product.status ?? "pending"];
-            const Icon = cfg.icon;
+            const cfg = (product.status && (STATUS_CONFIG as any)[product.status]) || STATUS_CONFIG.pending;
+            const Icon = cfg?.icon || Clock;
             return (
               <div key={product._id} className="bg-card p-4 rounded-2xl neu-card flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                 <div className="w-20 h-20 rounded-xl bg-background neu-inset p-2 flex-shrink-0">

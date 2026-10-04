@@ -33,7 +33,7 @@ export default function Product() {
   // Try to find the product in the globally-cached list first.
   // If not found after the global list finishes loading, fetch it directly by ID
   // (handles products not in the 200-item cached list, e.g. homepage section items).
-  const cached = products.find(p => p.id === id);
+  const cached = products.find(p => p?.id === id);
   const [directProduct, setDirectProduct] = useState<ProductType | null>(null);
   const [directLoading, setDirectLoading] = useState(false);
   const [directFailed, setDirectFailed] = useState(false);
@@ -49,19 +49,23 @@ export default function Product() {
     setDirectFailed(false);
     api.get<{ success: boolean; product: { _id: string; name: string; category: string; price: number; discountedPrice?: number; unit?: string; image?: string; images?: string[]; description?: string; stock?: number; rating?: number; shopId?: string; shopName?: string; trending?: boolean; colors?: string[]; sizes?: string[]; colorImages?: Record<string, string>; variants?: any[] } }>(`/products/${id}`)
       .then(d => {
+        if (!d?.success || !d?.product) {
+          setDirectFailed(true);
+          return;
+        }
         const p = d.product;
         setDirectProduct({
-          id: p._id,
-          name: p.name,
-          category: p.category as ProductType["category"],
-          price: p.price,
-          discountedPrice: p.discountedPrice,
+          id: p._id || (p as any).id || id,
+          name: p.name || "",
+          category: (p.category || "grocery") as ProductType["category"],
+          price: Number(p.price) || 0,
+          discountedPrice: p.discountedPrice != null ? Number(p.discountedPrice) : undefined,
           unit: p.unit ?? "1 unit",
           image: p.images?.[0] ?? p.image ?? "/assets/product-placeholder.png",
           images: p.images ?? (p.image ? [p.image] : []),
           description: p.description ?? "",
-          stock: p.stock ?? 0,
-          rating: p.rating ?? 0,
+          stock: Number(p.stock) || 0,
+          rating: Number(p.rating) || 0,
           vendorId: p.shopId ?? "",
           shopId: p.shopId ?? "",
           shopName: p.shopName,
@@ -171,7 +175,7 @@ export default function Product() {
       ...(product.rating > 0 && {
         "aggregateRating": {
           "@type": "AggregateRating",
-          "ratingValue": product.rating.toFixed(1),
+          "ratingValue": Number(product.rating || 0).toFixed(1),
           "bestRating": "5",
           "worstRating": "1",
           "ratingCount": 1
@@ -180,7 +184,7 @@ export default function Product() {
       "offers": {
         "@type": "Offer",
         "url": `https://swiftmart.space/product/${product.id}`,
-        "price": (product.discountedPrice ?? product.price).toFixed(2),
+        "price": (Number(product.discountedPrice ?? product.price) || 0).toFixed(2),
         "priceCurrency": "INR",
         "priceValidUntil": new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
         "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
@@ -240,7 +244,7 @@ export default function Product() {
   const isOutOfStock = currentStock === 0;
   const isLowStock = !isOutOfStock && currentStock <= 5;
 
-  const relatedProducts = products.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
+  const relatedProducts = (products || []).filter(p => p && p.category === product.category && p.id !== product.id).slice(0, 4);
 
   const displayImage = selectedColor && product.colorImages?.[selectedColor]
     ? product.colorImages[selectedColor]
@@ -274,7 +278,7 @@ export default function Product() {
   };
 
   const cartItem = items.find(
-    item => item.product.id === product.id
+    item => item?.product?.id === product.id
       && item.selectedColor === (hasColors ? selectedColor : undefined)
       && item.selectedSize === (hasSizes ? selectedSize : undefined)
       && (activeVariant ? item.selectedVariantId === (activeVariant.id || activeVariant.name) : !item.selectedVariantId)
@@ -296,7 +300,7 @@ export default function Product() {
   const displayOriginalPrice = activeVariant ? activeVariant.price : product.price;
   const displayDiscountedPrice = activeVariant ? activeVariant.discountedPrice : product.discountedPrice;
   const hasDiscount = displayDiscountedPrice != null && displayDiscountedPrice > 0 && displayDiscountedPrice < displayOriginalPrice;
-  const discountPercent = hasDiscount ? Math.round((1 - displayDiscountedPrice! / displayOriginalPrice) * 100) : 0;
+  const discountPercent = hasDiscount && displayOriginalPrice > 0 ? Math.round((1 - displayDiscountedPrice! / displayOriginalPrice) * 100) : 0;
 
   const displayPrice = isWeightBased && selectedGrams
     ? priceForWeight(effectivePrice, baseGrams, selectedGrams)

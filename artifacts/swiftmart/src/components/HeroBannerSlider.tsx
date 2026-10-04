@@ -85,13 +85,23 @@ const DEFAULT_HERO_BANNERS: ApiBanner[] = [
 const BANNER_TTL = 5 * 60_000; // 5 min
 let _bannersCache: { data: ApiBanner[]; at: number } | null = null;
 
+function dedupeBanners(list: ApiBanner[]): ApiBanner[] {
+  const seen = new Set<string>();
+  return list.filter(b => {
+    const key = (b.imageUrl || b._id).trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function HeroBannerSlider() {
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(false);
   const [banners, setBanners] = useState<ApiBanner[]>(
     _bannersCache && Date.now() - _bannersCache.at < BANNER_TTL
       ? _bannersCache.data
-      : DEFAULT_HERO_BANNERS
+      : dedupeBanners(DEFAULT_HERO_BANNERS)
   );
   const [, setLocation] = useLocation();
   const viewTrackedRef = useRef(false);
@@ -107,13 +117,15 @@ export function HeroBannerSlider() {
     fetch("/api/hero-banners")
       .then(r => r.json())
       .then((data: { success: boolean; banners: ApiBanner[] }) => {
-        const result = data.success && data.banners.length > 0 ? data.banners : DEFAULT_HERO_BANNERS;
+        const raw = data.success && data.banners.length > 0 ? data.banners : DEFAULT_HERO_BANNERS;
+        const result = dedupeBanners(raw);
         _bannersCache = { data: result, at: Date.now() };
         setBanners(result);
       })
       .catch(() => {
-        _bannersCache = { data: DEFAULT_HERO_BANNERS, at: Date.now() };
-        setBanners(DEFAULT_HERO_BANNERS);
+        const fallback = dedupeBanners(DEFAULT_HERO_BANNERS);
+        _bannersCache = { data: fallback, at: Date.now() };
+        setBanners(fallback);
       });
   }, []);
 

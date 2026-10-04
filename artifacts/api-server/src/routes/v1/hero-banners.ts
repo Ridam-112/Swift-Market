@@ -43,35 +43,47 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
   if (banners.length === 0) {
     try {
-      await db.insert(heroBanners).values([
-        {
-          imageUrl: "/banners/swiftmart-main-banner.jpg",
-          title: "",
-          subtitle: "",
-          buttonText: "",
-          redirectType: "internal",
-          redirectValue: "/grocery",
-          displayOrder: 1,
-          isActive: true,
-        },
-        {
-          imageUrl: "/banners/service-corner-banner.jpg",
-          title: "",
-          subtitle: "",
-          buttonText: "",
-          redirectType: "internal",
-          redirectValue: "/services",
-          displayOrder: 2,
-          isActive: true,
-        },
-      ]);
-      banners = await db.select().from(heroBanners).where(eq(heroBanners.isActive, true)).orderBy(asc(heroBanners.displayOrder));
+      const anyBanners = await db.select().from(heroBanners).limit(1);
+      if (anyBanners.length === 0) {
+        await db.insert(heroBanners).values([
+          {
+            imageUrl: "/banners/swiftmart-main-banner.jpg",
+            title: "",
+            subtitle: "",
+            buttonText: "",
+            redirectType: "internal",
+            redirectValue: "/grocery",
+            displayOrder: 1,
+            isActive: true,
+          },
+          {
+            imageUrl: "/banners/service-corner-banner.jpg",
+            title: "",
+            subtitle: "",
+            buttonText: "",
+            redirectType: "internal",
+            redirectValue: "/services",
+            displayOrder: 2,
+            isActive: true,
+          },
+        ]);
+        banners = await db.select().from(heroBanners).where(eq(heroBanners.isActive, true)).orderBy(asc(heroBanners.displayOrder));
+      }
     } catch {
       // Fallback silently if table insert fails
     }
   }
 
-  const payload = { success: true, banners: miArr(banners) };
+  // Deduplicate banners by imageUrl to ensure each slide is unique
+  const seenImageUrls = new Set<string>();
+  const uniqueBanners = banners.filter(b => {
+    const key = (b.imageUrl || "").trim().toLowerCase();
+    if (!key || seenImageUrls.has(key)) return false;
+    seenImageUrls.add(key);
+    return true;
+  });
+
+  const payload = { success: true, banners: miArr(uniqueBanners) };
   setBannerCache(payload);
   res.json(payload);
 });
