@@ -416,9 +416,9 @@ function buildMaintenanceHtml(message: string, endTime: string | null): string {
 // ─── Middleware export ────────────────────────────────────────────────────────
 
 export function maintenanceMode(req: Request, res: Response, next: NextFunction): void {
-  // Disabled by default unless explicitly enabled with MAINTENANCE_MODE=true
-  const envVal = process.env["MAINTENANCE_MODE"];
-  const enabled = envVal !== undefined ? (envVal.toLowerCase() === "true" || envVal === "1") : false;
+  // Never block requests by default. Only enable if EMERGENCY_MAINTENANCE is explicitly 'true'
+  const envVal = process.env["EMERGENCY_MAINTENANCE"] || process.env["FORCE_MAINTENANCE"];
+  const enabled = envVal === "true" || envVal === "1";
   if (!enabled) { next(); return; }
 
   // Always pass through: health check, bypass endpoint, robots.txt, and sitemap.xml

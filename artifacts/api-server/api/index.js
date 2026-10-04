@@ -133912,8 +133912,8 @@ function buildMaintenanceHtml(message, endTime) {
 </html>`;
 }
 function maintenanceMode(req, res, next) {
-  const envVal = process.env["MAINTENANCE_MODE"];
-  const enabled = envVal !== void 0 ? envVal.toLowerCase() === "true" || envVal === "1" : false;
+  const envVal = process.env["EMERGENCY_MAINTENANCE"] || process.env["FORCE_MAINTENANCE"];
+  const enabled = envVal === "true" || envVal === "1";
   if (!enabled) {
     next();
     return;
