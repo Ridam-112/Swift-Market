@@ -154835,18 +154835,15 @@ router5.get("/:id", optionalAuth, async (req, res) => {
     if (!shop) {
       const decoded = decodeURIComponent(rawParam).trim();
       const withSpaces = decoded.replace(/[-_]+/g, " ").trim();
-      const candidates = await db.select().from(shops).where(
-        or3(
-          ilike2(shops.shopName, `%${decoded}%`),
-          ilike2(shops.shopName, `%${withSpaces}%`)
-        )
-      ).limit(20);
+      const allCandidateShops = await db.select().from(shops).where(
+        isAdmin ? void 0 : or3(eq7(shops.status, "approved"), eq7(shops.status, "active"))
+      );
       const targetSlug = decoded.toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/[\s_]+/gu, "-").replace(/-+/g, "-").replace(/^-+|-+$/gu, "");
-      shop = candidates.find((s2) => {
+      shop = allCandidateShops.find((s2) => {
         const sName = (s2.shopName || "").trim().toLowerCase();
         const sSlug = sName.replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/[\s_]+/gu, "-").replace(/-+/g, "-").replace(/^-+|-+$/gu, "");
-        return targetSlug && sSlug === targetSlug || sName === decoded.toLowerCase() || sName === withSpaces.toLowerCase();
-      }) || (candidates.length === 1 ? candidates[0] : void 0);
+        return targetSlug && sSlug === targetSlug || sName === decoded.toLowerCase() || sName === withSpaces.toLowerCase() || s2.id === rawParam;
+      });
     }
     if (!shop) {
       res.status(404).json({ success: false, message: "Shop not found" });

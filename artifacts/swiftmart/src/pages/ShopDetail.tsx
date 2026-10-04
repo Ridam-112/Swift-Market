@@ -33,15 +33,17 @@ interface ApiShopDetail {
 
 export default function ShopDetail() {
   const [, shopParams] = useRoute("/shop/:vendorId");
+  const [, shopsParams] = useRoute("/shops/:vendorId");
   const [, rootParams] = useRoute("/:shopSlug");
-  const rawIdentifier = shopParams?.vendorId || rootParams?.shopSlug;
+  const rawIdentifier = shopParams?.vendorId || shopsParams?.vendorId || rootParams?.shopSlug;
   const identifier = rawIdentifier ? decodeURIComponent(rawIdentifier).trim() : "";
 
-  const { shops, isLoading: shopsLoading } = useShops();
+  const { shops, allShops, isLoading: shopsLoading } = useShops();
   const { products } = useProducts();
 
   const [shop, setShop] = useState<ShopListing | null>(null);
   const [fetchLoading, setFetchLoading] = useState(false);
+  const [isInitialCheckDone, setIsInitialCheckDone] = useState(false);
   const [shopProducts, setShopProducts] = useState<ReturnType<typeof useProducts>['products']>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsLoadingMore, setProductsLoadingMore] = useState(false);
@@ -86,6 +88,7 @@ export default function ShopDetail() {
             colors: p.colors,
             sizes: p.sizes,
             colorImages: p.colorImages,
+            variants: p.variants,
           }));
 
           if (isInitial) {
@@ -113,16 +116,27 @@ export default function ShopDetail() {
   useEffect(() => {
     if (!identifier) return;
 
+    const candidateList = (allShops && allShops.length > 0) ? allShops : shops;
     const targetSlug = toShopSlug(identifier);
-    const found = shops.find(s =>
-      s.id === identifier ||
-      (targetSlug && toShopSlug(s.storeName) === targetSlug) ||
-      s.storeName.trim().toLowerCase() === identifier.toLowerCase()
-    );
+    const identifierWithSpaces = identifier.replace(/[-_]+/g, " ").trim().toLowerCase();
+
+    const found = candidateList.find(s => {
+      const sId = s.id ? s.id.toLowerCase() : "";
+      const sName = (s.storeName || "").trim().toLowerCase();
+      const sSlug = toShopSlug(s.storeName);
+      return (
+        sId === identifier.toLowerCase() ||
+        (targetSlug && sSlug === targetSlug) ||
+        sName === identifier.toLowerCase() ||
+        sName === identifierWithSpaces ||
+        sName.replace(/[-_]+/g, " ").toLowerCase() === identifierWithSpaces
+      );
+    });
 
     if (found) {
       setShop(found);
       setNotFound(false);
+      setIsInitialCheckDone(true);
       loadProducts(found.id, found.storeName);
       return;
     }
@@ -136,14 +150,19 @@ export default function ShopDetail() {
           const mapped = mapApiShop(d.shop as Parameters<typeof mapApiShop>[0]);
           setShop(mapped);
           setNotFound(false);
+          setIsInitialCheckDone(true);
           loadProducts(mapped.id, mapped.storeName);
         } else {
           setNotFound(true);
+          setIsInitialCheckDone(true);
         }
       })
-      .catch(() => setNotFound(true))
+      .catch(() => {
+        setNotFound(true);
+        setIsInitialCheckDone(true);
+      })
       .finally(() => setFetchLoading(false));
-  }, [identifier, shops, shopsLoading, loadProducts]);
+  }, [identifier, shops, allShops, shopsLoading, loadProducts]);
 
   // Infinite scroll / lazy loading observer for storefront products
   useEffect(() => {
@@ -163,7 +182,7 @@ export default function ShopDetail() {
     };
   }, [productsHasMore, productsLoading, productsLoadingMore, shop, productsPage, loadProducts]);
 
-  if (shopsLoading || fetchLoading) {
+  if (shopsLoading || fetchLoading || (!shop && !notFound && !isInitialCheckDone)) {
     return (
       <div className="pb-24 min-h-[100dvh] animate-pulse">
         <div className="h-48 md:h-64 w-full bg-muted" />
@@ -182,7 +201,7 @@ export default function ShopDetail() {
     );
   }
 
-  if (notFound || (!shopsLoading && !fetchLoading && !shop)) {
+  if (notFound || (!shop && isInitialCheckDone)) {
     return (
       <div className="flex flex-col h-[calc(100vh-140px)] items-center justify-center">
         <EmptyState
@@ -309,13 +328,13 @@ export default function ShopDetail() {
               "@type": "City",
               "name": "Balurghat"
             },
-            ...(shop.rating > 0 && {
+            ...(Number(shop.rating || 0) > 0 && {
               "aggregateRating": {
                 "@type": "AggregateRating",
-                "ratingValue": shop.rating.toFixed(1),
+                "ratingValue": Number(shop.rating || 0).toFixed(1),
                 "bestRating": "5",
                 "worstRating": "1",
-                "ratingCount": Math.max(shop.totalOrders || 1, 1)
+                "ratingCount": Math.max(Number(shop.totalOrders) || 1, 1)
               }
             }),
             "potentialAction": {
@@ -432,7 +451,7 @@ export default function ShopDetail() {
               <Star className="w-5 h-5 text-yellow-500 fill-current" />
               <div className="flex flex-col">
                 <span className="font-bold text-sm leading-none text-foreground">
-                  {shop.rating > 0 ? shop.rating.toFixed(1) : "New"}
+                  {Number(shop.rating || 0) > 0 ? Number(shop.rating).toFixed(1) : "New"}
                 </span>
                 <span className="text-[10px] text-muted-foreground">{shop.totalOrders}+ orders</span>
               </div>

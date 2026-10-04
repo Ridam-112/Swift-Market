@@ -352,6 +352,9 @@ function Router() {
         <Route path="/shop/:vendorId">
           <PublicLayout><ShopDetail /></PublicLayout>
         </Route>
+        <Route path="/shops/:vendorId">
+          <PublicLayout><ShopDetail /></PublicLayout>
+        </Route>
         <Route path="/search">
           <PublicLayout><Search /></PublicLayout>
         </Route>

@@ -738,7 +738,7 @@ export default function Home() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <div className="flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
                             <Star className="w-3 h-3 fill-current" />
-                            {shop.rating > 0 ? shop.rating.toFixed(1) : "New"}
+                            {Number(shop.rating || 0) > 0 ? Number(shop.rating).toFixed(1) : "New"}
                           </div>
                           {user?.pincode && shop.pincode === user.pincode && (
                             <div className="flex items-center gap-0.5 text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
