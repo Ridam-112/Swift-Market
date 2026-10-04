@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Store, ShoppingBag, Clock, User, LayoutDashboard, Package, PlusCircle, ClipboardList } from "lucide-react";
+import { Home, Store, ShoppingBag, ShoppingCart, Clock, User, LayoutDashboard, Package, PlusCircle, ClipboardList, Send } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
@@ -14,10 +14,10 @@ export function BottomNav() {
 
   const customerTabs: Tab[] = [
     { href: "/", icon: Home, label: "Home" },
-    { href: "/shops", icon: Store, label: "Shops" },
-    { href: "/cart", icon: ShoppingBag, label: "Cart", badge: totalItems || undefined },
+    { href: "/mall", icon: ShoppingBag, label: "Super Mall" },
+    { href: "/send-parcel", icon: Package, label: "Porter" },
+    { href: "/cart", icon: ShoppingCart, label: "Cart", badge: totalItems || undefined },
     { href: "/orders", icon: Clock, label: "Orders" },
-    { href: "/profile", icon: User, label: "Profile" }
   ];
 
   const vendorTabs: Tab[] = [

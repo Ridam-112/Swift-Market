@@ -271,9 +271,10 @@ export function Header() {
               <nav className="hidden md:flex items-center gap-1">
                 {[
                   { href: "/", icon: Store, label: "Home" },
+                  { href: "/mall", icon: ShoppingBag, label: "Super Mall" },
+                  { href: "/send-parcel", icon: Package, label: "Send Parcel" },
                   { href: "/services", icon: Wrench, label: "Services" },
                   { href: "/orders", icon: Clock, label: "Orders" },
-                  { href: "/profile", icon: User, label: "Profile" },
                 ].map(({ href, icon: Icon, label }) => {
                   const isActive = href === "/" ? location === "/" : location.startsWith(href);
                   return (

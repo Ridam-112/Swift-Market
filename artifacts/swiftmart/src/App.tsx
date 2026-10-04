@@ -78,6 +78,8 @@ const SectionProducts = lazy(() => import("@/pages/SectionProducts"));
 const GroceryStore    = lazy(() => import("@/pages/GroceryStore"));
 const CustomCakeTracker = lazy(() => import("@/pages/CustomCakeTracker"));
 const ServiceCorner   = lazy(() => import("@/pages/ServiceCorner"));
+const SendParcel      = lazy(() => import("@/pages/SendParcel"));
+const SuperMall       = lazy(() => import("@/pages/SuperMall"));
 
 const queryClient = new QueryClient();
 
@@ -373,6 +375,15 @@ function Router() {
         </Route>
         <Route path="/service-corner">
           <PublicLayout><ServiceCorner /></PublicLayout>
+        </Route>
+        <Route path="/send-parcel">
+          <PublicLayout><SendParcel /></PublicLayout>
+        </Route>
+        <Route path="/mall">
+          <PublicLayout><SuperMall /></PublicLayout>
+        </Route>
+        <Route path="/super-mall">
+          <PublicLayout><SuperMall /></PublicLayout>
         </Route>
 
         {/* ── Cart page — accessible to guests, checkout requires login ── */}

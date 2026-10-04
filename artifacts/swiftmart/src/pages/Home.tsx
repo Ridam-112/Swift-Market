@@ -14,7 +14,7 @@ import { SEO } from "@/components/SEO";
 import { SiteFooter, FAQ_ITEMS } from "@/components/SiteFooter";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { api } from "@/lib/api";
-import { Star, ChevronRight, ChevronLeft, Zap, MapPin, Search, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Star, ChevronRight, ChevronLeft, Zap, MapPin, Search, ChevronDown, ChevronUp, Loader2, Package, ShoppingBag } from "lucide-react";
 import type { Product } from "@/types";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -525,6 +525,47 @@ export default function Home() {
             </div>
           )}
 
+          {/* ── Multi-Service Mode Switcher (Pill Tabs) ── */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide py-1">
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-emerald-500 text-white font-bold text-xs shadow-sm shadow-emerald-500/20 shrink-0"
+            >
+              <span>⚡</span>
+              <span>Instant (30–45m)</span>
+            </Link>
+            <Link
+              href="/mall"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-card hover:bg-card/80 border border-border/60 text-muted-foreground hover:text-foreground font-semibold text-xs shrink-0 transition-all hover:border-border"
+            >
+              <span>🛍️</span>
+              <span>Super Mall</span>
+              <span className="text-[9px] bg-purple-500/20 text-purple-400 font-bold px-1.5 py-0.5 rounded-full border border-purple-500/30">Pan-India</span>
+            </Link>
+            <Link
+              href="/grocery?cat=food_junction"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-card hover:bg-card/80 border border-border/60 text-muted-foreground hover:text-foreground font-semibold text-xs shrink-0 transition-all hover:border-border"
+            >
+              <span>☕</span>
+              <span>Cafe & Bakery</span>
+            </Link>
+            <Link
+              href="/send-parcel"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-card hover:bg-card/80 border border-border/60 text-muted-foreground hover:text-foreground font-semibold text-xs shrink-0 transition-all hover:border-border"
+            >
+              <span>📦</span>
+              <span>Send Parcel</span>
+              <span className="text-[9px] bg-emerald-500/20 text-emerald-400 font-bold px-1.5 py-0.5 rounded-full border border-emerald-500/30">Porter</span>
+            </Link>
+            <Link
+              href="/grocery?cat=deals"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-card hover:bg-card/80 border border-border/60 text-muted-foreground hover:text-foreground font-semibold text-xs shrink-0 transition-all hover:border-border"
+            >
+              <span>🎪</span>
+              <span>Seasonal Store</span>
+            </Link>
+          </div>
+
           <HeroBannerSlider />
 
           {/* SwiftMart Local Q-Commerce Delivery Highlights */}
@@ -546,6 +587,60 @@ export default function Home() {
               <span className="text-[10px] text-muted-foreground">Bulky Goods Transport</span>
             </div>
           </div>
+
+          {/* ── SwiftMart Porter / Send Parcel Action Banner ── */}
+          <Link href="/send-parcel" className="block group">
+            <div className="relative p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-600/15 via-teal-600/10 to-primary/15 border border-emerald-500/30 hover:border-emerald-500/60 transition-all neu-card flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0">
+                  <Package className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-sm sm:text-base text-foreground truncate">
+                      Send Parcel / Intra-city Porter
+                    </h3>
+                    <span className="text-[10px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full">
+                      Flat ₹39 Base
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                    Pick &amp; drop keys, food, documents, packages or customer orders across Balurghat in 30–45m
+                  </p>
+                </div>
+              </div>
+              <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-emerald-500 shrink-0 group-hover:translate-x-1 transition-transform">
+                <span>Book Rider</span>
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </div>
+          </Link>
+
+          {/* ── SwiftMart Super Mall Teaser Section ── */}
+          <Link href="/mall" className="block group">
+            <div className="relative p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-indigo-900/60 via-purple-900/50 to-slate-900/80 border border-purple-500/30 hover:border-purple-500/60 transition-all neu-card flex flex-col sm:flex-row sm:items-center justify-between gap-4 overflow-hidden">
+              <div className="space-y-1.5 z-10">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[10px] font-bold">
+                  <span>🛍️ SwiftMart Super Mall</span>
+                  <span>·</span>
+                  <span>Beyond Groceries</span>
+                </div>
+                <h3 className="text-base sm:text-xl font-black text-white">
+                  Trending Fashion, Tech Gadgets &amp; Home Decor
+                </h3>
+                <p className="text-xs text-purple-200/80">
+                  Direct from verified regional sellers · Nationwide Pan-India delivery in 3–5 business days
+                </p>
+              </div>
+
+              <div className="z-10 shrink-0">
+                <Button className="rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white text-xs font-bold px-5 h-10 gap-1.5 shadow-md">
+                  <span>Explore Super Mall</span>
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </Button>
+              </div>
+            </div>
+          </Link>
 
           {/* Admin-curated highlighted bucket bundles */}
           <BucketBanner />
