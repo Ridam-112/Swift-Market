@@ -267651,7 +267651,13 @@ var WhatsAppService = class {
     }
   }
   getStatus() {
-    return { ...this.state };
+    return {
+      status: this.state.status,
+      qr: this.state.qrCodeDataUrl,
+      phone: this.state.connectedPhone,
+      lastConnectedAt: this.state.lastConnectedAt,
+      disconnectReason: this.state.disconnectReason
+    };
   }
   /**
    * Initializes the WhatsApp Baileys connection.
@@ -267688,6 +267694,7 @@ var WhatsAppService = class {
               scale: 6,
               color: { dark: "#000000", light: "#ffffff" }
             });
+            this.state.status = "qr_ready";
             logger.info("[WhatsApp] QR Code generated successfully. Scan from WhatsApp mobile app.");
           } catch (qrErr) {
             logger.error({ qrErr }, "[WhatsApp] Failed to render QR data URL");
@@ -267698,6 +267705,7 @@ var WhatsAppService = class {
           const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
           this.state.status = "disconnected";
           this.state.connectedPhone = null;
+          this.state.qrCodeDataUrl = null;
           this.state.disconnectReason = statusCode ? `Code ${statusCode}` : "Connection closed";
           logger.warn({ statusCode, shouldReconnect }, "[WhatsApp] Connection closed");
           if (shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {

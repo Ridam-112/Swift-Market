@@ -15,7 +15,7 @@ import { logger } from "../lib/logger.js";
 const SESSION_DIR = path.resolve(process.cwd(), "data/whatsapp_session");
 
 interface WhatsAppServiceState {
-  status: "disconnected" | "connecting" | "connected";
+  status: "disconnected" | "connecting" | "qr_ready" | "connected";
   qrCodeDataUrl: string | null;
   connectedPhone: string | null;
   lastConnectedAt: Date | null;
@@ -46,8 +46,14 @@ class WhatsAppService {
     }
   }
 
-  public getStatus(): WhatsAppServiceState {
-    return { ...this.state };
+  public getStatus() {
+    return {
+      status: this.state.status,
+      qr: this.state.qrCodeDataUrl,
+      phone: this.state.connectedPhone,
+      lastConnectedAt: this.state.lastConnectedAt,
+      disconnectReason: this.state.disconnectReason,
+    };
   }
 
   /**
@@ -94,6 +100,7 @@ class WhatsAppService {
               scale: 6,
               color: { dark: "#000000", light: "#ffffff" },
             });
+            this.state.status = "qr_ready";
             logger.info("[WhatsApp] QR Code generated successfully. Scan from WhatsApp mobile app.");
           } catch (qrErr) {
             logger.error({ qrErr }, "[WhatsApp] Failed to render QR data URL");
@@ -105,6 +112,7 @@ class WhatsAppService {
           const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
           this.state.status = "disconnected";
           this.state.connectedPhone = null;
+          this.state.qrCodeDataUrl = null;
           this.state.disconnectReason = statusCode ? `Code ${statusCode}` : "Connection closed";
 
           logger.warn({ statusCode, shouldReconnect }, "[WhatsApp] Connection closed");
