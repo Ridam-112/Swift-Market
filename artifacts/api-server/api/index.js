@@ -125820,12 +125820,17 @@ router8.get("/", optionalAuth, async (req, res) => {
         return;
       }
     }
-    const pg2 = parseInt(page), lm = parseInt(limit);
+    const pg2 = Math.max(1, parseInt(page) || 1);
+    const rawLm = parseInt(limit) || 20;
+    const lm = Math.min(Math.max(1, rawLm), 50);
     const conditions = [];
     if (status !== "all") {
       if (status === "active") {
         conditions.push(or5(eq11(products.status, "active"), eq11(products.status, "approved")));
         conditions.push(gte2(products.stock, 0));
+      } else if (status === "low_stock") {
+        conditions.push(or5(eq11(products.status, "active"), eq11(products.status, "approved")));
+        conditions.push(sql2`${products.stock} < 20`);
       } else {
         conditions.push(eq11(products.status, status));
       }
@@ -125939,13 +125944,47 @@ router8.get("/", optionalAuth, async (req, res) => {
       } catch (_) {
       }
     }
+    let statusCounts;
+    if (shopId && isPrivileged) {
+      try {
+        const countsQuery = await db.select({
+          status: products.status,
+          cnt: count5()
+        }).from(products).where(eq11(products.shopId, shopId)).groupBy(products.status);
+        const map = {};
+        let totalAll = 0;
+        for (const row of countsQuery) {
+          const c = Number(row.cnt) || 0;
+          map[row.status || ""] = c;
+          totalAll += c;
+        }
+        const activeCount = (map["active"] || 0) + (map["approved"] || 0);
+        const [lowStockResult] = await db.select({
+          lowStockCnt: count5()
+        }).from(products).where(and5(
+          eq11(products.shopId, shopId),
+          or5(eq11(products.status, "active"), eq11(products.status, "approved")),
+          sql2`${products.stock} < 20`
+        ));
+        statusCounts = {
+          all: totalAll,
+          pending: map["pending"] || 0,
+          active: activeCount,
+          rejected: map["rejected"] || 0,
+          low_stock: Number(lowStockResult?.lowStockCnt) || 0
+        };
+      } catch (_) {
+      }
+    }
     const payload = {
       success: true,
       count: enriched.length,
       products: enriched,
       total: Number(total),
       page: pg2,
-      pages: Math.ceil(Number(total) / lm)
+      pages: Math.ceil(Number(total) / lm),
+      hasMore: pg2 * lm < Number(total),
+      ...statusCounts ? { statusCounts } : {}
     };
     if (useCache) {
       void cacheSet(productsCacheKey(query), payload, TTL.PRODUCTS);

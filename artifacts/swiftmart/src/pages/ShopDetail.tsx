@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRoute } from "wouter";
 import { Link } from "wouter";
 import { SEO } from "@/components/SEO";
@@ -7,7 +7,7 @@ import { useShops } from "@/hooks/useShops";
 import { useProducts } from "@/hooks/useProducts";
 import { ProductGrid } from "@/components/ProductGrid";
 import { EmptyState } from "@/components/EmptyState";
-import { ArrowLeft, Star, Clock, MapPin, PackageOpen, Store, AlertCircle, Sparkles, Search, Share2, Check } from "lucide-react";
+import { ArrowLeft, Star, Clock, MapPin, PackageOpen, Store, AlertCircle, Sparkles, Search, Share2, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
@@ -44,28 +44,41 @@ export default function ShopDetail() {
   const [fetchLoading, setFetchLoading] = useState(false);
   const [shopProducts, setShopProducts] = useState<ReturnType<typeof useProducts>['products']>([]);
   const [productsLoading, setProductsLoading] = useState(true);
+  const [productsLoadingMore, setProductsLoadingMore] = useState(false);
+  const [productsPage, setProductsPage] = useState(1);
+  const [productsHasMore, setProductsHasMore] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [isCustomCakeOpen, setIsCustomCakeOpen] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [copied, setCopied] = useState(false);
+  const shopObserverRef = useRef<HTMLDivElement | null>(null);
 
-  const loadProducts = useCallback((shopId: string, storeName?: string) => {
-    setProductsLoading(true);
-    api.get<{ success: boolean; products: any[] }>(`/products?shopId=${encodeURIComponent(shopId)}&limit=200&status=active`)
+  const SHOP_PAGE_SIZE = 24;
+
+  const loadProducts = useCallback((shopId: string, storeName?: string, targetPage = 1, isInitial = true) => {
+    if (isInitial) {
+      setProductsLoading(true);
+    } else {
+      setProductsLoadingMore(true);
+    }
+
+    api.get<{ success: boolean; products: any[]; total?: number; hasMore?: boolean }>(
+      `/products?shopId=${encodeURIComponent(shopId)}&limit=${SHOP_PAGE_SIZE}&page=${targetPage}&status=active`
+    )
       .then(d => {
         if (d.success && Array.isArray(d.products)) {
-          setShopProducts(d.products.map(p => ({
+          const mapped = d.products.map(p => ({
             id: p._id || p.id,
             name: p.name,
             category: p.category,
-            price: p.price,
-            discountedPrice: p.discountedPrice ?? undefined,
+            price: Number(p.price) || 0,
+            discountedPrice: p.discountedPrice != null ? Number(p.discountedPrice) : undefined,
             unit: p.unit ?? "1 unit",
             image: p.images?.[0] ?? p.image ?? "/assets/product-placeholder.png",
             images: p.images ?? (p.image ? [p.image] : []),
             description: p.description ?? "",
-            stock: p.stock ?? 0,
-            rating: p.rating ?? 0,
+            stock: Number(p.stock) || 0,
+            rating: Number(p.rating) || 0,
             vendorId: p.shopId ?? shopId,
             shopId: p.shopId ?? shopId,
             shopName: p.shopName || (storeName ?? ""),
@@ -73,14 +86,27 @@ export default function ShopDetail() {
             colors: p.colors,
             sizes: p.sizes,
             colorImages: p.colorImages,
-          })));
+          }));
+
+          if (isInitial) {
+            setShopProducts(mapped);
+          } else {
+            setShopProducts(prev => {
+              const existingIds = new Set(prev.map(p => p.id));
+              return [...prev, ...mapped.filter(p => !existingIds.has(p.id))];
+            });
+          }
+
+          setProductsPage(targetPage);
+          setProductsHasMore(d.hasMore ?? (mapped.length === SHOP_PAGE_SIZE));
         }
       })
       .catch(err => {
         console.error("Failed to load shop products:", err);
       })
       .finally(() => {
-        setProductsLoading(false);
+        if (isInitial) setProductsLoading(false);
+        setProductsLoadingMore(false);
       });
   }, []);
 
@@ -118,6 +144,24 @@ export default function ShopDetail() {
       .catch(() => setNotFound(true))
       .finally(() => setFetchLoading(false));
   }, [identifier, shops, shopsLoading, loadProducts]);
+
+  // Infinite scroll / lazy loading observer for storefront products
+  useEffect(() => {
+    if (!productsHasMore || productsLoading || productsLoadingMore || !shop?.id) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        loadProducts(shop.id, shop.storeName, productsPage + 1, false);
+      }
+    }, { threshold: 0.1, rootMargin: "300px" });
+
+    const currentTarget = shopObserverRef.current;
+    if (currentTarget) observer.observe(currentTarget);
+
+    return () => {
+      if (currentTarget) observer.unobserve(currentTarget);
+    };
+  }, [productsHasMore, productsLoading, productsLoadingMore, shop, productsPage, loadProducts]);
 
   if (shopsLoading || fetchLoading) {
     return (
@@ -539,19 +583,44 @@ export default function ShopDetail() {
               ))}
             </div>
           ) : filteredProducts.length > 0 ? (
-            <motion.div
-              initial="hidden"
-              animate="show"
-              variants={{
-                hidden: { opacity: 0 },
-                show: {
-                  opacity: 1,
-                  transition: { staggerChildren: 0.05 }
-                }
-              }}
-            >
-              <ProductGrid products={filteredProducts} />
-            </motion.div>
+            <>
+              <motion.div
+                initial="hidden"
+                animate="show"
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: {
+                    opacity: 1,
+                    transition: { staggerChildren: 0.05 }
+                  }
+                }}
+              >
+                <ProductGrid products={filteredProducts} />
+              </motion.div>
+
+              {/* Sentinel for IntersectionObserver lazy loading */}
+              <div ref={shopObserverRef} className="h-6 w-full" />
+
+              {/* Lazy loading indicator */}
+              {productsLoadingMore && (
+                <div className="py-6 flex flex-col items-center justify-center gap-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  <span className="text-xs text-muted-foreground font-medium">Loading more products...</span>
+                </div>
+              )}
+
+              {productsHasMore && !productsLoadingMore && (
+                <div className="py-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => shop && loadProducts(shop.id, shop.storeName, productsPage + 1, false)}
+                    className="rounded-full neu-card text-xs font-semibold px-6 hover:bg-primary hover:text-primary-foreground transition-colors"
+                  >
+                    Load More Products
+                  </Button>
+                </div>
+              )}
+            </>
           ) : (
             <EmptyState
               icon={PackageOpen}

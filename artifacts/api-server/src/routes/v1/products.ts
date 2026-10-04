@@ -65,7 +65,10 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     }
   }
 
-  const pg = parseInt(page), lm = parseInt(limit);
+  const pg = Math.max(1, parseInt(page) || 1);
+  const rawLm = parseInt(limit) || 20;
+  // Maximum 50 items per page to prevent hitting DB limits and browser UI freeze
+  const lm = Math.min(Math.max(1, rawLm), 50);
   const conditions = [];
 
   // status=all skips the status filter entirely (used by admin/vendor product management)
@@ -73,6 +76,9 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     if (status === "active") {
       conditions.push(or(eq(products.status, "active"), eq(products.status, "approved")));
       conditions.push(gte(products.stock, 0));
+    } else if (status === "low_stock") {
+      conditions.push(or(eq(products.status, "active"), eq(products.status, "approved")));
+      conditions.push(sql`${products.stock} < 20`);
     } else {
       conditions.push(eq(products.status, status));
     }
@@ -218,6 +224,41 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     } catch (_) {}
   }
 
+  let statusCounts: { all: number; pending: number; active: number; rejected: number; low_stock: number } | undefined;
+  if (shopId && isPrivileged) {
+    try {
+      const countsQuery = await db.select({
+        status: products.status,
+        cnt: count(),
+      }).from(products).where(eq(products.shopId, shopId)).groupBy(products.status);
+
+      const map: Record<string, number> = {};
+      let totalAll = 0;
+      for (const row of countsQuery) {
+        const c = Number(row.cnt) || 0;
+        map[row.status || ""] = c;
+        totalAll += c;
+      }
+      const activeCount = (map["active"] || 0) + (map["approved"] || 0);
+
+      const [lowStockResult] = await db.select({
+        lowStockCnt: count(),
+      }).from(products).where(and(
+        eq(products.shopId, shopId),
+        or(eq(products.status, "active"), eq(products.status, "approved")),
+        sql`${products.stock} < 20`
+      ));
+
+      statusCounts = {
+        all: totalAll,
+        pending: map["pending"] || 0,
+        active: activeCount,
+        rejected: map["rejected"] || 0,
+        low_stock: Number(lowStockResult?.lowStockCnt) || 0,
+      };
+    } catch (_) {}
+  }
+
   const payload = {
     success: true,
     count: enriched.length,
@@ -225,6 +266,8 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
     total: Number(total),
     page: pg,
     pages: Math.ceil(Number(total) / lm),
+    hasMore: pg * lm < Number(total),
+    ...(statusCounts ? { statusCounts } : {}),
   };
   if (useCache) {
     void cacheSet(productsCacheKey(query), payload, TTL.PRODUCTS);

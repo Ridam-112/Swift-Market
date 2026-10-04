@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -10,6 +10,7 @@ import { PackageOpen, Plus, Edit, Trash2, Loader2, AlertCircle, Clock, CheckCirc
 import { formatINR } from "@/lib/currency";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SEO } from "@/components/SEO";
 
 interface ApiProduct {
   _id: string;
@@ -37,28 +38,62 @@ const STATUS_CONFIG = {
 
 type StatusFilter = "all" | "pending" | "active" | "rejected" | "low_stock";
 
-import { SEO } from "@/components/SEO";
+const PAGE_SIZE = 20;
 
 export default function VendorProducts() {
   const { user, isLoading: authLoading } = useAuth();
   const [shopId, setShopId] = useState<string | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [counts, setCounts] = useState({ all: 0, pending: 0, active: 0, rejected: 0, low_stock: 0 });
+  const observerRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchProducts = useCallback(async (sid: string) => {
+  const fetchProductsPage = useCallback(async (sid: string, targetStatus: StatusFilter, targetPage: number, isInitial = false) => {
+    if (isInitial) {
+      setLoading(true);
+      setError(null);
+    } else {
+      setLoadingMore(true);
+    }
+
     try {
-      // status=all so vendor sees pending/active/rejected in one list
-      const d = await api.get<{ success: boolean; products: ApiProduct[] }>(
-        `/products?shopId=${sid}&status=all&limit=5000`
-      );
-      setProducts(d.products ?? []);
+      const d = await api.get<{
+        success: boolean;
+        products: ApiProduct[];
+        total: number;
+        hasMore?: boolean;
+        statusCounts?: { all: number; pending: number; active: number; rejected: number; low_stock: number };
+      }>(`/products?shopId=${sid}&status=${targetStatus}&page=${targetPage}&limit=${PAGE_SIZE}`);
+
+      const newItems = d.products ?? [];
+      if (isInitial) {
+        setProducts(newItems);
+      } else {
+        setProducts(prev => {
+          const ids = new Set(prev.map(p => p._id));
+          return [...prev, ...newItems.filter(p => !ids.has(p._id))];
+        });
+      }
+
+      setPage(targetPage);
+      setHasMore(d.hasMore ?? (newItems.length === PAGE_SIZE));
+
+      if (d.statusCounts) {
+        setCounts(d.statusCounts);
+      }
     } catch {
-      setError("Failed to load products. Please refresh.");
+      if (isInitial) {
+        setError("Failed to load products. Please refresh.");
+      }
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
@@ -72,7 +107,7 @@ export default function VendorProducts() {
         const shop = d.shops[0];
         if (shop) {
           setShopId(shop._id);
-          fetchProducts(shop._id);
+          fetchProductsPage(shop._id, "all", 1, true);
         } else {
           setError("No shop found for your account.");
           setLoading(false);
@@ -82,12 +117,45 @@ export default function VendorProducts() {
         setError("Could not load your shop.");
         setLoading(false);
       });
-  }, [user, authLoading, fetchProducts]);
+  }, [user, authLoading, fetchProductsPage]);
+
+  // Infinite scroll / Lazy loading observer
+  useEffect(() => {
+    if (!hasMore || loading || loadingMore || !shopId) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        fetchProductsPage(shopId, filter, page + 1, false);
+      }
+    }, { threshold: 0.1, rootMargin: "250px" });
+
+    const currentTarget = observerRef.current;
+    if (currentTarget) observer.observe(currentTarget);
+
+    return () => {
+      if (currentTarget) observer.unobserve(currentTarget);
+    };
+  }, [hasMore, loading, loadingMore, shopId, filter, page, fetchProductsPage]);
+
+  const handleFilterChange = (newFilter: StatusFilter) => {
+    if (newFilter === filter) return;
+    setFilter(newFilter);
+    setProducts([]);
+    setPage(1);
+    setHasMore(false);
+    if (shopId) {
+      fetchProductsPage(shopId, newFilter, 1, true);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     try {
       await api.delete(`/products/${id}`);
       setProducts(prev => prev.filter(p => p._id !== id));
+      setCounts(prev => ({
+        ...prev,
+        all: Math.max(0, prev.all - 1),
+      }));
       setConfirmDeleteId(null);
       toast.success("Product deleted");
     } catch {
@@ -95,21 +163,7 @@ export default function VendorProducts() {
     }
   };
 
-  const filtered = (products || []).filter(p => {
-    if (filter === "all") return true;
-    const isAct = p.status === "active" || p.status === "approved";
-    if (filter === "low_stock") return (p.stock ?? 0) < 20 && isAct;
-    if (filter === "active") return isAct;
-    return p.status === filter;
-  });
-
-  const counts = {
-    all: (products || []).length,
-    pending: (products || []).filter(p => p.status === "pending").length,
-    active: (products || []).filter(p => p.status === "active" || p.status === "approved").length,
-    rejected: (products || []).filter(p => p.status === "rejected").length,
-    low_stock: (products || []).filter(p => (p.stock ?? 0) < 20 && (p.status === "active" || p.status === "approved")).length,
-  };
+  const filtered = products;
 
   if (loading) {
     return (
@@ -183,7 +237,7 @@ export default function VendorProducts() {
             key={tab.key}
             variant={filter === tab.key ? "default" : "outline"}
             className="rounded-full neu-card h-8 shrink-0 text-xs"
-            onClick={() => setFilter(tab.key)}
+            onClick={() => handleFilterChange(tab.key)}
           >
             {tab.label}
           </Button>
@@ -292,6 +346,35 @@ export default function VendorProducts() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Sentinel for IntersectionObserver lazy loading */}
+      <div ref={observerRef} className="h-4 w-full" />
+
+      {/* Lazy loader status */}
+      {loadingMore && (
+        <div className="py-6 flex flex-col items-center justify-center gap-2">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <span className="text-xs text-muted-foreground font-medium">Loading more products...</span>
+        </div>
+      )}
+
+      {hasMore && !loadingMore && (
+        <div className="pt-2 pb-6 flex justify-center">
+          <Button
+            variant="outline"
+            onClick={() => shopId && fetchProductsPage(shopId, filter, page + 1, false)}
+            className="rounded-full neu-card text-xs font-semibold px-6 hover:bg-primary hover:text-primary-foreground transition-colors"
+          >
+            Load More Products
+          </Button>
+        </div>
+      )}
+
+      {!hasMore && products.length > 0 && (
+        <div className="py-6 text-center text-xs text-muted-foreground font-medium">
+          ✓ All products loaded ({products.length})
         </div>
       )}
     </div>
