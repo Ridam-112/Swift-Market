@@ -79,7 +79,7 @@ export default function SendParcel() {
     e.preventDefault();
 
     if (!user) {
-      openLoginModal("Please login to book a SwiftMart Porter");
+      openLoginModal("Please login to book a delivery rider");
       return;
     }
 
@@ -95,14 +95,14 @@ export default function SendParcel() {
 
     setSubmitting(true);
     try {
-      // Create on-demand intra-city porter order
+      // Create on-demand intra-city parcel order
       const payload = {
         orderType: "porter_courier",
         items: [
           {
             product: {
               id: "porter_delivery_service",
-              name: `SwiftMart Porter Delivery (${category.toUpperCase()})`,
+              name: `SwiftMart Parcel Delivery (${category.toUpperCase()})`,
               price: estimatedTotal,
               image: "/assets/product-placeholder.png",
               category: "services",
@@ -122,20 +122,20 @@ export default function SendParcel() {
           pickupAddress: `${pickupAddress}${pickupLandmark ? ` (${pickupLandmark})` : ""}`,
         },
         paymentMethod: "cod",
-        deliveryNotes: `Porter Run: ${category.toUpperCase()} | Vehicle: ${vehicle} | Notes: ${notes || "None"}`,
+        deliveryNotes: `Parcel Delivery: ${category.toUpperCase()} | Vehicle: ${vehicle} | Notes: ${notes || "None"}`,
       };
 
       const res = await api.post<{ success: boolean; orderId?: string; orderNumber?: string }>("/orders", payload);
       if (res.success) {
         setSubmittedBookingId(res.orderNumber || res.orderId || `SM-PRT-${Date.now().toString().slice(-6)}`);
-        toast.success("SwiftMart Porter rider requested successfully!");
+        toast.success("Delivery rider requested successfully!");
       } else {
-        toast.error("Failed to request porter. Please try again.");
+        toast.error("Failed to request delivery. Please try again.");
       }
     } catch {
       // Fallback for seamless demo / offline acceptance
       setSubmittedBookingId(`SM-PRT-${Date.now().toString().slice(-6)}`);
-      toast.success("Porter requested! A SwiftMart rider will be assigned shortly.");
+      toast.success("Delivery requested! A SwiftMart rider will be assigned shortly.");
     } finally {
       setSubmitting(false);
     }
@@ -144,7 +144,7 @@ export default function SendParcel() {
   return (
     <div className="min-h-screen pb-24 pt-4 px-3 sm:px-4 max-w-5xl mx-auto space-y-6">
       <SEO
-        title="Send Parcel / Intra-City Porter — SwiftMart Balurghat"
+        title="Send Parcel / Intra-City Delivery — SwiftMart Balurghat"
         description="Send packages, parcels, documents, home food, or merchandise point-to-point anywhere across Balurghat in 30-45 minutes with verified SwiftMart riders."
         canonical="/send-parcel"
       />
@@ -153,7 +153,7 @@ export default function SendParcel() {
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-700 to-slate-900 text-white p-6 sm:p-8 shadow-xl">
         <div className="relative z-10 max-w-2xl space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-emerald-200 text-xs font-bold tracking-wide">
-            <Sparkles className="w-3.5 h-3.5" /> SwiftMart Porter Logistics
+            <Sparkles className="w-3.5 h-3.5" /> SwiftMart Express Delivery
           </div>
           <h1 className="text-2xl sm:text-4xl font-black tracking-tight">
             Send Anything Across Balurghat in 30–45 Mins
@@ -178,7 +178,7 @@ export default function SendParcel() {
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
             <CheckCircle2 className="w-10 h-10" />
           </div>
-          <h2 className="text-2xl font-black text-foreground">Porter Booking Confirmed!</h2>
+          <h2 className="text-2xl font-black text-foreground">Parcel Booking Confirmed!</h2>
           <p className="text-sm text-muted-foreground">
             Booking ID: <span className="font-bold font-mono text-primary">{submittedBookingId}</span>
           </p>
@@ -260,7 +260,7 @@ export default function SendParcel() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-foreground">Standard Porter Bike</span>
+                    <span className="font-bold text-sm text-foreground">Standard Delivery Bike</span>
                     <span className="text-xs font-bold text-primary">₹39 Base</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">Up to 10kg · 30–45 mins express delivery</p>
@@ -421,7 +421,7 @@ export default function SendParcel() {
               disabled={submitting}
               className="w-full sm:w-auto px-8 rounded-2xl bg-primary text-primary-foreground font-bold text-sm h-12 shadow-lg hover:opacity-90 transition-opacity gap-2"
             >
-              {submitting ? "Assigning Rider..." : "Book SwiftMart Porter"}
+              {submitting ? "Assigning Rider..." : "Book Parcel Delivery"}
               <ArrowRight className="w-4 h-4" />
             </Button>
           </div>

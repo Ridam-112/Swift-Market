@@ -14,8 +14,8 @@ export function BottomNav() {
 
   const customerTabs: Tab[] = [
     { href: "/", icon: Home, label: "Home" },
-    { href: "/mall", icon: ShoppingBag, label: "Super Mall" },
-    { href: "/send-parcel", icon: Package, label: "Porter" },
+    { href: "/services", icon: Store, label: "Services" },
+    { href: "/send-parcel", icon: Package, label: "Send Parcel" },
     { href: "/cart", icon: ShoppingCart, label: "Cart", badge: totalItems || undefined },
     { href: "/orders", icon: Clock, label: "Orders" },
   ];

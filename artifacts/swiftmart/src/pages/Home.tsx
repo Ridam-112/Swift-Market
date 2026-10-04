@@ -22,6 +22,7 @@ import { isAddressServiceable } from "@/lib/serviceArea";
 import { MapLocationPicker, type MapLocationResult } from "@/components/MapLocationPicker";
 import { AdSenseSectionBanner } from "@/components/GoogleAdSense";
 import { getShopUrl } from "@/lib/shopUrl";
+import { cn } from "@/lib/utils";
 
 const HOME_JSON_LD = [
   {
@@ -192,8 +193,14 @@ const CATEGORY_PRIORITY: Record<string, number> = {
   restaurant: 11, "cloud-kitchen": 12, "fast-food": 13, "meat-fish": 14, "meat-shop": 15, "fish-shop": 16,
   medicine: 17, pharmacy: 18, cosmetics: 19, "personal-care": 20, "beauty": 21,
   clothing: 22, fashion: 23, handmade: 24, electronics: 25, "mobile-phone": 26,
-  toys: 27, household: 28, gifts: 29, gaming: 30, hardware: 31,
 };
+
+const QUICK_CATEGORY_SLUGS = new Set([
+  "grocery", "kirana-store", "fruits-vegetables", "vegetables", "fruits",
+  "sweet-shop", "bakery", "dairy", "snacks", "drinks", "restaurant",
+  "cloud-kitchen", "fast-food", "meat-fish", "meat-shop", "fish-shop",
+  "medicine", "pharmacy", "personal-care", "food_junction"
+]);
 function sortCategories<T extends { id: string; name: string }>(cats: T[]): T[] {
   return [...cats].sort((a, b) => {
     const pa = CATEGORY_PRIORITY[a.id] ?? 999;
@@ -374,8 +381,17 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
+  const [deliveryMode, setDeliveryMode] = useState<"quick" | "all">("quick");
   const [apiCategories, setApiCategories] = useState<DisplayCategory[]>([]);
   const [categoriesExpanded, setCategoriesExpanded] = useState(false);
+
+  const displayedCategories = useMemo(() => {
+    if (deliveryMode === "quick") {
+      const filtered = apiCategories.filter(c => QUICK_CATEGORY_SLUGS.has(c.id));
+      return filtered.length > 0 ? filtered : apiCategories;
+    }
+    return apiCategories;
+  }, [apiCategories, deliveryMode]);
   const [dynamicSections, setDynamicSections] = useState<HomepageSection[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(true);
   const [bannerDismissed, setBannerDismissed] = useState(() =>
@@ -525,50 +541,50 @@ export default function Home() {
             </div>
           )}
 
-          {/* ── Multi-Service Mode Switcher (Pill Tabs) ── */}
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide py-1">
-            <Link
-              href="/"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-emerald-500 text-white font-bold text-xs shadow-sm shadow-emerald-500/20 shrink-0"
-            >
-              <span>⚡</span>
-              <span>Instant (30–45m)</span>
-            </Link>
-            <Link
-              href="/mall"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-card hover:bg-card/80 border border-border/60 text-muted-foreground hover:text-foreground font-semibold text-xs shrink-0 transition-all hover:border-border"
-            >
-              <span>🛍️</span>
-              <span>Super Mall</span>
-              <span className="text-[9px] bg-purple-500/20 text-purple-400 font-bold px-1.5 py-0.5 rounded-full border border-purple-500/30">Pan-India</span>
-            </Link>
-            <Link
-              href="/grocery?cat=food_junction"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-card hover:bg-card/80 border border-border/60 text-muted-foreground hover:text-foreground font-semibold text-xs shrink-0 transition-all hover:border-border"
-            >
-              <span>☕</span>
-              <span>Cafe & Bakery</span>
-            </Link>
-            <Link
-              href="/send-parcel"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-card hover:bg-card/80 border border-border/60 text-muted-foreground hover:text-foreground font-semibold text-xs shrink-0 transition-all hover:border-border"
-            >
-              <span>📦</span>
-              <span>Send Parcel</span>
-              <span className="text-[9px] bg-emerald-500/20 text-emerald-400 font-bold px-1.5 py-0.5 rounded-full border border-emerald-500/30">Porter</span>
-            </Link>
-            <Link
-              href="/grocery?cat=deals"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-card hover:bg-card/80 border border-border/60 text-muted-foreground hover:text-foreground font-semibold text-xs shrink-0 transition-all hover:border-border"
-            >
-              <span>🎪</span>
-              <span>Seasonal Store</span>
-            </Link>
+          {/* ── JioMart-Style Delivery Mode Switcher ── */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-2 sm:p-2.5 rounded-2xl border border-border/60 neu-card shadow-xs">
+            <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setDeliveryMode("quick")}
+                className={cn(
+                  "flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer",
+                  deliveryMode === "quick"
+                    ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span>⚡</span>
+                <span>Quick (30–45m)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeliveryMode("all")}
+                className={cn(
+                  "flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer",
+                  deliveryMode === "all"
+                    ? "bg-primary text-primary-foreground shadow-sm shadow-primary/30"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span>🛍️</span>
+                <span>All Products</span>
+              </button>
+            </div>
+            <div className="flex items-center justify-between sm:justify-end gap-2 text-xs font-medium text-muted-foreground px-2">
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span>Delivering to <strong className="text-foreground">Balurghat (733103)</strong></span>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                {deliveryMode === "quick" ? "⚡ 30–45m Express" : "🚚 Local & Pan-India"}
+              </span>
+            </div>
           </div>
 
           <HeroBannerSlider />
 
-          {/* SwiftMart Local Q-Commerce Delivery Highlights */}
+          {/* SwiftMart Local Delivery Highlights */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center" aria-label="SwiftMart Delivery Highlights">
             <div className="bg-card/60 border border-border/40 rounded-xl p-2.5 neu-inset">
               <span className="text-xs font-bold text-foreground block">⚡ 30–45 Min Express</span>
@@ -583,76 +599,20 @@ export default function Home() {
               <span className="text-[10px] text-muted-foreground">Direct Trusted Retailers</span>
             </div>
             <div className="bg-card/60 border border-border/40 rounded-xl p-2.5 neu-inset">
-              <span className="text-xs font-bold text-foreground block">🚚 Heavy Logistics (1–3d)</span>
-              <span className="text-[10px] text-muted-foreground">Bulky Goods Transport</span>
+              <span className="text-xs font-bold text-foreground block">🚚 Intra-City Delivery</span>
+              <span className="text-[10px] text-muted-foreground">Instant Pick &amp; Drop</span>
             </div>
           </div>
-
-          {/* ── SwiftMart Porter / Send Parcel Action Banner ── */}
-          <Link href="/send-parcel" className="block group">
-            <div className="relative p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-600/15 via-teal-600/10 to-primary/15 border border-emerald-500/30 hover:border-emerald-500/60 transition-all neu-card flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0">
-                  <Package className="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-extrabold text-sm sm:text-base text-foreground truncate">
-                      Send Parcel / Intra-city Porter
-                    </h3>
-                    <span className="text-[10px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full">
-                      Flat ₹39 Base
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                    Pick &amp; drop keys, food, documents, packages or customer orders across Balurghat in 30–45m
-                  </p>
-                </div>
-              </div>
-              <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-emerald-500 shrink-0 group-hover:translate-x-1 transition-transform">
-                <span>Book Rider</span>
-                <ChevronRight className="w-4 h-4" />
-              </div>
-            </div>
-          </Link>
-
-          {/* ── SwiftMart Super Mall Teaser Section ── */}
-          <Link href="/mall" className="block group">
-            <div className="relative p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-indigo-900/60 via-purple-900/50 to-slate-900/80 border border-purple-500/30 hover:border-purple-500/60 transition-all neu-card flex flex-col sm:flex-row sm:items-center justify-between gap-4 overflow-hidden">
-              <div className="space-y-1.5 z-10">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[10px] font-bold">
-                  <span>🛍️ SwiftMart Super Mall</span>
-                  <span>·</span>
-                  <span>Beyond Groceries</span>
-                </div>
-                <h3 className="text-base sm:text-xl font-black text-white">
-                  Trending Fashion, Tech Gadgets &amp; Home Decor
-                </h3>
-                <p className="text-xs text-purple-200/80">
-                  Direct from verified regional sellers · Nationwide Pan-India delivery in 3–5 business days
-                </p>
-              </div>
-
-              <div className="z-10 shrink-0">
-                <Button className="rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white text-xs font-bold px-5 h-10 gap-1.5 shadow-md">
-                  <span>Explore Super Mall</span>
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                </Button>
-              </div>
-            </div>
-          </Link>
 
           {/* Admin-curated highlighted bucket bundles */}
           <BucketBanner />
 
-          {/* ── Quick Access Row: Fresh Grocery & Service Corner (Side-by-Side Square Cards) ── */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {/* 1. Fresh Grocery Card */}
-            <Link href="/grocery" className="block group">
-              <div className="relative h-full min-h-[148px] sm:min-h-[164px] p-3.5 sm:p-4 rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between border border-emerald-500/20 shadow-xs transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md">
-                {/* gradient background */}
+          {/* ── Quick Access Row: Send Parcel & Service Corner (Side-by-Side Cards) ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            {/* 1. Send Parcel Card */}
+            <Link href="/send-parcel" className="block group">
+              <div className="relative h-full min-h-[148px] sm:min-h-[164px] p-4 sm:p-5 rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between border border-emerald-500/30 shadow-xs transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md neu-card">
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500" />
-                {/* pattern overlay */}
                 <div
                   className="absolute inset-0 opacity-15 pointer-events-none"
                   style={{
@@ -665,24 +625,24 @@ export default function Home() {
                 {/* Top: Icons & Badge */}
                 <div className="relative z-10 flex items-center justify-between">
                   <div className="flex -space-x-1.5">
-                    {["🥛", "🥦", "🍎"].map((em, i) => (
-                      <div key={i} className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-sm sm:text-base shadow-xs" style={{ zIndex: 3 - i }}>
+                    {["📦", "🔑", "📄"].map((em, i) => (
+                      <div key={i} className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-base shadow-xs" style={{ zIndex: 3 - i }}>
                         {em}
                       </div>
                     ))}
                   </div>
-                  <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-white/25 text-white backdrop-blur-xs">
-                    30–45m
+                  <span className="text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full bg-white/25 text-white backdrop-blur-xs border border-white/20">
+                    Flat ₹39 Base · 30–45m
                   </span>
                 </div>
 
                 {/* Bottom: Text & Button */}
                 <div className="relative z-10 mt-3">
-                  <p className="text-white font-extrabold text-sm sm:text-base leading-tight">Fresh Grocery</p>
-                  <p className="text-white/85 text-[11px] sm:text-xs mt-0.5 line-clamp-1">Veggies, Dairy & Snacks</p>
-                  <div className="mt-2.5 flex items-center gap-1 text-[11px] sm:text-xs font-bold text-emerald-950 bg-white hover:bg-emerald-50 w-fit px-2.5 py-1 rounded-lg shadow-xs transition-colors">
-                    <span>Shop Now</span>
-                    <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                  <p className="text-white font-extrabold text-base sm:text-lg leading-tight">Send Parcel</p>
+                  <p className="text-white/90 text-xs sm:text-sm mt-0.5 line-clamp-1">Intra-city Express Delivery across Balurghat</p>
+                  <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-emerald-950 bg-white hover:bg-emerald-50 w-fit px-3 py-1.5 rounded-xl shadow-xs transition-colors">
+                    <span>Book Delivery</span>
+                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
               </div>
@@ -690,10 +650,8 @@ export default function Home() {
 
             {/* 2. Service Corner Card */}
             <Link href="/services" className="block group">
-              <div className="relative h-full min-h-[148px] sm:min-h-[164px] p-3.5 sm:p-4 rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between border border-blue-500/30 shadow-xs transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md">
-                {/* gradient background */}
+              <div className="relative h-full min-h-[148px] sm:min-h-[164px] p-4 sm:p-5 rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between border border-blue-500/30 shadow-xs transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md neu-card">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-700 via-indigo-600 to-sky-500" />
-                {/* pattern overlay */}
                 <div
                   className="absolute inset-0 opacity-15 pointer-events-none"
                   style={{
@@ -707,23 +665,23 @@ export default function Home() {
                 <div className="relative z-10 flex items-center justify-between">
                   <div className="flex -space-x-1.5">
                     {["📺", "❄️", "🧊"].map((em, i) => (
-                      <div key={i} className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-sm sm:text-base shadow-xs" style={{ zIndex: 3 - i }}>
+                      <div key={i} className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-base shadow-xs" style={{ zIndex: 3 - i }}>
                         {em}
                       </div>
                     ))}
                   </div>
-                  <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-400 text-slate-900 shadow-xs">
+                  <span className="text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-900 shadow-xs">
                     Upahar Lab
                   </span>
                 </div>
 
                 {/* Bottom: Text & Button */}
                 <div className="relative z-10 mt-3">
-                  <p className="text-white font-extrabold text-sm sm:text-base leading-tight">Service Corner 🛠️</p>
-                  <p className="text-white/85 text-[11px] sm:text-xs mt-0.5 line-clamp-1">TV, AC, Fridge Repair</p>
-                  <div className="mt-2.5 flex items-center gap-1 text-[11px] sm:text-xs font-bold text-blue-950 bg-white hover:bg-blue-50 w-fit px-2.5 py-1 rounded-lg shadow-xs transition-colors">
-                    <span>Book Now</span>
-                    <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                  <p className="text-white font-extrabold text-base sm:text-lg leading-tight">Service Corner 🛠️</p>
+                  <p className="text-white/90 text-xs sm:text-sm mt-0.5 line-clamp-1">TV, AC, Fridge, RO &amp; Home Appliance Repair</p>
+                  <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-blue-950 bg-white hover:bg-blue-50 w-fit px-3 py-1.5 rounded-xl shadow-xs transition-colors">
+                    <span>Book Service</span>
+                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
               </div>
@@ -733,14 +691,16 @@ export default function Home() {
           {/* ── Category bubble list ───────────────────────────────── */}
           <section className="w-full">
             <div className="flex justify-between items-center mb-3">
-              <h2 className="text-[15px] font-extrabold text-foreground tracking-tight">Shop Grocery &amp; Daily Essentials by Category</h2>
+              <h2 className="text-[15px] font-extrabold text-foreground tracking-tight">
+                {deliveryMode === "quick" ? "Shop Quick Essentials (30–45 Min Delivery)" : "Shop All Categories & Marketplace"}
+              </h2>
             </div>
             <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-x-2.5 gap-y-4">
-              {(categoriesExpanded ? apiCategories : apiCategories.slice(0, 16)).map(cat => (
+              {(categoriesExpanded ? displayedCategories : displayedCategories.slice(0, 16)).map(cat => (
                 <CategoryBubble key={cat.id} category={cat} />
               ))}
             </div>
-            {apiCategories.length > 16 && (
+            {displayedCategories.length > 16 && (
               <div className="flex justify-center mt-5">
                 <button
                   onClick={() => setCategoriesExpanded(prev => !prev)}
@@ -752,7 +712,7 @@ export default function Home() {
                     </>
                   ) : (
                     <>
-                      See More ({apiCategories.length - 16} more) <ChevronDown className="w-3.5 h-3.5" />
+                      See More ({displayedCategories.length - 16} more) <ChevronDown className="w-3.5 h-3.5" />
                     </>
                   )}
                 </button>
