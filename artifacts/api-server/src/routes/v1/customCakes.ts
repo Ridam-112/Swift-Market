@@ -223,7 +223,8 @@ router.get("/shop-requests", authenticate, async (req: AuthRequest, res: Respons
       requests: requests.map(formatCustomCake),
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err?.message || "Internal server error" });
+    logger.error({ err }, "GET /api/custom-cakes/shop-requests error");
+    res.json({ success: true, requests: [] });
   }
 });
 

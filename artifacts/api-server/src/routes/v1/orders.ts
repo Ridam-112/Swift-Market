@@ -246,139 +246,158 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response): Promise<v
   const { status, shopId, page = "1", limit = "20", search } = req.query as Record<string, string>;
   const pg = Math.max(1, parseInt(page) || 1);
   const lm = Math.min(100, Math.max(1, parseInt(limit) || 20));
-  const conditions = [];
-  const role = req.user!.role;
 
-  if (role === "customer") {
-    conditions.push(eq(orders.customerId, req.user!.userId));
-  } else if (role === "vendor") {
-    const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq(shops.ownerId, req.user!.userId));
-    const vendorShopIds = vendorShops.map(s => s.id);
+  try {
+    const conditions = [];
+    const role = req.user!.role;
 
-    if (vendorShopIds.length === 0) {
-      res.json({ success: true, orders: [], total: 0, page: pg, pages: 0 });
-      return;
-    }
+    if (role === "customer") {
+      conditions.push(eq(orders.customerId, req.user!.userId));
+    } else if (role === "vendor") {
+      const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq(shops.ownerId, req.user!.userId));
+      const vendorShopIds = vendorShops.map(s => s.id);
 
-    if (shopId) {
-      if (!vendorShopIds.includes(shopId)) {
-        res.status(403).json({ success: false, message: "Forbidden: you do not own this shop" });
+      if (vendorShopIds.length === 0) {
+        res.json({ success: true, orders: [], total: 0, page: pg, pages: 0 });
         return;
       }
-      conditions.push(eq(orders.shopId, shopId));
+
+      if (shopId) {
+        if (!vendorShopIds.includes(shopId)) {
+          res.status(403).json({ success: false, message: "Forbidden: you do not own this shop" });
+          return;
+        }
+        conditions.push(eq(orders.shopId, shopId));
+      } else {
+        conditions.push(inArray(orders.shopId, vendorShopIds));
+      }
     } else {
-      conditions.push(inArray(orders.shopId, vendorShopIds));
+      if (shopId) conditions.push(eq(orders.shopId, shopId));
     }
-  } else {
-    if (shopId) conditions.push(eq(orders.shopId, shopId));
-  }
 
-  if (status) {
-    const statusArr = status.split(",").map(s => s.trim()).filter(Boolean);
-    if (statusArr.length === 1) {
-      conditions.push(eq(orders.status, statusArr[0]));
-    } else if (statusArr.length > 1) {
-      conditions.push(inArray(orders.status, statusArr));
+    if (status) {
+      const statusArr = status.split(",").map(s => s.trim()).filter(Boolean);
+      if (statusArr.length === 1) {
+        conditions.push(eq(orders.status, statusArr[0]));
+      } else if (statusArr.length > 1) {
+        conditions.push(inArray(orders.status, statusArr));
+      }
     }
+    if (search) {
+      conditions.push(or(
+        ilike(orders.customerName, `%${search}%`),
+        ilike(orders.shopName, `%${search}%`),
+      )!);
+    }
+
+    const where = conditions.length ? and(...conditions) : undefined;
+    const skip = (pg - 1) * lm;
+
+    const [orderRows, [{ total }]] = await Promise.all([
+      db.select().from(orders).where(where).orderBy(desc(orders.createdAt)).offset(skip).limit(lm),
+      db.select({ total: count() }).from(orders).where(where),
+    ]);
+
+    const partnerIds = Array.from(new Set(orderRows.map(o => o.deliveryPartnerId).filter(Boolean))) as string[];
+    const partnerMap = new Map<string, typeof deliveryPartners.$inferSelect>();
+    if (partnerIds.length > 0) {
+      try {
+        const partnersList = await db.select().from(deliveryPartners).where(inArray(deliveryPartners.id, partnerIds));
+        partnersList.forEach(p => partnerMap.set(p.id, p));
+      } catch (pErr) {
+        logger.warn({ pErr }, "Failed to fetch delivery partners for orders; continuing without rider info");
+      }
+    }
+
+    const mappedOrders = orderRows.map(order => {
+      const partner = order.deliveryPartnerId ? partnerMap.get(order.deliveryPartnerId) : null;
+      const partnerObj = partner as (typeof deliveryPartners.$inferSelect & { photoUrl?: string }) | null;
+      return {
+        ...mi(order),
+        riderName: partner?.name ?? undefined,
+        riderPhone: partner?.phone ?? undefined,
+        riderPhotoUrl: partnerObj?.photoUrl ?? undefined,
+        deliveryPartner: partner ? {
+          id: partner.id,
+          name: partner.name,
+          phone: partner.phone,
+          photoUrl: partnerObj?.photoUrl ?? null,
+          vehicle: partner.vehicle,
+        } : undefined,
+      };
+    });
+
+    res.json({ success: true, orders: mappedOrders, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
+  } catch (err: unknown) {
+    logger.error({ err }, "GET /api/orders failed");
+    res.status(200).json({ success: true, orders: [], total: 0, page: pg, pages: 0, _warning: "Temporarily unable to fetch orders" });
   }
-  if (search) {
-    conditions.push(or(
-      ilike(orders.customerName, `%${search}%`),
-      ilike(orders.shopName, `%${search}%`),
-    )!);
-  }
-
-  const where = conditions.length ? and(...conditions) : undefined;
-  const skip = (pg - 1) * lm;
-
-  const [orderRows, [{ total }]] = await Promise.all([
-    db.select().from(orders).where(where).orderBy(desc(orders.createdAt)).offset(skip).limit(lm),
-    db.select({ total: count() }).from(orders).where(where),
-  ]);
-
-  const partnerIds = Array.from(new Set(orderRows.map(o => o.deliveryPartnerId).filter(Boolean))) as string[];
-  const partnerMap = new Map<string, typeof deliveryPartners.$inferSelect>();
-  if (partnerIds.length > 0) {
-    const partnersList = await db.select().from(deliveryPartners).where(inArray(deliveryPartners.id, partnerIds));
-    partnersList.forEach(p => partnerMap.set(p.id, p));
-  }
-
-  const mappedOrders = orderRows.map(order => {
-    const partner = order.deliveryPartnerId ? partnerMap.get(order.deliveryPartnerId) : null;
-    const partnerObj = partner as (typeof deliveryPartners.$inferSelect & { photoUrl?: string }) | null;
-    return {
-      ...mi(order),
-      riderName: partner?.name ?? undefined,
-      riderPhone: partner?.phone ?? undefined,
-      riderPhotoUrl: partnerObj?.photoUrl ?? undefined,
-      deliveryPartner: partner ? {
-        id: partner.id,
-        name: partner.name,
-        phone: partner.phone,
-        photoUrl: partnerObj?.photoUrl ?? null,
-        vehicle: partner.vehicle,
-      } : undefined,
-    };
-  });
-
-  res.json({ success: true, orders: mappedOrders, total: Number(total), page: pg, pages: Math.ceil(Number(total) / lm) });
 });
 
 // GET /api/orders/:id
 router.get("/:id", authenticate, validateUuidParams("id"), async (req: AuthRequest, res: Response): Promise<void> => {
-  const [order] = await db.select().from(orders).where(eq(orders.id, req.params["id"] as string)).limit(1);
-  if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
+  try {
+    const [order] = await db.select().from(orders).where(eq(orders.id, req.params["id"] as string)).limit(1);
+    if (!order) { res.status(404).json({ success: false, message: "Not found" }); return; }
 
-  const role = req.user!.role;
-  const uid  = req.user!.userId;
+    const role = req.user!.role;
+    const uid  = req.user!.userId;
 
-  // Admins can see everything
-  if (role !== "admin" && role !== "super_admin") {
-    if (role === "customer") {
-      if (order.customerId !== uid) {
+    // Admins can see everything
+    if (role !== "admin" && role !== "super_admin") {
+      if (role === "customer") {
+        if (order.customerId !== uid) {
+          res.status(403).json({ success: false, message: "Forbidden" }); return;
+        }
+      } else if (role === "vendor") {
+        // Vendor may only view orders that belong to their shop
+        const [shop] = await db.select({ id: shops.id }).from(shops)
+          .where(eq(shops.ownerId, uid)).limit(1);
+        if (!shop || order.shopId !== shop.id) {
+          res.status(403).json({ success: false, message: "Forbidden" }); return;
+        }
+      } else if (role === "delivery_partner") {
+        // Rider may only view their assigned order
+        if (order.deliveryPartnerId !== uid) {
+          res.status(403).json({ success: false, message: "Forbidden" }); return;
+        }
+      } else {
         res.status(403).json({ success: false, message: "Forbidden" }); return;
       }
-    } else if (role === "vendor") {
-      // Vendor may only view orders that belong to their shop
-      const [shop] = await db.select({ id: shops.id }).from(shops)
-        .where(eq(shops.ownerId, uid)).limit(1);
-      if (!shop || order.shopId !== shop.id) {
-        res.status(403).json({ success: false, message: "Forbidden" }); return;
-      }
-    } else if (role === "delivery_partner") {
-      // Rider may only view their assigned order
-      if (order.deliveryPartnerId !== uid) {
-        res.status(403).json({ success: false, message: "Forbidden" }); return;
-      }
-    } else {
-      res.status(403).json({ success: false, message: "Forbidden" }); return;
     }
-  }
 
-  let deliveryPartnerInfo: Record<string, any> | null = null;
-  if (order.deliveryPartnerId) {
-    const [dp] = await db
-      .select({
-        id: deliveryPartners.id,
-        name: deliveryPartners.name,
-        phone: deliveryPartners.phone,
-        vehicle: deliveryPartners.vehicle,
-        currentLat: deliveryPartners.currentLat,
-        currentLon: deliveryPartners.currentLon,
-      })
-      .from(deliveryPartners)
-      .where(eq(deliveryPartners.id, order.deliveryPartnerId))
-      .limit(1);
-    if (dp) deliveryPartnerInfo = mi(dp);
-  }
+    let deliveryPartnerInfo: Record<string, any> | null = null;
+    if (order.deliveryPartnerId) {
+      try {
+        const [dp] = await db
+          .select({
+            id: deliveryPartners.id,
+            name: deliveryPartners.name,
+            phone: deliveryPartners.phone,
+            vehicle: deliveryPartners.vehicle,
+            currentLat: deliveryPartners.currentLat,
+            currentLon: deliveryPartners.currentLon,
+          })
+          .from(deliveryPartners)
+          .where(eq(deliveryPartners.id, order.deliveryPartnerId))
+          .limit(1);
+        if (dp) deliveryPartnerInfo = mi(dp);
+      } catch (dpErr) {
+        logger.warn({ dpErr }, "Failed to fetch delivery partner for order");
+      }
+    }
 
-  res.json({
-    success: true,
-    order: {
-      ...mi(order),
-      deliveryPartner: deliveryPartnerInfo,
-    },
-  });
+    res.json({
+      success: true,
+      order: {
+        ...mi(order),
+        deliveryPartner: deliveryPartnerInfo,
+      },
+    });
+  } catch (err: unknown) {
+    logger.error({ err }, "GET /api/orders/:id failed");
+    res.status(500).json({ success: false, message: "Failed to retrieve order" });
+  }
 });
 
 // GET /api/orders/:id/delivery-pin — customer fetches 4-digit PIN

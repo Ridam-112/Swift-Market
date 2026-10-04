@@ -166,22 +166,27 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
 
 // GET /api/shops/:id/details — admin: shop + products + recent orders + owner
 router.get("/:id/details", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"] as string)).limit(1);
-  if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+  try {
+    const [shop] = await db.select().from(shops).where(eq(shops.id, req.params["id"] as string)).limit(1);
+    if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
 
-  const [shopProducts, shopOrders, ownerArr] = await Promise.all([
-    db.select().from(products).where(eq(products.shopId, shop.id)),
-    db.select().from(orders).where(eq(orders.shopId, shop.id)).orderBy(desc(orders.createdAt)).limit(50),
-    db.select({
-      id: users.id, name: users.name, phone: users.phone, email: users.email,
-      role: users.role, vendorStatus: users.vendorStatus, status: users.status, createdAt: users.createdAt,
-    }).from(users).where(eq(users.id, shop.ownerId)).limit(1),
-  ]);
+    const [shopProducts, shopOrders, ownerArr] = await Promise.all([
+      db.select().from(products).where(eq(products.shopId, shop.id)),
+      db.select().from(orders).where(eq(orders.shopId, shop.id)).orderBy(desc(orders.createdAt)).limit(50),
+      db.select({
+        id: users.id, name: users.name, phone: users.phone, email: users.email,
+        role: users.role, vendorStatus: users.vendorStatus, status: users.status, createdAt: users.createdAt,
+      }).from(users).where(eq(users.id, shop.ownerId)).limit(1),
+    ]);
 
-  const revenue = shopOrders.reduce((sum, o) => sum + (o.netAmount ?? o.subtotal ?? 0), 0);
-  const owner = ownerArr[0] ? { ...ownerArr[0], _id: ownerArr[0].id } : null;
+    const revenue = shopOrders.reduce((sum, o) => sum + (o.netAmount ?? o.subtotal ?? 0), 0);
+    const owner = ownerArr[0] ? { ...ownerArr[0], _id: ownerArr[0].id } : null;
 
-  res.json({ success: true, shop: mi(shop), products: miArr(shopProducts), orders: miArr(shopOrders), owner, totalProducts: shopProducts.length, totalOrders: shopOrders.length, revenue });
+    res.json({ success: true, shop: mi(shop), products: miArr(shopProducts), orders: miArr(shopOrders), owner, totalProducts: shopProducts.length, totalOrders: shopOrders.length, revenue });
+  } catch (err: unknown) {
+    logger.error({ err }, "GET /api/shops/:id/details failed");
+    res.status(500).json({ success: false, message: "Failed to load shop details" });
+  }
 });
 
 // GET /api/shops/:id
@@ -440,79 +445,89 @@ const RESTAURANT_SHOP_TYPES = new Set(["restaurant", "fast-food", "cloud-kitchen
 
 // PATCH /api/shops/my/profile — vendor updates their own shop profile (safe fields only)
 router.patch("/my/profile", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const allowed = ["shopName", "description", "image", "banner", "shopType", "category", "timings", "address"];
-  const update: Record<string, unknown> = {};
-  const body = req.body as Record<string, unknown>;
-  for (const key of allowed) {
-    if (key !== "address" && body[key] !== undefined) update[key] = body[key];
-  }
+  try {
+    const allowed = ["shopName", "description", "image", "banner", "shopType", "category", "timings", "address"];
+    const update: Record<string, unknown> = {};
+    const body = req.body as Record<string, unknown>;
+    for (const key of allowed) {
+      if (key !== "address" && body[key] !== undefined) update[key] = body[key];
+    }
 
-  // Address: merge existing lat/lng so coordinates are never accidentally wiped
-  if (body["address"] !== undefined && typeof body["address"] === "object" && body["address"] !== null) {
-    const newAddr = body["address"] as Record<string, unknown>;
-    const [existingShop] = await db.select({ address: shops.address }).from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
-    const oldAddr = (existingShop?.address || {}) as Record<string, unknown>;
-    update["address"] = {
-      ...oldAddr,
-      ...newAddr,
-      lat: newAddr["lat"] ?? newAddr["latitude"] ?? oldAddr["lat"] ?? oldAddr["latitude"],
-      lng: newAddr["lng"] ?? newAddr["longitude"] ?? oldAddr["lng"] ?? oldAddr["longitude"],
-      latitude: newAddr["latitude"] ?? newAddr["lat"] ?? oldAddr["latitude"] ?? oldAddr["lat"],
-      longitude: newAddr["longitude"] ?? newAddr["lng"] ?? oldAddr["longitude"] ?? oldAddr["lng"],
-    };
-  }
+    // Address: merge existing lat/lng so coordinates are never accidentally wiped
+    if (body["address"] !== undefined && typeof body["address"] === "object" && body["address"] !== null) {
+      const newAddr = body["address"] as Record<string, unknown>;
+      const [existingShop] = await db.select({ address: shops.address }).from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
+      const oldAddr = (existingShop?.address || {}) as Record<string, unknown>;
+      update["address"] = {
+        ...oldAddr,
+        ...newAddr,
+        lat: newAddr["lat"] ?? newAddr["latitude"] ?? oldAddr["lat"] ?? oldAddr["latitude"],
+        lng: newAddr["lng"] ?? newAddr["longitude"] ?? oldAddr["lng"] ?? oldAddr["longitude"],
+        latitude: newAddr["latitude"] ?? newAddr["lat"] ?? oldAddr["latitude"] ?? oldAddr["lat"],
+        longitude: newAddr["longitude"] ?? newAddr["lng"] ?? oldAddr["longitude"] ?? oldAddr["lng"],
+      };
+    }
 
-  // GST fields — allowed for all vendors
-  if (body["gstEnabled"] !== undefined) update["gstEnabled"] = Boolean(body["gstEnabled"]);
-  if (body["gstRate"] !== undefined) {
-    const rate = Number(body["gstRate"]);
-    update["gstRate"] = (!isNaN(rate) && rate >= 0 && rate <= 100) ? rate : null;
-  }
+    // GST fields — allowed for all vendors
+    if (body["gstEnabled"] !== undefined) update["gstEnabled"] = Boolean(body["gstEnabled"]);
+    if (body["gstRate"] !== undefined) {
+      const rate = Number(body["gstRate"]);
+      update["gstRate"] = (!isNaN(rate) && rate >= 0 && rate <= 100) ? rate : null;
+    }
 
-  // Packaging charge — only restaurant/fast-food/cloud-kitchen vendors can set their own
-  if (body["packagingCharge"] !== undefined) {
-    // Determine current shopType from body (if being updated) or from DB
-    const shopType = body["shopType"] ? String(body["shopType"]) : null;
-    if (shopType && RESTAURANT_SHOP_TYPES.has(shopType)) {
-      const charge = Number(body["packagingCharge"]);
-      update["packagingCharge"] = (!isNaN(charge) && charge >= 0) ? Math.round(charge) : null;
-    } else if (!shopType) {
-      // Need to check from DB
-      const [existing] = await db.select({ shopType: shops.shopType }).from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
-      if (existing && RESTAURANT_SHOP_TYPES.has(existing.shopType ?? "")) {
+    // Packaging charge — only restaurant/fast-food/cloud-kitchen vendors can set their own
+    if (body["packagingCharge"] !== undefined) {
+      // Determine current shopType from body (if being updated) or from DB
+      const shopType = body["shopType"] ? String(body["shopType"]) : null;
+      if (shopType && RESTAURANT_SHOP_TYPES.has(shopType)) {
         const charge = Number(body["packagingCharge"]);
         update["packagingCharge"] = (!isNaN(charge) && charge >= 0) ? Math.round(charge) : null;
+      } else if (!shopType) {
+        // Need to check from DB
+        const [existing] = await db.select({ shopType: shops.shopType }).from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
+        if (existing && RESTAURANT_SHOP_TYPES.has(existing.shopType ?? "")) {
+          const charge = Number(body["packagingCharge"]);
+          update["packagingCharge"] = (!isNaN(charge) && charge >= 0) ? Math.round(charge) : null;
+        }
       }
     }
+    // M2: fetch old image/banner before update so we can clean up replaced Cloudinary assets
+    const [oldShop] = await db.select({ image: shops.image, banner: shops.banner })
+      .from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
+
+    const [updated] = await db.update(shops).set(update).where(eq(shops.ownerId, req.user!.userId)).returning();
+    if (!updated) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+
+    // Delete old Cloudinary assets that were replaced
+    if (oldShop) {
+      const toDelete: string[] = [];
+      if ("image" in update && update["image"] !== oldShop.image && oldShop.image) toDelete.push(oldShop.image);
+      if ("banner" in update && update["banner"] !== oldShop.banner && oldShop.banner) toDelete.push(oldShop.banner);
+      if (toDelete.length > 0) void Promise.all(toDelete.map(url => deleteFromImageKit(url)));
+    }
+
+    res.json({ success: true, shop: mi(updated) });
+  } catch (err: unknown) {
+    logger.error({ err }, "PATCH /api/shops/my/profile failed");
+    res.status(500).json({ success: false, message: "Failed to update shop profile" });
   }
-  // M2: fetch old image/banner before update so we can clean up replaced Cloudinary assets
-  const [oldShop] = await db.select({ image: shops.image, banner: shops.banner })
-    .from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
-
-  const [updated] = await db.update(shops).set(update).where(eq(shops.ownerId, req.user!.userId)).returning();
-  if (!updated) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
-
-  // Delete old Cloudinary assets that were replaced
-  if (oldShop) {
-    const toDelete: string[] = [];
-    if ("image" in update && update["image"] !== oldShop.image && oldShop.image) toDelete.push(oldShop.image);
-    if ("banner" in update && update["banner"] !== oldShop.banner && oldShop.banner) toDelete.push(oldShop.banner);
-    if (toDelete.length > 0) void Promise.all(toDelete.map(url => deleteFromImageKit(url)));
-  }
-
-  res.json({ success: true, shop: mi(updated) });
 });
 
 // PATCH /api/shops/my/toggle-open — vendor toggles their own shop open/close
 router.patch("/my/toggle-open", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const [shop] = await db.select().from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
-  if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
-  if (shop.status !== "approved") {
-    res.status(403).json({ success: false, message: "Only approved shops can change their open status" });
-    return;
+  try {
+    const [shop] = await db.select().from(shops).where(eq(shops.ownerId, req.user!.userId)).limit(1);
+    if (!shop) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
+    if (shop.status !== "approved") {
+      res.status(403).json({ success: false, message: "Only approved shops can change their open status" });
+      return;
+    }
+    const [updated] = await db.update(shops).set({ isOpen: !shop.isOpen }).where(eq(shops.id, shop.id)).returning();
+    res.json({ success: true, isOpen: updated!.isOpen, shop: mi(updated!) });
+  } catch (err: unknown) {
+    logger.error({ err }, "PATCH /api/shops/my/toggle-open failed");
+    res.status(500).json({ success: false, message: "Failed to update shop open status" });
   }
-  const [updated] = await db.update(shops).set({ isOpen: !shop.isOpen }).where(eq(shops.id, shop.id)).returning();
-  res.json({ success: true, isOpen: updated!.isOpen, shop: mi(updated!) });
 });
 
 // PATCH /api/shops/:id — admin updates shop fields (allowlist-validated to prevent arbitrary injection)

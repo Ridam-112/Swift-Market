@@ -60,13 +60,9 @@ function getHealthyReplica(replicas: typeof dbInstances) {
   return replicas[idx]!;
 }
 
-// ── Drizzle withReplicas ──────────────────────────────────────────────────────
-// Routes all SELECT, selectDistinct, $count, query to DB-2, DB-3, DB-4, DB-5 in round-robin.
-// Routes all INSERT, UPDATE, DELETE, transactions to primary Master DB-1.
-export const db = (replicaDbs.length > 0
-  ? withReplicas(primaryDb, replicaDbs as [any, ...any[]], (reps) => getHealthyReplica(reps))
-  : primaryDb) as typeof primaryDb;
+// Always use primaryDb as the single source of truth for full data consistency.
+export const db = primaryDb;
 
-console.log(`[DB] 5-Database Sharded Read/Write Multi-Pool active: 1 Primary Writer + ${replicaDbs.length} Read Replicas (Total ${DB_URLS.length} Neon DBs).`);
+console.log(`[DB] Database connection active using primary master pool.`);
 
 export * from "./schema/index.js";

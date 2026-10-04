@@ -8,73 +8,86 @@ const router = Router();
 const A = requireRole("admin", "super_admin");
 
 // Helper to compute default 3-day scheduled date from created date
-function getScheduledDate(createdAt: Date, scheduledDate?: Date | null): Date {
-  if (scheduledDate) return new Date(scheduledDate);
-  return new Date(new Date(createdAt).getTime() + 3 * 24 * 60 * 60 * 1000);
+function getScheduledDate(createdAt: Date | string | null | undefined, scheduledDate?: Date | string | null): Date {
+  if (scheduledDate) {
+    const d = new Date(scheduledDate);
+    if (!isNaN(d.getTime())) return d;
+  }
+  const baseTime = createdAt ? new Date(createdAt).getTime() : Date.now();
+  const validTime = isNaN(baseTime) ? Date.now() : baseTime;
+  return new Date(validTime + 3 * 24 * 60 * 60 * 1000);
 }
 
 // GET /api/payouts — admin: see all payouts with full details
 router.get("/", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { status, earlyRequested, shopId } = req.query as { status?: string; earlyRequested?: string; shopId?: string };
-  const conditions = [];
+  try {
+    const { status, earlyRequested, shopId } = req.query as { status?: string; earlyRequested?: string; shopId?: string };
+    const conditions = [];
 
-  if (status && status !== "all") {
-    conditions.push(eq(payouts.status, status));
+    if (status && status !== "all") {
+      conditions.push(eq(payouts.status, status));
+    }
+    if (earlyRequested === "true") {
+      conditions.push(eq(payouts.earlyPayoutRequested, true));
+    }
+    if (shopId) {
+      conditions.push(eq(payouts.shopId, shopId));
+    }
+
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const rows = await db.select().from(payouts).where(where).orderBy(desc(payouts.createdAt));
+
+    const enriched = rows.map(r => ({
+      ...r,
+      scheduledDate: getScheduledDate(r.createdAt, r.scheduledDate),
+    }));
+
+    res.json({ success: true, payouts: miArr(enriched) });
+  } catch (err: unknown) {
+    res.status(500).json({ success: false, message: "Failed to retrieve payouts" });
   }
-  if (earlyRequested === "true") {
-    conditions.push(eq(payouts.earlyPayoutRequested, true));
-  }
-  if (shopId) {
-    conditions.push(eq(payouts.shopId, shopId));
-  }
-
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
-  const rows = await db.select().from(payouts).where(where).orderBy(desc(payouts.createdAt));
-
-  const enriched = rows.map(r => ({
-    ...r,
-    scheduledDate: getScheduledDate(r.createdAt, r.scheduledDate),
-  }));
-
-  res.json({ success: true, payouts: miArr(enriched) });
 });
 
 // GET /api/payouts/my — vendor: see payouts for their own shops only
 router.get("/my", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { status } = req.query as { status?: string };
+  try {
+    const { status } = req.query as { status?: string };
 
-  // Resolve all shops owned by this vendor
-  const vendorShops = await db.select({ id: shops.id, shopName: shops.shopName }).from(shops).where(eq(shops.ownerId, req.user!.userId));
-  if (vendorShops.length === 0) {
+    // Resolve all shops owned by this vendor
+    const vendorShops = await db.select({ id: shops.id, shopName: shops.shopName }).from(shops).where(eq(shops.ownerId, req.user!.userId));
+    if (vendorShops.length === 0) {
+      res.json({ success: true, payouts: [], totalEarned: 0, pendingAmount: 0, nextScheduledDate: null });
+      return;
+    }
+
+    const shopIds = vendorShops.map(s => s.id);
+    const conditions = [inArray(payouts.shopId, shopIds)];
+    if (status && status !== "all") conditions.push(eq(payouts.status, status));
+
+    const rows = await db.select().from(payouts).where(and(...conditions)).orderBy(desc(payouts.createdAt));
+    const totalEarned = rows.filter(r => r.status === "paid").reduce((s, r) => s + (r.amount ?? 0), 0);
+    const pendingAmount = rows.filter(r => r.status === "pending" || r.status === "processing").reduce((s, r) => s + (r.amount ?? 0), 0);
+
+    const enriched = rows.map(r => ({
+      ...r,
+      scheduledDate: getScheduledDate(r.createdAt, r.scheduledDate),
+    }));
+
+    // Find earliest pending scheduled date
+    const pendingRows = enriched.filter(r => r.status === "pending" && r.scheduledDate);
+    pendingRows.sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
+    const nextScheduledDate = pendingRows.length > 0 ? pendingRows[0].scheduledDate : null;
+
+    res.json({
+      success: true,
+      payouts: miArr(enriched),
+      totalEarned,
+      pendingAmount,
+      nextScheduledDate,
+    });
+  } catch (err: unknown) {
     res.json({ success: true, payouts: [], totalEarned: 0, pendingAmount: 0, nextScheduledDate: null });
-    return;
   }
-
-  const shopIds = vendorShops.map(s => s.id);
-  const conditions = [inArray(payouts.shopId, shopIds)];
-  if (status && status !== "all") conditions.push(eq(payouts.status, status));
-
-  const rows = await db.select().from(payouts).where(and(...conditions)).orderBy(desc(payouts.createdAt));
-  const totalEarned = rows.filter(r => r.status === "paid").reduce((s, r) => s + (r.amount ?? 0), 0);
-  const pendingAmount = rows.filter(r => r.status === "pending" || r.status === "processing").reduce((s, r) => s + (r.amount ?? 0), 0);
-
-  const enriched = rows.map(r => ({
-    ...r,
-    scheduledDate: getScheduledDate(r.createdAt, r.scheduledDate),
-  }));
-
-  // Find earliest pending scheduled date
-  const pendingRows = enriched.filter(r => r.status === "pending" && r.scheduledDate);
-  pendingRows.sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
-  const nextScheduledDate = pendingRows.length > 0 ? pendingRows[0].scheduledDate : null;
-
-  res.json({
-    success: true,
-    payouts: miArr(enriched),
-    totalEarned,
-    pendingAmount,
-    nextScheduledDate,
-  });
 });
 
 // POST /api/payouts/mark-all-paid — Admin: Mark all past/pending payouts as paid

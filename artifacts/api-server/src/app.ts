@@ -670,12 +670,21 @@ if (process.env.NODE_ENV === "production") {
         logger.error({ injectionErr }, "Failed to inject shop storefront meta tags into index.html; falling back to static");
       }
 
-      res.sendFile(indexPath);
+      res.sendFile(indexPath, (fileErr) => {
+        if (fileErr && !res.headersSent) {
+          logger.error({ fileErr }, "res.sendFile failed; sending inline HTML fallback");
+          res.status(200).type("html").send("<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'/><title>SwiftMart</title><meta name='viewport' content='width=device-width,initial-scale=1'/></head><body><div id='root'></div><script>window.location.reload();</script></body></html>");
+        }
+      });
     } catch (topErr) {
       logger.error({ topErr }, "Error in SPA fallback handler; serving static index.html");
       const indexPath = path.join(frontendDist, "index.html");
       if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
+        res.sendFile(indexPath, (fileErr) => {
+          if (fileErr && !res.headersSent) {
+            res.status(200).type("html").send("<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'/><title>SwiftMart</title></head><body><div id='root'></div></body></html>");
+          }
+        });
       } else {
         res.status(200).json({ ok: true, message: "SwiftMart API Server is running" });
       }

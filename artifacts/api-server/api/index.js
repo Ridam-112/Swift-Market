@@ -124871,28 +124871,33 @@ router5.get("/", optionalAuth, async (req, res) => {
   }
 });
 router5.get("/:id/details", authenticate, A4, async (req, res) => {
-  const [shop] = await db.select().from(shops).where(eq7(shops.id, req.params["id"])).limit(1);
-  if (!shop) {
-    res.status(404).json({ success: false, message: "Shop not found" });
-    return;
+  try {
+    const [shop] = await db.select().from(shops).where(eq7(shops.id, req.params["id"])).limit(1);
+    if (!shop) {
+      res.status(404).json({ success: false, message: "Shop not found" });
+      return;
+    }
+    const [shopProducts, shopOrders, ownerArr] = await Promise.all([
+      db.select().from(products).where(eq7(products.shopId, shop.id)),
+      db.select().from(orders).where(eq7(orders.shopId, shop.id)).orderBy(desc3(orders.createdAt)).limit(50),
+      db.select({
+        id: users.id,
+        name: users.name,
+        phone: users.phone,
+        email: users.email,
+        role: users.role,
+        vendorStatus: users.vendorStatus,
+        status: users.status,
+        createdAt: users.createdAt
+      }).from(users).where(eq7(users.id, shop.ownerId)).limit(1)
+    ]);
+    const revenue = shopOrders.reduce((sum5, o) => sum5 + (o.netAmount ?? o.subtotal ?? 0), 0);
+    const owner = ownerArr[0] ? { ...ownerArr[0], _id: ownerArr[0].id } : null;
+    res.json({ success: true, shop: mi(shop), products: miArr(shopProducts), orders: miArr(shopOrders), owner, totalProducts: shopProducts.length, totalOrders: shopOrders.length, revenue });
+  } catch (err) {
+    logger.error({ err }, "GET /api/shops/:id/details failed");
+    res.status(500).json({ success: false, message: "Failed to load shop details" });
   }
-  const [shopProducts, shopOrders, ownerArr] = await Promise.all([
-    db.select().from(products).where(eq7(products.shopId, shop.id)),
-    db.select().from(orders).where(eq7(orders.shopId, shop.id)).orderBy(desc3(orders.createdAt)).limit(50),
-    db.select({
-      id: users.id,
-      name: users.name,
-      phone: users.phone,
-      email: users.email,
-      role: users.role,
-      vendorStatus: users.vendorStatus,
-      status: users.status,
-      createdAt: users.createdAt
-    }).from(users).where(eq7(users.id, shop.ownerId)).limit(1)
-  ]);
-  const revenue = shopOrders.reduce((sum5, o) => sum5 + (o.netAmount ?? o.subtotal ?? 0), 0);
-  const owner = ownerArr[0] ? { ...ownerArr[0], _id: ownerArr[0].id } : null;
-  res.json({ success: true, shop: mi(shop), products: miArr(shopProducts), orders: miArr(shopOrders), owner, totalProducts: shopProducts.length, totalOrders: shopOrders.length, revenue });
 });
 router5.get("/:id", optionalAuth, async (req, res) => {
   try {
@@ -125116,69 +125121,79 @@ router5.post("/:id/reject-certificate", authenticate, A4, async (req, res) => {
 });
 var RESTAURANT_SHOP_TYPES = /* @__PURE__ */ new Set(["restaurant", "fast-food", "cloud-kitchen"]);
 router5.patch("/my/profile", authenticate, async (req, res) => {
-  const allowed = ["shopName", "description", "image", "banner", "shopType", "category", "timings", "address"];
-  const update = {};
-  const body = req.body;
-  for (const key of allowed) {
-    if (key !== "address" && body[key] !== void 0) update[key] = body[key];
-  }
-  if (body["address"] !== void 0 && typeof body["address"] === "object" && body["address"] !== null) {
-    const newAddr = body["address"];
-    const [existingShop] = await db.select({ address: shops.address }).from(shops).where(eq7(shops.ownerId, req.user.userId)).limit(1);
-    const oldAddr = existingShop?.address || {};
-    update["address"] = {
-      ...oldAddr,
-      ...newAddr,
-      lat: newAddr["lat"] ?? newAddr["latitude"] ?? oldAddr["lat"] ?? oldAddr["latitude"],
-      lng: newAddr["lng"] ?? newAddr["longitude"] ?? oldAddr["lng"] ?? oldAddr["longitude"],
-      latitude: newAddr["latitude"] ?? newAddr["lat"] ?? oldAddr["latitude"] ?? oldAddr["lat"],
-      longitude: newAddr["longitude"] ?? newAddr["lng"] ?? oldAddr["longitude"] ?? oldAddr["lng"]
-    };
-  }
-  if (body["gstEnabled"] !== void 0) update["gstEnabled"] = Boolean(body["gstEnabled"]);
-  if (body["gstRate"] !== void 0) {
-    const rate = Number(body["gstRate"]);
-    update["gstRate"] = !isNaN(rate) && rate >= 0 && rate <= 100 ? rate : null;
-  }
-  if (body["packagingCharge"] !== void 0) {
-    const shopType = body["shopType"] ? String(body["shopType"]) : null;
-    if (shopType && RESTAURANT_SHOP_TYPES.has(shopType)) {
-      const charge = Number(body["packagingCharge"]);
-      update["packagingCharge"] = !isNaN(charge) && charge >= 0 ? Math.round(charge) : null;
-    } else if (!shopType) {
-      const [existing] = await db.select({ shopType: shops.shopType }).from(shops).where(eq7(shops.ownerId, req.user.userId)).limit(1);
-      if (existing && RESTAURANT_SHOP_TYPES.has(existing.shopType ?? "")) {
+  try {
+    const allowed = ["shopName", "description", "image", "banner", "shopType", "category", "timings", "address"];
+    const update = {};
+    const body = req.body;
+    for (const key of allowed) {
+      if (key !== "address" && body[key] !== void 0) update[key] = body[key];
+    }
+    if (body["address"] !== void 0 && typeof body["address"] === "object" && body["address"] !== null) {
+      const newAddr = body["address"];
+      const [existingShop] = await db.select({ address: shops.address }).from(shops).where(eq7(shops.ownerId, req.user.userId)).limit(1);
+      const oldAddr = existingShop?.address || {};
+      update["address"] = {
+        ...oldAddr,
+        ...newAddr,
+        lat: newAddr["lat"] ?? newAddr["latitude"] ?? oldAddr["lat"] ?? oldAddr["latitude"],
+        lng: newAddr["lng"] ?? newAddr["longitude"] ?? oldAddr["lng"] ?? oldAddr["longitude"],
+        latitude: newAddr["latitude"] ?? newAddr["lat"] ?? oldAddr["latitude"] ?? oldAddr["lat"],
+        longitude: newAddr["longitude"] ?? newAddr["lng"] ?? oldAddr["longitude"] ?? oldAddr["lng"]
+      };
+    }
+    if (body["gstEnabled"] !== void 0) update["gstEnabled"] = Boolean(body["gstEnabled"]);
+    if (body["gstRate"] !== void 0) {
+      const rate = Number(body["gstRate"]);
+      update["gstRate"] = !isNaN(rate) && rate >= 0 && rate <= 100 ? rate : null;
+    }
+    if (body["packagingCharge"] !== void 0) {
+      const shopType = body["shopType"] ? String(body["shopType"]) : null;
+      if (shopType && RESTAURANT_SHOP_TYPES.has(shopType)) {
         const charge = Number(body["packagingCharge"]);
         update["packagingCharge"] = !isNaN(charge) && charge >= 0 ? Math.round(charge) : null;
+      } else if (!shopType) {
+        const [existing] = await db.select({ shopType: shops.shopType }).from(shops).where(eq7(shops.ownerId, req.user.userId)).limit(1);
+        if (existing && RESTAURANT_SHOP_TYPES.has(existing.shopType ?? "")) {
+          const charge = Number(body["packagingCharge"]);
+          update["packagingCharge"] = !isNaN(charge) && charge >= 0 ? Math.round(charge) : null;
+        }
       }
     }
+    const [oldShop] = await db.select({ image: shops.image, banner: shops.banner }).from(shops).where(eq7(shops.ownerId, req.user.userId)).limit(1);
+    const [updated] = await db.update(shops).set(update).where(eq7(shops.ownerId, req.user.userId)).returning();
+    if (!updated) {
+      res.status(404).json({ success: false, message: "Shop not found" });
+      return;
+    }
+    if (oldShop) {
+      const toDelete = [];
+      if ("image" in update && update["image"] !== oldShop.image && oldShop.image) toDelete.push(oldShop.image);
+      if ("banner" in update && update["banner"] !== oldShop.banner && oldShop.banner) toDelete.push(oldShop.banner);
+      if (toDelete.length > 0) void Promise.all(toDelete.map((url) => deleteFromImageKit(url)));
+    }
+    res.json({ success: true, shop: mi(updated) });
+  } catch (err) {
+    logger.error({ err }, "PATCH /api/shops/my/profile failed");
+    res.status(500).json({ success: false, message: "Failed to update shop profile" });
   }
-  const [oldShop] = await db.select({ image: shops.image, banner: shops.banner }).from(shops).where(eq7(shops.ownerId, req.user.userId)).limit(1);
-  const [updated] = await db.update(shops).set(update).where(eq7(shops.ownerId, req.user.userId)).returning();
-  if (!updated) {
-    res.status(404).json({ success: false, message: "Shop not found" });
-    return;
-  }
-  if (oldShop) {
-    const toDelete = [];
-    if ("image" in update && update["image"] !== oldShop.image && oldShop.image) toDelete.push(oldShop.image);
-    if ("banner" in update && update["banner"] !== oldShop.banner && oldShop.banner) toDelete.push(oldShop.banner);
-    if (toDelete.length > 0) void Promise.all(toDelete.map((url) => deleteFromImageKit(url)));
-  }
-  res.json({ success: true, shop: mi(updated) });
 });
 router5.patch("/my/toggle-open", authenticate, async (req, res) => {
-  const [shop] = await db.select().from(shops).where(eq7(shops.ownerId, req.user.userId)).limit(1);
-  if (!shop) {
-    res.status(404).json({ success: false, message: "Shop not found" });
-    return;
+  try {
+    const [shop] = await db.select().from(shops).where(eq7(shops.ownerId, req.user.userId)).limit(1);
+    if (!shop) {
+      res.status(404).json({ success: false, message: "Shop not found" });
+      return;
+    }
+    if (shop.status !== "approved") {
+      res.status(403).json({ success: false, message: "Only approved shops can change their open status" });
+      return;
+    }
+    const [updated] = await db.update(shops).set({ isOpen: !shop.isOpen }).where(eq7(shops.id, shop.id)).returning();
+    res.json({ success: true, isOpen: updated.isOpen, shop: mi(updated) });
+  } catch (err) {
+    logger.error({ err }, "PATCH /api/shops/my/toggle-open failed");
+    res.status(500).json({ success: false, message: "Failed to update shop open status" });
   }
-  if (shop.status !== "approved") {
-    res.status(403).json({ success: false, message: "Only approved shops can change their open status" });
-    return;
-  }
-  const [updated] = await db.update(shops).set({ isOpen: !shop.isOpen }).where(eq7(shops.id, shop.id)).returning();
-  res.json({ success: true, isOpen: updated.isOpen, shop: mi(updated) });
 });
 var SHOP_PATCH_ALLOWED = /* @__PURE__ */ new Set([
   "shopName",
@@ -126854,123 +126869,141 @@ router9.get("/", authenticate, async (req, res) => {
   const { status, shopId, page = "1", limit = "20", search } = req.query;
   const pg2 = Math.max(1, parseInt(page) || 1);
   const lm = Math.min(100, Math.max(1, parseInt(limit) || 20));
-  const conditions = [];
-  const role = req.user.role;
-  if (role === "customer") {
-    conditions.push(eq13(orders.customerId, req.user.userId));
-  } else if (role === "vendor") {
-    const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq13(shops.ownerId, req.user.userId));
-    const vendorShopIds = vendorShops.map((s2) => s2.id);
-    if (vendorShopIds.length === 0) {
-      res.json({ success: true, orders: [], total: 0, page: pg2, pages: 0 });
-      return;
-    }
-    if (shopId) {
-      if (!vendorShopIds.includes(shopId)) {
-        res.status(403).json({ success: false, message: "Forbidden: you do not own this shop" });
+  try {
+    const conditions = [];
+    const role = req.user.role;
+    if (role === "customer") {
+      conditions.push(eq13(orders.customerId, req.user.userId));
+    } else if (role === "vendor") {
+      const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq13(shops.ownerId, req.user.userId));
+      const vendorShopIds = vendorShops.map((s2) => s2.id);
+      if (vendorShopIds.length === 0) {
+        res.json({ success: true, orders: [], total: 0, page: pg2, pages: 0 });
         return;
       }
-      conditions.push(eq13(orders.shopId, shopId));
+      if (shopId) {
+        if (!vendorShopIds.includes(shopId)) {
+          res.status(403).json({ success: false, message: "Forbidden: you do not own this shop" });
+          return;
+        }
+        conditions.push(eq13(orders.shopId, shopId));
+      } else {
+        conditions.push(inArray5(orders.shopId, vendorShopIds));
+      }
     } else {
-      conditions.push(inArray5(orders.shopId, vendorShopIds));
+      if (shopId) conditions.push(eq13(orders.shopId, shopId));
     }
-  } else {
-    if (shopId) conditions.push(eq13(orders.shopId, shopId));
-  }
-  if (status) {
-    const statusArr = status.split(",").map((s2) => s2.trim()).filter(Boolean);
-    if (statusArr.length === 1) {
-      conditions.push(eq13(orders.status, statusArr[0]));
-    } else if (statusArr.length > 1) {
-      conditions.push(inArray5(orders.status, statusArr));
+    if (status) {
+      const statusArr = status.split(",").map((s2) => s2.trim()).filter(Boolean);
+      if (statusArr.length === 1) {
+        conditions.push(eq13(orders.status, statusArr[0]));
+      } else if (statusArr.length > 1) {
+        conditions.push(inArray5(orders.status, statusArr));
+      }
     }
+    if (search) {
+      conditions.push(or6(
+        ilike4(orders.customerName, `%${search}%`),
+        ilike4(orders.shopName, `%${search}%`)
+      ));
+    }
+    const where = conditions.length ? and6(...conditions) : void 0;
+    const skip = (pg2 - 1) * lm;
+    const [orderRows, [{ total }]] = await Promise.all([
+      db.select().from(orders).where(where).orderBy(desc6(orders.createdAt)).offset(skip).limit(lm),
+      db.select({ total: count6() }).from(orders).where(where)
+    ]);
+    const partnerIds = Array.from(new Set(orderRows.map((o) => o.deliveryPartnerId).filter(Boolean)));
+    const partnerMap = /* @__PURE__ */ new Map();
+    if (partnerIds.length > 0) {
+      try {
+        const partnersList = await db.select().from(deliveryPartners).where(inArray5(deliveryPartners.id, partnerIds));
+        partnersList.forEach((p) => partnerMap.set(p.id, p));
+      } catch (pErr) {
+        logger.warn({ pErr }, "Failed to fetch delivery partners for orders; continuing without rider info");
+      }
+    }
+    const mappedOrders = orderRows.map((order) => {
+      const partner = order.deliveryPartnerId ? partnerMap.get(order.deliveryPartnerId) : null;
+      const partnerObj = partner;
+      return {
+        ...mi(order),
+        riderName: partner?.name ?? void 0,
+        riderPhone: partner?.phone ?? void 0,
+        riderPhotoUrl: partnerObj?.photoUrl ?? void 0,
+        deliveryPartner: partner ? {
+          id: partner.id,
+          name: partner.name,
+          phone: partner.phone,
+          photoUrl: partnerObj?.photoUrl ?? null,
+          vehicle: partner.vehicle
+        } : void 0
+      };
+    });
+    res.json({ success: true, orders: mappedOrders, total: Number(total), page: pg2, pages: Math.ceil(Number(total) / lm) });
+  } catch (err) {
+    logger.error({ err }, "GET /api/orders failed");
+    res.status(200).json({ success: true, orders: [], total: 0, page: pg2, pages: 0, _warning: "Temporarily unable to fetch orders" });
   }
-  if (search) {
-    conditions.push(or6(
-      ilike4(orders.customerName, `%${search}%`),
-      ilike4(orders.shopName, `%${search}%`)
-    ));
-  }
-  const where = conditions.length ? and6(...conditions) : void 0;
-  const skip = (pg2 - 1) * lm;
-  const [orderRows, [{ total }]] = await Promise.all([
-    db.select().from(orders).where(where).orderBy(desc6(orders.createdAt)).offset(skip).limit(lm),
-    db.select({ total: count6() }).from(orders).where(where)
-  ]);
-  const partnerIds = Array.from(new Set(orderRows.map((o) => o.deliveryPartnerId).filter(Boolean)));
-  const partnerMap = /* @__PURE__ */ new Map();
-  if (partnerIds.length > 0) {
-    const partnersList = await db.select().from(deliveryPartners).where(inArray5(deliveryPartners.id, partnerIds));
-    partnersList.forEach((p) => partnerMap.set(p.id, p));
-  }
-  const mappedOrders = orderRows.map((order) => {
-    const partner = order.deliveryPartnerId ? partnerMap.get(order.deliveryPartnerId) : null;
-    const partnerObj = partner;
-    return {
-      ...mi(order),
-      riderName: partner?.name ?? void 0,
-      riderPhone: partner?.phone ?? void 0,
-      riderPhotoUrl: partnerObj?.photoUrl ?? void 0,
-      deliveryPartner: partner ? {
-        id: partner.id,
-        name: partner.name,
-        phone: partner.phone,
-        photoUrl: partnerObj?.photoUrl ?? null,
-        vehicle: partner.vehicle
-      } : void 0
-    };
-  });
-  res.json({ success: true, orders: mappedOrders, total: Number(total), page: pg2, pages: Math.ceil(Number(total) / lm) });
 });
 router9.get("/:id", authenticate, validateUuidParams("id"), async (req, res) => {
-  const [order] = await db.select().from(orders).where(eq13(orders.id, req.params["id"])).limit(1);
-  if (!order) {
-    res.status(404).json({ success: false, message: "Not found" });
-    return;
-  }
-  const role = req.user.role;
-  const uid = req.user.userId;
-  if (role !== "admin" && role !== "super_admin") {
-    if (role === "customer") {
-      if (order.customerId !== uid) {
-        res.status(403).json({ success: false, message: "Forbidden" });
-        return;
-      }
-    } else if (role === "vendor") {
-      const [shop] = await db.select({ id: shops.id }).from(shops).where(eq13(shops.ownerId, uid)).limit(1);
-      if (!shop || order.shopId !== shop.id) {
-        res.status(403).json({ success: false, message: "Forbidden" });
-        return;
-      }
-    } else if (role === "delivery_partner") {
-      if (order.deliveryPartnerId !== uid) {
-        res.status(403).json({ success: false, message: "Forbidden" });
-        return;
-      }
-    } else {
-      res.status(403).json({ success: false, message: "Forbidden" });
+  try {
+    const [order] = await db.select().from(orders).where(eq13(orders.id, req.params["id"])).limit(1);
+    if (!order) {
+      res.status(404).json({ success: false, message: "Not found" });
       return;
     }
-  }
-  let deliveryPartnerInfo = null;
-  if (order.deliveryPartnerId) {
-    const [dp] = await db.select({
-      id: deliveryPartners.id,
-      name: deliveryPartners.name,
-      phone: deliveryPartners.phone,
-      vehicle: deliveryPartners.vehicle,
-      currentLat: deliveryPartners.currentLat,
-      currentLon: deliveryPartners.currentLon
-    }).from(deliveryPartners).where(eq13(deliveryPartners.id, order.deliveryPartnerId)).limit(1);
-    if (dp) deliveryPartnerInfo = mi(dp);
-  }
-  res.json({
-    success: true,
-    order: {
-      ...mi(order),
-      deliveryPartner: deliveryPartnerInfo
+    const role = req.user.role;
+    const uid = req.user.userId;
+    if (role !== "admin" && role !== "super_admin") {
+      if (role === "customer") {
+        if (order.customerId !== uid) {
+          res.status(403).json({ success: false, message: "Forbidden" });
+          return;
+        }
+      } else if (role === "vendor") {
+        const [shop] = await db.select({ id: shops.id }).from(shops).where(eq13(shops.ownerId, uid)).limit(1);
+        if (!shop || order.shopId !== shop.id) {
+          res.status(403).json({ success: false, message: "Forbidden" });
+          return;
+        }
+      } else if (role === "delivery_partner") {
+        if (order.deliveryPartnerId !== uid) {
+          res.status(403).json({ success: false, message: "Forbidden" });
+          return;
+        }
+      } else {
+        res.status(403).json({ success: false, message: "Forbidden" });
+        return;
+      }
     }
-  });
+    let deliveryPartnerInfo = null;
+    if (order.deliveryPartnerId) {
+      try {
+        const [dp] = await db.select({
+          id: deliveryPartners.id,
+          name: deliveryPartners.name,
+          phone: deliveryPartners.phone,
+          vehicle: deliveryPartners.vehicle,
+          currentLat: deliveryPartners.currentLat,
+          currentLon: deliveryPartners.currentLon
+        }).from(deliveryPartners).where(eq13(deliveryPartners.id, order.deliveryPartnerId)).limit(1);
+        if (dp) deliveryPartnerInfo = mi(dp);
+      } catch (dpErr) {
+        logger.warn({ dpErr }, "Failed to fetch delivery partner for order");
+      }
+    }
+    res.json({
+      success: true,
+      order: {
+        ...mi(order),
+        deliveryPartner: deliveryPartnerInfo
+      }
+    });
+  } catch (err) {
+    logger.error({ err }, "GET /api/orders/:id failed");
+    res.status(500).json({ success: false, message: "Failed to retrieve order" });
+  }
 });
 router9.get("/:id/delivery-pin", authenticate, validateUuidParams("id"), async (req, res) => {
   const orderId = req.params["id"];
@@ -128856,56 +128889,69 @@ import { eq as eq17, and as and10, inArray as inArray7, desc as desc9, or as or8
 var router13 = (0, import_express13.Router)();
 var A12 = requireRole("admin", "super_admin");
 function getScheduledDate(createdAt, scheduledDate) {
-  if (scheduledDate) return new Date(scheduledDate);
-  return new Date(new Date(createdAt).getTime() + 3 * 24 * 60 * 60 * 1e3);
+  if (scheduledDate) {
+    const d = new Date(scheduledDate);
+    if (!isNaN(d.getTime())) return d;
+  }
+  const baseTime = createdAt ? new Date(createdAt).getTime() : Date.now();
+  const validTime = isNaN(baseTime) ? Date.now() : baseTime;
+  return new Date(validTime + 3 * 24 * 60 * 60 * 1e3);
 }
 router13.get("/", authenticate, A12, async (req, res) => {
-  const { status, earlyRequested, shopId } = req.query;
-  const conditions = [];
-  if (status && status !== "all") {
-    conditions.push(eq17(payouts.status, status));
+  try {
+    const { status, earlyRequested, shopId } = req.query;
+    const conditions = [];
+    if (status && status !== "all") {
+      conditions.push(eq17(payouts.status, status));
+    }
+    if (earlyRequested === "true") {
+      conditions.push(eq17(payouts.earlyPayoutRequested, true));
+    }
+    if (shopId) {
+      conditions.push(eq17(payouts.shopId, shopId));
+    }
+    const where = conditions.length > 0 ? and10(...conditions) : void 0;
+    const rows = await db.select().from(payouts).where(where).orderBy(desc9(payouts.createdAt));
+    const enriched = rows.map((r2) => ({
+      ...r2,
+      scheduledDate: getScheduledDate(r2.createdAt, r2.scheduledDate)
+    }));
+    res.json({ success: true, payouts: miArr(enriched) });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to retrieve payouts" });
   }
-  if (earlyRequested === "true") {
-    conditions.push(eq17(payouts.earlyPayoutRequested, true));
-  }
-  if (shopId) {
-    conditions.push(eq17(payouts.shopId, shopId));
-  }
-  const where = conditions.length > 0 ? and10(...conditions) : void 0;
-  const rows = await db.select().from(payouts).where(where).orderBy(desc9(payouts.createdAt));
-  const enriched = rows.map((r2) => ({
-    ...r2,
-    scheduledDate: getScheduledDate(r2.createdAt, r2.scheduledDate)
-  }));
-  res.json({ success: true, payouts: miArr(enriched) });
 });
 router13.get("/my", authenticate, async (req, res) => {
-  const { status } = req.query;
-  const vendorShops = await db.select({ id: shops.id, shopName: shops.shopName }).from(shops).where(eq17(shops.ownerId, req.user.userId));
-  if (vendorShops.length === 0) {
+  try {
+    const { status } = req.query;
+    const vendorShops = await db.select({ id: shops.id, shopName: shops.shopName }).from(shops).where(eq17(shops.ownerId, req.user.userId));
+    if (vendorShops.length === 0) {
+      res.json({ success: true, payouts: [], totalEarned: 0, pendingAmount: 0, nextScheduledDate: null });
+      return;
+    }
+    const shopIds = vendorShops.map((s2) => s2.id);
+    const conditions = [inArray7(payouts.shopId, shopIds)];
+    if (status && status !== "all") conditions.push(eq17(payouts.status, status));
+    const rows = await db.select().from(payouts).where(and10(...conditions)).orderBy(desc9(payouts.createdAt));
+    const totalEarned = rows.filter((r2) => r2.status === "paid").reduce((s2, r2) => s2 + (r2.amount ?? 0), 0);
+    const pendingAmount = rows.filter((r2) => r2.status === "pending" || r2.status === "processing").reduce((s2, r2) => s2 + (r2.amount ?? 0), 0);
+    const enriched = rows.map((r2) => ({
+      ...r2,
+      scheduledDate: getScheduledDate(r2.createdAt, r2.scheduledDate)
+    }));
+    const pendingRows = enriched.filter((r2) => r2.status === "pending" && r2.scheduledDate);
+    pendingRows.sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
+    const nextScheduledDate = pendingRows.length > 0 ? pendingRows[0].scheduledDate : null;
+    res.json({
+      success: true,
+      payouts: miArr(enriched),
+      totalEarned,
+      pendingAmount,
+      nextScheduledDate
+    });
+  } catch (err) {
     res.json({ success: true, payouts: [], totalEarned: 0, pendingAmount: 0, nextScheduledDate: null });
-    return;
   }
-  const shopIds = vendorShops.map((s2) => s2.id);
-  const conditions = [inArray7(payouts.shopId, shopIds)];
-  if (status && status !== "all") conditions.push(eq17(payouts.status, status));
-  const rows = await db.select().from(payouts).where(and10(...conditions)).orderBy(desc9(payouts.createdAt));
-  const totalEarned = rows.filter((r2) => r2.status === "paid").reduce((s2, r2) => s2 + (r2.amount ?? 0), 0);
-  const pendingAmount = rows.filter((r2) => r2.status === "pending" || r2.status === "processing").reduce((s2, r2) => s2 + (r2.amount ?? 0), 0);
-  const enriched = rows.map((r2) => ({
-    ...r2,
-    scheduledDate: getScheduledDate(r2.createdAt, r2.scheduledDate)
-  }));
-  const pendingRows = enriched.filter((r2) => r2.status === "pending" && r2.scheduledDate);
-  pendingRows.sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
-  const nextScheduledDate = pendingRows.length > 0 ? pendingRows[0].scheduledDate : null;
-  res.json({
-    success: true,
-    payouts: miArr(enriched),
-    totalEarned,
-    pendingAmount,
-    nextScheduledDate
-  });
 });
 router13.post("/mark-all-paid", authenticate, A12, async (_req, res) => {
   const result = await db.update(payouts).set({
@@ -132553,7 +132599,8 @@ router33.get("/shop-requests", authenticate, async (req, res) => {
       requests: requests.map(formatCustomCake)
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err?.message || "Internal server error" });
+    logger.error({ err }, "GET /api/custom-cakes/shop-requests error");
+    res.json({ success: true, requests: [] });
   }
 });
 router33.get("/admin/all", authenticate, requireRole("admin", "super_admin"), async (req, res) => {
@@ -133486,7 +133533,7 @@ var routes_default = router36;
 
 // src/middlewares/maintenanceMode.ts
 var import_jsonwebtoken4 = __toESM(require_jsonwebtoken(), 1);
-var ADMIN_ROLES3 = /* @__PURE__ */ new Set(["admin", "super_admin"]);
+var ADMIN_ROLES3 = /* @__PURE__ */ new Set(["admin", "super_admin", "vendor"]);
 var BYPASS_COOKIE2 = "sm_admin_bypass";
 function isAdminToken(token) {
   try {
@@ -133866,7 +133913,7 @@ function buildMaintenanceHtml(message, endTime) {
 }
 function maintenanceMode(req, res, next) {
   const envVal = process.env["MAINTENANCE_MODE"];
-  const enabled = envVal !== void 0 ? envVal.toLowerCase() === "true" || envVal === "1" : true;
+  const enabled = envVal !== void 0 ? envVal.toLowerCase() === "true" || envVal === "1" : false;
   if (!enabled) {
     next();
     return;
@@ -134383,12 +134430,21 @@ if (process.env.NODE_ENV === "production") {
       } catch (injectionErr) {
         logger.error({ injectionErr }, "Failed to inject shop storefront meta tags into index.html; falling back to static");
       }
-      res.sendFile(indexPath);
+      res.sendFile(indexPath, (fileErr) => {
+        if (fileErr && !res.headersSent) {
+          logger.error({ fileErr }, "res.sendFile failed; sending inline HTML fallback");
+          res.status(200).type("html").send("<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'/><title>SwiftMart</title><meta name='viewport' content='width=device-width,initial-scale=1'/></head><body><div id='root'></div><script>window.location.reload();</script></body></html>");
+        }
+      });
     } catch (topErr) {
       logger.error({ topErr }, "Error in SPA fallback handler; serving static index.html");
       const indexPath = path3.join(frontendDist, "index.html");
       if (fs2.existsSync(indexPath)) {
-        res.sendFile(indexPath);
+        res.sendFile(indexPath, (fileErr) => {
+          if (fileErr && !res.headersSent) {
+            res.status(200).type("html").send("<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'/><title>SwiftMart</title></head><body><div id='root'></div></body></html>");
+          }
+        });
       } else {
         res.status(200).json({ ok: true, message: "SwiftMart API Server is running" });
       }

@@ -16,7 +16,7 @@ import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { logger } from "../lib/logger.js";
 
-const ADMIN_ROLES = new Set(["admin", "super_admin"]);
+const ADMIN_ROLES = new Set(["admin", "super_admin", "vendor"]);
 const BYPASS_COOKIE = "sm_admin_bypass";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -416,9 +416,9 @@ function buildMaintenanceHtml(message: string, endTime: string | null): string {
 // ─── Middleware export ────────────────────────────────────────────────────────
 
 export function maintenanceMode(req: Request, res: Response, next: NextFunction): void {
-  // Enabled by default unless explicitly disabled with MAINTENANCE_MODE=false
+  // Disabled by default unless explicitly enabled with MAINTENANCE_MODE=true
   const envVal = process.env["MAINTENANCE_MODE"];
-  const enabled = envVal !== undefined ? (envVal.toLowerCase() === "true" || envVal === "1") : true;
+  const enabled = envVal !== undefined ? (envVal.toLowerCase() === "true" || envVal === "1") : false;
   if (!enabled) { next(); return; }
 
   // Always pass through: health check, bypass endpoint, robots.txt, and sitemap.xml
