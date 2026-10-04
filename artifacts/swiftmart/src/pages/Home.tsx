@@ -385,13 +385,7 @@ export default function Home() {
   const [apiCategories, setApiCategories] = useState<DisplayCategory[]>([]);
   const [categoriesExpanded, setCategoriesExpanded] = useState(false);
 
-  const displayedCategories = useMemo(() => {
-    if (deliveryMode === "quick") {
-      const filtered = apiCategories.filter(c => QUICK_CATEGORY_SLUGS.has(c.id));
-      return filtered.length > 0 ? filtered : apiCategories;
-    }
-    return apiCategories;
-  }, [apiCategories, deliveryMode]);
+  const displayedCategories = apiCategories;
   const [dynamicSections, setDynamicSections] = useState<HomepageSection[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(true);
   const [bannerDismissed, setBannerDismissed] = useState(() =>
@@ -542,8 +536,8 @@ export default function Home() {
           )}
 
           {/* ── JioMart-Style Delivery Mode Switcher ── */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-2 sm:p-2.5 rounded-2xl border border-border/60 neu-card shadow-xs">
-            <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-xl">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 bg-card/80 backdrop-blur-sm p-2 rounded-2xl border border-border/50 neu-card shadow-xs">
+            <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-xl w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setDeliveryMode("quick")}
@@ -571,50 +565,27 @@ export default function Home() {
                 <span>All Products</span>
               </button>
             </div>
-            <div className="flex items-center justify-between sm:justify-end gap-2 text-xs font-medium text-muted-foreground px-2">
+            <div className="flex items-center justify-between sm:justify-end gap-2 text-xs font-medium text-muted-foreground px-2 w-full sm:w-auto">
               <div className="flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                <span>Delivering to <strong className="text-foreground">Balurghat (733103)</strong></span>
+                <span>Balurghat <strong className="text-foreground">733103</strong></span>
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                {deliveryMode === "quick" ? "⚡ 30–45m Express" : "🚚 Local & Pan-India"}
+                ⚡ 30–45m Express
               </span>
             </div>
           </div>
 
           <HeroBannerSlider />
 
-          {/* SwiftMart Local Delivery Highlights */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center" aria-label="SwiftMart Delivery Highlights">
-            <div className="bg-card/60 border border-border/40 rounded-xl p-2.5 neu-inset">
-              <span className="text-xs font-bold text-foreground block">⚡ 30–45 Min Express</span>
-              <span className="text-[10px] text-muted-foreground">Local Q-Commerce Fleet</span>
-            </div>
-            <div className="bg-card/60 border border-border/40 rounded-xl p-2.5 neu-inset">
-              <span className="text-xs font-bold text-foreground block">🥦 Fresh Groceries</span>
-              <span className="text-[10px] text-muted-foreground">Local Farm Daily Staples</span>
-            </div>
-            <div className="bg-card/60 border border-border/40 rounded-xl p-2.5 neu-inset">
-              <span className="text-xs font-bold text-foreground block">🏪 Balurghat Local Shops</span>
-              <span className="text-[10px] text-muted-foreground">Direct Trusted Retailers</span>
-            </div>
-            <div className="bg-card/60 border border-border/40 rounded-xl p-2.5 neu-inset">
-              <span className="text-xs font-bold text-foreground block">🚚 Intra-City Delivery</span>
-              <span className="text-[10px] text-muted-foreground">Instant Pick &amp; Drop</span>
-            </div>
-          </div>
-
-          {/* Admin-curated highlighted bucket bundles */}
-          <BucketBanner />
-
-          {/* ── Quick Access Row: Send Parcel & Service Corner (Side-by-Side Cards) ── */}
+          {/* ── Quick Services: Send Parcel & Service Corner (Side-by-Side Dual Cards) ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {/* 1. Send Parcel Card */}
             <Link href="/send-parcel" className="block group">
-              <div className="relative h-full min-h-[148px] sm:min-h-[164px] p-4 sm:p-5 rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between border border-emerald-500/30 shadow-xs transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md neu-card">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500" />
+              <div className="relative h-full min-h-[136px] sm:min-h-[148px] p-4 sm:p-5 rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between border border-emerald-500/25 shadow-xs hover:shadow-md transition-all group-hover:-translate-y-0.5">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700" />
                 <div
-                  className="absolute inset-0 opacity-15 pointer-events-none"
+                  className="absolute inset-0 opacity-10 pointer-events-none"
                   style={{
                     backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)",
                     backgroundSize: "20px 20px",
@@ -624,23 +595,23 @@ export default function Home() {
 
                 {/* Top: Icons & Badge */}
                 <div className="relative z-10 flex items-center justify-between">
-                  <div className="flex -space-x-1.5">
-                    {["📦", "🔑", "📄"].map((em, i) => (
-                      <div key={i} className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-base shadow-xs" style={{ zIndex: 3 - i }}>
-                        {em}
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-base shadow-xs">
+                      📦
+                    </span>
+                    <span className="text-white font-black text-base sm:text-lg">Send Parcel</span>
                   </div>
-                  <span className="text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full bg-white/25 text-white backdrop-blur-xs border border-white/20">
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white/25 text-white backdrop-blur-xs border border-white/20">
                     Flat ₹39 Base · 30–45m
                   </span>
                 </div>
 
                 {/* Bottom: Text & Button */}
-                <div className="relative z-10 mt-3">
-                  <p className="text-white font-extrabold text-base sm:text-lg leading-tight">Send Parcel</p>
-                  <p className="text-white/90 text-xs sm:text-sm mt-0.5 line-clamp-1">Intra-city Express Delivery across Balurghat</p>
-                  <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-emerald-950 bg-white hover:bg-emerald-50 w-fit px-3 py-1.5 rounded-xl shadow-xs transition-colors">
+                <div className="relative z-10 mt-3 flex items-end justify-between gap-3">
+                  <p className="text-white/90 text-xs sm:text-sm line-clamp-1">
+                    Intra-city express delivery across Balurghat
+                  </p>
+                  <div className="shrink-0 flex items-center gap-1 text-xs font-bold text-emerald-950 bg-white hover:bg-emerald-50 px-3 py-1.5 rounded-xl shadow-xs transition-colors">
                     <span>Book Delivery</span>
                     <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                   </div>
@@ -650,10 +621,10 @@ export default function Home() {
 
             {/* 2. Service Corner Card */}
             <Link href="/services" className="block group">
-              <div className="relative h-full min-h-[148px] sm:min-h-[164px] p-4 sm:p-5 rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between border border-blue-500/30 shadow-xs transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md neu-card">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-700 via-indigo-600 to-sky-500" />
+              <div className="relative h-full min-h-[136px] sm:min-h-[148px] p-4 sm:p-5 rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between border border-blue-500/25 shadow-xs hover:shadow-md transition-all group-hover:-translate-y-0.5">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-700 via-indigo-600 to-sky-600" />
                 <div
-                  className="absolute inset-0 opacity-15 pointer-events-none"
+                  className="absolute inset-0 opacity-10 pointer-events-none"
                   style={{
                     backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)",
                     backgroundSize: "20px 20px",
@@ -663,23 +634,23 @@ export default function Home() {
 
                 {/* Top: Icons & Badge */}
                 <div className="relative z-10 flex items-center justify-between">
-                  <div className="flex -space-x-1.5">
-                    {["📺", "❄️", "🧊"].map((em, i) => (
-                      <div key={i} className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-base shadow-xs" style={{ zIndex: 3 - i }}>
-                        {em}
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-base shadow-xs">
+                      🛠️
+                    </span>
+                    <span className="text-white font-black text-base sm:text-lg">Service Corner</span>
                   </div>
-                  <span className="text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-900 shadow-xs">
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-900 shadow-xs">
                     Upahar Lab
                   </span>
                 </div>
 
                 {/* Bottom: Text & Button */}
-                <div className="relative z-10 mt-3">
-                  <p className="text-white font-extrabold text-base sm:text-lg leading-tight">Service Corner 🛠️</p>
-                  <p className="text-white/90 text-xs sm:text-sm mt-0.5 line-clamp-1">TV, AC, Fridge, RO &amp; Home Appliance Repair</p>
-                  <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-blue-950 bg-white hover:bg-blue-50 w-fit px-3 py-1.5 rounded-xl shadow-xs transition-colors">
+                <div className="relative z-10 mt-3 flex items-end justify-between gap-3">
+                  <p className="text-white/90 text-xs sm:text-sm line-clamp-1">
+                    TV, AC, Fridge, RO &amp; Home Appliance Repair
+                  </p>
+                  <div className="shrink-0 flex items-center gap-1 text-xs font-bold text-blue-950 bg-white hover:bg-blue-50 px-3 py-1.5 rounded-xl shadow-xs transition-colors">
                     <span>Book Service</span>
                     <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                   </div>
@@ -720,6 +691,8 @@ export default function Home() {
             )}
           </section>
 
+          {/* Admin-curated highlighted bucket bundles / value deals */}
+          <BucketBanner />
 
           {/* ── AdSense Section Banner: Category & Shops Divider ── */}
           <AdSenseSectionBanner />

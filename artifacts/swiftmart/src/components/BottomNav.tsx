@@ -17,7 +17,7 @@ export function BottomNav() {
     { href: "/services", icon: Store, label: "Services" },
     { href: "/send-parcel", icon: Package, label: "Send Parcel" },
     { href: "/cart", icon: ShoppingCart, label: "Cart", badge: totalItems || undefined },
-    { href: "/orders", icon: Clock, label: "Orders" },
+    { href: "/profile", icon: User, label: "Profile" },
   ];
 
   const vendorTabs: Tab[] = [

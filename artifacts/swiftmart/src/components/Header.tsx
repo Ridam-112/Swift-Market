@@ -271,10 +271,10 @@ export function Header() {
               <nav className="hidden md:flex items-center gap-1">
                 {[
                   { href: "/", icon: Store, label: "Home" },
-                  { href: "/mall", icon: ShoppingBag, label: "Super Mall" },
                   { href: "/send-parcel", icon: Package, label: "Send Parcel" },
                   { href: "/services", icon: Wrench, label: "Services" },
                   { href: "/orders", icon: Clock, label: "Orders" },
+                  { href: "/profile", icon: User, label: "Profile" },
                 ].map(({ href, icon: Icon, label }) => {
                   const isActive = href === "/" ? location === "/" : location.startsWith(href);
                   return (
@@ -376,6 +376,13 @@ export function Header() {
                   )}
                 </Link>
               </>
+            )}
+
+            {/* Profile icon */}
+            {user && (
+              <Link href="/profile" aria-label="My Profile" className="relative p-2 rounded-full neu-card flex items-center justify-center hover:opacity-85 transition-opacity">
+                <User aria-hidden="true" className={cn("w-4 h-4", location.startsWith("/profile") ? "text-primary" : "text-foreground")} />
+              </Link>
             )}
           </div>
         </div>
