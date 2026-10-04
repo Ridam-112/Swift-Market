@@ -32,6 +32,7 @@ import layoutsRouter from "./layouts.js";
 import adminRidersRouter from "./adminRiders.js";
 import customCakesRouter from "./customCakes.js";
 import serviceBookingsRouter from "./serviceBookings.js";
+import whatsappRouter from "./whatsapp.js";
 import { db, categories } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { miArr } from "../../utils/mapId.js";
@@ -104,5 +105,6 @@ router.use("/admin/layout", layoutsRouter);
 router.use("/admin/riders", adminRidersRouter);
 router.use("/custom-cakes", customCakesRouter);
 router.use("/services", serviceBookingsRouter);
+router.use("/whatsapp", whatsappRouter);
 
 export default router;

@@ -98,6 +98,8 @@ const EXTERNAL_PACKAGES = [
   "puppeteer",
   "puppeteer-core",
   "electron",
+  "@whiskeysockets/baileys",
+  "qrcode",
 ];
 
 async function buildAll() {

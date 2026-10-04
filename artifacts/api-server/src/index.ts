@@ -10,6 +10,7 @@ import { OTP_MODE } from "./lib/sms.js";
 import { verifyShardConnections } from "./lib/dbRouter.js";
 import { migrateDataToBalurghat } from "./utils/migrateBalurghat.js";
 import { initMasterProducts } from "./utils/initMasterProducts.js";
+import { whatsappService } from "./services/whatsapp.js";
 
 // AUTH_MODE controls which login methods are enabled (otp | google | both).
 // Default is "both" so Google and Email authentication are enabled out of the box.
@@ -237,6 +238,15 @@ async function main() {
       await verifyShardConnections();
     } catch (err) {
       logger.error({ err }, "[dbRouter] Shard connectivity check error (non-fatal)");
+    }
+
+    // Initialize WhatsApp Baileys service (zero DB queries, purely local session)
+    try {
+      whatsappService.init().catch((err) => {
+        logger.warn({ err }, "[startup] WhatsApp Baileys init warning (non-fatal)");
+      });
+    } catch (err) {
+      logger.warn({ err }, "[startup] WhatsApp Baileys launch error (non-fatal)");
     }
   });
 

@@ -79,3 +79,9 @@ GoogleService-Info.plist
 service-account*.json
 firebase-adminsdk*.json
 *-firebase-adminsdk-*.json
+
+# WhatsApp Baileys session data
+**/whatsapp_session/**
+*whatsapp_session*
+data/whatsapp_session/
+

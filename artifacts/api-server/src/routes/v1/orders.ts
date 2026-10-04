@@ -10,6 +10,7 @@ import { resolveCommission, calculateCommissionAmount } from "../../utils/commis
 import { createNotificationLimited } from "../../utils/notification.js";
 import { logger } from "../../lib/logger.js";
 import { mi, miArr } from "../../utils/mapId.js";
+import { whatsappService } from "../../services/whatsapp.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -555,7 +556,7 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
 
   // Pre-transaction read: fetch shop (needed for commission resolution + payout + packaging/GST)
   const [shop] = await db
-    .select({ id: shops.id, ownerId: shops.ownerId, shopType: shops.shopType, ownerName: shops.ownerName, shopName: shops.shopName, packagingCharge: shops.packagingCharge, gstEnabled: shops.gstEnabled, gstRate: shops.gstRate })
+    .select({ id: shops.id, ownerId: shops.ownerId, shopType: shops.shopType, ownerName: shops.ownerName, shopName: shops.shopName, phone: shops.phone, packagingCharge: shops.packagingCharge, gstEnabled: shops.gstEnabled, gstRate: shops.gstRate })
     .from(shops).where(eq(shops.id, shopId)).limit(1);
   const vendorId = shop ? shop.ownerId : shopId;
 
@@ -879,7 +880,11 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
 
   try {
     if (shop?.ownerId) {
-      const [vendor] = await db.select({ id: users.id }).from(users).where(eq(users.id, shop.ownerId)).limit(1);
+      const [vendor] = await db
+        .select({ id: users.id, phone: users.phone, name: users.name })
+        .from(users)
+        .where(eq(users.id, shop.ownerId))
+        .limit(1);
       if (vendor) {
         await createNotificationLimited(vendor.id, {
           type: "order_update",
@@ -887,6 +892,30 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
           message: `You have a new order #${createdOrder.id.slice(-6).toUpperCase()} worth ₹${createdOrder.netAmount}.`,
           data: { orderId: createdOrder.id },
         });
+
+        // Instant WhatsApp order notification to vendor
+        const targetPhone = vendor.phone || shop.phone;
+        if (targetPhone) {
+          whatsappService.sendOrderAlertToVendor({
+            vendorPhone: targetPhone,
+            vendorName: vendor.name ?? shop.ownerName ?? "Partner",
+            shopName: shop.shopName ?? "SwiftMart Shop",
+            orderNumber: createdOrder.id.slice(-6).toUpperCase(),
+            orderId: createdOrder.id,
+            customerName: createdOrder.customerName || "Customer",
+            customerPhone: createdOrder.customerPhone || "N/A",
+            deliveryAddress: [
+              (createdOrder.address as any)?.line1,
+              (createdOrder.address as any)?.line2,
+              (createdOrder.address as any)?.city,
+            ].filter(Boolean).join(", "),
+            items: (createdOrder.items as any[]) || [],
+            netAmount: createdOrder.netAmount,
+            paymentMethod: createdOrder.paymentMethod || "COD",
+          }).catch((err) => {
+            logger.warn({ err }, "[WhatsApp] Background vendor alert error");
+          });
+        }
       }
     }
   } catch { /* ignore vendor notification errors */ }

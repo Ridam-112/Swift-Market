@@ -149,7 +149,7 @@ function buildDaySeries(orders: ApiOrder[]) {
 }
 
 
-type AdminSection = 'overview' | 'requests' | 'shops' | 'shops-map' | 'users' | 'orders' | 'custom-cakes' | 'service-corner' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config' | 'theme-config' | 'app-home-builder' | 'app-superstore-builder' | 'app-cafe-builder' | 'riders';
+type AdminSection = 'overview' | 'requests' | 'shops' | 'shops-map' | 'users' | 'orders' | 'custom-cakes' | 'service-corner' | 'reports' | 'analytics' | 'transactions' | 'notifications' | 'hero-banners' | 'coupons' | 'commissions' | 'shop-types' | 'payouts' | 'categories' | 'product-approvals' | 'support' | 'trending-products' | 'delivery-charges' | 'home-sections' | 'buckets' | 'service-areas' | 'delivery-partners' | 'fleet-map' | 'managers' | 'seasonal-campaign' | 'cafe-config' | 'theme-config' | 'app-home-builder' | 'app-superstore-builder' | 'app-cafe-builder' | 'riders' | 'whatsapp';
 
 import { SEO } from "@/components/SEO";
 import FleetMapTab from "@/components/FleetMapTab";
@@ -158,6 +158,7 @@ import { ThemeConfigTab } from "./admin/ThemeConfigTab";
 import { LayoutBuilderTab } from "./admin/LayoutBuilderTab";
 import { AdminCustomCakesTab } from "./admin/AdminCustomCakesTab";
 import { AdminServiceCornerTab } from "./admin/AdminServiceCornerTab";
+import { WhatsAppTab } from "./admin/WhatsAppTab";
 
 export default function Admin() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -277,6 +278,7 @@ export default function Admin() {
                   subtitle="Decorate and arrange cafe & food tab banners, weather cravings, hot deals, and recipe blocks for the SwiftMart Mobile App"
                 />
               )}
+              {activeSection === 'whatsapp' && <WhatsAppTab />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -331,6 +333,7 @@ function SidebarContent({ activeSection, setActiveSection, handleLogout }: { act
     { id: 'analytics', label: 'Analytics', icon: BarChart2 },
     { id: 'transactions', label: 'Transactions', icon: CreditCard },
     { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'whatsapp', label: 'WhatsApp Alerts', icon: MessageSquare },
     { id: 'hero-banners', label: 'Hero Banners', icon: ImageIcon },
     { id: 'coupons', label: 'Coupons', icon: Tag },
     { id: 'product-approvals', label: 'Product Approvals', icon: Package },
