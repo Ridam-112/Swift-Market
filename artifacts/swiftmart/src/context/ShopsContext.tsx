@@ -25,6 +25,8 @@ export interface ShopListing {
   address?: Record<string, any>;
   lat?: number;
   lng?: number;
+  googleBusinessUrl?: string;
+  googlePlaceId?: string;
 }
 
 interface ApiShopItem {
@@ -46,6 +48,9 @@ interface ApiShopItem {
   packagingCharge?: number;
   gstEnabled?: boolean;
   gstRate?: number;
+  googleBusinessUrl?: string;
+  google_business_url?: string;
+  googlePlaceId?: string;
 }
 
 export function mapApiShop(s: ApiShopItem): ShopListing {
@@ -76,6 +81,8 @@ export function mapApiShop(s: ApiShopItem): ShopListing {
     address: addr,
     lat: latVal,
     lng: lngVal,
+    googleBusinessUrl: s.googleBusinessUrl || s.google_business_url || undefined,
+    googlePlaceId: s.googlePlaceId || undefined,
   };
 }
 

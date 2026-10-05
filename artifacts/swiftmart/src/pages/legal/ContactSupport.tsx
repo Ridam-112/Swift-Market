@@ -40,6 +40,17 @@ export default function ContactSupport() {
           <strong className="text-foreground">Support hours:</strong> Monday to Saturday, 9:00 AM – 7:00 PM IST<br />
           <strong className="text-foreground">Response time:</strong> Within 1 business day for emails
         </p>
+        <p className="pt-2">
+          <a
+            href="https://share.google/7uxIQizF0XLUe9TgX"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-card border border-border/80 text-foreground rounded-xl px-3.5 py-2 text-xs font-semibold hover:border-primary/50 transition-colors shadow-2xs"
+          >
+            <span>📍 Find SwiftMart on Google Maps &amp; Read Reviews</span>
+            <span className="text-amber-500 font-bold">★ 5.0</span>
+          </a>
+        </p>
       </Section>
 
       <Section title="In-App Support">

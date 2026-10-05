@@ -7,6 +7,8 @@ export declare const primaryDb: import("drizzle-orm/node-postgres").NodePgDataba
 export declare const replicaDbs: (import("drizzle-orm/node-postgres").NodePgDatabase<typeof schema> & {
     $client: import("pg").Pool;
 })[];
-export declare const db: typeof primaryDb;
+export declare const db: import("drizzle-orm/node-postgres").NodePgDatabase<typeof schema> & {
+    $client: import("pg").Pool;
+};
 export * from "./schema/index.js";
 //# sourceMappingURL=index.d.ts.map

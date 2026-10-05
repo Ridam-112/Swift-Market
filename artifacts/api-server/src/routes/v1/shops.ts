@@ -112,6 +112,8 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
         ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_status text DEFAULT 'pending';
         ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_reject_reason text;
         ALTER TABLE shops ADD COLUMN IF NOT EXISTS verification_status text DEFAULT 'pending';
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS google_business_url text;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS google_place_id text;
       `);
       const authReq = req as AuthRequest;
       const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
@@ -443,7 +445,7 @@ const RESTAURANT_SHOP_TYPES = new Set(["restaurant", "fast-food", "cloud-kitchen
 // PATCH /api/shops/my/profile — vendor updates their own shop profile (safe fields only)
 router.patch("/my/profile", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const allowed = ["shopName", "description", "image", "banner", "shopType", "category", "timings", "address"];
+    const allowed = ["shopName", "description", "image", "banner", "shopType", "category", "timings", "address", "googleBusinessUrl", "googlePlaceId"];
     const update: Record<string, unknown> = {};
     const body = req.body as Record<string, unknown>;
     for (const key of allowed) {
@@ -532,6 +534,7 @@ const SHOP_PATCH_ALLOWED = new Set([
   "shopName", "ownerName", "phone", "address", "shopType", "category", "subcategory",
   "description", "image", "banner", "timings", "commissionRate", "status", "isOpen",
   "panNumber", "gstNumber", "bankAccountHolderName", "bankAccountNumber", "bankIfscCode", "upiId",
+  "googleBusinessUrl", "googlePlaceId",
 ]);
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body as Record<string, unknown>;

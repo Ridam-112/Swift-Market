@@ -83,6 +83,7 @@ const aboutJsonLd = [
       },
       "sameAs": [
         "https://swiftmart.space/",
+        "https://share.google/7uxIQizF0XLUe9TgX",
         "https://www.facebook.com/swiftmart.balurghat",
         "https://www.instagram.com/swiftmart.balurghat",
         "https://x.com/SwiftMart_IN",
@@ -100,6 +101,10 @@ const aboutJsonLd = [
     "image": "https://swiftmart.space/opengraph.jpg",
     "telephone": "+91 62961 18949",
     "url": "https://swiftmart.space/contact-support",
+    "hasMap": "https://share.google/7uxIQizF0XLUe9TgX",
+    "sameAs": [
+      "https://share.google/7uxIQizF0XLUe9TgX"
+    ],
     "priceRange": "₹",
     "address": {
       "@type": "PostalAddress",

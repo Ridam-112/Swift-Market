@@ -38,7 +38,10 @@ interface ApiShop {
   packagingCharge?: number | null;
   gstEnabled?: boolean;
   gstRate?: number | null;
+  googleBusinessUrl?: string;
 }
+
+import { GoogleGLogo } from "@/lib/googleBusiness";
 
 async function uploadImage(file: File, endpoint: string): Promise<string | null> {
   const formData = new FormData();
@@ -176,6 +179,7 @@ export default function ShopProfile() {
   const [packagingCharge, setPackagingCharge] = useState<string>("");
   const [gstEnabled, setGstEnabled] = useState(false);
   const [gstRate, setGstRate] = useState<string>("");
+  const [googleBusinessUrl, setGoogleBusinessUrl] = useState("");
 
   useEffect(() => {
     api.get<{ success: boolean; categories: ApiCategory[] }>("/categories")
@@ -210,6 +214,7 @@ export default function ShopProfile() {
         setPackagingCharge(shop.packagingCharge != null ? String(shop.packagingCharge) : "");
         setGstEnabled(shop.gstEnabled ?? false);
         setGstRate(shop.gstRate != null ? String(shop.gstRate) : "");
+        setGoogleBusinessUrl(shop.googleBusinessUrl ?? (shop as any).google_business_url ?? "");
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -270,6 +275,7 @@ export default function ShopProfile() {
         timings: { open: timingsOpen, close: timingsClose },
         gstEnabled,
         gstRate: gstEnabled && gstRate.trim() ? Number(gstRate) : null,
+        googleBusinessUrl: googleBusinessUrl.trim() || null,
         ...(["restaurant", "fast-food", "cloud-kitchen"].includes(shopType)
           ? { packagingCharge: packagingCharge.trim() ? Number(packagingCharge) : null }
           : {}),
@@ -384,6 +390,26 @@ export default function ShopProfile() {
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             </div>
+          </div>
+
+          <div className="space-y-2 pt-2 border-t border-border/40">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="googleBusinessUrl" className="flex items-center gap-2 font-semibold">
+                <GoogleGLogo className="w-4 h-4" />
+                <span>Google Business Profile / Maps Link</span>
+              </Label>
+              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Optional</span>
+            </div>
+            <Input
+              id="googleBusinessUrl"
+              value={googleBusinessUrl}
+              onChange={e => setGoogleBusinessUrl(e.target.value)}
+              className="bg-background neu-inset border-none"
+              placeholder="e.g. https://share.google/... or https://maps.app.goo.gl/..."
+            />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Link your shop&apos;s Google Business Profile to show verified Google ratings, reviews, and a direct map link on your store page.
+            </p>
           </div>
         </section>
 

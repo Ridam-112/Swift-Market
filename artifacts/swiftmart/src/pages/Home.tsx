@@ -89,6 +89,7 @@ const HOME_JSON_LD = [
     },
     "sameAs": [
       "https://swiftmart.space/",
+      "https://share.google/7uxIQizF0XLUe9TgX",
       "https://www.facebook.com/swiftmart.balurghat",
       "https://www.instagram.com/swiftmart.balurghat",
       "https://x.com/SwiftMart_IN",

@@ -14,6 +14,7 @@ import { downloadPickupSticker, printPickupSticker } from "@/lib/pickupSticker";
 import { QrCode, Download, Printer, ShieldCheck, MapPin, AlertTriangle, CheckCircle2, History } from "lucide-react";
 import { formatINR } from "@/lib/currency";
 import { api } from "@/lib/api";
+import { GoogleGLogo, getShopGoogleBusinessUrl } from "@/lib/googleBusiness";
 
 interface ShopAddress { line1?: string; city?: string; pincode?: string; state?: string; }
 
@@ -30,6 +31,8 @@ interface ShopData {
   isOpen?: boolean;
   rating?: number;
   address?: ShopAddress;
+  googleBusinessUrl?: string;
+  google_business_url?: string;
   createdAt: string;
 }
 
@@ -404,6 +407,21 @@ export function ShopDetailsPanel({ shopId, onClose }: Props) {
                 {shop.isOpen ? "Open" : "Closed"}
               </Badge>
             )}
+            {(() => {
+              const googleUrl = getShopGoogleBusinessUrl(shop);
+              if (!googleUrl) return null;
+              return (
+                <a
+                  href={googleUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition-colors"
+                >
+                  <GoogleGLogo className="w-3.5 h-3.5" />
+                  <span>Google Business</span>
+                </a>
+              );
+            })()}
           </div>
           {addressStr && <p className="text-sm text-muted-foreground">{addressStr}</p>}
         </div>

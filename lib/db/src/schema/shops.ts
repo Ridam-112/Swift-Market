@@ -46,6 +46,8 @@ export const shops = pgTable("shops", {
   pickupGpsRadiusMeters: integer("pickup_gps_radius_meters").default(200),
   pickupGpsEnforced: boolean("pickup_gps_enforced").notNull().default(true),
   lastQrScanAt: timestamp("last_qr_scan_at"),
+  googleBusinessUrl: text("google_business_url"),
+  googlePlaceId: text("google_place_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [

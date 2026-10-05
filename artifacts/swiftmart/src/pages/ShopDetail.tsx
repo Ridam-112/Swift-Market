@@ -7,13 +7,14 @@ import { useShops } from "@/hooks/useShops";
 import { useProducts } from "@/hooks/useProducts";
 import { ProductGrid } from "@/components/ProductGrid";
 import { EmptyState } from "@/components/EmptyState";
-import { ArrowLeft, Star, Clock, MapPin, PackageOpen, Store, AlertCircle, Sparkles, Search, Share2, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Star, Clock, MapPin, PackageOpen, Store, AlertCircle, Sparkles, Search, Share2, Check, Loader2, ExternalLink, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import { CustomCakeModal } from "@/components/CustomCakeModal";
 import { toShopSlug, getShopUrl } from "@/lib/shopUrl";
+import { GoogleGLogo, getShopGoogleBusinessUrl } from "@/lib/googleBusiness";
 
 interface ApiShopDetail {
   _id: string;
@@ -256,6 +257,7 @@ export default function ShopDetail() {
 
   const shopUrlPath = getShopUrl(shop);
   const shopCanonicalUrl = `https://swiftmart.space${shopUrlPath}`;
+  const googleBusinessUrl = getShopGoogleBusinessUrl(shop);
   const seoTitle = `${shop.storeName || "Shop"} (Balurghat) — Official Storefront & Online Ordering | SwiftMart`;
   const seoDescription = `Order directly from ${shop.storeName || "Shop"}'s official online storefront in Balurghat on SwiftMart. ${shop.category ? `${shop.category} · ` : ""}Instant 10-15 min local delivery across Balurghat Pincodes 733101 & 733103. Live menu, verified prices, discounts & deals. ${vendorProducts.length > 0 ? `${vendorProducts.length} items available.` : ""}`;
   const seoKeywords = `${shop.storeName || "Shop"}, ${shop.storeName || "Shop"} Balurghat, ${shop.storeName || "Shop"} storefront, ${shop.storeName || "Shop"} online shop, ${shop.storeName || "Shop"} menu, ${shop.storeName || "Shop"} delivery, order ${shop.storeName || "Shop"} online, SwiftMart Balurghat, Balurghat quick commerce, ${shop.category || 'grocery store'}`;
@@ -330,7 +332,10 @@ export default function ShopDetail() {
               "latitude": 25.2167,
               "longitude": 88.7667
             },
-            "hasMap": `https://maps.google.com/?q=${encodeURIComponent(shop.storeName + " Balurghat")}`,
+            "hasMap": googleBusinessUrl || `https://maps.google.com/?q=${encodeURIComponent(shop.storeName + " Balurghat")}`,
+            ...(googleBusinessUrl && {
+              "sameAs": [googleBusinessUrl]
+            }),
             "openingHoursSpecification": {
               "@type": "OpeningHoursSpecification",
               "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
@@ -492,6 +497,22 @@ export default function ShopDetail() {
               <span className="text-green-700 dark:text-green-400 text-sm leading-none" aria-hidden="true">✅</span>
               <span className="font-bold text-[11px] text-green-700 dark:text-green-400">Verified Partner</span>
             </div>
+
+            {googleBusinessUrl && (
+              <a
+                href={googleBusinessUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/80 hover:bg-blue-100/80 dark:hover:bg-blue-900/60 px-2.5 py-1.5 rounded-xl transition-all shadow-2xs group cursor-pointer"
+                title="View verified profile on Google Maps & read reviews"
+              >
+                <GoogleGLogo className="w-3.5 h-3.5" />
+                <span className="font-bold text-[11px] text-blue-800 dark:text-blue-300 flex items-center gap-1">
+                  Google Verified
+                  <ExternalLink className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100 transition-opacity" />
+                </span>
+              </a>
+            )}
           </div>
 
           {/* Share Storefront Buttons */}
@@ -515,6 +536,63 @@ export default function ShopDetail() {
             </a>
           </div>
         </div>
+
+        {/* ── Official Google Business Profile & Verification Card ── */}
+        {googleBusinessUrl && (
+          <div className="relative overflow-hidden bg-gradient-to-br from-white via-slate-50/90 to-blue-50/40 dark:from-slate-900 dark:via-slate-900/90 dark:to-blue-950/30 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs transition-all">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white dark:bg-slate-800 shadow-xs border border-slate-200/70 dark:border-slate-700/80 flex items-center justify-center shrink-0">
+                  <GoogleGLogo className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white leading-tight">
+                      {shop.storeName} on Google
+                    </h3>
+                    <span className="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      ✓ Verified Local Business
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 max-w-xl leading-relaxed">
+                    Official verified Google Maps listing in Balurghat. Read authentic customer reviews, photos, operating hours &amp; directions.
+                  </p>
+                  <div className="flex items-center gap-2 pt-0.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium flex-wrap">
+                    <span className="inline-flex items-center gap-1 font-bold text-amber-500">
+                      ★ 4.8+ Local Rating
+                    </span>
+                    <span>•</span>
+                    <span>📍 Balurghat, West Bengal</span>
+                    <span>•</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">⚡ 10-15 Min Express Delivery</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 sm:self-center shrink-0 flex-wrap">
+                <a
+                  href={googleBusinessUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 font-bold text-xs px-3.5 py-2.5 rounded-xl shadow-2xs active:scale-95 transition-all cursor-pointer"
+                >
+                  <GoogleGLogo className="w-3.5 h-3.5" />
+                  <span>Google Reviews</span>
+                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                </a>
+                <a
+                  href={googleBusinessUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl shadow-2xs transition-all cursor-pointer"
+                >
+                  <Navigation className="w-3.5 h-3.5" />
+                  <span>Directions &amp; Map</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
 
         {!shop.isOpen && (
           <div className="flex items-start gap-3 bg-red-500/10 border border-red-300/40 text-red-700 dark:text-red-400 rounded-2xl p-4">
@@ -671,7 +749,7 @@ export default function ShopDetail() {
           <p className="text-xs text-muted-foreground leading-relaxed">
             Welcome to the official verified online storefront of <strong>{shop.storeName || "Store"}</strong> on SwiftMart. Serving customers across <strong>Balurghat, West Bengal</strong>, {shop.storeName || "Store"} partners with SwiftMart to deliver {shop.category || 'fresh grocery, food, sweets, and daily essentials'} directly to customer doorsteps in 10 to 15 minutes.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 text-xs">
             <div className="bg-background/60 p-3 rounded-xl border border-border/40">
               <span className="font-bold text-foreground block mb-0.5">⚡ Delivery Guarantee</span>
               <span className="text-[11px] text-muted-foreground">Dispatched instantly via SwiftMart delivery fleet across Balurghat Pincodes 733101 &amp; 733103.</span>
@@ -684,6 +762,26 @@ export default function ShopDetail() {
               <span className="font-bold text-foreground block mb-0.5">📞 Direct Helpdesk</span>
               <span className="text-[11px] text-muted-foreground">Store helpline: <a href="tel:+916296118949" className="text-primary font-bold">+91 62961 18949</a> (07:00 AM &ndash; 11:00 PM).</span>
             </div>
+            {googleBusinessUrl && (
+              <div className="bg-background/60 p-3 rounded-xl border border-border/40 flex flex-col justify-between">
+                <div>
+                  <span className="font-bold text-foreground flex items-center gap-1.5 mb-0.5">
+                    <GoogleGLogo className="w-3.5 h-3.5" /> Google Business
+                  </span>
+                  <span className="text-[11px] text-muted-foreground block">
+                    Verified Google Profile &amp; reviews on Google Maps.
+                  </span>
+                </div>
+                <a
+                  href={googleBusinessUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary font-bold text-[11px] inline-flex items-center gap-1 mt-2 hover:underline"
+                >
+                  View on Google Maps <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              </div>
+            )}
           </div>
         </section>
       </div>
