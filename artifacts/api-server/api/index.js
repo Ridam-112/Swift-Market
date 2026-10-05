@@ -267774,6 +267774,34 @@ var WhatsAppService = class {
       this.qrListeners.push(onUpdate);
     });
   }
+  waitForConnection(timeoutMs = 2e4) {
+    if (this.state.status === "connected") {
+      return Promise.resolve(this.getStatus());
+    }
+    return new Promise((resolve) => {
+      let resolved = false;
+      let timer = null;
+      const cleanup = () => {
+        if (timer) clearTimeout(timer);
+        this.qrListeners = this.qrListeners.filter((l) => l !== onUpdate);
+      };
+      const onUpdate = (st) => {
+        if (!resolved && st.status === "connected") {
+          resolved = true;
+          cleanup();
+          resolve(st);
+        }
+      };
+      timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve(this.getStatus());
+        }
+      }, timeoutMs);
+      this.qrListeners.push(onUpdate);
+    });
+  }
   /**
    * Initializes the WhatsApp Baileys connection.
    */
@@ -275047,6 +275075,13 @@ var router35 = (0, import_express35.Router)();
 var A27 = requireRole("admin", "super_admin");
 router35.get("/status", authenticate, A27, async (_req, res) => {
   const status = await whatsappService.getStatusAsync();
+  res.json({
+    success: true,
+    data: status
+  });
+});
+router35.get("/wait-for-connection", authenticate, A27, async (_req, res) => {
+  const status = await whatsappService.waitForConnection(2e4);
   res.json({
     success: true,
     data: status

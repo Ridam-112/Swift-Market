@@ -126,6 +126,30 @@ export function WhatsAppTab() {
     };
   }, [fetchStatus, isQrReady, isConnecting]);
 
+  // Keep-alive long-poll while QR code is displayed to keep socket open during phone scan
+  useEffect(() => {
+    if (!isQrReady) return;
+    let isCancelled = false;
+
+    const keepAlive = async () => {
+      try {
+        const res = await api.get<{ success: boolean; data: WhatsAppStatus }>("/whatsapp/wait-for-connection");
+        if (!isCancelled && res.success && res.data?.status === "connected") {
+          setStatusData(res.data);
+          toast.success("WhatsApp successfully linked and connected! 🎉");
+        }
+      } catch {
+        // timeout or retry is normal
+      }
+    };
+
+    keepAlive();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isQrReady]);
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
       {/* Header */}

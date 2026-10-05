@@ -17,6 +17,15 @@ router.get("/status", authenticate, A, async (_req: AuthRequest, res: Response) 
   });
 });
 
+// 1b. Keep-alive long poll while scanning QR code (Admin only)
+router.get("/wait-for-connection", authenticate, A, async (_req: AuthRequest, res: Response) => {
+  const status = await whatsappService.waitForConnection(20000);
+  res.json({
+    success: true,
+    data: status,
+  });
+});
+
 // 2. Trigger connection / generate QR (Admin only)
 router.post("/connect", authenticate, A, async (_req: AuthRequest, res: Response) => {
   try {

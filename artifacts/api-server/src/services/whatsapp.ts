@@ -194,6 +194,40 @@ class WhatsAppService {
     });
   }
 
+  public waitForConnection(timeoutMs = 20000): Promise<ReturnType<WhatsAppService["getStatus"]>> {
+    if (this.state.status === "connected") {
+      return Promise.resolve(this.getStatus());
+    }
+
+    return new Promise((resolve) => {
+      let resolved = false;
+      let timer: NodeJS.Timeout | null = null;
+
+      const cleanup = () => {
+        if (timer) clearTimeout(timer);
+        this.qrListeners = this.qrListeners.filter((l) => l !== onUpdate);
+      };
+
+      const onUpdate = (st: ReturnType<WhatsAppService["getStatus"]>) => {
+        if (!resolved && st.status === "connected") {
+          resolved = true;
+          cleanup();
+          resolve(st);
+        }
+      };
+
+      timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve(this.getStatus());
+        }
+      }, timeoutMs);
+
+      this.qrListeners.push(onUpdate);
+    });
+  }
+
   /**
    * Initializes the WhatsApp Baileys connection.
    */
