@@ -384,6 +384,35 @@ class WhatsAppService {
   }
 
   /**
+   * Ensures the Baileys socket is connected.
+   * If not connected but session credentials exist on disk or DB indicates connected,
+   * attempts to initialize and waits up to timeoutMs.
+   */
+  public async ensureConnected(timeoutMs = 6000): Promise<boolean> {
+    if (this.state.status === "connected" && this.sock) {
+      return true;
+    }
+
+    const credsPath = path.join(SESSION_DIR, "creds.json");
+    const hasCreds = fs.existsSync(credsPath);
+
+    if (!hasCreds) {
+      const dbStatus = await this.getStatusAsync();
+      if (dbStatus.status !== "connected") {
+        return false;
+      }
+    }
+
+    if (!this.sock && !this.isInitializing) {
+      logger.info("[WhatsApp] Socket disconnected. Auto-restoring connection using stored session...");
+      void this.init();
+    }
+
+    const result = await this.waitForConnection(timeoutMs);
+    return result.status === "connected" && this.sock !== null;
+  }
+
+  /**
    * Normalize an Indian phone number to WhatsApp JID (e.g. 919876543210@s.whatsapp.net).
    */
   private formatJid(phone: string): string | null {
@@ -404,8 +433,11 @@ class WhatsAppService {
    */
   public async sendMessage(phone: string, text: string): Promise<boolean> {
     if (this.state.status !== "connected" || !this.sock) {
-      logger.warn("[WhatsApp] Cannot send message: WhatsApp is not connected");
-      return false;
+      const reconnected = await this.ensureConnected();
+      if (!reconnected || !this.sock) {
+        logger.warn("[WhatsApp] Cannot send message: WhatsApp is not connected");
+        return false;
+      }
     }
 
     const jid = this.formatJid(phone);
@@ -444,8 +476,11 @@ class WhatsAppService {
     }
   ): Promise<boolean> {
     if (this.state.status !== "connected" || !this.sock) {
-      logger.warn("[WhatsApp] Cannot send interactive message: WhatsApp is not connected");
-      return false;
+      const reconnected = await this.ensureConnected();
+      if (!reconnected || !this.sock) {
+        logger.warn("[WhatsApp] Cannot send interactive message: WhatsApp is not connected");
+        return false;
+      }
     }
 
     const jid = this.formatJid(phone);
@@ -610,6 +645,180 @@ class WhatsAppService {
   }
 
   /**
+   * Sends a WhatsApp update to the shop owner after they accept an order,
+   * containing a 1-tap "🛵 Order is Ready — Call Rider" CTA button.
+   */
+  public async sendOrderPreparingToVendor(params: {
+    vendorPhone: string;
+    vendorName?: string;
+    shopName: string;
+    orderNumber: string;
+    orderId: string;
+    itemCount: number;
+    netAmount?: number;
+  }): Promise<boolean> {
+    const {
+      vendorPhone,
+      shopName,
+      orderNumber,
+      orderId,
+      itemCount,
+      netAmount,
+    } = params;
+
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    const readyCallRiderUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=ready_call_rider`;
+    const dashboardUrl = `${baseUrl}/vendor/orders`;
+
+    const bodyText = [
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `📦 *Order ID:* #${orderNumber}`,
+      `🏪 *Shop:* ${shopName}`,
+      `📋 *Total Items:* ${itemCount} item${itemCount > 1 ? "s" : ""}`,
+      netAmount != null ? `💰 *Amount:* ₹${netAmount}` : null,
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `🍳 *NEXT ACTION REQUIRED:*`,
+      `Please pack the items carefully at your store.`,
+      ``,
+      `*When the order is packed and ready:*`,
+      `👉 Tap *🛵 Order is Ready — Call Rider* below.`,
+      `This will immediately summon a delivery partner to your store counter for pickup.`,
+    ].filter(Boolean).join("\n");
+
+    return this.sendInteractiveButtonsMessage(vendorPhone, {
+      header: `👨‍🍳 *ORDER IN PREPARATION — SWIFTMART*`,
+      body: bodyText,
+      footer: `SwiftMart Quick Commerce Dispatch`,
+      buttons: [
+        {
+          type: "url",
+          text: "🛵 Order Ready — Call Rider",
+          url: readyCallRiderUrl,
+        },
+        {
+          type: "url",
+          text: "📊 View on Dashboard",
+          url: dashboardUrl,
+        },
+      ],
+    });
+  }
+
+  /**
+   * Sends a confirmation WhatsApp alert to the shop owner once they tap "Order is Ready",
+   * confirming rider dispatch and reminding them to have the Store Pickup QR ready.
+   */
+  public async sendRiderDispatchedToVendor(params: {
+    vendorPhone: string;
+    shopName: string;
+    orderNumber: string;
+    orderId: string;
+    riderName?: string;
+  }): Promise<boolean> {
+    const {
+      vendorPhone,
+      shopName,
+      orderNumber,
+      orderId,
+      riderName,
+    } = params;
+
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    const qrUrl = `${baseUrl}/vendor/settings`;
+    const dashboardUrl = `${baseUrl}/vendor/orders`;
+
+    const riderLine = riderName
+      ? `🛵 *Rider Assigned:* ${riderName}`
+      : `🛵 *Status:* Delivery partner summoned & en route`;
+
+    const bodyText = [
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `📦 *Order ID:* #${orderNumber}`,
+      `🏪 *Shop:* ${shopName}`,
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      riderLine,
+      `A delivery partner is heading to your store counter now.`,
+      ``,
+      `📱 *COUNTER PICKUP:*`,
+      `Please keep the packed parcel ready. The rider will scan your *Store Pickup QR poster* at the counter to verify items and collect the order.`,
+    ].join("\n");
+
+    return this.sendInteractiveButtonsMessage(vendorPhone, {
+      header: `🛵 *DELIVERY RIDER SUMMONED!* ⚡`,
+      body: bodyText,
+      footer: `SwiftMart Counter Pickup`,
+      buttons: [
+        {
+          type: "url",
+          text: "🏪 Store Pickup QR",
+          url: qrUrl,
+        },
+        {
+          type: "url",
+          text: "📊 Orders Dashboard",
+          url: dashboardUrl,
+        },
+      ],
+    });
+  }
+
+  /**
+   * Sends an automated WhatsApp alert to the CUSTOMER when the order is marked ready
+   * and a delivery rider is summoned to pick it up.
+   */
+  public async sendOrderReadyToCustomer(params: {
+    customerPhone: string;
+    customerName: string;
+    shopName: string;
+    orderNumber: string;
+    orderId: string;
+    riderName?: string;
+  }): Promise<boolean> {
+    const {
+      customerPhone,
+      customerName,
+      shopName,
+      orderNumber,
+      orderId,
+      riderName,
+    } = params;
+
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    const trackUrl = `${baseUrl}/orders?track=${orderId}`;
+
+    const riderLine = riderName
+      ? `🛵 *Delivery Partner:* ${riderName} is picking up your order!`
+      : `🛵 *Delivery Partner:* Summoned and heading to ${shopName} for pickup!`;
+
+    const body = [
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `Great news, *${customerName || "Customer"}*! 🎉`,
+      `Your order from *${shopName}* is packed and ready!`,
+      ``,
+      `📦 *Order ID:* #${orderNumber}`,
+      riderLine,
+      `⏱️ *Estimated Delivery:* Within 15–25 Mins`,
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `You can track the live GPS location of your delivery below.`,
+      ``,
+      `_Thank you for choosing SwiftMart!_`,
+    ].join("\n");
+
+    return this.sendInteractiveButtonsMessage(customerPhone, {
+      header: `🎉 *ORDER PACKED & READY!* 🛵`,
+      body,
+      footer: `SwiftMart Live Tracking`,
+      buttons: [
+        {
+          type: "url",
+          text: "📍 Track Live Delivery",
+          url: trackUrl,
+        },
+      ],
+    });
+  }
+
+  /**
    * Determine if an order is an E-Commerce / Mall order (vs Quick Commerce)
    */
   public isEcommerceOrder(order: {
@@ -711,9 +920,9 @@ class WhatsAppService {
           ``,
           `📦 *Order ID:* #${orderNumber}`,
           `⏱️ *Delivery Estimate:* Within 30–45 Mins`,
-          `🛵 *Status:* Confirmed & being packed${itemsPreview}${amountLine}`,
+          `👨‍🍳 *Status:* Order Accepted — Kitchen / Shop is now preparing your items!${itemsPreview}${amountLine}`,
           `━━━━━━━━━━━━━━━━━━━━━━`,
-          `A delivery partner will pick up and deliver your order shortly.`,
+          `We will notify you once items are packed and the delivery partner is summoned.`,
           ``,
           `_Thank you for choosing SwiftMart!_`,
         ].join("\n");

@@ -11,6 +11,7 @@ import { createNotificationLimited } from "../../utils/notification.js";
 import { logger } from "../../lib/logger.js";
 import { mi, miArr } from "../../utils/mapId.js";
 import { whatsappService } from "../../services/whatsapp.js";
+import { getMessagingInstance } from "../../lib/firebase-admin.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -195,6 +196,7 @@ const STATUS_MESSAGES: Record<string, { title: string; message: string }> = {
   preparing:        { title: "Order Being Prepared", message: "The shop is preparing your order." },
   confirmed:        { title: "Order Confirmed",     message: "Your order has been confirmed by the shop." },
   packed:           { title: "Order Packed",        message: "Your order is packed and ready for pickup." },
+  ready:            { title: "Order Ready for Pickup 🛵", message: "Your order is ready and a delivery partner is on the way to pick it up!" },
   shipped:          { title: "Order Shipped 🚚",    message: "Your order has been shipped. Estimated delivery in 5–7 days." },
   out_for_delivery: { title: "Out for Delivery",    message: "Your order is on the way! 🚚" },
   delivered:        { title: "Order Delivered",     message: "Your order has been delivered. Enjoy!" },
@@ -206,7 +208,7 @@ const STOCK_RESTORE_STATUSES = new Set(["cancelled", "refunded"]);
 
 // All valid order statuses — rejects arbitrary strings (L1)
 const VALID_STATUSES = new Set([
-  "placed", "accepted", "preparing", "confirmed", "packed", "shipped", "out_for_delivery", "delivered", "cancelled", "refunded",
+  "placed", "accepted", "preparing", "confirmed", "packed", "ready", "shipped", "out_for_delivery", "delivered", "cancelled", "refunded",
 ]);
 
 // Restore stock for a list of order items and re-activate any that had gone out_of_stock
@@ -1126,14 +1128,14 @@ router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: 
     }
   } catch { /* ignore */ }
 
-  // Automated WhatsApp notifications to Customer
+  // Automated WhatsApp notifications to Customer & Vendor
   try {
-    if (order.customerPhone) {
-      const isEcommerce = whatsappService.isEcommerceOrder({
-        deliveryType: order.deliveryType,
-        items: order.items,
-      });
+    const isEcommerce = whatsappService.isEcommerceOrder({
+      deliveryType: order.deliveryType,
+      items: order.items,
+    });
 
+    if (order.customerPhone) {
       if (status === "accepted" || status === "confirmed") {
         whatsappService.sendOrderAcceptedToCustomer({
           customerPhone: order.customerPhone,
@@ -1145,6 +1147,14 @@ router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: 
           netAmount: order.netAmount,
           items: (order.items as any[]) || [],
         }).catch(err => logger.warn({ err }, "[WhatsApp] Background customer alert error on accept"));
+      } else if (status === "ready" || status === "packed") {
+        whatsappService.sendOrderReadyToCustomer({
+          customerPhone: order.customerPhone,
+          customerName: order.customerName,
+          shopName: order.shopName,
+          orderNumber: order.id.slice(-6).toUpperCase(),
+          orderId: order.id,
+        }).catch(err => logger.warn({ err }, "[WhatsApp] Background customer alert error on ready"));
       } else if (status === "shipped") {
         whatsappService.sendOrderShippedToCustomer({
           customerPhone: order.customerPhone,
@@ -1163,8 +1173,101 @@ router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: 
         }).catch(err => logger.warn({ err }, "[WhatsApp] Background customer alert error on delivery"));
       }
     }
+
+    // When status changes to "preparing", send Vendor the "🛵 Order is Ready — Call Rider" CTA
+    if (status === "preparing") {
+      void (async () => {
+        try {
+          const [shopRow] = await db.select({ ownerId: shops.ownerId, phone: shops.phone }).from(shops).where(eq(shops.id, order.shopId)).limit(1);
+          let vendorPhone = shopRow?.phone;
+          if (shopRow?.ownerId) {
+            const [owner] = await db.select({ phone: users.phone }).from(users).where(eq(users.id, shopRow.ownerId)).limit(1);
+            if (owner?.phone) vendorPhone = owner.phone;
+          }
+          if (vendorPhone) {
+            await whatsappService.sendOrderPreparingToVendor({
+              vendorPhone,
+              shopName: order.shopName,
+              orderNumber: order.id.slice(-6).toUpperCase(),
+              orderId: order.id,
+              itemCount: Array.isArray(order.items) ? order.items.length : 1,
+              netAmount: order.netAmount,
+            });
+          }
+        } catch (e) {
+          logger.warn({ err: e }, "[WhatsApp] Background vendor alert error on preparing");
+        }
+      })();
+    }
+
+    // When status changes to "ready" or "packed", summon delivery partners
+    if (status === "ready" || status === "packed") {
+      void (async () => {
+        try {
+          // 1. Broadcast to delivery partners
+          const activePartners = await db
+            .select({ id: deliveryPartners.id, userId: deliveryPartners.userId, fcmToken: deliveryPartners.fcmToken })
+            .from(deliveryPartners)
+            .where(and(eq(deliveryPartners.status, "active"), eq(deliveryPartners.isAvailable, true)));
+
+          for (const p of activePartners) {
+            if (p.userId) {
+              createNotificationLimited(p.userId, {
+                type: "order_update",
+                title: "⚡ NEW PICKUP READY!",
+                message: `Order #${order.id.slice(-6).toUpperCase()} at ${order.shopName} is ready for pickup!`,
+                data: { orderId: order.id, url: "/delivery/orders" },
+              }).catch(() => {});
+            }
+          }
+
+          const tokens = activePartners.map(p => p.fcmToken).filter(Boolean) as string[];
+          if (tokens.length > 0) {
+            const messaging = getMessagingInstance();
+            if (messaging) {
+              messaging.sendEachForMulticast({
+                tokens,
+                data: {
+                  type: "new_order",
+                  orderId: order.id,
+                  shopName: order.shopName,
+                  riderEarnings: "45.00",
+                  netAmount: String(order.netAmount),
+                  paymentMethod: String(order.paymentMethod || "COD"),
+                },
+                notification: {
+                  title: "⚡ NEW DELIVERY ORDER!",
+                  body: `₹45 • ${order.shopName} ➔ Deliver Now!`,
+                },
+                android: {
+                  priority: "high",
+                },
+              }).catch(() => {});
+            }
+          }
+
+          // 2. Send Vendor confirmation on WhatsApp
+          const [shopRow] = await db.select({ ownerId: shops.ownerId, phone: shops.phone }).from(shops).where(eq(shops.id, order.shopId)).limit(1);
+          let vendorPhone = shopRow?.phone;
+          if (shopRow?.ownerId) {
+            const [owner] = await db.select({ phone: users.phone }).from(users).where(eq(users.id, shopRow.ownerId)).limit(1);
+            if (owner?.phone) vendorPhone = owner.phone;
+          }
+          if (vendorPhone) {
+            await whatsappService.sendRiderDispatchedToVendor({
+              vendorPhone,
+              shopName: order.shopName,
+              orderNumber: order.id.slice(-6).toUpperCase(),
+              orderId: order.id,
+            });
+          }
+        } catch (e) {
+          logger.warn({ err: e }, "[WhatsApp] Background dispatch error on ready/packed");
+        }
+      })();
+    }
   } catch (waErr) {
-    logger.warn({ waErr }, "[WhatsApp] Failed to dispatch customer order WhatsApp notification");
+    logger.warn({ waErr }, "[WhatsApp] Failed to dispatch order WhatsApp notification");
   }
 
   res.json({ success: true, order: mi(order) });

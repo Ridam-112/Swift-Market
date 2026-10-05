@@ -1,9 +1,11 @@
 import { Router, type Response } from "express";
 import { whatsappService } from "../../services/whatsapp.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
-import { db, orders, users, shops } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, orders, users, shops, deliveryPartners, products, payouts } from "@workspace/db";
+import { eq, and, or, inArray, sql } from "drizzle-orm";
 import { logger } from "../../lib/logger.js";
+import { createNotificationLimited } from "../../utils/notification.js";
+import { getMessagingInstance } from "../../lib/firebase-admin.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -87,6 +89,175 @@ router.post("/test", authenticate, A, async (req: AuthRequest, res: Response): P
   }
 });
 
+function renderActionHtml(params: {
+  icon: string;
+  title: string;
+  badge: string;
+  badgeColor: string;
+  orderNumber: string;
+  shopName: string;
+  stepNotice?: string;
+  description: string;
+  primaryBtnText: string;
+  primaryBtnUrl: string;
+  primaryBtnStyle?: "default" | "call-rider";
+  secondaryBtnText?: string;
+  secondaryBtnUrl?: string;
+}): string {
+  const isCallRider = params.primaryBtnStyle === "call-rider";
+  const btnBg = isCallRider
+    ? "background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: #fff; box-shadow: 0 10px 25px -5px rgba(249, 115, 22, 0.4);"
+    : "background: #10b981; color: #0f172a;";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${params.title} — SwiftMart</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: #090d16;
+        color: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 20px;
+      }
+      .card {
+        background: #131c2e;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 28px;
+        padding: 36px 28px;
+        max-width: 440px;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        position: relative;
+        overflow: hidden;
+      }
+      .card::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 4px;
+        background: ${params.badgeColor};
+      }
+      .icon-circle {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 20px auto;
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 42px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 9999px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        background: ${params.badgeColor}22;
+        color: ${params.badgeColor};
+        border: 1px solid ${params.badgeColor}44;
+        margin-bottom: 12px;
+      }
+      h1 {
+        font-size: 24px;
+        font-weight: 800;
+        margin: 0 0 6px 0;
+        letter-spacing: -0.02em;
+      }
+      .shop-info {
+        font-size: 14px;
+        color: #94a3b8;
+        margin-bottom: 18px;
+      }
+      .shop-info strong {
+        color: #f1f5f9;
+      }
+      ${params.stepNotice ? `
+      .step-notice {
+        background: rgba(249, 115, 22, 0.1);
+        border: 1px dashed rgba(249, 115, 22, 0.3);
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #fb923c;
+        margin-bottom: 18px;
+        line-height: 1.4;
+      }
+      ` : ""}
+      .desc {
+        font-size: 14px;
+        line-height: 1.6;
+        color: #94a3b8;
+        margin: 0 0 28px 0;
+        text-align: left;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .desc strong {
+        color: #f8fafc;
+      }
+      .btn {
+        display: block;
+        width: 100%;
+        padding: 15px 20px;
+        border-radius: 16px;
+        font-size: 15px;
+        font-weight: 800;
+        text-decoration: none;
+        transition: transform 0.15s ease, opacity 0.15s ease;
+        margin-bottom: 10px;
+        text-align: center;
+      }
+      .btn:active {
+        transform: scale(0.98);
+      }
+      .btn-primary {
+        ${btnBg}
+      }
+      .btn-secondary {
+        background: #1e293b;
+        color: #cbd5e1;
+        border: 1px solid #334155;
+      }
+      .footer {
+        margin-top: 24px;
+        font-size: 11px;
+        color: #64748b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="icon-circle">${params.icon}</div>
+      <div class="badge">${params.badge}</div>
+      <h1>${params.title}</h1>
+      <div class="shop-info">Order <strong>#${params.orderNumber}</strong> · <strong>${params.shopName}</strong></div>
+      ${params.stepNotice ? `<div class="step-notice">${params.stepNotice}</div>` : ""}
+      <div class="desc">${params.description}</div>
+      <a href="${params.primaryBtnUrl}" class="btn btn-primary">${params.primaryBtnText}</a>
+      ${params.secondaryBtnText && params.secondaryBtnUrl ? `<a href="${params.secondaryBtnUrl}" class="btn btn-secondary">${params.secondaryBtnText}</a>` : ""}
+      <div class="footer">SwiftMart Quick Commerce Logistics</div>
+    </div>
+  </body>
+</html>`;
+}
+
 // 5. 1-Click Order Action for Vendors from WhatsApp link
 router.get("/order-action", async (req, res: Response): Promise<void> => {
   const { orderId, action } = req.query as { orderId?: string; action?: string };
@@ -96,6 +267,8 @@ router.get("/order-action", async (req, res: Response): Promise<void> => {
     return;
   }
 
+  const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+
   try {
     const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
     if (!order) {
@@ -103,37 +276,61 @@ router.get("/order-action", async (req, res: Response): Promise<void> => {
       return;
     }
 
+    const shortId = order.id.slice(-6).toUpperCase();
+
+    // ─── ACTION 1: ACCEPT (Transitions placed -> preparing) ──────────────────────
     if (action === "accept") {
-      if (order.status !== "placed" && order.status !== "pending") {
-        res.send(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Order Already Processed</title>
-              <style>
-                body { font-family: system-ui, sans-serif; background: #0f172a; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; text-align: center; }
-                .card { background: #1e293b; padding: 32px; border-radius: 24px; border: 1px solid #334155; max-width: 400px; width: 100%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
-                h2 { color: #f59e0b; margin-top: 0; }
-                p { color: #94a3b8; font-size: 14px; line-height: 1.5; }
-                .btn { display: inline-block; margin-top: 20px; background: #10b981; color: #fff; font-weight: bold; text-decoration: none; padding: 12px 24px; border-radius: 12px; }
-              </style>
-            </head>
-            <body>
-              <div class="card">
-                <h2>ℹ️ Order Already Updated</h2>
-                <p>Order <strong>#${order.id.slice(-6).toUpperCase()}</strong> is currently in status: <strong>${order.status.toUpperCase()}</strong>.</p>
-                <a href="https://swiftmart.space/vendor/orders" class="btn">Open Vendor Dashboard</a>
-              </div>
-            </body>
-          </html>
-        `);
+      if (order.status === "cancelled" || order.status === "refunded") {
+        res.send(renderActionHtml({
+          icon: "⚠️",
+          title: "Order Already Cancelled",
+          badge: "CANCELLED",
+          badgeColor: "#ef4444",
+          orderNumber: shortId,
+          shopName: order.shopName,
+          description: `Order #${shortId} was previously cancelled or rejected and cannot be accepted.`,
+          primaryBtnText: "Open Vendor Dashboard",
+          primaryBtnUrl: `${baseUrl}/vendor/orders`,
+        }));
         return;
       }
 
-      await db.update(orders).set({ status: "confirmed", updatedAt: new Date() }).where(eq(orders.id, orderId));
+      if (order.status !== "placed" && order.status !== "pending") {
+        const isPreparing = order.status === "preparing";
+        res.send(renderActionHtml({
+          icon: isPreparing ? "👨‍🍳" : "ℹ️",
+          title: isPreparing ? "Order is Preparing" : "Order Already Processed",
+          badge: order.status.toUpperCase(),
+          badgeColor: isPreparing ? "#f97316" : "#10b981",
+          orderNumber: shortId,
+          shopName: order.shopName,
+          description: isPreparing
+            ? `Order #${shortId} is currently being prepared. Once items are packed and ready, summon a delivery rider below!`
+            : `Order #${shortId} is currently in status: <strong>${order.status.toUpperCase()}</strong>.`,
+          primaryBtnText: isPreparing ? "🛵 Order is Ready — Call Rider" : "Open Vendor Dashboard",
+          primaryBtnUrl: isPreparing
+            ? `${baseUrl}/api/v1/whatsapp/order-action?orderId=${order.id}&action=ready_call_rider`
+            : `${baseUrl}/vendor/orders`,
+          secondaryBtnText: isPreparing ? "📊 Orders Dashboard" : undefined,
+          secondaryBtnUrl: isPreparing ? `${baseUrl}/vendor/orders` : undefined,
+        }));
+        return;
+      }
 
-      // Instant WhatsApp notification to Customer on order accept
+      // Transition order status to "preparing"
+      await db.update(orders).set({ status: "preparing", updatedAt: new Date() }).where(eq(orders.id, orderId));
+
+      // 1. Notify Customer in-app
+      if (order.customerId) {
+        createNotificationLimited(order.customerId, {
+          type: "order_update",
+          title: "Order Accepted & Preparing 👨‍🍳",
+          message: `Your order #${shortId} from ${order.shopName} has been accepted and is now being prepared!`,
+          data: { orderId: order.id, status: "preparing" },
+        }).catch(() => {});
+      }
+
+      // 2. Instant WhatsApp notification to Customer
       if (order.customerPhone) {
         const isEcommerce = whatsappService.isEcommerceOrder({
           deliveryType: order.deliveryType,
@@ -143,7 +340,7 @@ router.get("/order-action", async (req, res: Response): Promise<void> => {
           customerPhone: order.customerPhone,
           customerName: order.customerName,
           shopName: order.shopName,
-          orderNumber: order.id.slice(-6).toUpperCase(),
+          orderNumber: shortId,
           orderId: order.id,
           isEcommerce,
           netAmount: order.netAmount,
@@ -153,62 +350,262 @@ router.get("/order-action", async (req, res: Response): Promise<void> => {
         });
       }
 
-      res.send(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Order Accepted</title>
-            <style>
-              body { font-family: system-ui, sans-serif; background: #0f172a; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; text-align: center; }
-              .card { background: #1e293b; padding: 32px; border-radius: 24px; border: 1px solid #10b981; max-width: 400px; width: 100%; box-shadow: 0 20px 25px -5px rgba(16,185,129,0.2); }
-              .icon { font-size: 48px; margin-bottom: 12px; }
-              h2 { color: #10b981; margin: 0 0 8px 0; }
-              p { color: #94a3b8; font-size: 14px; line-height: 1.5; }
-              .btn { display: inline-block; margin-top: 20px; background: #10b981; color: #0f172a; font-weight: 800; text-decoration: none; padding: 12px 24px; border-radius: 12px; }
-            </style>
-          </head>
-          <body>
-            <div class="card">
-              <div class="icon">✅</div>
-              <h2>Order Accepted!</h2>
-              <p>Order <strong>#${order.id.slice(-6).toUpperCase()}</strong> has been accepted successfully.<br>Please prepare the items for delivery pickup.</p>
-              <a href="https://swiftmart.space/vendor/orders" class="btn">View on Dashboard</a>
-            </div>
-          </body>
-        </html>
-      `);
-    } else if (action === "reject") {
-      await db.update(orders).set({ status: "cancelled", updatedAt: new Date() }).where(eq(orders.id, orderId));
+      // 3. Send WhatsApp follow-up message to Vendor with "🛵 Order is Ready — Call Rider" button
+      const [shopRow] = await db.select({ ownerId: shops.ownerId, phone: shops.phone }).from(shops).where(eq(shops.id, order.shopId)).limit(1);
+      let vendorPhone = shopRow?.phone;
+      if (shopRow?.ownerId) {
+        const [vendorUser] = await db.select({ phone: users.phone }).from(users).where(eq(users.id, shopRow.ownerId)).limit(1);
+        if (vendorUser?.phone) vendorPhone = vendorUser.phone;
+      }
+      if (vendorPhone) {
+        whatsappService.sendOrderPreparingToVendor({
+          vendorPhone,
+          shopName: order.shopName,
+          orderNumber: shortId,
+          orderId: order.id,
+          itemCount: Array.isArray(order.items) ? order.items.length : 1,
+          netAmount: order.netAmount,
+        }).catch((err) => {
+          logger.warn({ err }, "[WhatsApp] Background vendor alert error on accept");
+        });
+      }
 
-      res.send(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Order Rejected</title>
-            <style>
-              body { font-family: system-ui, sans-serif; background: #0f172a; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; text-align: center; }
-              .card { background: #1e293b; padding: 32px; border-radius: 24px; border: 1px solid #ef4444; max-width: 400px; width: 100%; box-shadow: 0 20px 25px -5px rgba(239,68,68,0.2); }
-              .icon { font-size: 48px; margin-bottom: 12px; }
-              h2 { color: #ef4444; margin: 0 0 8px 0; }
-              p { color: #94a3b8; font-size: 14px; line-height: 1.5; }
-              .btn { display: inline-block; margin-top: 20px; background: #334155; color: #fff; font-weight: bold; text-decoration: none; padding: 12px 24px; border-radius: 12px; }
-            </style>
-          </head>
-          <body>
-            <div class="card">
-              <div class="icon">❌</div>
-              <h2>Order Rejected</h2>
-              <p>Order <strong>#${order.id.slice(-6).toUpperCase()}</strong> has been marked as rejected/cancelled.</p>
-              <a href="https://swiftmart.space/vendor/orders" class="btn">Return to Dashboard</a>
-            </div>
-          </body>
-        </html>
-      `);
-    } else {
-      res.status(400).send("<h3>Unknown action.</h3>");
+      // 4. Render sleek web confirmation page for Vendor
+      res.send(renderActionHtml({
+        icon: "👨‍🍳",
+        title: "Order Accepted — Preparing!",
+        badge: "STATUS: PREPARING",
+        badgeColor: "#f97316",
+        orderNumber: shortId,
+        shopName: order.shopName,
+        stepNotice: "STEP 1 OF 2 COMPLETED: Kitchen / Counter is preparing items",
+        description: `Order #${shortId} is now marked <strong>PREPARING</strong>.<br><br>Please prepare and pack the items carefully. When everything is packed and ready to go, tap the button below to summon a delivery partner to your store.`,
+        primaryBtnText: "🛵 Order is Ready — Call Rider",
+        primaryBtnUrl: `${baseUrl}/api/v1/whatsapp/order-action?orderId=${order.id}&action=ready_call_rider`,
+        primaryBtnStyle: "call-rider",
+        secondaryBtnText: "📊 View on Dashboard",
+        secondaryBtnUrl: `${baseUrl}/vendor/orders`,
+      }));
+      return;
     }
+
+    // ─── ACTION 2: READY & CALL RIDER (Transitions preparing -> ready) ───────────
+    if (action === "ready_call_rider") {
+      if (order.status === "cancelled" || order.status === "refunded") {
+        res.send(renderActionHtml({
+          icon: "⚠️",
+          title: "Order Cancelled",
+          badge: "CANCELLED",
+          badgeColor: "#ef4444",
+          orderNumber: shortId,
+          shopName: order.shopName,
+          description: `Order #${shortId} was cancelled. Cannot call rider.`,
+          primaryBtnText: "Return to Dashboard",
+          primaryBtnUrl: `${baseUrl}/vendor/orders`,
+        }));
+        return;
+      }
+
+      if (order.status === "out_for_delivery" || order.status === "delivered") {
+        res.send(renderActionHtml({
+          icon: "🛵",
+          title: "Order Already in Delivery",
+          badge: order.status.toUpperCase(),
+          badgeColor: "#8b5cf6",
+          orderNumber: shortId,
+          shopName: order.shopName,
+          description: `Order #${shortId} has already been picked up and is ${order.status === "delivered" ? "delivered" : "out for delivery"}.`,
+          primaryBtnText: "Open Vendor Dashboard",
+          primaryBtnUrl: `${baseUrl}/vendor/orders`,
+        }));
+        return;
+      }
+
+      if (order.status === "ready" || order.status === "packed") {
+        res.send(renderActionHtml({
+          icon: "🛵",
+          title: "Delivery Partner Summoned!",
+          badge: "READY FOR PICKUP",
+          badgeColor: "#10b981",
+          orderNumber: shortId,
+          shopName: order.shopName,
+          stepNotice: "STEP 2 OF 2: Rider is heading to your store counter",
+          description: `Delivery partners have already been summoned for Order #${shortId}.<br><br>📱 <strong>Counter QR Pickup:</strong> Keep the packed parcel ready. The rider will arrive shortly and scan your <strong>Store Pickup QR poster</strong> to verify and collect the order.`,
+          primaryBtnText: "🏪 View Store Pickup QR",
+          primaryBtnUrl: `${baseUrl}/vendor/settings`,
+          secondaryBtnText: "📊 Open Orders Dashboard",
+          secondaryBtnUrl: `${baseUrl}/vendor/orders`,
+        }));
+        return;
+      }
+
+      // Update order status in DB to "ready"
+      await db.update(orders).set({ status: "ready", updatedAt: new Date() }).where(eq(orders.id, orderId));
+
+      // 1. Notify Customer in-app
+      if (order.customerId) {
+        createNotificationLimited(order.customerId, {
+          type: "order_update",
+          title: "Order Packed & Ready! 🛵",
+          message: `Order #${shortId} from ${order.shopName} is packed! A delivery partner is heading to the store for pickup.`,
+          data: { orderId: order.id, status: "ready" },
+        }).catch(() => {});
+      }
+
+      // 2. WhatsApp notification to Customer
+      if (order.customerPhone) {
+        whatsappService.sendOrderReadyToCustomer({
+          customerPhone: order.customerPhone,
+          customerName: order.customerName,
+          shopName: order.shopName,
+          orderNumber: shortId,
+          orderId: order.id,
+        }).catch((err) => {
+          logger.warn({ err }, "[WhatsApp] Background customer alert error on ready");
+        });
+      }
+
+      // 3. Dispatch / summon delivery partners (multicast FCM + in-app)
+      const activePartners = await db
+        .select({
+          id: deliveryPartners.id,
+          userId: deliveryPartners.userId,
+          fcmToken: deliveryPartners.fcmToken,
+          name: deliveryPartners.name,
+          phone: deliveryPartners.phone,
+        })
+        .from(deliveryPartners)
+        .where(and(eq(deliveryPartners.status, "active"), eq(deliveryPartners.isAvailable, true)));
+
+      for (const partner of activePartners) {
+        if (partner.userId) {
+          createNotificationLimited(partner.userId, {
+            type: "order_update",
+            title: "⚡ NEW PICKUP READY!",
+            message: `Order #${shortId} at ${order.shopName} is ready for pickup!`,
+            data: { orderId: order.id, url: "/delivery/orders" },
+          }).catch(() => {});
+        }
+      }
+
+      const fcmTokensList = activePartners.map(p => p.fcmToken).filter(Boolean) as string[];
+      if (fcmTokensList.length > 0) {
+        try {
+          const messaging = getMessagingInstance();
+          if (messaging) {
+            messaging.sendEachForMulticast({
+              tokens: fcmTokensList,
+              data: {
+                type: "new_order",
+                orderId: order.id,
+                shopName: order.shopName,
+                riderEarnings: "45.00",
+                netAmount: String(order.netAmount),
+                paymentMethod: String(order.paymentMethod || "COD"),
+              },
+              notification: {
+                title: "⚡ NEW DELIVERY ORDER!",
+                body: `₹45 • ${order.shopName} ➔ Deliver Now!`,
+              },
+              android: {
+                priority: "high",
+              },
+            }).catch((err) => {
+              logger.warn({ err }, "[FCM] Delivery partners broadcast warning");
+            });
+          }
+        } catch (fcmErr) {
+          logger.warn({ fcmErr }, "[FCM] Delivery partners broadcast error");
+        }
+      }
+
+      // 4. Send Vendor confirmation on WhatsApp
+      const [shopRow] = await db.select({ ownerId: shops.ownerId, phone: shops.phone }).from(shops).where(eq(shops.id, order.shopId)).limit(1);
+      let vendorPhone = shopRow?.phone;
+      if (shopRow?.ownerId) {
+        const [vendorUser] = await db.select({ phone: users.phone }).from(users).where(eq(users.id, shopRow.ownerId)).limit(1);
+        if (vendorUser?.phone) vendorPhone = vendorUser.phone;
+      }
+      if (vendorPhone) {
+        whatsappService.sendRiderDispatchedToVendor({
+          vendorPhone,
+          shopName: order.shopName,
+          orderNumber: shortId,
+          orderId: order.id,
+        }).catch((err) => {
+          logger.warn({ err }, "[WhatsApp] Background vendor alert error on ready");
+        });
+      }
+
+      // 5. Render confirmation page for Vendor
+      res.send(renderActionHtml({
+        icon: "🛵",
+        title: "Delivery Partner Summoned!",
+        badge: "READY FOR PICKUP",
+        badgeColor: "#10b981",
+        orderNumber: shortId,
+        shopName: order.shopName,
+        stepNotice: "STEP 2 OF 2: Rider summoned & en route to counter",
+        description: `Order #${shortId} is marked <strong>READY FOR PICKUP</strong>.<br><br>A delivery partner has been summoned and will arrive at <strong>${order.shopName}</strong> shortly.<br><br>📱 <strong>Counter QR Verification:</strong> Keep items ready. The rider will scan your physical <strong>Store Pickup QR poster</strong> to verify the order items and collect the parcel.`,
+        primaryBtnText: "🏪 View Store Pickup QR",
+        primaryBtnUrl: `${baseUrl}/vendor/settings`,
+        secondaryBtnText: "📊 Orders Dashboard",
+        secondaryBtnUrl: `${baseUrl}/vendor/orders`,
+      }));
+      return;
+    }
+
+    // ─── ACTION 3: REJECT / CANCEL ────────────────────────────────────────────────
+    if (action === "reject") {
+      await db.update(orders).set({
+        status: "cancelled",
+        cancelReason: "Rejected by shop owner via WhatsApp",
+        updatedAt: new Date(),
+      }).where(eq(orders.id, orderId));
+
+      // Restore stock if items were reserved
+      if (Array.isArray(order.items) && order.items.length) {
+        for (const item of (order.items as any[])) {
+          if (item.productId && item.qty) {
+            await db.update(products)
+              .set({ stock: sql`${products.stock} + ${item.qty}` })
+              .where(eq(products.id, item.productId))
+              .catch(() => {});
+          }
+        }
+      }
+
+      // Reverse financials
+      await db.update(payouts)
+        .set({ status: "cancelled" })
+        .where(eq(payouts.orderId, orderId))
+        .catch(() => {});
+
+      // Notify customer
+      if (order.customerId) {
+        createNotificationLimited(order.customerId, {
+          type: "order_cancelled",
+          title: "Order Declined",
+          message: `Your order #${shortId} could not be accepted by ${order.shopName} at this time.`,
+          data: { orderId: order.id, status: "cancelled" },
+        }).catch(() => {});
+      }
+
+      res.send(renderActionHtml({
+        icon: "❌",
+        title: "Order Rejected",
+        badge: "REJECTED",
+        badgeColor: "#ef4444",
+        orderNumber: shortId,
+        shopName: order.shopName,
+        description: `Order #${shortId} has been marked as rejected / cancelled. Customer has been notified.`,
+        primaryBtnText: "Return to Dashboard",
+        primaryBtnUrl: `${baseUrl}/vendor/orders`,
+      }));
+      return;
+    }
+
+    res.status(400).send("<h3>Unknown order action.</h3>");
   } catch (err: unknown) {
     logger.error({ err }, "[WhatsApp Action] Failed to process order action");
     res.status(500).send("<h3>Internal server error processing request.</h3>");

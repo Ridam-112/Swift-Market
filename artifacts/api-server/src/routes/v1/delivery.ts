@@ -549,7 +549,7 @@ router.get("/available-orders", authenticate, async (req: AuthRequest, res: Resp
     .where(
       and(
         eq(orders.deliveryPartnerId, null as any),
-        or(eq(orders.status, "placed"), eq(orders.status, "packed"), eq(orders.status, "accepted"))
+        or(eq(orders.status, "ready"), eq(orders.status, "packed"), eq(orders.status, "placed"), eq(orders.status, "accepted"))
       )
     )
     .orderBy(desc(orders.createdAt))

@@ -31,9 +31,9 @@ const STEPS = [
   },
   {
     key: "packed",
-    label: "Packed",
+    label: "Ready & Packed",
     icon: Package,
-    message: "All packed and waiting for the delivery partner.",
+    message: "Order is packed and ready! Delivery partner summoned.",
     etaMinutes: 8,
   },
   {
@@ -52,7 +52,7 @@ const STEPS = [
   },
 ];
 
-const ACTIVE_STATUSES = new Set(["placed", "accepted", "preparing", "packed", "out_for_delivery"]);
+const ACTIVE_STATUSES = new Set(["placed", "accepted", "preparing", "packed", "ready", "out_for_delivery"]);
 
 interface ApiOrder {
   _id: string;
@@ -69,15 +69,22 @@ interface Props {
   compact?: boolean;
 }
 
+function normalizeStatus(status: string): string {
+  if (status === "ready") return "packed";
+  if (status === "confirmed") return "accepted";
+  return status;
+}
+
 // ─── ETA helper ───────────────────────────────────────────────────────────────
 function getEtaLabel(status: string, createdAt: string): string {
   if (status === "delivered" || status === "cancelled") return "";
-  const step = STEPS.find((s) => s.key === status);
+  const normalized = normalizeStatus(status);
+  const step = STEPS.find((s) => s.key === normalized);
   if (!step) return "";
   const elapsed = (Date.now() - new Date(createdAt).getTime()) / 60000;
   // Total expected delivery ~15 min from placement
   const remaining = Math.max(1, Math.round(15 - elapsed));
-  if (status === "out_for_delivery") return `Arriving in ~${remaining} min`;
+  if (normalized === "out_for_delivery") return `Arriving in ~${remaining} min`;
   return `~${remaining} min remaining`;
 }
 
@@ -123,7 +130,8 @@ export function LiveOrderTracker({ orderId, initialStatus, createdAt, onStatusCh
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId, status]);
 
-  const currentIdx = STEPS.findIndex((s) => s.key === status);
+  const normalized = normalizeStatus(status);
+  const currentIdx = STEPS.findIndex((s) => s.key === normalized);
   const isCancelled = status === "cancelled";
   const currentStep = isCancelled ? null : STEPS[currentIdx];
   const etaLabel = getEtaLabel(status, createdAt);

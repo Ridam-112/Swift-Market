@@ -50,9 +50,10 @@ interface ApiShop {
 }
 
 const STATUS_FLOW: Record<string, { label: string; next: string[]; color: string }> = {
-  placed:           { label: 'Placed',           next: ['accepted', 'cancelled'], color: 'text-blue-500 bg-blue-500/10' },
-  accepted:         { label: 'Accepted',          next: ['preparing', 'shipped', 'cancelled'], color: 'text-amber-500 bg-amber-500/10' },
-  preparing:        { label: 'Preparing',         next: ['packed', 'shipped', 'cancelled'], color: 'text-orange-500 bg-orange-500/10' },
+  placed:           { label: 'Placed',           next: ['preparing', 'accepted', 'cancelled'], color: 'text-blue-500 bg-blue-500/10' },
+  accepted:         { label: 'Accepted',          next: ['preparing', 'ready', 'packed', 'shipped', 'cancelled'], color: 'text-amber-500 bg-amber-500/10' },
+  preparing:        { label: 'Preparing',         next: ['ready', 'packed', 'shipped', 'cancelled'], color: 'text-orange-500 bg-orange-500/10' },
+  ready:            { label: 'Ready (Rider Summoned)', next: ['out_for_delivery', 'shipped'], color: 'text-indigo-500 bg-indigo-500/10' },
   packed:           { label: 'Packed',            next: ['out_for_delivery', 'shipped'], color: 'text-indigo-500 bg-indigo-500/10' },
   shipped:          { label: 'Shipped (Courier 5–7d)', next: ['delivered'], color: 'text-cyan-500 bg-cyan-500/10' },
   out_for_delivery: { label: 'Out for Delivery',  next: ['delivered'], color: 'text-purple-500 bg-purple-500/10' },
@@ -350,12 +351,12 @@ function OrderCard({ order, onUpdate, updatingId, isNew }: {
             <div className="flex gap-2">
               <Button
                 size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-none"
-                onClick={() => onUpdate(order._id, 'accepted')}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-none font-bold"
+                onClick={() => onUpdate(order._id, 'preparing')}
                 disabled={isUpdating}
               >
                 {isUpdating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1" />}
-                Accept
+                Accept & Prepare
               </Button>
               <Button
                 size="sm"
@@ -368,6 +369,19 @@ function OrderCard({ order, onUpdate, updatingId, isNew }: {
                 Reject
               </Button>
             </div>
+          )}
+
+          {/* Quick action: Call Rider when order is preparing */}
+          {order.status === 'preparing' && (
+            <Button
+              size="sm"
+              className="bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white rounded-xl shadow-md shadow-orange-500/20 font-bold border-none"
+              onClick={() => onUpdate(order._id, 'ready')}
+              disabled={isUpdating}
+            >
+              {isUpdating ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <span className="mr-1">🛵</span>}
+              Order Ready — Call Rider
+            </Button>
           )}
 
           {/* Progression dropdown for non-placed active orders */}
