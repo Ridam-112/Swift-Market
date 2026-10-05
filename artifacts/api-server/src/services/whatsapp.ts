@@ -1,6 +1,23 @@
 import path from "node:path";
 import fs from "node:fs";
 import os from "node:os";
+import crypto from "node:crypto";
+
+export function generateWhatsAppActionToken(orderId: string, action: string): string {
+  const secret = process.env.JWT_SECRET || "swiftmart-wa-action-token-secret";
+  return crypto.createHmac("sha256", secret).update(`${orderId}:${action}`).digest("hex").slice(0, 32);
+}
+
+export function verifyWhatsAppActionToken(orderId: string, action: string, token?: string): boolean {
+  if (!token || typeof token !== "string") return false;
+  const expected = generateWhatsAppActionToken(orderId, action);
+  if (token.length !== expected.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
 import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
@@ -696,8 +713,10 @@ class WhatsAppService {
       .join("\n");
 
     const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
-    const acceptUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=accept`;
-    const rejectUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=reject`;
+    const acceptToken = generateWhatsAppActionToken(orderId, "accept");
+    const rejectToken = generateWhatsAppActionToken(orderId, "reject");
+    const acceptUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=accept&token=${acceptToken}`;
+    const rejectUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=reject&token=${rejectToken}`;
     const dashboardUrl = `${baseUrl}/vendor/orders`;
 
     const bodyText = [
@@ -762,7 +781,8 @@ class WhatsAppService {
     } = params;
 
     const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
-    const readyCallRiderUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=ready_call_rider`;
+    const readyToken = generateWhatsAppActionToken(orderId, "ready_call_rider");
+    const readyCallRiderUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=ready_call_rider&token=${readyToken}`;
     const dashboardUrl = `${baseUrl}/vendor/orders`;
 
     const bodyText = [

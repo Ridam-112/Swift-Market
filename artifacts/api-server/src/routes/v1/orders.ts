@@ -693,13 +693,30 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
     }
   }
 
-  // 2. In-memory idempotency check: rapid duplicate submissions (double clicks / retries within 15s)
+  // 2. Durable idempotency check: rapid duplicate submissions (double clicks / retries within 15s)
   const itemsKey = items.map(i => `${i.productId}:${i.qty}:${i.selectedGrams || ""}:${i.selectedVariantId || ""}`).sort().join("|");
-  const idempotencyKey = `${req.user!.userId}_${shopId}_${itemsKey}`;
+  const clientKey = typeof body["idempotencyKey"] === "string" && body["idempotencyKey"].trim() ? body["idempotencyKey"].trim() : null;
+  const idempotencyKey = clientKey || `${req.user!.userId}_${shopId}_${itemsKey}_${Math.floor(Date.now() / 15000)}`;
   const now = Date.now();
   const cachedRecent = recentOrderDeduplication.get(idempotencyKey);
   if (cachedRecent && cachedRecent.expires > now) {
     res.json({ success: true, order: cachedRecent.order, message: "Order already processed" });
+    return;
+  }
+
+  // Durable DB check against database-level idempotency key
+  const [existingOrder] = await db
+    .select()
+    .from(orders)
+    .where(and(
+      eq(orders.idempotencyKey, idempotencyKey),
+      ne(orders.status, "cancelled"),
+      ne(orders.status, "refunded")
+    ))
+    .limit(1);
+
+  if (existingOrder) {
+    res.json({ success: true, order: mi(existingOrder), message: "Order already processed" });
     return;
   }
 
@@ -892,23 +909,11 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
       }
 
       const commissionAmount = +totalCommissionAmount.toFixed(2);
-      const deliveryCharge = Number(body["deliveryCharge"] ?? 0);
+      const deliveryCharge = Math.max(0, Number(body["deliveryCharge"] ?? 0));
       // packagingFee determined pre-transaction from shop type / category config
-      const couponDiscount = Number(body["couponDiscount"] ?? 0);
-      // GST applies to product subtotal only — never on delivery, packaging, or platform charges
-      const gstAmount = (shop?.gstEnabled && shop?.gstRate && shop.gstRate > 0)
-        ? +(subtotal * shop.gstRate / 100).toFixed(2)
-        : 0;
-      const netAmount = subtotal + deliveryCharge + packagingFee + gstAmount - couponDiscount;
-      // Packaging fee is platform revenue; GST goes to vendor (collected on vendor's behalf).
-      const vendorPayable = +(netAmount - commissionAmount - packagingFee).toFixed(2);
-      const avgRate = enrichedItems.length > 0
-        ? +(enrichedItems.reduce((s, it) => s + it.commissionRate, 0) / enrichedItems.length).toFixed(2)
-        : 0;
 
-      // 4. Re-validate coupon inside the transaction (fixes race condition — Bug #4)
-      //    Two concurrent requests both passed /coupons/validate but we re-check here
-      //    while holding the transaction lock so only one can succeed.
+      // 4. Re-validate & recalculate coupon inside the transaction (prevents client-side price manipulation & race conditions)
+      let realCouponDiscount = 0;
       if (couponCode) {
         const [coupon] = await tx.select().from(coupons)
           .where(eq(coupons.code, couponCode))
@@ -922,6 +927,27 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
         }
         if (coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit) {
           throw Object.assign(new Error("Coupon usage limit has been reached."), { statusCode: 400 });
+        }
+        if (coupon.minimumOrder > 0 && subtotal < coupon.minimumOrder) {
+          throw Object.assign(
+            new Error(`Minimum order of ₹${coupon.minimumOrder} required to apply coupon ${couponCode}.`),
+            { statusCode: 400 },
+          );
+        }
+        if (coupon.appliesTo === "shop" && coupon.targetId && coupon.targetId !== shopId) {
+          throw Object.assign(
+            new Error(`Coupon ${couponCode} is only valid for a specific shop.`),
+            { statusCode: 400 },
+          );
+        }
+        if (coupon.appliesTo === "category" && coupon.targetId) {
+          const hasCategory = enrichedItems.some(it => it.category === coupon.targetId);
+          if (!hasCategory) {
+            throw Object.assign(
+              new Error(`Coupon ${couponCode} is only valid for specific product categories.`),
+              { statusCode: 400 },
+            );
+          }
         }
         if (coupon.perUserLimit > 0) {
           const [{ uses }] = await tx.select({ uses: count() }).from(orders)
@@ -938,7 +964,32 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
             );
           }
         }
+
+        // Calculate discount strictly from DB coupon rules — ignore any client-supplied couponDiscount value
+        let calculatedDiscount = 0;
+        if (coupon.type === "percentage") {
+          calculatedDiscount = (subtotal * coupon.value) / 100;
+          if (coupon.maximumDiscount && coupon.maximumDiscount > 0) {
+            calculatedDiscount = Math.min(calculatedDiscount, coupon.maximumDiscount);
+          }
+        } else {
+          // fixed
+          calculatedDiscount = Math.min(coupon.value, subtotal);
+        }
+        realCouponDiscount = Math.min(subtotal, Math.round(calculatedDiscount * 100) / 100);
       }
+
+      const couponDiscount = realCouponDiscount;
+      // GST applies to product subtotal only — never on delivery, packaging, or platform charges
+      const gstAmount = (shop?.gstEnabled && shop?.gstRate && shop.gstRate > 0)
+        ? +(subtotal * shop.gstRate / 100).toFixed(2)
+        : 0;
+      const netAmount = Math.max(0, +(subtotal + deliveryCharge + packagingFee + gstAmount - couponDiscount).toFixed(2));
+      // Packaging fee is platform revenue; GST goes to vendor (collected on vendor's behalf).
+      const vendorPayable = Math.max(0, +(netAmount - commissionAmount - packagingFee).toFixed(2));
+      const avgRate = enrichedItems.length > 0
+        ? +(enrichedItems.reduce((s, it) => s + it.commissionRate, 0) / enrichedItems.length).toFixed(2)
+        : 0;
 
       // 5. Insert order record
       const paymentMethod = String(body["paymentMethod"] ?? "COD");
@@ -968,6 +1019,7 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
         address: (body["address"] ?? {}) as Record<string, string>,
         couponCode: couponCode ?? undefined,
         deliveryOtp,
+        idempotencyKey,
         razorpayOrderId: typeof body["razorpayOrderId"] === "string" && body["razorpayOrderId"].trim()
           ? body["razorpayOrderId"].trim()
           : undefined,
@@ -1161,6 +1213,11 @@ router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: 
 
   const role = req.user!.role;
   const userId = req.user!.userId;
+
+  if (role !== "admin" && role !== "super_admin" && role !== "customer" && role !== "vendor") {
+    res.status(403).json({ success: false, message: "Forbidden: insufficient permissions to update order status" });
+    return;
+  }
 
   if (role === "customer") {
     if (status !== "cancelled") {
@@ -1389,6 +1446,19 @@ router.post("/:id/refund", authenticate, A, validateUuidParams("id"), async (req
 
   const [current] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
   if (!current) { res.status(404).json({ success: false, message: "Order not found" }); return; }
+
+  if (current.status === "refunded") {
+    res.status(400).json({ success: false, message: "Order is already refunded" });
+    return;
+  }
+
+  if (current.paymentMethod === "COD" && current.paymentStatus !== "paid") {
+    res.status(400).json({
+      success: false,
+      message: "Cannot issue monetary refund for a Cash on Delivery order where payment was never collected.",
+    });
+    return;
+  }
 
   let razorpayWarning: string | null = null;
   if (current.paymentMethod !== "COD" && current.razorpayPaymentId) {

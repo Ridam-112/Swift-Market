@@ -142,7 +142,8 @@ export const orderLimiter = makeRateLimiter({
   windowMs: 10 * 60 * 1000,
   max: isDev ? 100 : 10,
   keyFn: (req) => {
-    const userId = (req as Request & { user?: { id?: string } }).user?.id;
+    const user = (req as Request & { user?: { id?: string; userId?: string } }).user;
+    const userId = user?.userId ?? user?.id;
     return `order:user:${userId ?? req.ip ?? "unknown"}`;
   },
   message: "You are placing orders too quickly. Please wait a few minutes before trying again.",
@@ -163,7 +164,8 @@ export const vendorWriteLimiter = makeRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: isDev ? 500 : 50,
   keyFn: (req) => {
-    const userId = (req as Request & { user?: { id?: string } }).user?.id;
+    const user = (req as Request & { user?: { id?: string; userId?: string } }).user;
+    const userId = user?.userId ?? user?.id;
     return `vendor:write:${userId ?? req.ip ?? "unknown"}`;
   },
   message: "Too many product updates. Please slow down and try again in 15 minutes.",
@@ -174,7 +176,8 @@ export const uploadLimiter = makeRateLimiter({
   windowMs: 60 * 60 * 1000,
   max: isDev ? 200 : 20,
   keyFn: (req) => {
-    const userId = (req as Request & { user?: { id?: string } }).user?.id;
+    const user = (req as Request & { user?: { id?: string; userId?: string } }).user;
+    const userId = user?.userId ?? user?.id;
     return `upload:user:${userId ?? req.ip ?? "unknown"}`;
   },
   message: "Upload limit reached. You can upload up to 20 images per hour.",

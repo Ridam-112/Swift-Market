@@ -458,11 +458,14 @@ router.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams("
     res.status(400).json({ success: false, message: `Order is already ${order.status.replace(/_/g, " ")}` }); return;
   }
 
-  // Brute-force lockout check (Requirement #10)
+  // Brute-force lockout check: check DB-persisted lockout as well as in-memory
   const now = Date.now();
-  const attemptInfo = otpAttemptTracker.get(orderId);
-  if (attemptInfo && attemptInfo.lockedUntil > now) {
-    const remainingSecs = Math.ceil((attemptInfo.lockedUntil - now) / 1000);
+  const dbLockedUntil = order.otpLockedUntil ? order.otpLockedUntil.getTime() : 0;
+  const memAttemptInfo = otpAttemptTracker.get(orderId);
+  const effectiveLockedUntil = Math.max(dbLockedUntil, memAttemptInfo?.lockedUntil || 0);
+
+  if (effectiveLockedUntil > now) {
+    const remainingSecs = Math.ceil((effectiveLockedUntil - now) / 1000);
     res.status(429).json({
       success: false,
       message: `Too many incorrect OTP attempts. Verification locked for ${remainingSecs} seconds.`,
@@ -471,9 +474,12 @@ router.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams("
   }
 
   if (!order.deliveryOtp || order.deliveryOtp !== String(otp ?? "").trim()) {
-    const currentAttempts = (attemptInfo?.attempts || 0) + 1;
+    const dbAttempts = order.otpFailedAttempts ?? 0;
+    const currentAttempts = Math.max(dbAttempts, memAttemptInfo?.attempts || 0) + 1;
     if (currentAttempts >= 5) {
-      otpAttemptTracker.set(orderId, { attempts: 0, lockedUntil: now + 15 * 60 * 1000 });
+      const lockUntilDate = new Date(now + 15 * 60 * 1000);
+      otpAttemptTracker.set(orderId, { attempts: 0, lockedUntil: lockUntilDate.getTime() });
+      await db.update(orders).set({ otpFailedAttempts: 0, otpLockedUntil: lockUntilDate, updatedAt: new Date() }).where(eq(orders.id, orderId));
       res.status(429).json({
         success: false,
         message: "Too many incorrect OTP attempts. Verification locked for 15 minutes. Contact support if needed.",
@@ -481,6 +487,7 @@ router.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams("
       return;
     } else {
       otpAttemptTracker.set(orderId, { attempts: currentAttempts, lockedUntil: 0 });
+      await db.update(orders).set({ otpFailedAttempts: currentAttempts, otpLockedUntil: null, updatedAt: new Date() }).where(eq(orders.id, orderId));
       res.status(400).json({
         success: false,
         message: `Incorrect OTP. Please ask the customer for the correct code. (${5 - currentAttempts} attempts remaining)`,
@@ -489,8 +496,9 @@ router.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams("
     }
   }
 
-  // Clear tracker on success
+  // Clear tracker and DB lockout on success
   otpAttemptTracker.delete(orderId);
+  const clearOtpLock = { otpFailedAttempts: 0, otpLockedUntil: null };
 
   const isCod = (order.paymentMethod ?? "COD").toUpperCase() === "COD";
   const paymentStatusUpdate = (isCod && confirmCash) ? { paymentStatus: "paid" } : {};
@@ -503,7 +511,7 @@ router.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams("
   }).where(eq(deliveryPartners.id, partner.id));
 
   const [updated] = await db.update(orders)
-    .set({ status: "delivered", ...paymentStatusUpdate, updatedAt: new Date() })
+    .set({ status: "delivered", ...paymentStatusUpdate, ...clearOtpLock, updatedAt: new Date() })
     .where(eq(orders.id, orderId))
     .returning();
 
@@ -583,7 +591,10 @@ router.get("/available-orders", authenticate, async (req: AuthRequest, res: Resp
     .where(
       and(
         eq(orders.deliveryPartnerId, null as any),
-        or(eq(orders.status, "ready"), eq(orders.status, "packed"), eq(orders.status, "placed"), eq(orders.status, "accepted"))
+        or(eq(orders.status, "ready"), eq(orders.status, "packed"), eq(orders.status, "placed"), eq(orders.status, "accepted")),
+        ne(orders.deliveryType, "mall_shipping"),
+        ne(orders.deliveryType, "courier"),
+        ne(orders.deliveryType, "pickup")
       )
     )
     .orderBy(desc(orders.createdAt))
@@ -636,7 +647,10 @@ router.post("/orders/:id/accept", authenticate, validateUuidParams("id"), async 
         eq(orders.id, orderId),
         eq(orders.deliveryPartnerId, null as any),
         ne(orders.status, "cancelled"),
-        ne(orders.status, "refunded")
+        ne(orders.status, "refunded"),
+        ne(orders.deliveryType, "mall_shipping"),
+        ne(orders.deliveryType, "courier"),
+        ne(orders.deliveryType, "pickup")
       )
     )
     .returning();

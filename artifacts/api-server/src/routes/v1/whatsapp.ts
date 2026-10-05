@@ -1,5 +1,5 @@
 import { Router, type Response } from "express";
-import { whatsappService } from "../../services/whatsapp.js";
+import { whatsappService, generateWhatsAppActionToken, verifyWhatsAppActionToken } from "../../services/whatsapp.js";
 import { authenticate, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { db, orders, users, shops, deliveryPartners, products, payouts } from "@workspace/db";
 import { eq, and, or, inArray, sql } from "drizzle-orm";
@@ -260,10 +260,17 @@ function renderActionHtml(params: {
 
 // 5. 1-Click Order Action for Vendors from WhatsApp link
 router.get("/order-action", async (req, res: Response): Promise<void> => {
-  const { orderId, action } = req.query as { orderId?: string; action?: string };
+  const { orderId, action, token } = req.query as { orderId?: string; action?: string; token?: string };
 
   if (!orderId || !action) {
     res.status(400).send("<h3>Invalid order action request.</h3>");
+    return;
+  }
+
+  // Cryptographic token verification to prevent unauthorized order cancellation or manipulation
+  if (!verifyWhatsAppActionToken(orderId, action, token)) {
+    logger.warn({ orderId, action }, "[WhatsApp] Action token signature verification failed or token missing");
+    res.status(403).send("<h3>Security verification failed: Invalid or expired action link. Please manage this order through your SwiftMart Vendor Dashboard.</h3>");
     return;
   }
 
@@ -277,6 +284,7 @@ router.get("/order-action", async (req, res: Response): Promise<void> => {
     }
 
     const shortId = order.id.slice(-6).toUpperCase();
+    const readyToken = generateWhatsAppActionToken(order.id, "ready_call_rider");
 
     // ─── ACTION 1: ACCEPT (Transitions placed -> preparing) ──────────────────────
     if (action === "accept") {
@@ -309,7 +317,7 @@ router.get("/order-action", async (req, res: Response): Promise<void> => {
             : `Order #${shortId} is currently in status: <strong>${order.status.toUpperCase()}</strong>.`,
           primaryBtnText: isPreparing ? "🛵 Order is Ready — Call Rider" : "Open Vendor Dashboard",
           primaryBtnUrl: isPreparing
-            ? `${baseUrl}/api/v1/whatsapp/order-action?orderId=${order.id}&action=ready_call_rider`
+            ? `${baseUrl}/api/v1/whatsapp/order-action?orderId=${order.id}&action=ready_call_rider&token=${readyToken}`
             : `${baseUrl}/vendor/orders`,
           secondaryBtnText: isPreparing ? "📊 Orders Dashboard" : undefined,
           secondaryBtnUrl: isPreparing ? `${baseUrl}/vendor/orders` : undefined,
@@ -381,7 +389,7 @@ router.get("/order-action", async (req, res: Response): Promise<void> => {
         stepNotice: "STEP 1 OF 2 COMPLETED: Kitchen / Counter is preparing items",
         description: `Order #${shortId} is now marked <strong>PREPARING</strong>.<br><br>Please prepare and pack the items carefully. When everything is packed and ready to go, tap the button below to summon a delivery partner to your store.`,
         primaryBtnText: "🛵 Order is Ready — Call Rider",
-        primaryBtnUrl: `${baseUrl}/api/v1/whatsapp/order-action?orderId=${order.id}&action=ready_call_rider`,
+        primaryBtnUrl: `${baseUrl}/api/v1/whatsapp/order-action?orderId=${order.id}&action=ready_call_rider&token=${readyToken}`,
         primaryBtnStyle: "call-rider",
         secondaryBtnText: "📊 View on Dashboard",
         secondaryBtnUrl: `${baseUrl}/vendor/orders`,
@@ -557,6 +565,36 @@ router.get("/order-action", async (req, res: Response): Promise<void> => {
 
     // ─── ACTION 3: REJECT / CANCEL ────────────────────────────────────────────────
     if (action === "reject") {
+      if (order.status === "cancelled" || order.status === "refunded") {
+        res.send(renderActionHtml({
+          icon: "⚠️",
+          title: "Order Already Cancelled",
+          badge: "CANCELLED",
+          badgeColor: "#ef4444",
+          orderNumber: shortId,
+          shopName: order.shopName,
+          description: `Order #${shortId} was already cancelled or rejected.`,
+          primaryBtnText: "Open Vendor Dashboard",
+          primaryBtnUrl: `${baseUrl}/vendor/orders`,
+        }));
+        return;
+      }
+
+      if (order.status === "out_for_delivery" || order.status === "delivered") {
+        res.send(renderActionHtml({
+          icon: "⚠️",
+          title: "Order In Transit / Delivered",
+          badge: order.status.toUpperCase(),
+          badgeColor: "#8b5cf6",
+          orderNumber: shortId,
+          shopName: order.shopName,
+          description: `Order #${shortId} cannot be rejected because it is already ${order.status === "delivered" ? "delivered" : "out for delivery"}.`,
+          primaryBtnText: "Open Vendor Dashboard",
+          primaryBtnUrl: `${baseUrl}/vendor/orders`,
+        }));
+        return;
+      }
+
       await db.update(orders).set({
         status: "cancelled",
         cancelReason: "Rejected by shop owner via WhatsApp",
