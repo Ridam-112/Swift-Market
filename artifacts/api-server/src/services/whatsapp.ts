@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
+import os from "node:os";
 import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
@@ -10,9 +11,19 @@ import makeWASocket, {
 import QRCode from "qrcode";
 import pino from "pino";
 import { logger } from "../lib/logger.js";
+import { db } from "@workspace/db";
+import { sql } from "drizzle-orm";
 
-// Session directory on local disk — ZERO database writes or queries
-const SESSION_DIR = path.resolve(process.cwd(), "data/whatsapp_session");
+// Detect serverless environment (Vercel / Lambda) where only /tmp is writable
+const isServerless = Boolean(
+  process.env.VERCEL ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME ||
+  process.env.LAMBDA_TASK_ROOT
+);
+
+const SESSION_DIR = isServerless
+  ? path.resolve(os.tmpdir(), "whatsapp_session")
+  : path.resolve(process.cwd(), "data/whatsapp_session");
 
 interface WhatsAppServiceState {
   status: "disconnected" | "connecting" | "qr_ready" | "connected";
@@ -20,6 +31,25 @@ interface WhatsAppServiceState {
   connectedPhone: string | null;
   lastConnectedAt: Date | null;
   disconnectReason: string | null;
+}
+
+let isGatewayTableEnsured = false;
+async function ensureGatewayTable(): Promise<void> {
+  if (isGatewayTableEnsured) return;
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS whatsapp_gateway_state (
+        id TEXT PRIMARY KEY DEFAULT 'current',
+        status TEXT NOT NULL,
+        qr TEXT,
+        phone TEXT,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `);
+    isGatewayTableEnsured = true;
+  } catch (err) {
+    logger.warn({ err }, "[WhatsApp] Non-fatal: Could not ensure whatsapp_gateway_state table");
+  }
 }
 
 class WhatsAppService {
@@ -34,15 +64,53 @@ class WhatsAppService {
   private isInitializing = false;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
+  private qrListeners: Array<(status: ReturnType<WhatsAppService["getStatus"]>) => void> = [];
 
   constructor() {
-    // Ensure session directory exists
+    this.ensureSessionDir();
+  }
+
+  private ensureSessionDir(): void {
     try {
       if (!fs.existsSync(SESSION_DIR)) {
         fs.mkdirSync(SESSION_DIR, { recursive: true });
       }
     } catch (err) {
       logger.error({ err }, "[WhatsApp] Failed to create session directory");
+    }
+  }
+
+  private notifyListeners(): void {
+    const current = this.getStatus();
+    for (const listener of [...this.qrListeners]) {
+      try {
+        listener(current);
+      } catch {
+        // ignore listener errors
+      }
+    }
+  }
+
+  private async syncGatewayStateToDb(): Promise<void> {
+    try {
+      await ensureGatewayTable();
+      await db.execute(sql`
+        INSERT INTO whatsapp_gateway_state (id, status, qr, phone, updated_at)
+        VALUES (
+          'current',
+          ${this.state.status},
+          ${this.state.qrCodeDataUrl},
+          ${this.state.connectedPhone},
+          NOW()
+        )
+        ON CONFLICT (id) DO UPDATE
+        SET status = EXCLUDED.status,
+            qr = EXCLUDED.qr,
+            phone = EXCLUDED.phone,
+            updated_at = NOW();
+      `);
+    } catch {
+      // Non-fatal
     }
   }
 
@@ -56,17 +124,92 @@ class WhatsAppService {
     };
   }
 
+  public async getStatusAsync(): Promise<ReturnType<WhatsAppService["getStatus"]>> {
+    // If memory has an active QR or is connected, return immediately
+    if (this.state.status === "connected" || this.state.qrCodeDataUrl) {
+      return this.getStatus();
+    }
+
+    // Check shared database state across serverless instances
+    try {
+      await ensureGatewayTable();
+      const res = await db.execute(sql`
+        SELECT status, qr, phone, updated_at
+        FROM whatsapp_gateway_state
+        WHERE id = 'current'
+        LIMIT 1;
+      `);
+      const row = (res as any)?.rows?.[0];
+      if (row) {
+        const updatedAt = new Date(row.updated_at).getTime();
+        const isFresh = Date.now() - updatedAt < 120000; // QR valid for 2 min
+        if (row.status === "connected" || (row.qr && isFresh)) {
+          return {
+            status: row.status as WhatsAppServiceState["status"],
+            qr: isFresh ? row.qr : null,
+            phone: row.phone,
+            lastConnectedAt: this.state.lastConnectedAt,
+            disconnectReason: this.state.disconnectReason,
+          };
+        }
+      }
+    } catch {
+      // Non-fatal
+    }
+
+    return this.getStatus();
+  }
+
+  public waitForQrOrStatus(timeoutMs = 9000): Promise<ReturnType<WhatsAppService["getStatus"]>> {
+    if (this.state.qrCodeDataUrl || this.state.status === "connected") {
+      return Promise.resolve(this.getStatus());
+    }
+
+    return new Promise((resolve) => {
+      let resolved = false;
+      let timer: NodeJS.Timeout | null = null;
+
+      const cleanup = () => {
+        if (timer) clearTimeout(timer);
+        this.qrListeners = this.qrListeners.filter((l) => l !== onUpdate);
+      };
+
+      const onUpdate = (st: ReturnType<WhatsAppService["getStatus"]>) => {
+        if (!resolved && (st.qr || st.status === "connected" || st.status === "disconnected")) {
+          resolved = true;
+          cleanup();
+          resolve(st);
+        }
+      };
+
+      timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve(this.getStatus());
+        }
+      }, timeoutMs);
+
+      this.qrListeners.push(onUpdate);
+    });
+  }
+
   /**
    * Initializes the WhatsApp Baileys connection.
-   * Uses disk-based multi-file auth to guarantee zero database load.
    */
   public async init(): Promise<void> {
-    if (this.isInitializing || this.state.status === "connected") {
+    if (this.state.status === "connected") {
+      return;
+    }
+    if (this.isInitializing) {
       return;
     }
 
+    this.ensureSessionDir();
     this.isInitializing = true;
     this.state.status = "connecting";
+    void this.syncGatewayStateToDb();
+    this.notifyListeners();
 
     try {
       const { state: authState, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
@@ -74,6 +217,13 @@ class WhatsAppService {
 
       // Silent logger to prevent memory spikes & console flooding
       const silentLogger = pino({ level: "silent" });
+
+      if (this.sock) {
+        try {
+          this.sock.end(undefined);
+        } catch {}
+        this.sock = null;
+      }
 
       this.sock = makeWASocket({
         version,
@@ -102,6 +252,8 @@ class WhatsAppService {
             });
             this.state.status = "qr_ready";
             logger.info("[WhatsApp] QR Code generated successfully. Scan from WhatsApp mobile app.");
+            void this.syncGatewayStateToDb();
+            this.notifyListeners();
           } catch (qrErr) {
             logger.error({ qrErr }, "[WhatsApp] Failed to render QR data URL");
           }
@@ -116,6 +268,8 @@ class WhatsAppService {
           this.state.disconnectReason = statusCode ? `Code ${statusCode}` : "Connection closed";
 
           logger.warn({ statusCode, shouldReconnect }, "[WhatsApp] Connection closed");
+          void this.syncGatewayStateToDb();
+          this.notifyListeners();
 
           if (shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
@@ -145,6 +299,8 @@ class WhatsAppService {
           this.state.connectedPhone = phone;
 
           logger.info(`[WhatsApp] 🚀 CONNECTED SUCCESSFULLY to WhatsApp as +${phone}!`);
+          void this.syncGatewayStateToDb();
+          this.notifyListeners();
         }
       });
     } catch (err) {
@@ -152,6 +308,8 @@ class WhatsAppService {
       this.state.status = "disconnected";
       this.state.disconnectReason = err instanceof Error ? err.message : "Initialization failed";
       logger.error({ err }, "[WhatsApp] Error during socket initialization");
+      void this.syncGatewayStateToDb();
+      this.notifyListeners();
     }
   }
 
@@ -173,6 +331,8 @@ class WhatsAppService {
         lastConnectedAt: null,
         disconnectReason: "Logged out by user",
       };
+      void this.syncGatewayStateToDb();
+      this.notifyListeners();
     }
   }
 

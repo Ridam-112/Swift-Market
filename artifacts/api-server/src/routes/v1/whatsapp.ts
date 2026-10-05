@@ -9,8 +9,8 @@ const router = Router();
 const A = requireRole("admin", "super_admin");
 
 // 1. Get WhatsApp Connection Status & QR Code (Admin only)
-router.get("/status", authenticate, A, (_req: AuthRequest, res: Response) => {
-  const status = whatsappService.getStatus();
+router.get("/status", authenticate, A, async (_req: AuthRequest, res: Response) => {
+  const status = await whatsappService.getStatusAsync();
   res.json({
     success: true,
     data: status,
@@ -20,15 +20,18 @@ router.get("/status", authenticate, A, (_req: AuthRequest, res: Response) => {
 // 2. Trigger connection / generate QR (Admin only)
 router.post("/connect", authenticate, A, async (_req: AuthRequest, res: Response) => {
   try {
-    whatsappService.init().catch((err) => {
-      logger.error({ err }, "[WhatsApp] Background init failed");
-    });
+    await whatsappService.init();
+    // Wait up to 8.5s for Baileys to connect & emit QR code Data URL
+    const status = await whatsappService.waitForQrOrStatus(8500);
     res.json({
       success: true,
-      message: "WhatsApp connection initialized. Scan QR code if disconnected.",
-      data: whatsappService.getStatus(),
+      message: status.qr
+        ? "WhatsApp QR code ready! Please scan using your WhatsApp mobile app."
+        : "WhatsApp connection initialized. Checking status...",
+      data: status,
     });
   } catch (err: unknown) {
+    logger.error({ err }, "[WhatsApp] Connection initialization error");
     res.status(500).json({
       success: false,
       message: err instanceof Error ? err.message : "Failed to initialize WhatsApp",
@@ -40,10 +43,11 @@ router.post("/connect", authenticate, A, async (_req: AuthRequest, res: Response
 router.post("/disconnect", authenticate, A, async (_req: AuthRequest, res: Response) => {
   try {
     await whatsappService.logout();
+    const status = await whatsappService.getStatusAsync();
     res.json({
       success: true,
       message: "WhatsApp disconnected successfully.",
-      data: whatsappService.getStatus(),
+      data: status,
     });
   } catch (err: unknown) {
     res.status(500).json({

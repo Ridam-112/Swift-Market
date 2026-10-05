@@ -42,27 +42,18 @@ export function WhatsAppTab() {
     }
   }, []);
 
-  // Poll status while connecting or qr_ready
-  useEffect(() => {
-    fetchStatus();
-
-    const interval = setInterval(() => {
-      fetchStatus(true);
-    }, 4000);
-    pollTimerRef.current = interval;
-
-    return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-    };
-  }, [fetchStatus]);
 
   const handleConnect = async () => {
     setActionLoading(true);
     try {
       const res = await api.post<{ success: boolean; message: string; data: WhatsAppStatus }>("/whatsapp/connect", {});
-      if (res.success) {
-        toast.success(res.message || "Generating QR code...");
-        if (res.data) setStatusData(res.data);
+      if (res.success && res.data) {
+        setStatusData(res.data);
+        if (res.data.qr) {
+          toast.success("QR Code ready! Scan with your WhatsApp app.");
+        } else {
+          toast.info(res.message || "Connecting to WhatsApp...");
+        }
       } else {
         toast.error(res.message || "Failed to start WhatsApp connection");
       }
@@ -118,8 +109,22 @@ export function WhatsAppTab() {
   };
 
   const isConnected = statusData.status === "connected";
-  const isQrReady = statusData.status === "qr_ready" && !!statusData.qr;
-  const isConnecting = statusData.status === "connecting";
+  const isQrReady = Boolean(statusData.qr) && !isConnected;
+  const isConnecting = (statusData.status === "connecting" || actionLoading) && !isQrReady && !isConnected;
+
+  // Poll status: poll faster (2.5s) when connecting or waiting for scan
+  useEffect(() => {
+    fetchStatus();
+
+    const interval = setInterval(() => {
+      fetchStatus(true);
+    }, isQrReady || isConnecting ? 2500 : 5000);
+    pollTimerRef.current = interval;
+
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+  }, [fetchStatus, isQrReady, isConnecting]);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
@@ -262,6 +267,18 @@ export function WhatsAppTab() {
                     <RefreshCw className={`w-4 h-4 mr-2 ${actionLoading ? "animate-spin" : ""}`} />
                     Refresh QR Code
                   </Button>
+                </div>
+              </div>
+            ) : isConnecting ? (
+              <div className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-8 text-center space-y-4">
+                <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto">
+                  <RefreshCw className="w-8 h-8 animate-spin" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">Generating WhatsApp QR Code...</h3>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                    Initializing secure WhatsApp connection and creating pairing session. The QR code will appear right here momentarily...
+                  </p>
                 </div>
               </div>
             ) : (

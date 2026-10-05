@@ -29009,7 +29009,7 @@ var require_multistream = __commonJS({
 var require_pino = __commonJS({
   "../../node_modules/.pnpm/pino@9.14.0/node_modules/pino/pino.js"(exports, module) {
     "use strict";
-    var os = __require("node:os");
+    var os2 = __require("node:os");
     var stdSerializers = require_pino_std_serializers();
     var caller = require_caller();
     var redaction = require_redaction();
@@ -29056,7 +29056,7 @@ var require_pino = __commonJS({
     } = symbols;
     var { epochTime, nullTime } = time;
     var { pid } = process;
-    var hostname = os.hostname();
+    var hostname = os2.hostname();
     var defaultErrorSerializer = stdSerializers.err;
     var defaultOptions = {
       level: "info",
@@ -50059,7 +50059,7 @@ var require_util2 = __commonJS({
     exports.isValidFile = isValidFile;
     exports.getWellKnownCertificateConfigFileLocation = getWellKnownCertificateConfigFileLocation;
     var fs7 = __require("fs");
-    var os = __require("os");
+    var os2 = __require("os");
     var path5 = __require("path");
     var WELL_KNOWN_CERTIFICATE_CONFIG_FILE = "certificate_config.json";
     var CLOUDSDK_CONFIG_DIRECTORY = "gcloud";
@@ -50157,7 +50157,7 @@ var require_util2 = __commonJS({
       return path5.join(configDir, WELL_KNOWN_CERTIFICATE_CONFIG_FILE);
     }
     function _isWindows() {
-      return os.platform().startsWith("win");
+      return os2.platform().startsWith("win");
     }
   }
 });
@@ -54716,7 +54716,7 @@ var require_googleauth = __commonJS({
     var fs7 = __require("fs");
     var gaxios_1 = require_src3();
     var gcpMetadata = require_src5();
-    var os = __require("os");
+    var os2 = __require("os");
     var path5 = __require("path");
     var crypto_1 = require_crypto3();
     var computeclient_1 = require_computeclient();
@@ -55219,7 +55219,7 @@ var require_googleauth = __commonJS({
        * @api private
        */
       _isWindows() {
-        const sys = os.platform();
+        const sys = os2.platform();
         if (sys && sys.length >= 3) {
           if (sys.substring(0, 3).toLowerCase() === "win") {
             return true;
@@ -136763,7 +136763,7 @@ var require_make_middleware = __commonJS({
 var require_disk = __commonJS({
   "../../node_modules/.pnpm/multer@2.2.0/node_modules/multer/storage/disk.js"(exports, module) {
     var fs7 = __require("fs");
-    var os = __require("os");
+    var os2 = __require("os");
     var path5 = __require("path");
     var crypto4 = __require("crypto");
     function getFilename(req, file, cb) {
@@ -136772,7 +136772,7 @@ var require_disk = __commonJS({
       });
     }
     function getDestination(req, file, cb) {
-      cb(null, os.tmpdir());
+      cb(null, os2.tmpdir());
     }
     function DiskStorage(opts) {
       this.getFilename = opts.filename || getFilename;
@@ -156641,7 +156641,7 @@ var products_default = router8;
 var import_express9 = __toESM(require_express2(), 1);
 var import_razorpay = __toESM(require_razorpay(), 1);
 init_zod();
-import { eq as eq13, and as and7, ilike as ilike4, or as or7, gte as gte3, ne, desc as desc6, count as count6, sql as sql3, inArray as inArray5 } from "drizzle-orm";
+import { eq as eq13, and as and7, ilike as ilike4, or as or7, gte as gte3, ne, desc as desc6, count as count6, sql as sql4, inArray as inArray5 } from "drizzle-orm";
 
 // src/utils/commission.ts
 import { eq as eq12 } from "drizzle-orm";
@@ -156686,6 +156686,7 @@ function calculateCommissionAmount(netAmount, resolved) {
 // src/services/whatsapp.ts
 import path2 from "node:path";
 import fs5 from "node:fs";
+import os from "node:os";
 
 // ../../node_modules/.pnpm/@whiskeysockets+baileys@7.0.0-rc14/node_modules/@whiskeysockets/baileys/WAProto/index.js
 var import_minimal = __toESM(require_minimal2(), 1);
@@ -258726,9 +258727,9 @@ var BROWSER_TO_COMPANION_WEB_CLIENT = {
   Opera: CompanionWebClientType.OPERA,
   Safari: CompanionWebClientType.SAFARI
 };
-var getCompanionWebClientType = ([os, browserName]) => {
+var getCompanionWebClientType = ([os2, browserName]) => {
   if (browserName === "Desktop") {
-    return os === "Windows" ? CompanionWebClientType.UWP : CompanionWebClientType.ELECTRON;
+    return os2 === "Windows" ? CompanionWebClientType.UWP : CompanionWebClientType.ELECTRON;
   }
   return BROWSER_TO_COMPANION_WEB_CLIENT[browserName] || CompanionWebClientType.OTHER_WEB_CLIENT;
 };
@@ -267628,7 +267629,29 @@ var lib_default = Socket_default;
 // src/services/whatsapp.ts
 var import_qrcode = __toESM(require_lib9(), 1);
 var import_pino3 = __toESM(require_pino(), 1);
-var SESSION_DIR = path2.resolve(process.cwd(), "data/whatsapp_session");
+import { sql as sql3 } from "drizzle-orm";
+var isServerless = Boolean(
+  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT
+);
+var SESSION_DIR = isServerless ? path2.resolve(os.tmpdir(), "whatsapp_session") : path2.resolve(process.cwd(), "data/whatsapp_session");
+var isGatewayTableEnsured = false;
+async function ensureGatewayTable() {
+  if (isGatewayTableEnsured) return;
+  try {
+    await db.execute(sql3`
+      CREATE TABLE IF NOT EXISTS whatsapp_gateway_state (
+        id TEXT PRIMARY KEY DEFAULT 'current',
+        status TEXT NOT NULL,
+        qr TEXT,
+        phone TEXT,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `);
+    isGatewayTableEnsured = true;
+  } catch (err) {
+    logger.warn({ err }, "[WhatsApp] Non-fatal: Could not ensure whatsapp_gateway_state table");
+  }
+}
 var WhatsAppService = class {
   sock = null;
   state = {
@@ -267641,13 +267664,47 @@ var WhatsAppService = class {
   isInitializing = false;
   reconnectAttempts = 0;
   maxReconnectAttempts = 5;
+  qrListeners = [];
   constructor() {
+    this.ensureSessionDir();
+  }
+  ensureSessionDir() {
     try {
       if (!fs5.existsSync(SESSION_DIR)) {
         fs5.mkdirSync(SESSION_DIR, { recursive: true });
       }
     } catch (err) {
       logger.error({ err }, "[WhatsApp] Failed to create session directory");
+    }
+  }
+  notifyListeners() {
+    const current = this.getStatus();
+    for (const listener of [...this.qrListeners]) {
+      try {
+        listener(current);
+      } catch {
+      }
+    }
+  }
+  async syncGatewayStateToDb() {
+    try {
+      await ensureGatewayTable();
+      await db.execute(sql3`
+        INSERT INTO whatsapp_gateway_state (id, status, qr, phone, updated_at)
+        VALUES (
+          'current',
+          ${this.state.status},
+          ${this.state.qrCodeDataUrl},
+          ${this.state.connectedPhone},
+          NOW()
+        )
+        ON CONFLICT (id) DO UPDATE
+        SET status = EXCLUDED.status,
+            qr = EXCLUDED.qr,
+            phone = EXCLUDED.phone,
+            updated_at = NOW();
+      `);
+    } catch {
     }
   }
   getStatus() {
@@ -267659,20 +267716,90 @@ var WhatsAppService = class {
       disconnectReason: this.state.disconnectReason
     };
   }
+  async getStatusAsync() {
+    if (this.state.status === "connected" || this.state.qrCodeDataUrl) {
+      return this.getStatus();
+    }
+    try {
+      await ensureGatewayTable();
+      const res = await db.execute(sql3`
+        SELECT status, qr, phone, updated_at
+        FROM whatsapp_gateway_state
+        WHERE id = 'current'
+        LIMIT 1;
+      `);
+      const row = res?.rows?.[0];
+      if (row) {
+        const updatedAt = new Date(row.updated_at).getTime();
+        const isFresh = Date.now() - updatedAt < 12e4;
+        if (row.status === "connected" || row.qr && isFresh) {
+          return {
+            status: row.status,
+            qr: isFresh ? row.qr : null,
+            phone: row.phone,
+            lastConnectedAt: this.state.lastConnectedAt,
+            disconnectReason: this.state.disconnectReason
+          };
+        }
+      }
+    } catch {
+    }
+    return this.getStatus();
+  }
+  waitForQrOrStatus(timeoutMs = 9e3) {
+    if (this.state.qrCodeDataUrl || this.state.status === "connected") {
+      return Promise.resolve(this.getStatus());
+    }
+    return new Promise((resolve) => {
+      let resolved = false;
+      let timer = null;
+      const cleanup = () => {
+        if (timer) clearTimeout(timer);
+        this.qrListeners = this.qrListeners.filter((l) => l !== onUpdate);
+      };
+      const onUpdate = (st) => {
+        if (!resolved && (st.qr || st.status === "connected" || st.status === "disconnected")) {
+          resolved = true;
+          cleanup();
+          resolve(st);
+        }
+      };
+      timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve(this.getStatus());
+        }
+      }, timeoutMs);
+      this.qrListeners.push(onUpdate);
+    });
+  }
   /**
    * Initializes the WhatsApp Baileys connection.
-   * Uses disk-based multi-file auth to guarantee zero database load.
    */
   async init() {
-    if (this.isInitializing || this.state.status === "connected") {
+    if (this.state.status === "connected") {
       return;
     }
+    if (this.isInitializing) {
+      return;
+    }
+    this.ensureSessionDir();
     this.isInitializing = true;
     this.state.status = "connecting";
+    void this.syncGatewayStateToDb();
+    this.notifyListeners();
     try {
       const { state: authState, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
       const { version: version3 } = await fetchLatestBaileysVersion().catch(() => ({ version: [2, 3e3, 1015901307] }));
       const silentLogger = (0, import_pino3.default)({ level: "silent" });
+      if (this.sock) {
+        try {
+          this.sock.end(void 0);
+        } catch {
+        }
+        this.sock = null;
+      }
       this.sock = lib_default({
         version: version3,
         logger: silentLogger,
@@ -267696,6 +267823,8 @@ var WhatsAppService = class {
             });
             this.state.status = "qr_ready";
             logger.info("[WhatsApp] QR Code generated successfully. Scan from WhatsApp mobile app.");
+            void this.syncGatewayStateToDb();
+            this.notifyListeners();
           } catch (qrErr) {
             logger.error({ qrErr }, "[WhatsApp] Failed to render QR data URL");
           }
@@ -267708,6 +267837,8 @@ var WhatsAppService = class {
           this.state.qrCodeDataUrl = null;
           this.state.disconnectReason = statusCode ? `Code ${statusCode}` : "Connection closed";
           logger.warn({ statusCode, shouldReconnect }, "[WhatsApp] Connection closed");
+          void this.syncGatewayStateToDb();
+          this.notifyListeners();
           if (shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             const delay2 = Math.min(1e3 * Math.pow(2, this.reconnectAttempts), 3e4);
@@ -267734,6 +267865,8 @@ var WhatsAppService = class {
           const phone = userJid.split(":")[0]?.replace(/\D/g, "") || userJid.split("@")[0] || "Unknown";
           this.state.connectedPhone = phone;
           logger.info(`[WhatsApp] \u{1F680} CONNECTED SUCCESSFULLY to WhatsApp as +${phone}!`);
+          void this.syncGatewayStateToDb();
+          this.notifyListeners();
         }
       });
     } catch (err) {
@@ -267741,6 +267874,8 @@ var WhatsAppService = class {
       this.state.status = "disconnected";
       this.state.disconnectReason = err instanceof Error ? err.message : "Initialization failed";
       logger.error({ err }, "[WhatsApp] Error during socket initialization");
+      void this.syncGatewayStateToDb();
+      this.notifyListeners();
     }
   }
   /**
@@ -267762,6 +267897,8 @@ var WhatsAppService = class {
         lastConnectedAt: null,
         disconnectReason: "Logged out by user"
       };
+      void this.syncGatewayStateToDb();
+      this.notifyListeners();
     }
   }
   clearSession() {
@@ -268112,7 +268249,7 @@ var VALID_STATUSES = /* @__PURE__ */ new Set([
 ]);
 async function restoreStock(items) {
   await Promise.all(items.map(async (item) => {
-    const [updated] = await db.update(products).set({ stock: sql3`${products.stock} + ${item.qty}` }).where(eq13(products.id, item.productId)).returning({ stock: products.stock, status: products.status });
+    const [updated] = await db.update(products).set({ stock: sql4`${products.stock} + ${item.qty}` }).where(eq13(products.id, item.productId)).returning({ stock: products.stock, status: products.status });
     if (updated && updated.stock > 0 && updated.status === "out_of_stock") {
       await db.update(products).set({ status: "active" }).where(eq13(products.id, item.productId));
     }
@@ -268121,11 +268258,11 @@ async function restoreStock(items) {
   });
 }
 async function reverseOrderFinancials(order) {
-  await db.update(payouts).set({ status: "cancelled" }).where(sql3`${payouts.ordersIncluded} @> ${JSON.stringify([order.id])}::jsonb`).catch((err) => {
+  await db.update(payouts).set({ status: "cancelled" }).where(sql4`${payouts.ordersIncluded} @> ${JSON.stringify([order.id])}::jsonb`).catch((err) => {
     logger.error({ err, orderId: order.id }, "reverseOrderFinancials: failed to cancel payout");
   });
   if (order.couponCode) {
-    await db.update(coupons).set({ usedCount: sql3`GREATEST(${coupons.usedCount} - 1, 0)` }).where(eq13(coupons.code, order.couponCode)).catch((err) => {
+    await db.update(coupons).set({ usedCount: sql4`GREATEST(${coupons.usedCount} - 1, 0)` }).where(eq13(coupons.code, order.couponCode)).catch((err) => {
       logger.error({ err, couponCode: order.couponCode, orderId: order.id }, "reverseOrderFinancials: failed to decrement coupon");
     });
   }
@@ -268530,7 +268667,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
       }
       const reducedProducts = [];
       for (const item of items) {
-        const [updated] = await tx.update(products).set({ stock: sql3`${products.stock} - ${item.qty}` }).where(and7(
+        const [updated] = await tx.update(products).set({ stock: sql4`${products.stock} - ${item.qty}` }).where(and7(
           eq13(products.id, item.productId),
           gte3(products.stock, item.qty),
           ne(products.status, "inactive")
@@ -268694,7 +268831,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
         });
       }
       if (couponCode) {
-        await tx.update(coupons).set({ usedCount: sql3`${coupons.usedCount} + 1` }).where(eq13(coupons.code, couponCode));
+        await tx.update(coupons).set({ usedCount: sql4`${coupons.usedCount} + 1` }).where(eq13(coupons.code, couponCode));
       }
       return order;
     });
@@ -270527,7 +270664,7 @@ var reports_default = router14;
 
 // src/routes/v1/notifications.ts
 var import_express15 = __toESM(require_express2(), 1);
-import { eq as eq19, and as and12, desc as desc11, count as count8, sql as sql6 } from "drizzle-orm";
+import { eq as eq19, and as and12, desc as desc11, count as count8, sql as sql7 } from "drizzle-orm";
 var router15 = (0, import_express15.Router)();
 var A14 = requireRole("admin", "super_admin");
 router15.get("/", authenticate, async (req, res) => {
@@ -270697,7 +270834,7 @@ router15.post("/send-custom", authenticate, A14, async (req, res) => {
 });
 router15.post("/admin/cleanup", authenticate, A14, async (_req, res) => {
   try {
-    const allUsers = await db.select({ userId: notifications.userId, cnt: count8() }).from(notifications).groupBy(notifications.userId).having(({ cnt }) => sql6`${cnt} > 10`);
+    const allUsers = await db.select({ userId: notifications.userId, cnt: count8() }).from(notifications).groupBy(notifications.userId).having(({ cnt }) => sql7`${cnt} > 10`);
     if (allUsers.length === 0) {
       res.json({ success: true, message: "All users already within the 10-notification limit.", trimmed: 0 });
       return;
@@ -270913,7 +271050,7 @@ var upload_default = router16;
 
 // src/routes/v1/hero-banners.ts
 var import_express17 = __toESM(require_express2(), 1);
-import { eq as eq20, inArray as inArray8, asc as asc5, sql as sql7 } from "drizzle-orm";
+import { eq as eq20, inArray as inArray8, asc as asc5, sql as sql8 } from "drizzle-orm";
 var viewedRecently = /* @__PURE__ */ new Set();
 var clickedRecently = /* @__PURE__ */ new Set();
 function scheduleCleanup(set, key, ttlMs) {
@@ -271022,7 +271159,7 @@ router17.post("/batch-view", async (req, res) => {
     return true;
   });
   if (newIds.length > 0) {
-    await db.update(heroBanners).set({ views: sql7`${heroBanners.views} + 1` }).where(inArray8(heroBanners.id, newIds));
+    await db.update(heroBanners).set({ views: sql8`${heroBanners.views} + 1` }).where(inArray8(heroBanners.id, newIds));
   }
   res.json({ success: true });
 });
@@ -271033,7 +271170,7 @@ router17.post("/:id/click", async (req, res) => {
   if (!clickedRecently.has(key)) {
     clickedRecently.add(key);
     scheduleCleanup(clickedRecently, key, 60 * 60 * 1e3);
-    await db.update(heroBanners).set({ clicks: sql7`${heroBanners.clicks} + 1` }).where(eq20(heroBanners.id, id));
+    await db.update(heroBanners).set({ clicks: sql8`${heroBanners.clicks} + 1` }).where(eq20(heroBanners.id, id));
   }
   res.json({ success: true });
 });
@@ -271081,7 +271218,7 @@ import crypto3 from "crypto";
 import { eq as eq22, inArray as inArray9, and as and14 } from "drizzle-orm";
 
 // src/utils/orderCleanup.ts
-import { eq as eq21, sql as sql8 } from "drizzle-orm";
+import { eq as eq21, sql as sql9 } from "drizzle-orm";
 async function cancelOrderAndRestoreStock(orderId, reason) {
   const [current] = await db.select().from(orders).where(eq21(orders.id, orderId)).limit(1);
   if (!current) return;
@@ -271090,15 +271227,15 @@ async function cancelOrderAndRestoreStock(orderId, reason) {
     await tx.update(orders).set({ status: "cancelled", cancelReason: reason, paymentStatus: "failed" }).where(eq21(orders.id, orderId));
     if (Array.isArray(current.items) && current.items.length > 0) {
       await Promise.all(current.items.map(async (item) => {
-        const [updated] = await tx.update(products).set({ stock: sql8`${products.stock} + ${item.qty}` }).where(eq21(products.id, item.productId)).returning({ stock: products.stock, status: products.status });
+        const [updated] = await tx.update(products).set({ stock: sql9`${products.stock} + ${item.qty}` }).where(eq21(products.id, item.productId)).returning({ stock: products.stock, status: products.status });
         if (updated && updated.stock > 0 && updated.status === "out_of_stock") {
           await tx.update(products).set({ status: "active" }).where(eq21(products.id, item.productId));
         }
       }));
     }
-    await tx.update(payouts).set({ status: "cancelled" }).where(sql8`${payouts.ordersIncluded} @> ${JSON.stringify([orderId])}::jsonb`);
+    await tx.update(payouts).set({ status: "cancelled" }).where(sql9`${payouts.ordersIncluded} @> ${JSON.stringify([orderId])}::jsonb`);
     if (current.couponCode) {
-      await tx.update(coupons).set({ usedCount: sql8`GREATEST(${coupons.usedCount} - 1, 0)` }).where(eq21(coupons.code, current.couponCode));
+      await tx.update(coupons).set({ usedCount: sql9`GREATEST(${coupons.usedCount} - 1, 0)` }).where(eq21(coupons.code, current.couponCode));
     }
   });
   if (current.customerId) {
@@ -271746,7 +271883,7 @@ var support_default = router21;
 
 // src/routes/v1/analytics.ts
 var import_express22 = __toESM(require_express2(), 1);
-import { sql as sql9 } from "drizzle-orm";
+import { sql as sql10 } from "drizzle-orm";
 var router22 = (0, import_express22.Router)();
 var A19 = requireRole("admin", "super_admin");
 function periodConfig(period) {
@@ -271772,7 +271909,7 @@ router22.get("/", authenticate, A19, async (req, res) => {
   try {
     [orderRows, userRows, topProductRows, topShopRows] = await Promise.all([
       // Revenue + orders grouped by truncated period
-      db.execute(sql9`
+      db.execute(sql10`
       SELECT
         DATE_TRUNC(${cfg.truncUnit}, created_at) AS bucket,
         COALESCE(SUM(net_amount), 0)::float AS revenue,
@@ -271783,7 +271920,7 @@ router22.get("/", authenticate, A19, async (req, res) => {
       ORDER BY bucket ASC
     `),
       // New customer signups grouped by period
-      db.execute(sql9`
+      db.execute(sql10`
       SELECT
         DATE_TRUNC(${cfg.truncUnit}, created_at) AS bucket,
         COUNT(*)::int AS new_users
@@ -271793,7 +271930,7 @@ router22.get("/", authenticate, A19, async (req, res) => {
       ORDER BY bucket ASC
     `),
       // Top products by units sold — unnest the items JSONB array
-      db.execute(sql9`
+      db.execute(sql10`
       SELECT
         item->>'productName' AS name,
         COALESCE(item->>'category', 'other') AS category,
@@ -271807,7 +271944,7 @@ router22.get("/", authenticate, A19, async (req, res) => {
       LIMIT 10
     `),
       // Top shops by revenue
-      db.execute(sql9`
+      db.execute(sql10`
       SELECT
         shop_id,
         shop_name,
@@ -271866,7 +272003,7 @@ var analytics_default = router22;
 
 // src/routes/v1/homepage-sections.ts
 var import_express23 = __toESM(require_express2(), 1);
-import { eq as eq27, inArray as inArray12, asc as asc6, and as and18, desc as desc15, sql as sql10 } from "drizzle-orm";
+import { eq as eq27, inArray as inArray12, asc as asc6, and as and18, desc as desc15, sql as sql11 } from "drizzle-orm";
 async function enrichWithShopNames(rows) {
   const shopIds = [...new Set(rows.map((p) => p["shopId"]).filter(Boolean))];
   if (shopIds.length === 0) return rows;
@@ -271900,13 +272037,13 @@ async function resolveProducts(type, config, limit, offset = 0) {
   const base = eq27(products.status, "active");
   if (type === "trending") {
     const rows2 = await db.select(leanProductColumns).from(products).where(and18(base, eq27(products.trending, true))).orderBy(desc15(products.rating), desc15(products.createdAt)).limit(lm).offset(offset);
-    const [{ total: total2 }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(and18(base, eq27(products.trending, true)));
+    const [{ total: total2 }] = await db.select({ total: sql11`count(*)::int` }).from(products).where(and18(base, eq27(products.trending, true)));
     return { rows: await enrichWithShopNames(miArr(rows2)), total: total2 ?? 0 };
   }
   if (type === "category" && config.categorySlug) {
     const slug = config.categorySlug.toLowerCase().trim();
-    const rows2 = await db.select(leanProductColumns).from(products).where(and18(base, sql10`LOWER(${products.category}) = ${slug} OR LOWER(${products.category}) LIKE ${`%${slug}%`}`)).orderBy(desc15(products.rating), desc15(products.createdAt)).limit(lm).offset(offset);
-    const [{ total: total2 }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(and18(base, sql10`LOWER(${products.category}) = ${slug} OR LOWER(${products.category}) LIKE ${`%${slug}%`}`));
+    const rows2 = await db.select(leanProductColumns).from(products).where(and18(base, sql11`LOWER(${products.category}) = ${slug} OR LOWER(${products.category}) LIKE ${`%${slug}%`}`)).orderBy(desc15(products.rating), desc15(products.createdAt)).limit(lm).offset(offset);
+    const [{ total: total2 }] = await db.select({ total: sql11`count(*)::int` }).from(products).where(and18(base, sql11`LOWER(${products.category}) = ${slug} OR LOWER(${products.category}) LIKE ${`%${slug}%`}`));
     return { rows: await enrichWithShopNames(miArr(rows2)), total: total2 ?? 0 };
   }
   if (type === "manual" && Array.isArray(config.productIds) && config.productIds.length > 0) {
@@ -271919,11 +272056,11 @@ async function resolveProducts(type, config, limit, offset = 0) {
   }
   if (type === "new_arrivals") {
     const rows2 = await db.select(leanProductColumns).from(products).where(base).orderBy(desc15(products.createdAt)).limit(lm).offset(offset);
-    const [{ total: total2 }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(base);
+    const [{ total: total2 }] = await db.select({ total: sql11`count(*)::int` }).from(products).where(base);
     return { rows: await enrichWithShopNames(miArr(rows2)), total: total2 ?? 0 };
   }
   const rows = await db.select(leanProductColumns).from(products).where(base).orderBy(desc15(products.rating), desc15(products.createdAt)).limit(lm).offset(offset);
-  const [{ total }] = await db.select({ total: sql10`count(*)::int` }).from(products).where(base);
+  const [{ total }] = await db.select({ total: sql11`count(*)::int` }).from(products).where(base);
   return { rows: await enrichWithShopNames(miArr(rows)), total: total ?? 0 };
 }
 router23.get("/", async (_req, res) => {
@@ -273670,11 +273807,11 @@ var layouts_default = router31;
 
 // src/routes/v1/adminRiders.ts
 var import_express32 = __toESM(require_express2(), 1);
-import { eq as eq35, desc as desc17, and as and22, or as or11, ilike as ilike5, sql as sql12 } from "drizzle-orm";
+import { eq as eq35, desc as desc17, and as and22, or as or11, ilike as ilike5, sql as sql13 } from "drizzle-orm";
 var router32 = (0, import_express32.Router)();
 var A25 = requireRole("admin", "super_admin");
 async function autoRepairRiderTable() {
-  await db.execute(sql12`
+  await db.execute(sql13`
     ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS heading double precision;
     ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS speed double precision;
     ALTER TABLE delivery_partners ADD COLUMN IF NOT EXISTS accuracy double precision;
@@ -273830,8 +273967,8 @@ router32.get("/", authenticate, A25, async (req, res) => {
     if (city && city !== "all") {
       conditions.push(or11(
         ilike5(deliveryPartners.cityId, `%${city}%`),
-        sql12`${deliveryPartners.cityId} IS NULL`,
-        sql12`${deliveryPartners.cityId} = ''`
+        sql13`${deliveryPartners.cityId} IS NULL`,
+        sql13`${deliveryPartners.cityId} = ''`
       ));
     }
     const where = conditions.length ? and22(...conditions) : void 0;
@@ -274438,14 +274575,14 @@ var customCakes_default = router33;
 
 // src/routes/v1/serviceBookings.ts
 var import_express34 = __toESM(require_express2(), 1);
-import { eq as eq37, desc as desc19, and as and24, or as or13, sql as sql14, ilike as ilike7 } from "drizzle-orm";
+import { eq as eq37, desc as desc19, and as and24, or as or13, sql as sql15, ilike as ilike7 } from "drizzle-orm";
 var router34 = (0, import_express34.Router)();
 var A26 = requireRole("admin", "super_admin", "city_manager");
 var tableInitialized = false;
 async function ensureTableExists() {
   if (tableInitialized) return;
   try {
-    await db.execute(sql14`
+    await db.execute(sql15`
       CREATE TABLE IF NOT EXISTS service_bookings (
         id text PRIMARY KEY,
         booking_number text NOT NULL UNIQUE,
@@ -274762,12 +274899,12 @@ router34.get("/admin/bookings", authenticate, A26, async (req, res) => {
     const whereClause = conditions.length > 0 ? and24(...conditions) : void 0;
     const [rows, [countRow]] = await Promise.all([
       db.select().from(serviceBookings).where(whereClause).orderBy(desc19(serviceBookings.createdAt)).limit(lm).offset(offset),
-      db.select({ count: sql14`count(*)` }).from(serviceBookings).where(whereClause)
+      db.select({ count: sql15`count(*)` }).from(serviceBookings).where(whereClause)
     ]);
     const total = Number(countRow?.count ?? 0);
     const statusCounts = await db.select({
       status: serviceBookings.status,
-      count: sql14`count(*)`
+      count: sql15`count(*)`
     }).from(serviceBookings).groupBy(serviceBookings.status);
     const counts = {
       all: total,
@@ -274908,8 +275045,8 @@ var import_express35 = __toESM(require_express2(), 1);
 import { eq as eq38 } from "drizzle-orm";
 var router35 = (0, import_express35.Router)();
 var A27 = requireRole("admin", "super_admin");
-router35.get("/status", authenticate, A27, (_req, res) => {
-  const status = whatsappService.getStatus();
+router35.get("/status", authenticate, A27, async (_req, res) => {
+  const status = await whatsappService.getStatusAsync();
   res.json({
     success: true,
     data: status
@@ -274917,15 +275054,15 @@ router35.get("/status", authenticate, A27, (_req, res) => {
 });
 router35.post("/connect", authenticate, A27, async (_req, res) => {
   try {
-    whatsappService.init().catch((err) => {
-      logger.error({ err }, "[WhatsApp] Background init failed");
-    });
+    await whatsappService.init();
+    const status = await whatsappService.waitForQrOrStatus(8500);
     res.json({
       success: true,
-      message: "WhatsApp connection initialized. Scan QR code if disconnected.",
-      data: whatsappService.getStatus()
+      message: status.qr ? "WhatsApp QR code ready! Please scan using your WhatsApp mobile app." : "WhatsApp connection initialized. Checking status...",
+      data: status
     });
   } catch (err) {
+    logger.error({ err }, "[WhatsApp] Connection initialization error");
     res.status(500).json({
       success: false,
       message: err instanceof Error ? err.message : "Failed to initialize WhatsApp"
@@ -274935,10 +275072,11 @@ router35.post("/connect", authenticate, A27, async (_req, res) => {
 router35.post("/disconnect", authenticate, A27, async (_req, res) => {
   try {
     await whatsappService.logout();
+    const status = await whatsappService.getStatusAsync();
     res.json({
       success: true,
       message: "WhatsApp disconnected successfully.",
-      data: whatsappService.getStatus()
+      data: status
     });
   } catch (err) {
     res.status(500).json({
@@ -275086,13 +275224,13 @@ var whatsapp_default = router35;
 
 // src/routes/v1/reviews.ts
 var import_express36 = __toESM(require_express2(), 1);
-import { eq as eq39, sql as sql15 } from "drizzle-orm";
+import { eq as eq39, sql as sql16 } from "drizzle-orm";
 var router36 = (0, import_express36.Router)();
 var tableInitialized2 = false;
 async function ensureReviewsTable() {
   if (tableInitialized2) return;
   try {
-    await db.execute(sql15`
+    await db.execute(sql16`
       CREATE TABLE IF NOT EXISTS reviews (
         id text PRIMARY KEY,
         order_id text NOT NULL,
@@ -275134,7 +275272,7 @@ router36.post("/", authenticate, async (req, res) => {
     } catch (_) {
     }
     const reviewId = crypto.randomUUID();
-    await db.execute(sql15`
+    await db.execute(sql16`
       INSERT INTO reviews (id, order_id, customer_id, customer_name, shop_id, rating, comment, created_at)
       VALUES (${reviewId}, ${orderId}, ${userId}, ${customerName}, ${shopId}, ${rating}, ${comment}, NOW())
     `);
@@ -275160,7 +275298,7 @@ router36.get("/order/:orderId", async (req, res) => {
   try {
     await ensureReviewsTable();
     const { orderId } = req.params;
-    const result = await db.execute(sql15`
+    const result = await db.execute(sql16`
       SELECT id, order_id as "orderId", customer_id as "customerId", customer_name as "customerName", shop_id as "shopId", rating, comment, created_at as "createdAt"
       FROM reviews WHERE order_id = ${orderId} LIMIT 1
     `);
@@ -275174,7 +275312,7 @@ router36.get("/shop/:shopId", async (req, res) => {
   try {
     await ensureReviewsTable();
     const { shopId } = req.params;
-    const result = await db.execute(sql15`
+    const result = await db.execute(sql16`
       SELECT id, order_id as "orderId", customer_id as "customerId", customer_name as "customerName", shop_id as "shopId", rating, comment, created_at as "createdAt"
       FROM reviews WHERE shop_id = ${shopId} ORDER BY created_at DESC LIMIT 50
     `);
