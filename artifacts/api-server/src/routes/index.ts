@@ -5,6 +5,7 @@ import v1Router from "./v1/index.js";
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use("/v1", v1Router);
 router.use(v1Router);
 
 export default router;

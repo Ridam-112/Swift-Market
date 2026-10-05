@@ -31,7 +31,7 @@ export function WhatsAppTab() {
   const fetchStatus = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      const res = await api.get<{ success: boolean; data: WhatsAppStatus }>("/v1/whatsapp/status");
+      const res = await api.get<{ success: boolean; data: WhatsAppStatus }>("/whatsapp/status");
       if (res.success && res.data) {
         setStatusData(res.data);
       }
@@ -59,7 +59,7 @@ export function WhatsAppTab() {
   const handleConnect = async () => {
     setActionLoading(true);
     try {
-      const res = await api.post<{ success: boolean; message: string; data: WhatsAppStatus }>("/v1/whatsapp/connect", {});
+      const res = await api.post<{ success: boolean; message: string; data: WhatsAppStatus }>("/whatsapp/connect", {});
       if (res.success) {
         toast.success(res.message || "Generating QR code...");
         if (res.data) setStatusData(res.data);
@@ -79,7 +79,7 @@ export function WhatsAppTab() {
     }
     setActionLoading(true);
     try {
-      const res = await api.post<{ success: boolean; message: string; data: WhatsAppStatus }>("/v1/whatsapp/disconnect", {});
+      const res = await api.post<{ success: boolean; message: string; data: WhatsAppStatus }>("/whatsapp/disconnect", {});
       if (res.success) {
         toast.success(res.message || "WhatsApp disconnected");
         if (res.data) setStatusData(res.data);
@@ -101,7 +101,7 @@ export function WhatsAppTab() {
     }
     setSendingTest(true);
     try {
-      const res = await api.post<{ success: boolean; message: string }>("/v1/whatsapp/test", {
+      const res = await api.post<{ success: boolean; message: string }>("/whatsapp/test", {
         phone: testPhone.trim(),
         message: testMessage.trim(),
       });

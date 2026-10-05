@@ -20559,27 +20559,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router38;
+    module.exports = Router39;
     module.exports.Route = Route;
-    function Router38(options) {
-      if (!(this instanceof Router38)) {
-        return new Router38(options);
+    function Router39(options) {
+      if (!(this instanceof Router39)) {
+        return new Router39(options);
       }
       const opts = options || {};
-      function router38(req, res, next) {
-        router38.handle(req, res, next);
+      function router39(req, res, next) {
+        router39.handle(req, res, next);
       }
-      Object.setPrototypeOf(router38, this);
-      router38.caseSensitive = opts.caseSensitive;
-      router38.mergeParams = opts.mergeParams;
-      router38.params = {};
-      router38.strict = opts.strict;
-      router38.stack = [];
-      return router38;
+      Object.setPrototypeOf(router39, this);
+      router39.caseSensitive = opts.caseSensitive;
+      router39.mergeParams = opts.mergeParams;
+      router39.params = {};
+      router39.strict = opts.strict;
+      router39.stack = [];
+      return router39;
     }
-    Router38.prototype = function() {
+    Router39.prototype = function() {
     };
-    Router38.prototype.param = function param(name, fn) {
+    Router39.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -20599,7 +20599,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router38.prototype.handle = function handle(req, res, callback) {
+    Router39.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20726,7 +20726,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router38.prototype.use = function use(handler2) {
+    Router39.prototype.use = function use(handler2) {
       let offset = 0;
       let path5 = "/";
       if (typeof handler2 !== "function") {
@@ -20759,7 +20759,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router38.prototype.route = function route(path5) {
+    Router39.prototype.route = function route(path5) {
       const route2 = new Route(path5);
       const layer = new Layer(path5, {
         sensitive: this.caseSensitive,
@@ -20774,7 +20774,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router38.prototype[method] = function(path5) {
+      Router39.prototype[method] = function(path5) {
         const route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -20957,13 +20957,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once2 = require_once();
-    var Router38 = require_router();
+    var Router39 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router38 = null;
+      var router39 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -20972,13 +20972,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router38 === null) {
-            router38 = new Router38({
+          if (router39 === null) {
+            router39 = new Router39({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router38;
+          return router39;
         }
       });
     };
@@ -21049,15 +21049,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router38 = this.router;
+      var router39 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router38.use(path5, fn2);
+          return router39.use(path5, fn2);
         }
         debug31(".use app under %s", path5);
         fn2.mountpath = path5;
         fn2.parent = this;
-        router38.use(path5, function mounted_app(req, res, next) {
+        router39.use(path5, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -23584,7 +23584,7 @@ var require_express = __commonJS({
     var EventEmitter4 = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto2 = require_application();
-    var Router38 = require_router();
+    var Router39 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -23606,8 +23606,8 @@ var require_express = __commonJS({
     exports.application = proto2;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router38.Route;
-    exports.Router = Router38;
+    exports.Route = Router39.Route;
+    exports.Router = Router39;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -35192,8 +35192,8 @@ var require_eq = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.1/node_modules/semver/functions/eq.js"(exports, module) {
     "use strict";
     var compare2 = require_compare();
-    var eq41 = (a, b, loose) => compare2(a, b, loose) === 0;
-    module.exports = eq41;
+    var eq42 = (a, b, loose) => compare2(a, b, loose) === 0;
+    module.exports = eq42;
   }
 });
 
@@ -35231,7 +35231,7 @@ var require_lte = __commonJS({
 var require_cmp = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.1/node_modules/semver/functions/cmp.js"(exports, module) {
     "use strict";
-    var eq41 = require_eq();
+    var eq42 = require_eq();
     var neq = require_neq();
     var gt4 = require_gt();
     var gte6 = require_gte();
@@ -35258,7 +35258,7 @@ var require_cmp = __commonJS({
         case "":
         case "=":
         case "==":
-          return eq41(a, b, loose);
+          return eq42(a, b, loose);
         case "!=":
           return neq(a, b, loose);
         case ">":
@@ -36283,15 +36283,15 @@ var require_subset = __commonJS({
           return null;
         }
       }
-      for (const eq41 of eqSet) {
-        if (gt4 && !satisfies(eq41, String(gt4), options)) {
+      for (const eq42 of eqSet) {
+        if (gt4 && !satisfies(eq42, String(gt4), options)) {
           return null;
         }
-        if (lt2 && !satisfies(eq41, String(lt2), options)) {
+        if (lt2 && !satisfies(eq42, String(lt2), options)) {
           return null;
         }
         for (const c of dom) {
-          if (!satisfies(eq41, String(c), options)) {
+          if (!satisfies(eq42, String(c), options)) {
             return false;
           }
         }
@@ -36395,7 +36395,7 @@ var require_semver2 = __commonJS({
     var rsort = require_rsort();
     var gt4 = require_gt();
     var lt2 = require_lt();
-    var eq41 = require_eq();
+    var eq42 = require_eq();
     var neq = require_neq();
     var gte6 = require_gte();
     var lte = require_lte();
@@ -36434,7 +36434,7 @@ var require_semver2 = __commonJS({
       rsort,
       gt: gt4,
       lt: lt2,
-      eq: eq41,
+      eq: eq42,
       neq,
       gte: gte6,
       lte,
@@ -62845,20 +62845,20 @@ var require_lodash8 = __commonJS({
           return shuffleSelf(copyArray(array));
         }
         function assignMergeValue(object, key, value) {
-          if (value !== undefined2 && !eq41(object[key], value) || value === undefined2 && !(key in object)) {
+          if (value !== undefined2 && !eq42(object[key], value) || value === undefined2 && !(key in object)) {
             baseAssignValue(object, key, value);
           }
         }
         function assignValue(object, key, value) {
           var objValue = object[key];
-          if (!(hasOwnProperty.call(object, key) && eq41(objValue, value)) || value === undefined2 && !(key in object)) {
+          if (!(hasOwnProperty.call(object, key) && eq42(objValue, value)) || value === undefined2 && !(key in object)) {
             baseAssignValue(object, key, value);
           }
         }
         function assocIndexOf(array, key) {
           var length = array.length;
           while (length--) {
-            if (eq41(array[length][0], key)) {
+            if (eq42(array[length][0], key)) {
               return length;
             }
           }
@@ -63636,7 +63636,7 @@ var require_lodash8 = __commonJS({
           var index18 = -1, length = array.length, resIndex = 0, result2 = [];
           while (++index18 < length) {
             var value = array[index18], computed = iteratee2 ? iteratee2(value) : value;
-            if (!index18 || !eq41(computed, seen)) {
+            if (!index18 || !eq42(computed, seen)) {
               var seen = computed;
               result2[resIndex++] = value === 0 ? 0 : value;
             }
@@ -64332,7 +64332,7 @@ var require_lodash8 = __commonJS({
           return setWrapToString(setter(result2, newData), func, bitmask);
         }
         function customDefaultsAssignIn(objValue, srcValue, key, object) {
-          if (objValue === undefined2 || eq41(objValue, objectProto[key]) && !hasOwnProperty.call(object, key)) {
+          if (objValue === undefined2 || eq42(objValue, objectProto[key]) && !hasOwnProperty.call(object, key)) {
             return srcValue;
           }
           return objValue;
@@ -64407,7 +64407,7 @@ var require_lodash8 = __commonJS({
             case boolTag:
             case dateTag:
             case numberTag:
-              return eq41(+object, +other);
+              return eq42(+object, +other);
             case errorTag:
               return object.name == other.name && object.message == other.message;
             case regexpTag:
@@ -64691,7 +64691,7 @@ var require_lodash8 = __commonJS({
           }
           var type = typeof index18;
           if (type == "number" ? isArrayLike(object) && isIndex(index18, object.length) : type == "string" && index18 in object) {
-            return eq41(object[index18], value);
+            return eq42(object[index18], value);
           }
           return false;
         }
@@ -65174,7 +65174,7 @@ var require_lodash8 = __commonJS({
           var length = array == null ? 0 : array.length;
           if (length) {
             var index18 = baseSortedIndex(array, value);
-            if (index18 < length && eq41(array[index18], value)) {
+            if (index18 < length && eq42(array[index18], value)) {
               return index18;
             }
           }
@@ -65190,7 +65190,7 @@ var require_lodash8 = __commonJS({
           var length = array == null ? 0 : array.length;
           if (length) {
             var index18 = baseSortedIndex(array, value, true) - 1;
-            if (eq41(array[index18], value)) {
+            if (eq42(array[index18], value)) {
               return index18;
             }
           }
@@ -65821,7 +65821,7 @@ var require_lodash8 = __commonJS({
         function conformsTo(object, source) {
           return source == null || baseConformsTo(object, source, keys(source));
         }
-        function eq41(value, other) {
+        function eq42(value, other) {
           return value === other || value !== value && other !== other;
         }
         var gt4 = createRelationalOperation(baseGt);
@@ -66069,7 +66069,7 @@ var require_lodash8 = __commonJS({
             while (++propsIndex < propsLength) {
               var key = props[propsIndex];
               var value = object[key];
-              if (value === undefined2 || eq41(value, objectProto[key]) && !hasOwnProperty.call(object, key)) {
+              if (value === undefined2 || eq42(value, objectProto[key]) && !hasOwnProperty.call(object, key)) {
                 object[key] = source[key];
               }
             }
@@ -66950,7 +66950,7 @@ var require_lodash8 = __commonJS({
         lodash.defaultTo = defaultTo;
         lodash.divide = divide2;
         lodash.endsWith = endsWith;
-        lodash.eq = eq41;
+        lodash.eq = eq42;
         lodash.escape = escape2;
         lodash.escapeRegExp = escapeRegExp;
         lodash.every = every;
@@ -80680,9 +80680,9 @@ var require_axios = __commonJS({
           const cookies2 = document.cookie.split(";");
           for (let i2 = 0; i2 < cookies2.length; i2++) {
             const cookie = cookies2[i2].replace(/^\s+/, "");
-            const eq41 = cookie.indexOf("=");
-            if (eq41 !== -1 && cookie.slice(0, eq41) === name) {
-              return decodeURIComponent(cookie.slice(eq41 + 1));
+            const eq42 = cookie.indexOf("=");
+            if (eq42 !== -1 && cookie.slice(0, eq42) === name) {
+              return decodeURIComponent(cookie.slice(eq42 + 1));
             }
           }
           return null;
@@ -93582,7 +93582,7 @@ var require_defaults2 = __commonJS({
     function isNil(value) {
       return value == null;
     }
-    function eq41(value, other) {
+    function eq42(value, other) {
       return value === other || Number.isNaN(value) && Number.isNaN(other);
     }
     function isLength(value) {
@@ -93609,7 +93609,7 @@ var require_defaults2 = __commonJS({
         return false;
       }
       if (typeof index18 === "number" && isArrayLike(object) && isIndex(index18) && index18 < object.length || typeof index18 === "string" && index18 in object) {
-        return eq41(object[index18], value);
+        return eq42(object[index18], value);
       }
       return false;
     }
@@ -93628,7 +93628,7 @@ var require_defaults2 = __commonJS({
         const source = sources[i2];
         for (const key in source) {
           const value = object[key];
-          if (value === void 0 || !objectProto.hasOwnProperty.call(object, key) && eq41(value, objectProto[key])) {
+          if (value === void 0 || !objectProto.hasOwnProperty.call(object, key) && eq42(value, objectProto[key])) {
             object[key] = source[key];
           }
         }
@@ -142599,7 +142599,7 @@ var require_bn = __commonJS({
       BN.prototype.eqn = function eqn(num) {
         return this.cmpn(num) === 0;
       };
-      BN.prototype.eq = function eq41(num) {
+      BN.prototype.eq = function eq42(num) {
         return this.cmp(num) === 0;
       };
       BN.red = function red(num) {
@@ -145637,7 +145637,7 @@ var require_src8 = __commonJS({
 });
 
 // src/app.ts
-var import_express38 = __toESM(require_express2(), 1);
+var import_express39 = __toESM(require_express2(), 1);
 
 // ../../node_modules/.pnpm/helmet@8.2.0/node_modules/helmet/index.mjs
 var helmet_exports = {};
@@ -146215,7 +146215,7 @@ import fs6 from "fs";
 import { fileURLToPath } from "url";
 
 // src/routes/index.ts
-var import_express37 = __toESM(require_express2(), 1);
+var import_express38 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -146235,7 +146235,7 @@ router.get("/healthz", (_req, res) => {
 var health_default = router;
 
 // src/routes/v1/index.ts
-var import_express36 = __toESM(require_express2(), 1);
+var import_express37 = __toESM(require_express2(), 1);
 
 // src/routes/v1/auth.ts
 var import_express2 = __toESM(require_express2(), 1);
@@ -268388,6 +268388,100 @@ router9.get("/:id/rider-location", authenticate, validateUuidParams("id"), async
     rider: { name: partner.name, phone: partner.phone, vehicle: partner.vehicle }
   });
 });
+router9.post("/parcel", authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const body = req.body;
+    const senderName = String(body["senderName"] || "Sender").trim();
+    const senderPhone = String(body["senderPhone"] || req.user?.phone || "").trim();
+    const receiverName = String(body["receiverName"] || "").trim();
+    const receiverPhone = String(body["receiverPhone"] || "").trim();
+    const pickupAddress = String(body["pickupAddress"] || "").trim();
+    const dropAddress = String(body["dropAddress"] || "").trim();
+    const vehicle = String(body["vehicle"] || "two_wheeler").trim();
+    const category = String(body["category"] || "general").trim();
+    const notes = String(body["notes"] || "").trim();
+    const estimatedTotal = Number(body["estimatedTotal"]) || 39;
+    if (!receiverName || !receiverPhone || !dropAddress || !pickupAddress) {
+      res.status(400).json({ success: false, message: "Missing required parcel pickup or delivery information." });
+      return;
+    }
+    let shopId = "00000000-0000-0000-0000-000000000001";
+    let shopName = "SwiftMart Parcel Express";
+    try {
+      const [existingShop] = await db.select({ id: shops.id, shopName: shops.shopName }).from(shops).limit(1);
+      if (existingShop) {
+        shopId = existingShop.id;
+        shopName = `SwiftMart Parcel Express (${existingShop.shopName})`;
+      }
+    } catch (_) {
+    }
+    const orderId = crypto.randomUUID();
+    const deliveryOtp = String(Math.floor(1e3 + Math.random() * 9e3));
+    const randomSuffix = Math.floor(1e3 + Math.random() * 9e3);
+    const orderNumber = `SM-PRT-${randomSuffix}`;
+    const parcelItem = {
+      productId: crypto.randomUUID(),
+      productName: `SwiftMart Parcel Delivery (${category.toUpperCase()})`,
+      qty: 1,
+      price: estimatedTotal,
+      category: "parcel_courier",
+      totalPrice: estimatedTotal
+    };
+    const deliveryAddress = {
+      label: "Parcel Delivery",
+      line1: dropAddress,
+      line2: body["dropLandmark"] ? `Landmark: ${body["dropLandmark"]}` : "",
+      city: "Balurghat",
+      pincode: "733101",
+      receiverName,
+      receiverPhone,
+      senderName,
+      senderPhone,
+      pickupAddress: `${pickupAddress}${body["pickupLandmark"] ? ` (Near ${body["pickupLandmark"]})` : ""}`,
+      vehicle,
+      category,
+      notes
+    };
+    const [order] = await db.insert(orders).values({
+      id: orderId,
+      customerId: userId,
+      customerName: senderName,
+      customerPhone: senderPhone || req.user?.phone || "",
+      shopId,
+      shopName,
+      items: [parcelItem],
+      subtotal: 0,
+      deliveryCharge: estimatedTotal,
+      packagingFee: 0,
+      gstAmount: 0,
+      couponDiscount: 0,
+      netAmount: estimatedTotal,
+      status: "placed",
+      deliveryType: "instant",
+      paymentMethod: "COD",
+      paymentStatus: "pending",
+      address: deliveryAddress,
+      deliveryOtp
+    }).returning();
+    void createNotificationLimited(userId, {
+      type: "order_update",
+      title: "Parcel Booking Confirmed! \u{1F4E6}",
+      message: `Your intra-city parcel booking #${orderNumber} has been placed. A delivery partner is being assigned.`,
+      data: { orderId, url: `/orders` }
+    });
+    res.status(201).json({
+      success: true,
+      message: "Parcel delivery booking created successfully",
+      orderId,
+      orderNumber,
+      order: mi(order)
+    });
+  } catch (err) {
+    logger.error({ err: err?.message || err }, "POST /api/orders/parcel failed");
+    res.status(500).json({ success: false, message: "Failed to place parcel delivery order." });
+  }
+});
 router9.post("/", authenticate, orderLimiter, async (req, res) => {
   const parsed = CreateOrderSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -274990,12 +275084,114 @@ router35.get("/order-action", async (req, res) => {
 });
 var whatsapp_default = router35;
 
-// src/routes/v1/index.ts
-import { eq as eq39, and as and25, asc as asc8 } from "drizzle-orm";
+// src/routes/v1/reviews.ts
+var import_express36 = __toESM(require_express2(), 1);
+import { eq as eq39, sql as sql15 } from "drizzle-orm";
 var router36 = (0, import_express36.Router)();
-router36.get("/home-filters", async (_req, res) => {
+var tableInitialized2 = false;
+async function ensureReviewsTable() {
+  if (tableInitialized2) return;
   try {
-    const list = await db.select().from(categories).where(and25(eq39(categories.isActive, true), eq39(categories.showOnHome, true))).orderBy(asc8(categories.filterOrder));
+    await db.execute(sql15`
+      CREATE TABLE IF NOT EXISTS reviews (
+        id text PRIMARY KEY,
+        order_id text NOT NULL,
+        customer_id text NOT NULL,
+        customer_name text DEFAULT '',
+        shop_id text,
+        rating integer NOT NULL DEFAULT 5,
+        comment text DEFAULT '',
+        created_at timestamp NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS reviews_order_idx ON reviews(order_id);
+      CREATE INDEX IF NOT EXISTS reviews_shop_idx ON reviews(shop_id);
+    `);
+    tableInitialized2 = true;
+  } catch (err) {
+    logger.warn({ err: err?.message || err }, "reviews ensureReviewsTable warning");
+  }
+}
+router36.post("/", authenticate, async (req, res) => {
+  try {
+    await ensureReviewsTable();
+    const userId = req.user.userId;
+    const body = req.body;
+    const orderId = String(body["orderId"] || "").trim();
+    const rating = Math.max(1, Math.min(5, Number(body["rating"]) || 5));
+    const comment = String(body["comment"] || "").trim();
+    if (!orderId) {
+      res.status(400).json({ success: false, message: "orderId is required" });
+      return;
+    }
+    let shopId = null;
+    let customerName = "Customer";
+    try {
+      const [order] = await db.select({ shopId: orders.shopId, customerName: orders.customerName }).from(orders).where(eq39(orders.id, orderId)).limit(1);
+      if (order) {
+        shopId = order.shopId;
+        if (order.customerName) customerName = order.customerName;
+      }
+    } catch (_) {
+    }
+    const reviewId = crypto.randomUUID();
+    await db.execute(sql15`
+      INSERT INTO reviews (id, order_id, customer_id, customer_name, shop_id, rating, comment, created_at)
+      VALUES (${reviewId}, ${orderId}, ${userId}, ${customerName}, ${shopId}, ${rating}, ${comment}, NOW())
+    `);
+    res.status(201).json({
+      success: true,
+      message: "Thank you! Your rating and review have been submitted.",
+      review: {
+        id: reviewId,
+        orderId,
+        customerId: userId,
+        customerName,
+        shopId,
+        rating,
+        comment
+      }
+    });
+  } catch (err) {
+    logger.error({ err: err?.message || err }, "POST /api/reviews failed");
+    res.status(500).json({ success: false, message: "Failed to submit review" });
+  }
+});
+router36.get("/order/:orderId", async (req, res) => {
+  try {
+    await ensureReviewsTable();
+    const { orderId } = req.params;
+    const result = await db.execute(sql15`
+      SELECT id, order_id as "orderId", customer_id as "customerId", customer_name as "customerName", shop_id as "shopId", rating, comment, created_at as "createdAt"
+      FROM reviews WHERE order_id = ${orderId} LIMIT 1
+    `);
+    res.json({ success: true, review: result.rows?.[0] || null });
+  } catch (err) {
+    logger.error({ err: err?.message || err }, "GET /api/reviews/order/:orderId failed");
+    res.status(500).json({ success: false, message: "Failed to load review" });
+  }
+});
+router36.get("/shop/:shopId", async (req, res) => {
+  try {
+    await ensureReviewsTable();
+    const { shopId } = req.params;
+    const result = await db.execute(sql15`
+      SELECT id, order_id as "orderId", customer_id as "customerId", customer_name as "customerName", shop_id as "shopId", rating, comment, created_at as "createdAt"
+      FROM reviews WHERE shop_id = ${shopId} ORDER BY created_at DESC LIMIT 50
+    `);
+    res.json({ success: true, reviews: result.rows || [] });
+  } catch (err) {
+    logger.error({ err: err?.message || err }, "GET /api/reviews/shop/:shopId failed");
+    res.status(500).json({ success: false, message: "Failed to load shop reviews" });
+  }
+});
+var reviews_default = router36;
+
+// src/routes/v1/index.ts
+import { eq as eq40, and as and25, asc as asc8 } from "drizzle-orm";
+var router37 = (0, import_express37.Router)();
+router37.get("/home-filters", async (_req, res) => {
+  try {
+    const list = await db.select().from(categories).where(and25(eq40(categories.isActive, true), eq40(categories.showOnHome, true))).orderBy(asc8(categories.filterOrder));
     const mapped = miArr(list);
     const grouped = {
       swiftmart: [],
@@ -275015,49 +275211,51 @@ router36.get("/home-filters", async (_req, res) => {
     res.status(500).json({ success: false, message: "Failed to load home filters", error: String(err) });
   }
 });
-router36.use("/auth", auth_default);
-router36.use("/admin", admin_default);
-router36.use("/users", users_default);
-router36.use("/shops", shops_default);
-router36.use("/shop-types", shopTypes_default);
-router36.use("/categories", categories_default);
-router36.use("/products", products_default);
-router36.use("/orders", orders_default);
-router36.use("/coupons", coupons_default);
-router36.use("/commissions", commissions_default);
-router36.use("/delivery", delivery_default);
-router36.use("/payouts", payouts_default);
-router36.use("/reports", reports_default);
-router36.use("/notifications", notifications_default);
-router36.use("/upload", upload_default);
-router36.use("/hero-banners", hero_banners_default);
-router36.use("/payments", payments_default);
-router36.use("/push", push_default);
-router36.use("/fcm", fcm_default);
-router36.use("/support", support_default);
-router36.use("/admin/analytics", analytics_default);
-router36.use("/homepage-sections", homepage_sections_default);
-router36.use("/service-pincodes", servicePincodes_default);
-router36.use("/buckets", buckets_default);
-router36.use("/maintenance-bypass", maintenanceBypass_default);
-router36.use("/manager", manager_default);
-router36.use("/seasonal-campaign", seasonal_campaign_default);
-router36.use("/cafe-config", cafe_config_default);
-router36.use("/theme-config", themeConfig_default);
-router36.use("/admin/theme-config", themeConfig_default);
-router36.use("/layout", layouts_default);
-router36.use("/admin/layout", layouts_default);
-router36.use("/admin/riders", adminRiders_default);
-router36.use("/custom-cakes", customCakes_default);
-router36.use("/services", serviceBookings_default);
-router36.use("/whatsapp", whatsapp_default);
-var v1_default = router36;
+router37.use("/auth", auth_default);
+router37.use("/admin", admin_default);
+router37.use("/users", users_default);
+router37.use("/shops", shops_default);
+router37.use("/shop-types", shopTypes_default);
+router37.use("/categories", categories_default);
+router37.use("/products", products_default);
+router37.use("/orders", orders_default);
+router37.use("/coupons", coupons_default);
+router37.use("/commissions", commissions_default);
+router37.use("/delivery", delivery_default);
+router37.use("/payouts", payouts_default);
+router37.use("/reports", reports_default);
+router37.use("/notifications", notifications_default);
+router37.use("/upload", upload_default);
+router37.use("/hero-banners", hero_banners_default);
+router37.use("/payments", payments_default);
+router37.use("/push", push_default);
+router37.use("/fcm", fcm_default);
+router37.use("/support", support_default);
+router37.use("/admin/analytics", analytics_default);
+router37.use("/homepage-sections", homepage_sections_default);
+router37.use("/service-pincodes", servicePincodes_default);
+router37.use("/buckets", buckets_default);
+router37.use("/maintenance-bypass", maintenanceBypass_default);
+router37.use("/manager", manager_default);
+router37.use("/seasonal-campaign", seasonal_campaign_default);
+router37.use("/cafe-config", cafe_config_default);
+router37.use("/theme-config", themeConfig_default);
+router37.use("/admin/theme-config", themeConfig_default);
+router37.use("/layout", layouts_default);
+router37.use("/admin/layout", layouts_default);
+router37.use("/admin/riders", adminRiders_default);
+router37.use("/custom-cakes", customCakes_default);
+router37.use("/services", serviceBookings_default);
+router37.use("/whatsapp", whatsapp_default);
+router37.use("/reviews", reviews_default);
+var v1_default = router37;
 
 // src/routes/index.ts
-var router37 = (0, import_express37.Router)();
-router37.use(health_default);
-router37.use(v1_default);
-var routes_default = router37;
+var router38 = (0, import_express38.Router)();
+router38.use(health_default);
+router38.use("/v1", v1_default);
+router38.use(v1_default);
+var routes_default = router38;
 
 // src/middlewares/maintenanceMode.ts
 var import_jsonwebtoken4 = __toESM(require_jsonwebtoken(), 1);
@@ -275478,7 +275676,7 @@ function maintenanceMode(req, res, next) {
 }
 
 // src/app.ts
-import { eq as eq40, or as or14 } from "drizzle-orm";
+import { eq as eq41, or as or14 } from "drizzle-orm";
 var helmet3 = helmet || helmet_exports;
 var compression = compressionModule.default || compressionModule;
 var pinoHttp = pinoHttpModule.default || pinoHttpModule;
@@ -275506,9 +275704,9 @@ async function buildSitemap() {
   const fmt = (d) => d ? new Date(d).toISOString().split("T")[0] : (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const [shopRows, productRows, categoryRows] = await Promise.all([
-    db.select({ id: shops.id, shopName: shops.shopName, updatedAt: shops.updatedAt }).from(shops).where(or14(eq40(shops.status, "approved"), eq40(shops.status, "active"))),
-    db.select({ id: products.id, updatedAt: products.updatedAt }).from(products).where(eq40(products.status, "active")),
-    db.select({ slug: categories.slug, updatedAt: categories.updatedAt }).from(categories).where(eq40(categories.isActive, true))
+    db.select({ id: shops.id, shopName: shops.shopName, updatedAt: shops.updatedAt }).from(shops).where(or14(eq41(shops.status, "approved"), eq41(shops.status, "active"))),
+    db.select({ id: products.id, updatedAt: products.updatedAt }).from(products).where(eq41(products.status, "active")),
+    db.select({ slug: categories.slug, updatedAt: categories.updatedAt }).from(categories).where(eq41(categories.isActive, true))
   ]);
   const urlTags = [
     ...STATIC_SITEMAP_URLS.map(
@@ -275558,7 +275756,7 @@ async function getShopSeoMaps() {
       address: shops.address,
       rating: shops.rating,
       phone: shops.phone
-    }).from(shops).where(or14(eq40(shops.status, "approved"), eq40(shops.status, "active")));
+    }).from(shops).where(or14(eq41(shops.status, "approved"), eq41(shops.status, "active")));
     const bySlug = /* @__PURE__ */ new Map();
     const byId = /* @__PURE__ */ new Map();
     for (const s2 of shopRows) {
@@ -275629,7 +275827,7 @@ var RESERVED_ROOT_PATHS = /* @__PURE__ */ new Set([
   "google-callback",
   "delete-account"
 ]);
-var app = (0, import_express38.default)();
+var app = (0, import_express39.default)();
 app.use(compression({ threshold: 1024 }));
 app.use(
   pinoHttp({
@@ -275705,14 +275903,14 @@ app.use((req, res, next) => {
   }
   next();
 });
-app.use(import_express38.default.json({
+app.use(import_express39.default.json({
   verify: (req, _res, buf) => {
     if (req.url?.includes("/payments/webhook")) {
       req.rawBody = buf;
     }
   }
 }));
-app.use(import_express38.default.urlencoded({ extended: true }));
+app.use(import_express39.default.urlencoded({ extended: true }));
 app.get("/health", (_req, res) => {
   res.status(200).json({ ok: true, service: "swiftmart-api" });
 });
@@ -275747,7 +275945,7 @@ app.use("/api", (_req, res, next) => {
   res.setHeader("X-Robots-Tag", "noindex, nofollow");
   next();
 });
-app.use("/api/uploads", import_express38.default.static(path4.join(__dirname2, "..", "uploads")));
+app.use("/api/uploads", import_express39.default.static(path4.join(__dirname2, "..", "uploads")));
 app.use("/api", globalApiLimiter, routes_default);
 if (process.env.NODE_ENV === "production") {
   const frontendDist = path4.join(__dirname2, "..", "..", "swiftmart", "dist", "public");
@@ -275824,7 +276022,7 @@ if (process.env.NODE_ENV === "production") {
       res.status(200).setHeader("Content-Type", "application/xml; charset=utf-8").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`);
     }
   });
-  app.use(import_express38.default.static(frontendDist, {
+  app.use(import_express39.default.static(frontendDist, {
     setHeaders(res, filePath) {
       if (filePath.includes(`${path4.sep}assets${path4.sep}`)) {
         res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
