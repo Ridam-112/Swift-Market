@@ -5,6 +5,8 @@ import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
+  generateWAMessageFromContent,
+  proto,
   type WASocket,
   type ConnectionState,
 } from "@whiskeysockets/baileys";
@@ -423,7 +425,104 @@ class WhatsAppService {
   }
 
   /**
-   * Sends a rich new order notification to the vendor with items, total, and 1-tap Accept/Reject links.
+   * Send an interactive message with CTA buttons (like Amazon/WhatsApp Business).
+   * Renders native action buttons directly at the bottom of the card.
+   * Seamlessly falls back to formatted text with links if the client does not support native flow.
+   */
+  public async sendInteractiveButtonsMessage(
+    phone: string,
+    params: {
+      header?: string;
+      body: string;
+      footer?: string;
+      buttons: Array<{
+        type: "url" | "quick_reply";
+        text: string;
+        url?: string;
+        id?: string;
+      }>;
+    }
+  ): Promise<boolean> {
+    if (this.state.status !== "connected" || !this.sock) {
+      logger.warn("[WhatsApp] Cannot send interactive message: WhatsApp is not connected");
+      return false;
+    }
+
+    const jid = this.formatJid(phone);
+    if (!jid) {
+      logger.warn({ phone }, "[WhatsApp] Invalid phone number provided");
+      return false;
+    }
+
+    try {
+      const nativeButtons = params.buttons.map((btn) => {
+        if (btn.type === "url" && btn.url) {
+          return {
+            name: "cta_url",
+            buttonParamsJson: JSON.stringify({
+              display_text: btn.text,
+              url: btn.url,
+              merchant_url: btn.url,
+            }),
+          };
+        }
+        return {
+          name: "quick_reply",
+          buttonParamsJson: JSON.stringify({
+            display_text: btn.text,
+            id: btn.id || btn.text,
+          }),
+        };
+      });
+
+      const interactiveMsg = proto.Message.InteractiveMessage.create({
+        body: proto.Message.InteractiveMessage.Body.create({
+          text: params.body,
+        }),
+        footer: proto.Message.InteractiveMessage.Footer.create({
+          text: params.footer || "SwiftMart Order Automation",
+        }),
+        header: proto.Message.InteractiveMessage.Header.create({
+          title: params.header || "SwiftMart Notification",
+          hasMediaAttachment: false,
+        }),
+        nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
+          buttons: nativeButtons,
+        }),
+      });
+
+      const waMsg = generateWAMessageFromContent(
+        jid,
+        {
+          viewOnceMessage: {
+            message: {
+              interactiveMessage: interactiveMsg,
+            },
+          },
+        },
+        { userJid: this.sock.user?.id || jid }
+      );
+
+      await this.sock.relayMessage(jid, waMsg.message!, { messageId: waMsg.key.id! });
+      logger.info({ jid }, "[WhatsApp] Interactive button message dispatched successfully");
+      return true;
+    } catch (err) {
+      logger.warn({ err, jid }, "[WhatsApp] Failed to dispatch interactive button message, falling back to text");
+      let fallbackText = `${params.header ? `${params.header}\n\n` : ""}${params.body}`;
+      if (params.buttons.length > 0) {
+        fallbackText += "\n\n━━━━━━━━━━━━━━━━━━━━━━\n⚡ *ACTIONS:*\n";
+        for (const b of params.buttons) {
+          if (b.type === "url" && b.url) {
+            fallbackText += `👉 *${b.text}:* ${b.url}\n`;
+          }
+        }
+      }
+      return this.sendMessage(phone, fallbackText);
+    }
+  }
+
+  /**
+   * Sends a rich new order notification to the vendor with native 1-tap Accept/Reject buttons.
    */
   public async sendOrderAlertToVendor(params: {
     vendorPhone: string;
@@ -467,11 +566,11 @@ class WhatsAppService {
       .join("\n");
 
     const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
-    const acceptUrl = `${baseUrl}/vendor/orders?orderId=${orderId}&action=accept`;
-    const rejectUrl = `${baseUrl}/vendor/orders?orderId=${orderId}&action=reject`;
+    const acceptUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=accept`;
+    const rejectUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=reject`;
+    const dashboardUrl = `${baseUrl}/vendor/orders`;
 
-    const message = [
-      `🔔 *NEW ORDER RECEIVED — SWIFTMART* 🚀`,
+    const bodyText = [
       `━━━━━━━━━━━━━━━━━━━━━━`,
       `📦 *Order ID:* #${orderNumber}`,
       `🏪 *Shop:* ${shopName}`,
@@ -483,14 +582,31 @@ class WhatsAppService {
       `━━━━━━━━━━━━━━━━━━━━━━`,
       `💰 *Total Bill:* ₹${netAmount} (${paymentMethod.toUpperCase()})`,
       ``,
-      `⚡ *TAKE QUICK ACTION:*`,
-      `👉 *Accept Order:* ${acceptUrl}`,
-      `👉 *Reject Order:* ${rejectUrl}`,
-      `━━━━━━━━━━━━━━━━━━━━━━`,
-      `_Please accept the order promptly so a delivery partner can be assigned._`,
+      `_Tap an option button below to accept or reject the order promptly._`,
     ].join("\n");
 
-    return this.sendMessage(vendorPhone, message);
+    return this.sendInteractiveButtonsMessage(vendorPhone, {
+      header: `🔔 *NEW ORDER RECEIVED — SWIFTMART* 🚀`,
+      body: bodyText,
+      footer: `SwiftMart 1-Tap Order Actions`,
+      buttons: [
+        {
+          type: "url",
+          text: "✅ Accept Order",
+          url: acceptUrl,
+        },
+        {
+          type: "url",
+          text: "❌ Reject Order",
+          url: rejectUrl,
+        },
+        {
+          type: "url",
+          text: "📊 Open Dashboard",
+          url: dashboardUrl,
+        },
+      ],
+    });
   }
 
   /**
@@ -559,8 +675,6 @@ class WhatsAppService {
       items,
     } = params;
 
-    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
-    const trackUrl = `${baseUrl}/orders?track=${orderId}`;
 
     let itemsPreview = "";
     if (Array.isArray(items) && items.length > 0) {
@@ -574,9 +688,12 @@ class WhatsAppService {
 
     const amountLine = netAmount != null ? `\n💰 *Total Amount:* ₹${netAmount}` : "";
 
-    const message = isEcommerce
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    const trackUrl = `${baseUrl}/orders?track=${orderId}`;
+    const shopUrl = `${baseUrl}/shops`;
+
+    const body = isEcommerce
       ? [
-          `🔔 *ORDER ACCEPTED — SWIFTMART* 📦`,
           `━━━━━━━━━━━━━━━━━━━━━━`,
           `Hello *${customerName || "Customer"}*, your order from *${shopName}* has been accepted!`,
           ``,
@@ -585,12 +702,10 @@ class WhatsAppService {
           `📋 *Status:* Confirmed & being prepared for shipment${itemsPreview}${amountLine}`,
           `━━━━━━━━━━━━━━━━━━━━━━`,
           `You will receive another update when your package is handed over to the courier partner.`,
-          `👉 *Track Order:* ${trackUrl}`,
           ``,
           `_Thank you for choosing SwiftMart!_`,
         ].join("\n")
       : [
-          `🔔 *ORDER ACCEPTED — SWIFTMART* 🚀`,
           `━━━━━━━━━━━━━━━━━━━━━━`,
           `Hello *${customerName || "Customer"}*, your order from *${shopName}* has been accepted!`,
           ``,
@@ -599,12 +714,27 @@ class WhatsAppService {
           `🛵 *Status:* Confirmed & being packed${itemsPreview}${amountLine}`,
           `━━━━━━━━━━━━━━━━━━━━━━`,
           `A delivery partner will pick up and deliver your order shortly.`,
-          `👉 *Track Live Order:* ${trackUrl}`,
           ``,
           `_Thank you for choosing SwiftMart!_`,
         ].join("\n");
 
-    return this.sendMessage(customerPhone, message);
+    return this.sendInteractiveButtonsMessage(customerPhone, {
+      header: isEcommerce ? `🔔 *ORDER ACCEPTED — SWIFTMART* 📦` : `🔔 *ORDER ACCEPTED — SWIFTMART* 🚀`,
+      body,
+      footer: `SwiftMart Live Tracking`,
+      buttons: [
+        {
+          type: "url",
+          text: "📍 Track Live Order",
+          url: trackUrl,
+        },
+        {
+          type: "url",
+          text: "🛍️ Explore Stores",
+          url: shopUrl,
+        },
+      ],
+    });
   }
 
   /**
@@ -637,8 +767,7 @@ class WhatsAppService {
       trackingNumber ? `🔍 *Tracking No:* ${trackingNumber}` : null,
     ].filter(Boolean).join("\n");
 
-    const message = [
-      `🚚 *ORDER SHIPPED! — SWIFTMART* 📦`,
+    const body = [
       `━━━━━━━━━━━━━━━━━━━━━━`,
       `Hello *${customerName || "Customer"}*, your order #${orderNumber} from *${shopName}* has been shipped!`,
       ``,
@@ -646,12 +775,21 @@ class WhatsAppService {
       `📅 *Estimated Delivery:* Within 5–7 Days`,
       courierDetails ? `${courierDetails}` : null,
       `━━━━━━━━━━━━━━━━━━━━━━`,
-      `👉 *Track Your Shipment:* ${trackUrl}`,
-      ``,
       `_Thank you for shopping on SwiftMart!_`,
     ].filter(Boolean).join("\n");
 
-    return this.sendMessage(customerPhone, message);
+    return this.sendInteractiveButtonsMessage(customerPhone, {
+      header: `🚚 *ORDER SHIPPED! — SWIFTMART* 📦`,
+      body,
+      footer: `SwiftMart Shipment Tracking`,
+      buttons: [
+        {
+          type: "url",
+          text: "📦 Track Your Shipment",
+          url: trackUrl,
+        },
+      ],
+    });
   }
 
   /**
@@ -675,9 +813,9 @@ class WhatsAppService {
 
     const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
     const reviewUrl = `${baseUrl}/orders?review=${orderId}`;
+    const shopUrl = `${baseUrl}/shops`;
 
-    const message = [
-      `🎉 *ORDER DELIVERED! — SWIFTMART* ✨`,
+    const body = [
       `━━━━━━━━━━━━━━━━━━━━━━`,
       `Hello *${customerName || "Customer"}*, your order #${orderNumber} from *${shopName}* has been successfully delivered!`,
       ``,
@@ -685,13 +823,27 @@ class WhatsAppService {
       `━━━━━━━━━━━━━━━━━━━━━━`,
       `⭐ *HOW WAS YOUR EXPERIENCE?*`,
       `Please take a moment to share your review and rating for the shop & products. Your feedback helps our community!`,
-      ``,
-      `👉 *Leave a Review:* ${reviewUrl}`,
       `━━━━━━━━━━━━━━━━━━━━━━`,
       `_Thank you for supporting local businesses on SwiftMart!_`,
     ].join("\n");
 
-    return this.sendMessage(customerPhone, message);
+    return this.sendInteractiveButtonsMessage(customerPhone, {
+      header: `🎉 *ORDER DELIVERED! — SWIFTMART* ✨`,
+      body,
+      footer: `SwiftMart Customer Reviews`,
+      buttons: [
+        {
+          type: "url",
+          text: "⭐ Leave a Review",
+          url: reviewUrl,
+        },
+        {
+          type: "url",
+          text: "🛍️ Order Again",
+          url: shopUrl,
+        },
+      ],
+    });
   }
 }
 
