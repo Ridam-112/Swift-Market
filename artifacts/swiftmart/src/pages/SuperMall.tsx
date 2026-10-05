@@ -69,7 +69,7 @@ export default function SuperMall() {
         images: p.images ?? (p.image ? [p.image] : []),
         description: p.description ?? "",
         stock: Number(p.stock) || 0,
-        rating: Number(p.rating) || 4.5,
+        rating: Number(p.rating) || 0,
         vendorId: p.shopId ?? "",
         shopId: p.shopId ?? "",
         shopName: p.shopName || "SwiftMart Mall Partner",
@@ -148,13 +148,13 @@ export default function SuperMall() {
             SwiftMart Super Mall
           </h1>
           <p className="text-sm sm:text-base text-purple-200/90 leading-relaxed">
-            Beyond 30-minute groceries. Discover trending fashion, gadgets, home decor & regional specialties delivered anywhere across India in 3–5 days.
+            Discover fashion, tech gadgets, home decor, gifts &amp; lifestyle essentials delivered safely to your doorstep in 2–4 business days.
           </p>
 
           <div className="flex flex-wrap gap-4 pt-2 text-xs font-semibold text-purple-200">
-            <span className="flex items-center gap-1.5"><Truck className="w-4 h-4 text-emerald-400" /> BlueDart &amp; India Post Logistics</span>
-            <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-purple-300" /> 7-Day Replacement Guarantee</span>
-            <span className="flex items-center gap-1.5"><Tag className="w-4 h-4 text-amber-400" /> Verified Seller Prices</span>
+            <span className="flex items-center gap-1.5"><Truck className="w-4 h-4 text-emerald-400" /> Doorstep Logistics (2–4 Days)</span>
+            <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-purple-300" /> 3–7 Day Replacement Guarantee</span>
+            <span className="flex items-center gap-1.5"><Tag className="w-4 h-4 text-amber-400" /> Verified Seller Pricing</span>
           </div>
         </div>
       </div>

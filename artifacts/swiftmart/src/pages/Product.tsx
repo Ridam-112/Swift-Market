@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useRoute } from "wouter";
+import { Link, useRoute } from "wouter";
 import { SEO } from "@/components/SEO";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/hooks/useCart";
@@ -9,12 +9,13 @@ import { formatINR } from "@/lib/currency";
 import { QuantityStepper } from "@/components/QuantityStepper";
 import { WeightStepper } from "@/components/WeightStepper";
 import { Button } from "@/components/ui/button";
-import { Loader2, Star, ShieldCheck, Clock, AlertTriangle, Truck } from "lucide-react";
+import { Loader2, Star, ShieldCheck, Clock, AlertTriangle, Truck, Store, RotateCcw } from "lucide-react";
 import { ProductGrid } from "@/components/ProductGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { categories } from "@/data/categories";
 import { cartKey } from "@/context/CartContext";
 import { parseUnit, weightPresets, priceForWeight, formatWeight, isProductWeightBased } from "@/lib/weightUtils";
+import { getShopUrl } from "@/lib/shopUrl";
 import type { Product as ProductType } from "@/types";
 
 const COLOR_HEX: Record<string, string> = {
@@ -375,12 +376,47 @@ export default function Product() {
           <div className="text-sm font-medium text-muted-foreground mb-2">{category?.name}</div>
           <h1 className="text-2xl md:text-4xl font-bold leading-tight mb-2">{product.name}</h1>
 
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex items-center gap-1 bg-background neu-inset px-2 py-1 rounded-md text-sm font-bold">
-              <Star className="w-4 h-4 text-primary fill-primary" />
-              {product.rating}
-            </div>
-            <div className="text-muted-foreground text-sm font-medium bg-background neu-inset px-2 py-1 rounded-md">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            {/* Merchant / Sold By */}
+            {product.shopName ? (
+              <Link
+                href={getShopUrl({ id: product.shopId, shopName: product.shopName })}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20"
+              >
+                <Store className="w-3.5 h-3.5" />
+                Sold by <span className="underline decoration-dotted">{product.shopName}</span>
+              </Link>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-muted text-muted-foreground">
+                <Store className="w-3.5 h-3.5" />
+                SwiftMart Verified Store
+              </span>
+            )}
+
+            {/* Honest Rating or New on SwiftMart */}
+            {product.rating && product.rating > 0 ? (
+              <div className="flex items-center gap-1 bg-background neu-inset px-2 py-1 rounded-md text-xs font-bold text-foreground">
+                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                {product.rating}
+              </div>
+            ) : (
+              <span className="text-[11px] font-semibold text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-full border border-border/50">
+                New on SwiftMart
+              </span>
+            )}
+
+            {/* In stock / out of stock */}
+            {isOutOfStock ? (
+              <span className="text-[11px] font-bold text-destructive bg-destructive/10 border border-destructive/20 px-2 py-0.5 rounded-full">
+                Out of Stock
+              </span>
+            ) : (
+              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                In Stock
+              </span>
+            )}
+
+            <div className="text-muted-foreground text-xs font-medium bg-background neu-inset px-2 py-1 rounded-md">
               {product.unit}
             </div>
           </div>
@@ -536,25 +572,62 @@ export default function Product() {
             </div>
           )}
 
-          {/* Delivery Promise Badge */}
-          <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-muted/40 border border-border/60 mb-5 neu-inset">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isHeavyItem ? "bg-amber-500/10 text-amber-600" : "bg-emerald-500/10 text-emerald-600"}`}>
-              {isHeavyItem ? <Truck className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-sm text-foreground">
-                  {isHeavyItem ? "Heavy Logistics Delivery (1–3 Days)" : "Express Delivery in 30–45 Mins"}
-                </span>
-                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${isHeavyItem ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" : "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"}`}>
-                  {isHeavyItem ? "Bulky Fleet" : "⚡ Local Q-Commerce"}
-                </span>
+          {/* Dynamic Delivery & Policy Badges */}
+          <div className="space-y-2.5 mb-5">
+            <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-muted/40 border border-border/60 neu-inset">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                isHeavyItem ? "bg-amber-500/10 text-amber-600" :
+                product.category === "bakery" || product.category === "sweets" ? "bg-pink-500/10 text-pink-600" :
+                product.category === "food" || product.category === "restaurant" ? "bg-orange-500/10 text-orange-600" :
+                product.category === "fashion" || product.category === "beauty" || product.category === "electronics" ? "bg-blue-500/10 text-blue-600" :
+                "bg-emerald-500/10 text-emerald-600"
+              }`}>
+                {isHeavyItem ? <Truck className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {isHeavyItem
-                  ? "Delivered safely across Balurghat via SwiftMart permanent heavy vehicle fleet."
-                  : "Swift local delivery dispatched immediately by our bike/scooter gig delivery partners."}
-              </p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-sm text-foreground">
+                    {isHeavyItem ? "Scheduled Heavy Delivery (1–3 Days)" :
+                     product.category === "bakery" || product.category === "sweets" ? "Fresh Artisanal / Pre-order" :
+                     product.category === "food" || product.category === "restaurant" ? "Estimated Delivery: 30–45 Mins" :
+                     product.category === "fashion" || product.category === "beauty" || product.category === "electronics" ? "Standard Delivery: 2–4 Business Days" :
+                     "Estimated Delivery: 30–60 Mins"}
+                  </span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    {isHeavyItem ? "Bulky Logistics" :
+                     product.category === "bakery" || product.category === "sweets" ? "Artisan Bakery" :
+                     product.category === "food" || product.category === "restaurant" ? "Hot Kitchen Delivery" :
+                     product.category === "fashion" || product.category === "beauty" || product.category === "electronics" ? "SwiftMart Mall" :
+                     "Local Store Delivery"}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isHeavyItem
+                    ? "Delivered safely across Balurghat via SwiftMart heavy vehicle fleet."
+                    : product.category === "bakery" || product.category === "sweets"
+                    ? "Handcrafted fresh upon confirmation. Same-day or scheduled doorstep delivery."
+                    : product.category === "food" || product.category === "restaurant"
+                    ? "Freshly prepared and dispatched directly from restaurant kitchen."
+                    : product.category === "fashion" || product.category === "beauty" || product.category === "electronics"
+                    ? "Carefully inspected, packed, and delivered directly to your doorstep."
+                    : "Handpicked from verified neighborhood stores and delivered fast to your doorstep."}
+                </p>
+              </div>
+            </div>
+
+            {/* Return / Replacement Policy (Requirement #18) */}
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-card border border-border/50 text-xs text-muted-foreground">
+              <RotateCcw className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-foreground">
+                  {product.category === "food" || product.category === "bakery" || product.category === "sweets" || product.category === "grocery" || product.category === "vegetables"
+                    ? "Consumable / Fresh Item Policy: "
+                    : "Return & Replacement Policy: "}
+                </span>
+                {product.category === "food" || product.category === "bakery" || product.category === "sweets" || product.category === "grocery" || product.category === "vegetables"
+                  ? "Non-returnable consumable item. Any quality or transit issue is inspected and refunded or replaced within 24 hours."
+                  : "3–7 Day doorstep replacement guarantee if item arrives damaged, defective, or incorrect size."}
+              </div>
             </div>
           </div>
 

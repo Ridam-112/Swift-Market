@@ -14,7 +14,7 @@ import { SEO } from "@/components/SEO";
 import { SiteFooter, FAQ_ITEMS } from "@/components/SiteFooter";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { api } from "@/lib/api";
-import { Star, ChevronRight, ChevronLeft, Zap, MapPin, Search, ChevronDown, ChevronUp, Loader2, Package, ShoppingBag } from "lucide-react";
+import { Star, ChevronRight, ChevronLeft, Zap, MapPin, Search, ChevronDown, ChevronUp, Loader2, Package, ShoppingBag, Store, Wrench, Sparkles, X, ArrowRight, RefreshCw } from "lucide-react";
 import type { Product } from "@/types";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -119,7 +119,7 @@ const HOME_JSON_LD = [
     "url": "https://swiftmart.space/",
     "logo": { "@type": "ImageObject", "url": "https://swiftmart.space/logo.png" },
     "image": "https://swiftmart.space/opengraph.jpg",
-    "description": "Hyperlocal 10-minute online delivery of groceries, fresh vegetables, dairy, and medicines in Balurghat.",
+    "description": "Unified local commerce platform delivering groceries, fresh vegetables, hot food, mall products, and appliance repair services in Balurghat.",
     "telephone": "+916296118949",
     "priceRange": "₹",
     "currenciesAccepted": "INR",
@@ -162,7 +162,7 @@ const HOME_JSON_LD = [
     "@id": "https://swiftmart.space/#service",
     "name": "SwiftMart Quick Delivery",
     "serviceType": "Grocery & Daily Essentials Delivery",
-    "description": "10-minute home delivery of groceries, vegetables, fruits, medicines, and daily essentials from local shops in Balurghat.",
+    "description": "Fast home delivery of groceries, vegetables, fruits, food, and daily essentials from trusted local shops in Balurghat.",
     "provider": { "@id": "https://swiftmart.space/#business" },
     "areaServed": { "@type": "City", "name": "Balurghat" },
     "availableChannel": {
@@ -431,7 +431,25 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  const SHOPS_PREVIEW = 4;
+  const [announcementDismissed, setAnnouncementDismissed] = useState(() =>
+    typeof localStorage !== "undefined" && localStorage.getItem("sm_announcement_back_v1") === "1"
+  );
+  const [heroSearchQuery, setHeroSearchQuery] = useState("");
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      api.get<{ success: boolean; orders: any[] }>('/orders')
+        .then(d => {
+          if (d?.orders && Array.isArray(d.orders)) {
+            setRecentOrders(d.orders.slice(0, 3));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
+
+  const SHOPS_PREVIEW = 6;
   const popularShops = shops.slice(0, SHOPS_PREVIEW);
   const isCityEmpty = !!selectedCity && !shopsLoading && shops.length === 0;
 
@@ -439,13 +457,12 @@ export default function Home() {
     <div className="w-full flex flex-col min-h-screen">
       <div className="pb-16 pt-4 px-3 w-full max-w-7xl mx-auto space-y-6 flex-1">
         {/* Visually-hidden H1 anchors the page outline for crawlers */}
-      <h1 className="sr-only">SwiftMart (Swift Mart) — 10-Minute Delivery | Balurghat</h1>
+      <h1 className="sr-only">SwiftMart — Everything you need, delivered fast | Balurghat</h1>
       <SEO
-        title="SwiftMart (Swift Mart) — 10-Minute Delivery | Balurghat"
-        description="SwiftMart (Swift Mart) Balurghat delivers fresh groceries, fruits, vegetables, medicines, and daily essentials from local shops to your door in 10 minutes."
+        title="SwiftMart — Everything you need, delivered fast"
+        description="Shop local stores, order food and groceries, discover products and book home services — all in one place in Balurghat."
         canonical="/"
-        keywords="SwiftMart, Swift Mart, swiftmart, swift-mart, swift mart app, swiftmart space, swiftmart balurghat, quick commerce near me, online grocery delivery balurghat, 10 minute delivery balurghat, blinkit balurghat, zepto balurghat, Balurghat Grocery, Balurghat Online Shopping, Quick Commerce Balurghat, Food Delivery Balurghat, Medicine Delivery Balurghat, Vegetable Delivery Balurghat, Local Marketplace Balurghat, ridam mohanta, abhi das"
-        jsonLd={HOME_JSON_LD}
+        keywords="SwiftMart, Swift Mart, swiftmart balurghat, local shops balurghat, grocery delivery balurghat, food delivery balurghat, mall balurghat, electronics repair balurghat, swiftmart space"
       />
       {/* ── Mobile Search Bar — tap opens full-screen overlay ── */}
       <div className="md:hidden">
@@ -512,71 +529,239 @@ export default function Home() {
         </div>
       ) : (
         <>
-          {/* First-order promo banner — dismissable */}
-          {!bannerDismissed && (
-            <div className="flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-2xl px-4 py-2.5">
-              <span className="text-xl shrink-0" aria-hidden="true">🎉</span>
-              <p className="flex-1 text-sm font-semibold text-foreground leading-snug">
-                New here? Use code{" "}
-                <span className="text-primary font-extrabold tracking-wide">FIRST50</span>{" "}
-                for ₹50 off your first order!
-              </p>
+          {/* ── 1. Dismissible "SwiftMart is back" Announcement Banner (Requirement #44) ── */}
+          {!announcementDismissed && (
+            <div className="relative flex items-center justify-between gap-3 bg-gradient-to-r from-primary/15 via-amber-500/10 to-primary/10 border border-primary/20 rounded-2xl px-4 py-3 shadow-xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="text-xl shrink-0" aria-hidden="true">🎉</span>
+                <p className="text-xs sm:text-sm font-semibold text-foreground truncate sm:whitespace-normal">
+                  <span className="font-extrabold text-primary">SwiftMart is back!</span> Explore local stores, fresh food, Super Mall, and home services.
+                </p>
+              </div>
               <button
                 onClick={() => {
-                  setBannerDismissed(true);
-                  localStorage.setItem("sm_promo_banner_v1", "1");
+                  setAnnouncementDismissed(true);
+                  try { localStorage.setItem("sm_announcement_back_v1", "1"); } catch {}
                 }}
-                aria-label="Dismiss offer banner"
-                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-muted/50"
+                aria-label="Dismiss banner"
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shrink-0"
               >
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
-                </svg>
+                <X className="w-4 h-4" />
               </button>
             </div>
           )}
 
-          {/* ── JioMart-Style Delivery Mode Switcher ── */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 bg-card/80 backdrop-blur-sm p-2 rounded-2xl border border-border/50 neu-card shadow-xs">
-            <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-xl w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={() => setDeliveryMode("quick")}
-                className={cn(
-                  "flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer",
-                  deliveryMode === "quick"
-                    ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <span>⚡</span>
-                <span>Quick (30–45m)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDeliveryMode("all")}
-                className={cn(
-                  "flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer",
-                  deliveryMode === "all"
-                    ? "bg-primary text-primary-foreground shadow-sm shadow-primary/30"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <span>🛍️</span>
-                <span>All Products</span>
-              </button>
-            </div>
-            <div className="flex items-center justify-between sm:justify-end gap-2 text-xs font-medium text-muted-foreground px-2 w-full sm:w-auto">
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                <span>Balurghat <strong className="text-foreground">733103</strong></span>
+          {/* ── 2. Redesigned Hero Section (Requirement #1 & #2) ── */}
+          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-card via-card/95 to-background border border-border/60 p-6 sm:p-10 neu-card shadow-sm text-center md:text-left">
+            <div className="max-w-3xl mx-auto md:mx-0 space-y-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold tracking-wide">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Unified Local Commerce Platform</span>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                ⚡ 30–45m Express
-              </span>
-            </div>
-          </div>
 
+              <h1 className="text-3xl sm:text-5xl font-black text-foreground tracking-tight leading-[1.15]">
+                Everything you need, <br className="hidden sm:inline" />
+                <span className="bg-gradient-to-r from-primary via-orange-500 to-amber-500 bg-clip-text text-transparent">
+                  delivered fast.
+                </span>
+              </h1>
+
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-2xl">
+                Shop local stores, order food &amp; groceries, discover products and book home services — all in one place.
+              </p>
+
+              {/* Large Universal Search Input */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (heroSearchQuery.trim()) {
+                    setLocation(`/search?q=${encodeURIComponent(heroSearchQuery.trim())}`);
+                  } else {
+                    setSearchOpen(true);
+                  }
+                }}
+                className="pt-2 max-w-2xl"
+              >
+                <div className="relative flex items-center">
+                  <Search className="absolute left-4 w-5 h-5 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="text"
+                    value={heroSearchQuery}
+                    onChange={(e) => setHeroSearchQuery(e.target.value)}
+                    placeholder="Search products, stores or services (e.g. rice, cake, AC repair, store name)..."
+                    className="w-full h-12 sm:h-13 pl-12 pr-24 rounded-2xl bg-background border-2 border-border/80 focus:border-primary text-sm font-medium text-foreground placeholder:text-muted-foreground outline-none transition-all shadow-inner"
+                  />
+                  <button
+                    type="submit"
+                    className="absolute right-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    Search
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 mt-2.5 text-xs text-muted-foreground flex-wrap">
+                  <span className="font-semibold text-foreground/80">Try searching:</span>
+                  {["Rice", "Cake", "AC Repair", "Stationery", "Fashion"].map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setLocation(`/search?q=${encodeURIComponent(tag)}`)}
+                      className="px-2.5 py-0.5 rounded-full bg-muted hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer text-[11px]"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </form>
+
+              {/* Action CTAs */}
+              <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-3">
+                <a
+                  href="#primary-services"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-sm shadow-md transition-all active:scale-95 cursor-pointer"
+                >
+                  <span>Start Shopping</span>
+                  <ArrowRight className="w-4 h-4" />
+                </a>
+                <Link
+                  href="/services"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-muted/80 hover:bg-muted text-foreground font-bold text-sm border border-border/80 transition-all cursor-pointer"
+                >
+                  <Wrench className="w-4 h-4 text-primary" />
+                  <span>Book Home Services</span>
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          {/* ── 3. Primary 4 SwiftMart Services (Requirement #3) ── */}
+          <section id="primary-services" className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                  What would you like today?
+                </h2>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Shop local stores, order fresh meals, discover Super Mall products or book repair services.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {/* Card 1: Local Stores */}
+              <Link href="/stores" className="group block">
+                <div className="h-full p-5 rounded-2xl bg-card border border-border/70 neu-card hover:border-emerald-500/50 hover:shadow-md transition-all flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                      🏪
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-extrabold text-base text-foreground group-hover:text-emerald-600 transition-colors">
+                          Local Stores
+                        </h3>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">
+                          30–60m
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        Groceries, vegetables, sweets, stationery and daily essentials.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-xs font-bold text-emerald-600">
+                    <span>Browse Local Stores</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </Link>
+
+              {/* Card 2: Food & Sweets */}
+              <Link href="/stores" className="group block">
+                <div className="h-full p-5 rounded-2xl bg-card border border-border/70 neu-card hover:border-orange-500/50 hover:shadow-md transition-all flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-orange-500/10 text-orange-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                      🍱
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-extrabold text-base text-foreground group-hover:text-orange-600 transition-colors">
+                          Food &amp; Sweets
+                        </h3>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600">
+                          30–45m
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        Restaurants, ready-made food, bakery and mithai.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-xs font-bold text-orange-600">
+                    <span>Order Food &amp; Bakery</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </Link>
+
+              {/* Card 3: SwiftMart Mall */}
+              <Link href="/mall" className="group block">
+                <div className="h-full p-5 rounded-2xl bg-card border border-border/70 neu-card hover:border-indigo-500/50 hover:shadow-md transition-all flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                      🛍️
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-extrabold text-base text-foreground group-hover:text-indigo-600 transition-colors">
+                          SwiftMart Mall
+                        </h3>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600">
+                          2–4 Days
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        Fashion, beauty, electronics, gifts and other products.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-xs font-bold text-indigo-600">
+                    <span>Explore Mall</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </Link>
+
+              {/* Card 4: Service Corner */}
+              <Link href="/services" className="group block">
+                <div className="h-full p-5 rounded-2xl bg-card border border-border/70 neu-card hover:border-blue-500/50 hover:shadow-md transition-all flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                      🛠️
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-extrabold text-base text-foreground group-hover:text-blue-600 transition-colors">
+                          Service Corner
+                        </h3>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600">
+                          Book Slot
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        TV, AC, fridge, fan and electronics/home services.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-xs font-bold text-blue-600">
+                    <span>Book Service</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </section>
+
+          {/* ── 4. Marketing Hero Banners ── */}
           <HeroBannerSlider />
 
           {/* ── Quick Services: Send Parcel & Service Corner (Side-by-Side Dual Cards) ── */}
@@ -663,8 +848,8 @@ export default function Home() {
           {/* ── Category bubble list ───────────────────────────────── */}
           <section className="w-full">
             <div className="flex justify-between items-center mb-3">
-              <h2 className="text-[15px] font-extrabold text-foreground tracking-tight">
-                {deliveryMode === "quick" ? "Shop Quick Essentials (30–45 Min Delivery)" : "Shop All Categories & Marketplace"}
+              <h2 className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">
+                Shop by Category
               </h2>
             </div>
             <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-x-2.5 gap-y-4">
@@ -698,21 +883,21 @@ export default function Home() {
           {/* ── AdSense Section Banner: Category & Shops Divider ── */}
           <AdSenseSectionBanner />
 
-          {/* ── Popular Shops ─────────────────────────────────────── */}
+          {/* ── Stores Near You (Requirement #7) ───────────────────── */}
           <section>
             <SectionHeader
-              title="Local Balurghat Grocery Shops &amp; Supermarkets"
+              title="Stores Near You"
               action={
                 shops.length > SHOPS_PREVIEW ? (
                   <Link
-                    href="/shops"
+                    href="/stores"
                     className="flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80 transition-opacity"
                   >
-                    See all <ChevronRight className="w-4 h-4" />
+                    See all ({shops.length}) <ChevronRight className="w-4 h-4" />
                   </Link>
                 ) : (
                   <span className="text-xs text-muted-foreground font-medium">
-                    {shops.length} active
+                    {shops.length} verified stores
                   </span>
                 )
               }
@@ -724,12 +909,12 @@ export default function Home() {
                 ))}
               </div>
             ) : popularShops.length === 0 ? (
-              <p className="text-sm text-muted-foreground px-3">No shops available yet.</p>
+              <p className="text-sm text-muted-foreground px-3">No stores available yet.</p>
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-3 px-3">
                 {popularShops.map((shop) => (
                   <Link key={shop.id} href={getShopUrl(shop)} className="snap-start shrink-0 block w-[calc(75vw)] max-w-[260px] min-w-[200px]">
-                    <div className="bg-card rounded-2xl p-3 neu-card flex gap-3 items-center h-full">
+                    <div className="bg-card rounded-2xl p-3 neu-card flex gap-3 items-center h-full hover:border-primary/40 transition-colors">
                       <div className="w-14 h-14 rounded-xl overflow-hidden bg-background neu-inset flex-shrink-0">
                         <img src={shop.image} alt={shop.storeName} width={56} height={56} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                       </div>
@@ -743,8 +928,8 @@ export default function Home() {
                           </div>
                           {user?.pincode && shop.pincode === user.pincode && (
                             <div className="flex items-center gap-0.5 text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
-                              <Zap className="w-2.5 h-2.5 fill-current" />
-                              Quick
+                              <Store className="w-2.5 h-2.5" />
+                              Local
                             </div>
                           )}
                         </div>
@@ -784,6 +969,93 @@ export default function Home() {
               .filter(s => s.products.length > 0)
               .map(section => <DynamicSection key={section._id || section.id} section={section} />)
           ) : null}
+
+          {/* ── Order Again for logged-in users (Requirement #12) ── */}
+          {recentOrders.length > 0 && (
+            <section className="p-4 sm:p-5 rounded-2xl bg-card border border-border/60 neu-card space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 text-primary" />
+                  <h2 className="font-bold text-sm sm:text-base text-foreground">Order Again</h2>
+                </div>
+                <Link href="/orders" className="text-xs font-semibold text-primary hover:underline">
+                  All Orders →
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {recentOrders.map(ord => (
+                  <Link
+                    key={ord.id || ord._id}
+                    href="/orders"
+                    className="p-3 rounded-xl bg-background border border-border/50 hover:border-primary/50 transition-colors block"
+                  >
+                    <div className="flex justify-between items-center text-xs font-bold text-foreground">
+                      <span className="truncate">{ord.shopName || "SwiftMart Order"}</span>
+                      <span>₹{Number(ord.totalAmount || ord.netAmount || 0).toFixed(0)}</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-1 flex justify-between items-center">
+                      <span>{new Date(ord.createdAt || Date.now()).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</span>
+                      <span className="capitalize font-medium text-primary">{(ord.status || "").replace(/_/g, " ")}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── Why SwiftMart / Trust & Transparency (Requirement #13) ── */}
+          <section className="rounded-3xl bg-card/60 border border-border/60 p-6 sm:p-8 neu-card">
+            <div className="text-center max-w-xl mx-auto mb-8 space-y-1.5">
+              <h2 className="text-xl sm:text-2xl font-black text-foreground">
+                Why Shop on SwiftMart?
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Built for Balurghat. Supporting local shop owners and bringing transparent doorstep service to your home.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-center sm:text-left">
+              <div className="space-y-2 flex flex-col items-center sm:items-start">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-lg">
+                  🏪
+                </div>
+                <h3 className="font-bold text-sm text-foreground">100% Local Merchants</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Every store is a verified neighborhood business with real physical presence in Balurghat.
+                </p>
+              </div>
+
+              <div className="space-y-2 flex flex-col items-center sm:items-start">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-lg">
+                  ⚡
+                </div>
+                <h3 className="font-bold text-sm text-foreground">Honest, Fast Delivery</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  No false 10-minute promises. Realistic ETAs based on actual store distance and prep times.
+                </p>
+              </div>
+
+              <div className="space-y-2 flex flex-col items-center sm:items-start">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold text-lg">
+                  🛡️
+                </div>
+                <h3 className="font-bold text-sm text-foreground">Quality Guarantee</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  24-hour resolution for fresh items and 3–7 day replacement guarantee on mall merchandise.
+                </p>
+              </div>
+
+              <div className="space-y-2 flex flex-col items-center sm:items-start">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center font-bold text-lg">
+                  📞
+                </div>
+                <h3 className="font-bold text-sm text-foreground">Real Human Support</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Connect directly with our local operations team via WhatsApp or call at +91 62961 18949.
+                </p>
+              </div>
+            </div>
+          </section>
 
           {/* ── Space reserved for User Testimonials ── */}
         </>

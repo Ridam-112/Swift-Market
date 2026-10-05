@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, MapPin, ShoppingBag, Store, Clock, User, Shield, LayoutDashboard, Package, ClipboardList, Plus, Bell, LogIn, ArrowRight, Wrench } from "lucide-react";
+import { Search, MapPin, ShoppingBag, Store, Clock, User, Shield, LayoutDashboard, Package, ClipboardList, Plus, Bell, LogIn, ArrowRight, Wrench, LayoutGrid } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { useProducts } from "@/hooks/useProducts";
@@ -133,10 +133,10 @@ export function Header() {
               <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
               <div className="flex flex-col items-start text-left min-w-0">
                 <span className="font-bold text-[10px] leading-none text-foreground">
-                  {selectedDeliveryAddress?.label || "Deliver to"}
+                  Delivering to
                 </span>
                 <span className="text-muted-foreground text-[10px] truncate w-full leading-none mt-0.5">
-                  {selectedDeliveryAddress?.city || "Select Location"}
+                  {selectedDeliveryAddress?.city || "Balurghat"}
                 </span>
               </div>
             </button>
@@ -144,10 +144,7 @@ export function Header() {
 
           {/* Desktop search bar */}
           {role === 'customer' && (
-            <div className="flex-1 max-w-xl hidden md:flex gap-3 items-center">
-              <Link href="/shops" className="flex items-center gap-1.5 font-medium hover:text-primary transition-colors text-foreground shrink-0 text-sm">
-                <Store className="w-4 h-4" /> Shops
-              </Link>
+            <div className="flex-1 max-w-xl hidden md:flex items-center">
               <div ref={searchContainerRef} className="relative flex-1 flex items-center">
                 <button onClick={handleSearchClick} aria-label="Search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   <Search className="w-4 h-4" aria-hidden="true" />
@@ -158,9 +155,9 @@ export function Header() {
                     campaign?.isActive && "pr-28"
                   )}
                   placeholder={
-                    campaign?.theme?.searchPlaceholders?.[0] || "Search groceries, vegetables..."
+                    campaign?.theme?.searchPlaceholders?.[0] || "Search products, stores or services..."
                   }
-                  aria-label="Search groceries and products"
+                  aria-label="Search products, stores or services"
                   value={searchQuery}
                   onFocus={() => setSearchFocused(true)}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -266,15 +263,15 @@ export function Header() {
 
           {/* Right side — icons + desktop nav */}
           <div className="flex items-center gap-1.5 md:gap-2 shrink-0 ml-auto md:ml-0">
-            {/* Desktop nav links */}
+            {/* Desktop nav links (Requirement #6) */}
             {role === 'customer' && (
               <nav className="hidden md:flex items-center gap-1">
                 {[
-                  { href: "/", icon: Store, label: "Home" },
-                  { href: "/send-parcel", icon: Package, label: "Send Parcel" },
+                  { href: "/stores", icon: Store, label: "Stores" },
+                  { href: "/categories", icon: LayoutGrid, label: "Categories" },
+                  { href: "/mall", icon: ShoppingBag, label: "Mall" },
                   { href: "/services", icon: Wrench, label: "Services" },
                   { href: "/orders", icon: Clock, label: "Orders" },
-                  { href: "/profile", icon: User, label: "Profile" },
                 ].map(({ href, icon: Icon, label }) => {
                   const isActive = href === "/" ? location === "/" : location.startsWith(href);
                   return (

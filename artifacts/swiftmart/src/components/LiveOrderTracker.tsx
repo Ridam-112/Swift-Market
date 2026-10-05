@@ -7,48 +7,43 @@ import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 
 // ─── Step definitions ──────────────────────────────────────────────────────────
+// ─── Step definitions (Requirement #24) ──────────────────────────────────────
 const STEPS = [
   {
     key: "placed",
-    label: "Placed",
+    label: "Order confirmed",
     icon: Clock,
-    message: "Order received — waiting for the shop to accept.",
-    etaMinutes: 0,
+    message: "Order confirmed — waiting for store to accept.",
   },
   {
     key: "accepted",
-    label: "Accepted",
+    label: "Store accepted",
     icon: CheckCircle2,
-    message: "Shop accepted your order and is getting ready.",
-    etaMinutes: 3,
+    message: "Store accepted your order and started processing.",
   },
   {
     key: "preparing",
-    label: "Preparing",
+    label: "Preparing order",
     icon: ChefHat,
-    message: "Your items are being prepared fresh.",
-    etaMinutes: 5,
+    message: "Store is preparing and packaging your items.",
   },
   {
     key: "packed",
-    label: "Ready & Packed",
+    label: "Rider at store",
     icon: Package,
-    message: "Order is packed and ready! Delivery partner summoned.",
-    etaMinutes: 8,
+    message: "Items packed. Delivery partner is at the store picking up your order.",
   },
   {
     key: "out_for_delivery",
     label: "On the way",
     icon: Bike,
-    message: "Delivery partner is heading to your door! 🛵",
-    etaMinutes: 10,
+    message: "Order picked up! Delivery partner is heading to your doorstep. 🛵",
   },
   {
     key: "delivered",
     label: "Delivered",
     icon: PartyPopper,
-    message: "Enjoy your order! 🎉",
-    etaMinutes: 15,
+    message: "Order successfully delivered! Thank you for choosing SwiftMart. 🎉",
   },
 ];
 
@@ -58,6 +53,9 @@ interface ApiOrder {
   _id: string;
   status: string;
   createdAt: string;
+  otp?: string;
+  riderName?: string;
+  riderPhone?: string;
 }
 
 interface Props {
@@ -75,17 +73,15 @@ function normalizeStatus(status: string): string {
   return status;
 }
 
-// ─── ETA helper ───────────────────────────────────────────────────────────────
-function getEtaLabel(status: string, createdAt: string): string {
+// ─── Reassuring Dynamic Status Tag ──────────────────────────────────────────
+function getEtaLabel(status: string): string {
   if (status === "delivered" || status === "cancelled") return "";
   const normalized = normalizeStatus(status);
-  const step = STEPS.find((s) => s.key === normalized);
-  if (!step) return "";
-  const elapsed = (Date.now() - new Date(createdAt).getTime()) / 60000;
-  // Total expected delivery ~15 min from placement
-  const remaining = Math.max(1, Math.round(15 - elapsed));
-  if (normalized === "out_for_delivery") return `Arriving in ~${remaining} min`;
-  return `~${remaining} min remaining`;
+  if (normalized === "out_for_delivery") return "En route to you";
+  if (normalized === "packed") return "Pickup in progress";
+  if (normalized === "preparing") return "Preparing fresh";
+  if (normalized === "accepted") return "Store preparing";
+  return "Order in progress";
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
@@ -134,7 +130,7 @@ export function LiveOrderTracker({ orderId, initialStatus, createdAt, onStatusCh
   const currentIdx = STEPS.findIndex((s) => s.key === normalized);
   const isCancelled = status === "cancelled";
   const currentStep = isCancelled ? null : STEPS[currentIdx];
-  const etaLabel = getEtaLabel(status, createdAt);
+  const etaLabel = getEtaLabel(status);
 
   if (isCancelled) {
     return (

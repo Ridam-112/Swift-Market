@@ -139,24 +139,19 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
           className={`w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? "opacity-40" : ""}`}
         />
         {product.price > 0 && product.discountedPrice && product.discountedPrice < product.price && !isOutOfStock && (
-          <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+          <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
             {Math.round((1 - product.discountedPrice / product.price) * 100)}% off
           </div>
         )}
-        {product.trending && !isOutOfStock && !(product.discountedPrice && product.discountedPrice < product.price) && (
-          <div className="absolute top-2 left-2 bg-primary/90 text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
-            Trending
-          </div>
-        )}
         {isOutOfStock && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="bg-background/90 text-foreground text-[10px] font-bold px-2 py-1 rounded-full border border-border">
+          <div className="absolute inset-0 bg-background/60 backdrop-blur-2xs flex items-center justify-center">
+            <span className="bg-background text-foreground text-[10px] font-bold px-2.5 py-1 rounded-full border border-border shadow-xs">
               Out of Stock
             </span>
           </div>
         )}
-        {isLowStock && (
-          <div className="absolute top-2 left-2 bg-amber-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
+        {!isOutOfStock && isLowStock && !(product.discountedPrice && product.discountedPrice < product.price) && (
+          <div className="absolute top-2 left-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
             Only {product.stock} left
           </div>
         )}
@@ -169,15 +164,37 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
               {product.unit}
             </span>
           )}
-          {isHeavyItem ? (
-            <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-md">
-              🚚 1–3 Days
-            </span>
-          ) : (
-            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
-              ⚡ 30–45m
-            </span>
-          )}
+          {(() => {
+            const cat = (product.category || "").toLowerCase();
+            const shop = (product.shopName || "").toLowerCase();
+            let label = "30–60m";
+            let icon = "⚡";
+            let color = "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+
+            if (isHeavyItem) {
+              label = "1–3 Days";
+              icon = "🚚";
+              color = "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20";
+            } else if (cat.includes("cake") || cat.includes("bakery") || shop.includes("cake") || shop.includes("bakery")) {
+              label = "Pre-order";
+              icon = "🎂";
+              color = "text-pink-600 dark:text-pink-400 bg-pink-500/10 border-pink-500/20";
+            } else if (cat.includes("restaurant") || cat.includes("fast-food") || cat.includes("food") || cat.includes("roll")) {
+              label = "30–45m";
+              icon = "⚡";
+              color = "text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20";
+            } else if (cat.includes("fashion") || cat.includes("clothing") || cat.includes("electronics") || cat.includes("beauty") || cat.includes("home")) {
+              label = "2–4 Days";
+              icon = "📦";
+              color = "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20";
+            }
+
+            return (
+              <span className={`text-[9px] font-bold border px-1.5 py-0.5 rounded-md ${color}`}>
+                {icon} {label}
+              </span>
+            );
+          })()}
         </div>
         <Link href={`/product/${product.id}`} className="font-semibold text-sm text-foreground line-clamp-2 leading-tight mb-1 hover:text-primary transition-colors cursor-pointer">
           {product.name}
@@ -234,7 +251,13 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
           </div>
           <div className="z-10 shrink-0">
             {isOutOfStock ? (
-              <span className="text-[10px] font-semibold text-muted-foreground">Unavailable</span>
+              <Button
+                size="sm"
+                disabled
+                className="rounded-full font-bold shadow-none opacity-50 cursor-not-allowed px-3 h-8 text-[11px] bg-muted text-muted-foreground"
+              >
+                Out of Stock
+              </Button>
             ) : isCustomCake ? (
               <Button
                 size="sm"

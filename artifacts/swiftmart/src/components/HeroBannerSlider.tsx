@@ -16,7 +16,7 @@ const staticSlides = [
   {
     id: 1,
     title: "Fresh Groceries Delivered",
-    subtitle: "Rice, Dal, Vegetables & more in 30–45 minutes",
+    subtitle: "Rice, Dal, Vegetables & daily essentials delivered fast",
     emoji: "🛒",
     gradient: "from-lime-400 to-green-600",
     tag: "Grocery & Daily Needs",

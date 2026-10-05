@@ -36,7 +36,7 @@ const aboutJsonLd = [
     "@context": "https://schema.org",
     "@type": "AboutPage",
     "name": "About SwiftMart Balurghat",
-    "description": "Learn about SwiftMart, Balurghat's premier 10-minute quick commerce platform founded by Ridam Mohanta and Abhi Das.",
+    "description": "Learn about SwiftMart, the local commerce platform connecting neighborhood stores, food, Super Mall, and home services in Balurghat.",
     "url": "https://swiftmart.space/about",
     "mainEntity": {
       "@type": "Organization",
@@ -44,7 +44,7 @@ const aboutJsonLd = [
       "alternateName": ["SwiftMart Balurghat", "Swift Mart"],
       "url": "https://swiftmart.space",
       "logo": "https://swiftmart.space/logo.png",
-      "description": "Hyperlocal 10-minute grocery and essentials delivery service in Balurghat, West Bengal.",
+      "description": "Unified local commerce platform delivering groceries, fresh food, mall items, and home services in Balurghat, West Bengal.",
       "foundingDate": "2024",
       "founders": [
         {
@@ -140,10 +140,10 @@ export default function AboutUs() {
   return (
     <>
       <SEO
-        title="About Us | SwiftMart Balurghat - 10-Min Quick Commerce & Grocery Delivery"
-        description="SwiftMart is Balurghat's premier 10-minute delivery platform founded by Ridam Mohanta and Abhi Das, bringing groceries and essentials to your doorstep."
+        title="About Us | SwiftMart — Building the Digital Layer for Local Commerce"
+        description="SwiftMart connects local stores, restaurants, services, and customers in Balurghat with purposeful fast delivery and fair local commerce."
         canonical="/about"
-        keywords="quick commerce near me, online grocery delivery balurghat, 10 minute delivery balurghat, blinkit balurghat, zepto balurghat, swiftmart founders, ridam mohanta, abhi das, fastest grocery delivery dakshin dinajpur, local commerce balurghat, buy groceries online balurghat"
+        keywords="swiftmart, local commerce balurghat, online grocery balurghat, food delivery balurghat, appliance repair balurghat, swiftmart founders, ridam mohanta, abhi das"
         jsonLd={aboutJsonLd}
       />
 
@@ -162,7 +162,7 @@ export default function AboutUs() {
               className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider"
             >
               <Zap className="w-3.5 h-3.5 fill-primary" />
-              <span>Balurghat's Own Quick Commerce Revolution</span>
+              <span>Building the Digital Layer for Local Commerce</span>
             </motion.div>
 
             {/* Main Headline */}
@@ -172,8 +172,8 @@ export default function AboutUs() {
               transition={{ delay: 0.1 }}
               className="text-3xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-[1.15]"
             >
-              Ultra-Fast <span className="text-primary underline decoration-primary/40 underline-offset-8">10-Minute Delivery</span>,<br />
-              Powered by Balurghat&apos;s Trusted Shops.
+              Empowering Local Stores,<br />
+              <span className="text-primary underline decoration-primary/40 underline-offset-8">Delivering Everything Fast</span>.
             </motion.h1>
 
             {/* Subtitle / Value proposition */}
@@ -183,8 +183,7 @@ export default function AboutUs() {
               transition={{ delay: 0.2 }}
               className="text-sm sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed"
             >
-              Bringing the world-class speed of <strong>Blinkit</strong> and <strong>Zepto</strong> to Balurghat.
-              Founded by <strong>Ridam Mohanta</strong> and <strong>Abhi Das</strong>, SwiftMart combines neighborhood dukandar trust with modern instant delivery technology.
+              Local stores are the backbone of community commerce. Founded by <strong>Ridam Mohanta</strong> and <strong>Abhi Das</strong>, SwiftMart connects customers, neighborhood shops, restaurants, technicians, and local riders — combining trust with fast, purposeful delivery.
             </motion.p>
 
             {/* Action buttons */}
@@ -216,8 +215,8 @@ export default function AboutUs() {
               className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-8 max-w-3xl mx-auto"
             >
               <div className="bg-card/80 backdrop-blur border border-border/60 rounded-2xl p-4 text-center">
-                <p className="text-2xl sm:text-3xl font-extrabold text-primary">10-15</p>
-                <p className="text-xs text-muted-foreground font-medium mt-0.5">Mins Avg Delivery</p>
+                <p className="text-2xl sm:text-3xl font-extrabold text-primary">30–45</p>
+                <p className="text-xs text-muted-foreground font-medium mt-0.5">Mins Local Express</p>
               </div>
               <div className="bg-card/80 backdrop-blur border border-border/60 rounded-2xl p-4 text-center">
                 <p className="text-2xl sm:text-3xl font-extrabold text-foreground">100+</p>

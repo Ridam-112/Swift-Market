@@ -45,7 +45,7 @@ export const COVERAGE_AREAS = [
 export const FAQ_ITEMS = [
   {
     q: "How fast does SwiftMart deliver in Balurghat?",
-    a: "SwiftMart delivers in as fast as 10 minutes across Balurghat (pincodes 733101 and 733103). Delivery time may vary based on shop distance and order volume.",
+    a: "SwiftMart offers fast local delivery across Balurghat (pincodes 733101 and 733103). Most local store orders arrive within 30–60 minutes, while food and bakery are prepared fresh, and Super Mall or scheduled services follow merchant/technician timelines.",
   },
   {
     q: "What can I order on SwiftMart?",
@@ -130,14 +130,14 @@ export function SiteFooter() {
                 <span className="text-2xl font-black tracking-tight text-white flex items-center gap-1.5">
                   SWIFTMART
                   <span className="text-[10px] font-bold text-black bg-[#FACC15] px-1.5 py-0.5 rounded tracking-wide shadow-sm">
-                    10 MIN
+                    FAST &amp; LOCAL
                   </span>
                 </span>
               </Link>
 
               <p className="text-xs text-neutral-400 leading-relaxed">
-                The omnichannel quick-commerce platform delivering groceries, fresh produce,
-                daily essentials, and pharmacy items across Balurghat within 10–15 minutes.
+                SwiftMart is a unified local commerce platform connecting you with neighborhood stores,
+                restaurants, fresh essentials, Super Mall products, and trusted home appliance repair services.
               </p>
 
               {/* Newsletter subscription */}
@@ -304,8 +304,8 @@ export function SiteFooter() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/" className="text-neutral-400 hover:text-white hover:translate-x-0.5 inline-block transition-transform">
-                    Instant 10-Minute Delivery
+                  <Link href="/stores" className="text-neutral-400 hover:text-white hover:translate-x-0.5 inline-block transition-transform">
+                    Local Doorstep Delivery
                   </Link>
                 </li>
               </ul>
@@ -471,7 +471,7 @@ export function SiteFooter() {
                       Mon &ndash; Sun: 7:00 AM &ndash; 11:00 PM IST
                     </div>
                     <div className="text-[10px] text-emerald-400 font-semibold pt-0.5">
-                      ⚡ Instant 10-Minute Express Delivery
+                      ⚡ Fast Local Express &amp; Doorstep Delivery
                     </div>
                   </div>
                 </div>
