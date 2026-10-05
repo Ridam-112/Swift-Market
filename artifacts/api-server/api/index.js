@@ -1013,14 +1013,14 @@ var require_setprototypeof = __commonJS({
   "../../node_modules/.pnpm/setprototypeof@1.2.0/node_modules/setprototypeof/index.js"(exports, module) {
     "use strict";
     module.exports = Object.setPrototypeOf || ({ __proto__: [] } instanceof Array ? setProtoOf : mixinProperties);
-    function setProtoOf(obj, proto2) {
-      obj.__proto__ = proto2;
+    function setProtoOf(obj, proto3) {
+      obj.__proto__ = proto3;
       return obj;
     }
-    function mixinProperties(obj, proto2) {
-      for (var prop in proto2) {
+    function mixinProperties(obj, proto3) {
+      for (var prop in proto3) {
         if (!Object.prototype.hasOwnProperty.call(obj, prop)) {
-          obj[prop] = proto2[prop];
+          obj[prop] = proto3[prop];
         }
       }
       return obj;
@@ -22020,12 +22020,12 @@ var require_request = __commonJS({
       return typeis(this, arr);
     };
     defineGetter(req, "protocol", function protocol() {
-      var proto2 = this.socket.encrypted ? "https" : "http";
+      var proto3 = this.socket.encrypted ? "https" : "http";
       var trust = this.app.get("trust proxy fn");
       if (!trust(this.socket.remoteAddress, 0)) {
-        return proto2;
+        return proto3;
       }
-      var header = this.get("X-Forwarded-Proto") || proto2;
+      var header = this.get("X-Forwarded-Proto") || proto3;
       var index18 = header.indexOf(",");
       return index18 !== -1 ? header.substring(0, index18).trim() : header.trim();
     });
@@ -23583,7 +23583,7 @@ var require_express = __commonJS({
     var bodyParser = require_body_parser();
     var EventEmitter4 = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
-    var proto2 = require_application();
+    var proto3 = require_application();
     var Router39 = require_router();
     var req = require_request();
     var res = require_response();
@@ -23593,7 +23593,7 @@ var require_express = __commonJS({
         app2.handle(req2, res2, next);
       };
       mixin(app2, EventEmitter4.prototype, false);
-      mixin(app2, proto2, false);
+      mixin(app2, proto3, false);
       app2.request = Object.create(req, {
         app: { configurable: true, enumerable: true, writable: true, value: app2 }
       });
@@ -23603,7 +23603,7 @@ var require_express = __commonJS({
       app2.init();
       return app2;
     }
-    exports.application = proto2;
+    exports.application = proto3;
     exports.request = req;
     exports.response = res;
     exports.Route = Router39.Route;
@@ -29014,7 +29014,7 @@ var require_pino = __commonJS({
     var caller = require_caller();
     var redaction = require_redaction();
     var time = require_time();
-    var proto2 = require_proto();
+    var proto3 = require_proto();
     var symbols = require_symbols();
     var { configure } = require_safe_stable_stringify();
     var { assertDefaultLevelFound, mappings, genLsCache, genLevelComparison, assertLevelComparison } = require_levels();
@@ -29189,7 +29189,7 @@ var require_pino = __commonJS({
         onChild,
         [msgPrefixSym]: msgPrefix
       });
-      Object.setPrototypeOf(instance, proto2());
+      Object.setPrototypeOf(instance, proto3());
       genLsCache(instance);
       instance[setLevelSym](level);
       return instance;
@@ -36858,8 +36858,8 @@ var require_lodash = __commonJS({
       return !!length && (typeof value == "number" || reIsUint.test(value)) && (value > -1 && value % 1 == 0 && value < length);
     }
     function isPrototype(value) {
-      var Ctor = value && value.constructor, proto2 = typeof Ctor == "function" && Ctor.prototype || objectProto;
-      return value === proto2;
+      var Ctor = value && value.constructor, proto3 = typeof Ctor == "function" && Ctor.prototype || objectProto;
+      return value === proto3;
     }
     function includes(collection, value, fromIndex, guard) {
       collection = isArrayLike(collection) ? collection : values(collection);
@@ -37072,11 +37072,11 @@ var require_lodash5 = __commonJS({
       if (!isObjectLike(value) || objectToString2.call(value) != objectTag || isHostObject(value)) {
         return false;
       }
-      var proto2 = getPrototype(value);
-      if (proto2 === null) {
+      var proto3 = getPrototype(value);
+      if (proto3 === null) {
         return true;
       }
-      var Ctor = hasOwnProperty.call(proto2, "constructor") && proto2.constructor;
+      var Ctor = hasOwnProperty.call(proto3, "constructor") && proto3.constructor;
       return typeof Ctor == "function" && Ctor instanceof Ctor && funcToString.call(Ctor) == objectCtorString;
     }
     module.exports = isPlainObject;
@@ -62511,14 +62511,14 @@ var require_lodash8 = __commonJS({
         var baseCreate = /* @__PURE__ */ (function() {
           function object() {
           }
-          return function(proto2) {
-            if (!isObject(proto2)) {
+          return function(proto3) {
+            if (!isObject(proto3)) {
               return {};
             }
             if (objectCreate) {
-              return objectCreate(proto2);
+              return objectCreate(proto3);
             }
-            object.prototype = proto2;
+            object.prototype = proto3;
             var result2 = new object();
             object.prototype = undefined2;
             return result2;
@@ -64725,8 +64725,8 @@ var require_lodash8 = __commonJS({
         }
         var isMaskable = coreJsData ? isFunction : stubFalse;
         function isPrototype(value) {
-          var Ctor = value && value.constructor, proto2 = typeof Ctor == "function" && Ctor.prototype || objectProto;
-          return value === proto2;
+          var Ctor = value && value.constructor, proto3 = typeof Ctor == "function" && Ctor.prototype || objectProto;
+          return value === proto3;
         }
         function isStrictComparable(value) {
           return value === value && !isObject(value);
@@ -65938,11 +65938,11 @@ var require_lodash8 = __commonJS({
           if (!isObjectLike(value) || baseGetTag(value) != objectTag) {
             return false;
           }
-          var proto2 = getPrototype(value);
-          if (proto2 === null) {
+          var proto3 = getPrototype(value);
+          if (proto3 === null) {
             return true;
           }
-          var Ctor = hasOwnProperty.call(proto2, "constructor") && proto2.constructor;
+          var Ctor = hasOwnProperty.call(proto3, "constructor") && proto3.constructor;
           return typeof Ctor == "function" && Ctor instanceof Ctor && funcToString.call(Ctor) == objectCtorString;
         }
         var isRegExp = nodeIsRegExp ? baseUnary(nodeIsRegExp) : baseIsRegExp;
@@ -77902,8 +77902,8 @@ var require_axios = __commonJS({
     var isFormData = (thing) => {
       if (!thing) return false;
       if (FormDataCtor && thing instanceof FormDataCtor) return true;
-      const proto2 = getPrototypeOf(thing);
-      if (!proto2 || proto2 === Object.prototype) return false;
+      const proto3 = getPrototypeOf(thing);
+      if (!proto3 || proto3 === Object.prototype) return false;
       if (!isFunction$1(thing.append)) return false;
       const kind = kindOf(thing);
       return kind === "formdata" || // detect form-data instance
@@ -79224,21 +79224,21 @@ var require_axios = __commonJS({
     }
     function getProxyForUrl(url2) {
       var parsedUrl = (typeof url2 === "string" ? parseUrl(url2) : url2) || {};
-      var proto2 = parsedUrl.protocol;
+      var proto3 = parsedUrl.protocol;
       var hostname = parsedUrl.host;
       var port = parsedUrl.port;
-      if (typeof hostname !== "string" || !hostname || typeof proto2 !== "string") {
+      if (typeof hostname !== "string" || !hostname || typeof proto3 !== "string") {
         return "";
       }
-      proto2 = proto2.split(":", 1)[0];
+      proto3 = proto3.split(":", 1)[0];
       hostname = hostname.replace(/:\d*$/, "");
-      port = parseInt(port) || DEFAULT_PORTS$1[proto2] || 0;
+      port = parseInt(port) || DEFAULT_PORTS$1[proto3] || 0;
       if (!shouldProxy(hostname, port)) {
         return "";
       }
-      var proxy = getEnv(proto2 + "_proxy") || getEnv("all_proxy");
+      var proxy = getEnv(proto3 + "_proxy") || getEnv("all_proxy");
       if (proxy && proxy.indexOf("://") === -1) {
-        proxy = proto2 + "://" + proxy;
+        proxy = proto3 + "://" + proxy;
       }
       return proxy;
     }
@@ -108400,25 +108400,25 @@ var require_clone = __commonJS({
         }
         return baseProto === Types.array ? [] : {};
       }
-      const proto2 = Object.getPrototypeOf(obj);
-      if (proto2 && proto2.isImmutable) {
+      const proto3 = Object.getPrototypeOf(obj);
+      if (proto3 && proto3.isImmutable) {
         return obj;
       }
       if (baseProto === Types.array) {
         const newObj = [];
-        if (proto2 !== baseProto) {
-          Object.setPrototypeOf(newObj, proto2);
+        if (proto3 !== baseProto) {
+          Object.setPrototypeOf(newObj, proto3);
         }
         return newObj;
       }
       if (internals.needsProtoHack.has(baseProto)) {
-        const newObj = new proto2.constructor();
-        if (proto2 !== baseProto) {
-          Object.setPrototypeOf(newObj, proto2);
+        const newObj = new proto3.constructor();
+        if (proto3 !== baseProto) {
+          Object.setPrototypeOf(newObj, proto3);
         }
         return newObj;
       }
-      return Object.create(proto2);
+      return Object.create(proto3);
     };
   }
 });
@@ -153225,9 +153225,9 @@ router2.post("/email-forgot-password", resetPasswordLimiter, async (req, res) =>
       const token = randomBytes(32).toString("hex");
       const expires = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
       await db.update(users).set({ passwordResetTokenHash: hashToken(token), passwordResetExpires: expires }).where(eq3(users.id, user.id));
-      const proto2 = "https";
+      const proto3 = "https";
       const host = process.env["REPLIT_DEV_DOMAIN"] ?? process.env["APP_DOMAIN"] ?? "swiftmart.space";
-      const resetUrl = `${proto2}://${host}/auth?step=reset&token=${token}`;
+      const resetUrl = `${proto3}://${host}/auth?step=reset&token=${token}`;
       const expiresMinutes = Math.round(RESET_TOKEN_EXPIRY_MS / 6e4);
       if (isEmailConfigured()) {
         await sendPasswordResetEmail({ to: normalizedEmail, resetUrl, expiresMinutes });
@@ -153387,9 +153387,9 @@ router2.get("/google/redirect", (req, res) => {
       const base = rawAppUrl.startsWith("http://") || rawAppUrl.startsWith("https://") ? rawAppUrl : `https://${rawAppUrl}`;
       redirectUri = `${base.replace(/\/+$/, "")}/auth/google/callback`;
     } else {
-      const proto2 = (req.headers["x-forwarded-proto"] ?? (req.secure ? "https" : "http")).split(",")[0].trim();
+      const proto3 = (req.headers["x-forwarded-proto"] ?? (req.secure ? "https" : "http")).split(",")[0].trim();
       const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "swiftmart.space").split(",")[0].trim();
-      redirectUri = `${proto2}://${host}/auth/google/callback`;
+      redirectUri = `${proto3}://${host}/auth/google/callback`;
     }
   }
   req.log.info({ redirectUri, clientId: clientId.slice(0, 16) + "..." }, "Google OAuth redirect \u2014 using this redirect_uri");
@@ -156731,8 +156731,8 @@ function longToNumber(value, unsigned) {
   return Number(value);
 }
 var proto = $root.proto = (() => {
-  const proto2 = {};
-  proto2.ADVDeviceIdentity = (function() {
+  const proto3 = {};
+  proto3.ADVDeviceIdentity = (function() {
     function ADVDeviceIdentity(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -156919,13 +156919,13 @@ var proto = $root.proto = (() => {
     };
     return ADVDeviceIdentity;
   })();
-  proto2.ADVEncryptionType = (function() {
+  proto3.ADVEncryptionType = (function() {
     const valuesById = {}, values = Object.create(valuesById);
     values[valuesById[0] = "E2EE"] = 0;
     values[valuesById[1] = "HOSTED"] = 1;
     return values;
   })();
-  proto2.ADVKeyIndexList = (function() {
+  proto3.ADVKeyIndexList = (function() {
     function ADVKeyIndexList(p) {
       this.validIndexes = [];
       if (p) {
@@ -157116,7 +157116,7 @@ var proto = $root.proto = (() => {
     };
     return ADVKeyIndexList;
   })();
-  proto2.ADVSignedDeviceIdentity = (function() {
+  proto3.ADVSignedDeviceIdentity = (function() {
     function ADVSignedDeviceIdentity(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -157260,7 +157260,7 @@ var proto = $root.proto = (() => {
     };
     return ADVSignedDeviceIdentity;
   })();
-  proto2.ADVSignedDeviceIdentityHMAC = (function() {
+  proto3.ADVSignedDeviceIdentityHMAC = (function() {
     function ADVSignedDeviceIdentityHMAC(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -157392,7 +157392,7 @@ var proto = $root.proto = (() => {
     };
     return ADVSignedDeviceIdentityHMAC;
   })();
-  proto2.ADVSignedKeyIndexList = (function() {
+  proto3.ADVSignedKeyIndexList = (function() {
     function ADVSignedKeyIndexList(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -157514,7 +157514,7 @@ var proto = $root.proto = (() => {
     };
     return ADVSignedKeyIndexList;
   })();
-  proto2.AIHomeState = (function() {
+  proto3.AIHomeState = (function() {
     function AIHomeState(p) {
       this.capabilityOptions = [];
       this.conversationOptions = [];
@@ -157877,7 +157877,7 @@ var proto = $root.proto = (() => {
     })();
     return AIHomeState;
   })();
-  proto2.AIQueryFanout = (function() {
+  proto3.AIQueryFanout = (function() {
     function AIQueryFanout(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -158004,7 +158004,7 @@ var proto = $root.proto = (() => {
     };
     return AIQueryFanout;
   })();
-  proto2.AIRegenerateMetadata = (function() {
+  proto3.AIRegenerateMetadata = (function() {
     function AIRegenerateMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -158110,7 +158110,7 @@ var proto = $root.proto = (() => {
     };
     return AIRegenerateMetadata;
   })();
-  proto2.AIRichResponseCodeMetadata = (function() {
+  proto3.AIRichResponseCodeMetadata = (function() {
     function AIRichResponseCodeMetadata(p) {
       this.codeBlocks = [];
       if (p) {
@@ -158349,7 +158349,7 @@ var proto = $root.proto = (() => {
     })();
     return AIRichResponseCodeMetadata;
   })();
-  proto2.AIRichResponseContentItemsMetadata = (function() {
+  proto3.AIRichResponseContentItemsMetadata = (function() {
     function AIRichResponseContentItemsMetadata(p) {
       this.itemsMetadata = [];
       if (p) {
@@ -158683,7 +158683,7 @@ var proto = $root.proto = (() => {
     })();
     return AIRichResponseContentItemsMetadata;
   })();
-  proto2.AIRichResponseDynamicMetadata = (function() {
+  proto3.AIRichResponseDynamicMetadata = (function() {
     function AIRichResponseDynamicMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -158849,7 +158849,7 @@ var proto = $root.proto = (() => {
     })();
     return AIRichResponseDynamicMetadata;
   })();
-  proto2.AIRichResponseGridImageMetadata = (function() {
+  proto3.AIRichResponseGridImageMetadata = (function() {
     function AIRichResponseGridImageMetadata(p) {
       this.imageUrls = [];
       if (p) {
@@ -158957,7 +158957,7 @@ var proto = $root.proto = (() => {
     };
     return AIRichResponseGridImageMetadata;
   })();
-  proto2.AIRichResponseImageURL = (function() {
+  proto3.AIRichResponseImageURL = (function() {
     function AIRichResponseImageURL(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -159070,7 +159070,7 @@ var proto = $root.proto = (() => {
     };
     return AIRichResponseImageURL;
   })();
-  proto2.AIRichResponseInlineImageMetadata = (function() {
+  proto3.AIRichResponseInlineImageMetadata = (function() {
     function AIRichResponseInlineImageMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -159228,7 +159228,7 @@ var proto = $root.proto = (() => {
     })();
     return AIRichResponseInlineImageMetadata;
   })();
-  proto2.AIRichResponseLatexMetadata = (function() {
+  proto3.AIRichResponseLatexMetadata = (function() {
     function AIRichResponseLatexMetadata(p) {
       this.expressions = [];
       if (p) {
@@ -159561,7 +159561,7 @@ var proto = $root.proto = (() => {
     })();
     return AIRichResponseLatexMetadata;
   })();
-  proto2.AIRichResponseMapMetadata = (function() {
+  proto3.AIRichResponseMapMetadata = (function() {
     function AIRichResponseMapMetadata(p) {
       this.annotations = [];
       if (p) {
@@ -159894,7 +159894,7 @@ var proto = $root.proto = (() => {
     })();
     return AIRichResponseMapMetadata;
   })();
-  proto2.AIRichResponseMessage = (function() {
+  proto3.AIRichResponseMessage = (function() {
     function AIRichResponseMessage(p) {
       this.submessages = [];
       if (p) {
@@ -160055,13 +160055,13 @@ var proto = $root.proto = (() => {
     };
     return AIRichResponseMessage;
   })();
-  proto2.AIRichResponseMessageType = (function() {
+  proto3.AIRichResponseMessageType = (function() {
     const valuesById = {}, values = Object.create(valuesById);
     values[valuesById[0] = "AI_RICH_RESPONSE_TYPE_UNKNOWN"] = 0;
     values[valuesById[1] = "AI_RICH_RESPONSE_TYPE_STANDARD"] = 1;
     return values;
   })();
-  proto2.AIRichResponseSubMessage = (function() {
+  proto3.AIRichResponseSubMessage = (function() {
     function AIRichResponseSubMessage(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -160368,7 +160368,7 @@ var proto = $root.proto = (() => {
     };
     return AIRichResponseSubMessage;
   })();
-  proto2.AIRichResponseSubMessageType = (function() {
+  proto3.AIRichResponseSubMessageType = (function() {
     const valuesById = {}, values = Object.create(valuesById);
     values[valuesById[0] = "AI_RICH_RESPONSE_UNKNOWN"] = 0;
     values[valuesById[1] = "AI_RICH_RESPONSE_GRID_IMAGE"] = 1;
@@ -160382,7 +160382,7 @@ var proto = $root.proto = (() => {
     values[valuesById[9] = "AI_RICH_RESPONSE_CONTENT_ITEMS"] = 9;
     return values;
   })();
-  proto2.AIRichResponseTableMetadata = (function() {
+  proto3.AIRichResponseTableMetadata = (function() {
     function AIRichResponseTableMetadata(p) {
       this.rows = [];
       if (p) {
@@ -160592,7 +160592,7 @@ var proto = $root.proto = (() => {
     })();
     return AIRichResponseTableMetadata;
   })();
-  proto2.AIRichResponseUnifiedResponse = (function() {
+  proto3.AIRichResponseUnifiedResponse = (function() {
     function AIRichResponseUnifiedResponse(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -160670,7 +160670,7 @@ var proto = $root.proto = (() => {
     };
     return AIRichResponseUnifiedResponse;
   })();
-  proto2.AIThreadInfo = (function() {
+  proto3.AIThreadInfo = (function() {
     function AIThreadInfo(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -160942,7 +160942,7 @@ var proto = $root.proto = (() => {
     })();
     return AIThreadInfo;
   })();
-  proto2.Account = (function() {
+  proto3.Account = (function() {
     function Account(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -161074,7 +161074,7 @@ var proto = $root.proto = (() => {
     };
     return Account;
   })();
-  proto2.ActionLink = (function() {
+  proto3.ActionLink = (function() {
     function ActionLink(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -161168,7 +161168,7 @@ var proto = $root.proto = (() => {
     };
     return ActionLink;
   })();
-  proto2.AutoDownloadSettings = (function() {
+  proto3.AutoDownloadSettings = (function() {
     function AutoDownloadSettings(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -161300,7 +161300,7 @@ var proto = $root.proto = (() => {
     };
     return AutoDownloadSettings;
   })();
-  proto2.AvatarUserSettings = (function() {
+  proto3.AvatarUserSettings = (function() {
     function AvatarUserSettings(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -161394,7 +161394,7 @@ var proto = $root.proto = (() => {
     };
     return AvatarUserSettings;
   })();
-  proto2.BizAccountLinkInfo = (function() {
+  proto3.BizAccountLinkInfo = (function() {
     function BizAccountLinkInfo(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -161598,7 +161598,7 @@ var proto = $root.proto = (() => {
     })();
     return BizAccountLinkInfo;
   })();
-  proto2.BizAccountPayload = (function() {
+  proto3.BizAccountPayload = (function() {
     function BizAccountPayload(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -161697,7 +161697,7 @@ var proto = $root.proto = (() => {
     };
     return BizAccountPayload;
   })();
-  proto2.BizIdentityInfo = (function() {
+  proto3.BizIdentityInfo = (function() {
     function BizIdentityInfo(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -161989,7 +161989,7 @@ var proto = $root.proto = (() => {
     })();
     return BizIdentityInfo;
   })();
-  proto2.BotAgeCollectionMetadata = (function() {
+  proto3.BotAgeCollectionMetadata = (function() {
     function BotAgeCollectionMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -162121,7 +162121,7 @@ var proto = $root.proto = (() => {
     })();
     return BotAgeCollectionMetadata;
   })();
-  proto2.BotAvatarMetadata = (function() {
+  proto3.BotAvatarMetadata = (function() {
     function BotAvatarMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -162272,7 +162272,7 @@ var proto = $root.proto = (() => {
     };
     return BotAvatarMetadata;
   })();
-  proto2.BotCapabilityMetadata = (function() {
+  proto3.BotCapabilityMetadata = (function() {
     function BotCapabilityMetadata(p) {
       this.capabilities = [];
       if (p) {
@@ -162623,7 +162623,7 @@ var proto = $root.proto = (() => {
     })();
     return BotCapabilityMetadata;
   })();
-  proto2.BotFeedbackMessage = (function() {
+  proto3.BotFeedbackMessage = (function() {
     function BotFeedbackMessage(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -163927,7 +163927,7 @@ var proto = $root.proto = (() => {
     })();
     return BotFeedbackMessage;
   })();
-  proto2.BotImagineMetadata = (function() {
+  proto3.BotImagineMetadata = (function() {
     function BotImagineMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -164036,7 +164036,7 @@ var proto = $root.proto = (() => {
     })();
     return BotImagineMetadata;
   })();
-  proto2.BotLinkedAccount = (function() {
+  proto3.BotLinkedAccount = (function() {
     function BotLinkedAccount(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -164125,7 +164125,7 @@ var proto = $root.proto = (() => {
     })();
     return BotLinkedAccount;
   })();
-  proto2.BotLinkedAccountsMetadata = (function() {
+  proto3.BotLinkedAccountsMetadata = (function() {
     function BotLinkedAccountsMetadata(p) {
       this.accounts = [];
       if (p) {
@@ -164253,7 +164253,7 @@ var proto = $root.proto = (() => {
     };
     return BotLinkedAccountsMetadata;
   })();
-  proto2.BotMediaMetadata = (function() {
+  proto3.BotMediaMetadata = (function() {
     function BotMediaMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -164476,7 +164476,7 @@ var proto = $root.proto = (() => {
     })();
     return BotMediaMetadata;
   })();
-  proto2.BotMemoryFact = (function() {
+  proto3.BotMemoryFact = (function() {
     function BotMemoryFact(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -164570,7 +164570,7 @@ var proto = $root.proto = (() => {
     };
     return BotMemoryFact;
   })();
-  proto2.BotMemoryMetadata = (function() {
+  proto3.BotMemoryMetadata = (function() {
     function BotMemoryMetadata(p) {
       this.addedFacts = [];
       this.removedFacts = [];
@@ -164705,7 +164705,7 @@ var proto = $root.proto = (() => {
     };
     return BotMemoryMetadata;
   })();
-  proto2.BotMemuMetadata = (function() {
+  proto3.BotMemuMetadata = (function() {
     function BotMemuMetadata(p) {
       this.faceImages = [];
       if (p) {
@@ -164791,7 +164791,7 @@ var proto = $root.proto = (() => {
     };
     return BotMemuMetadata;
   })();
-  proto2.BotMessageOrigin = (function() {
+  proto3.BotMessageOrigin = (function() {
     function BotMessageOrigin(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -164880,7 +164880,7 @@ var proto = $root.proto = (() => {
     })();
     return BotMessageOrigin;
   })();
-  proto2.BotMessageOriginMetadata = (function() {
+  proto3.BotMessageOriginMetadata = (function() {
     function BotMessageOriginMetadata(p) {
       this.origins = [];
       if (p) {
@@ -164966,7 +164966,7 @@ var proto = $root.proto = (() => {
     };
     return BotMessageOriginMetadata;
   })();
-  proto2.BotMessageSharingInfo = (function() {
+  proto3.BotMessageSharingInfo = (function() {
     function BotMessageSharingInfo(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -165221,7 +165221,7 @@ var proto = $root.proto = (() => {
     };
     return BotMessageSharingInfo;
   })();
-  proto2.BotMetadata = (function() {
+  proto3.BotMetadata = (function() {
     function BotMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -165981,7 +165981,7 @@ var proto = $root.proto = (() => {
     };
     return BotMetadata;
   })();
-  proto2.BotMetricsEntryPoint = (function() {
+  proto3.BotMetricsEntryPoint = (function() {
     const valuesById = {}, values = Object.create(valuesById);
     values[valuesById[0] = "UNDEFINED_ENTRY_POINT"] = 0;
     values[valuesById[1] = "FAVICON"] = 1;
@@ -166024,7 +166024,7 @@ var proto = $root.proto = (() => {
     values[valuesById[38] = "ASK_META_AI_MEDIA_VIEWER_GROUP"] = 38;
     return values;
   })();
-  proto2.BotMetricsMetadata = (function() {
+  proto3.BotMetricsMetadata = (function() {
     function BotMetricsMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -166323,7 +166323,7 @@ var proto = $root.proto = (() => {
     };
     return BotMetricsMetadata;
   })();
-  proto2.BotMetricsThreadEntryPoint = (function() {
+  proto3.BotMetricsThreadEntryPoint = (function() {
     const valuesById = {}, values = Object.create(valuesById);
     values[valuesById[1] = "AI_TAB_THREAD"] = 1;
     values[valuesById[2] = "AI_HOME_THREAD"] = 2;
@@ -166332,7 +166332,7 @@ var proto = $root.proto = (() => {
     values[valuesById[5] = "ASK_META_AI_CONTEXT_MENU_THREAD"] = 5;
     return values;
   })();
-  proto2.BotModeSelectionMetadata = (function() {
+  proto3.BotModeSelectionMetadata = (function() {
     function BotModeSelectionMetadata(p) {
       this.mode = [];
       if (p) {
@@ -166443,7 +166443,7 @@ var proto = $root.proto = (() => {
     })();
     return BotModeSelectionMetadata;
   })();
-  proto2.BotModelMetadata = (function() {
+  proto3.BotModelMetadata = (function() {
     function BotModelMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -166604,7 +166604,7 @@ var proto = $root.proto = (() => {
     })();
     return BotModelMetadata;
   })();
-  proto2.BotPluginMetadata = (function() {
+  proto3.BotPluginMetadata = (function() {
     function BotPluginMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -166977,7 +166977,7 @@ var proto = $root.proto = (() => {
     })();
     return BotPluginMetadata;
   })();
-  proto2.BotProgressIndicatorMetadata = (function() {
+  proto3.BotProgressIndicatorMetadata = (function() {
     function BotProgressIndicatorMetadata(p) {
       this.stepsMetadata = [];
       if (p) {
@@ -167751,7 +167751,7 @@ var proto = $root.proto = (() => {
     })();
     return BotProgressIndicatorMetadata;
   })();
-  proto2.BotPromotionMessageMetadata = (function() {
+  proto3.BotPromotionMessageMetadata = (function() {
     function BotPromotionMessageMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -167869,7 +167869,7 @@ var proto = $root.proto = (() => {
     })();
     return BotPromotionMessageMetadata;
   })();
-  proto2.BotPromptSuggestion = (function() {
+  proto3.BotPromptSuggestion = (function() {
     function BotPromptSuggestion(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -167963,7 +167963,7 @@ var proto = $root.proto = (() => {
     };
     return BotPromptSuggestion;
   })();
-  proto2.BotPromptSuggestions = (function() {
+  proto3.BotPromptSuggestions = (function() {
     function BotPromptSuggestions(p) {
       this.suggestions = [];
       if (p) {
@@ -168049,7 +168049,7 @@ var proto = $root.proto = (() => {
     };
     return BotPromptSuggestions;
   })();
-  proto2.BotQuotaMetadata = (function() {
+  proto3.BotQuotaMetadata = (function() {
     function BotQuotaMetadata(p) {
       this.botFeatureQuotaMetadata = [];
       if (p) {
@@ -168277,7 +168277,7 @@ var proto = $root.proto = (() => {
     })();
     return BotQuotaMetadata;
   })();
-  proto2.BotReminderMetadata = (function() {
+  proto3.BotReminderMetadata = (function() {
     function BotReminderMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -168503,7 +168503,7 @@ var proto = $root.proto = (() => {
     })();
     return BotReminderMetadata;
   })();
-  proto2.BotRenderingMetadata = (function() {
+  proto3.BotRenderingMetadata = (function() {
     function BotRenderingMetadata(p) {
       this.keywords = [];
       if (p) {
@@ -168693,7 +168693,7 @@ var proto = $root.proto = (() => {
     })();
     return BotRenderingMetadata;
   })();
-  proto2.BotSessionMetadata = (function() {
+  proto3.BotSessionMetadata = (function() {
     function BotSessionMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -168820,7 +168820,7 @@ var proto = $root.proto = (() => {
     };
     return BotSessionMetadata;
   })();
-  proto2.BotSessionSource = (function() {
+  proto3.BotSessionSource = (function() {
     const valuesById = {}, values = Object.create(valuesById);
     values[valuesById[0] = "NONE"] = 0;
     values[valuesById[1] = "NULL_STATE"] = 1;
@@ -168831,7 +168831,7 @@ var proto = $root.proto = (() => {
     values[valuesById[6] = "VOICE"] = 6;
     return values;
   })();
-  proto2.BotSignatureVerificationMetadata = (function() {
+  proto3.BotSignatureVerificationMetadata = (function() {
     function BotSignatureVerificationMetadata(p) {
       this.proofs = [];
       if (p) {
@@ -168917,7 +168917,7 @@ var proto = $root.proto = (() => {
     };
     return BotSignatureVerificationMetadata;
   })();
-  proto2.BotSignatureVerificationUseCaseProof = (function() {
+  proto3.BotSignatureVerificationUseCaseProof = (function() {
     function BotSignatureVerificationUseCaseProof(p) {
       this.certificateChain = [];
       if (p) {
@@ -169084,7 +169084,7 @@ var proto = $root.proto = (() => {
     })();
     return BotSignatureVerificationUseCaseProof;
   })();
-  proto2.BotSourcesMetadata = (function() {
+  proto3.BotSourcesMetadata = (function() {
     function BotSourcesMetadata(p) {
       this.sources = [];
       if (p) {
@@ -169393,7 +169393,7 @@ var proto = $root.proto = (() => {
     })();
     return BotSourcesMetadata;
   })();
-  proto2.BotSuggestedPromptMetadata = (function() {
+  proto3.BotSuggestedPromptMetadata = (function() {
     function BotSuggestedPromptMetadata(p) {
       this.suggestedPrompts = [];
       if (p) {
@@ -169537,7 +169537,7 @@ var proto = $root.proto = (() => {
     };
     return BotSuggestedPromptMetadata;
   })();
-  proto2.BotUnifiedResponseMutation = (function() {
+  proto3.BotUnifiedResponseMutation = (function() {
     function BotUnifiedResponseMutation(p) {
       this.mediaDetailsMetadataList = [];
       if (p) {
@@ -169856,7 +169856,7 @@ var proto = $root.proto = (() => {
     })();
     return BotUnifiedResponseMutation;
   })();
-  proto2.CallLogRecord = (function() {
+  proto3.CallLogRecord = (function() {
     function CallLogRecord(p) {
       this.participants = [];
       if (p) {
@@ -170489,7 +170489,7 @@ var proto = $root.proto = (() => {
     })();
     return CallLogRecord;
   })();
-  proto2.CertChain = (function() {
+  proto3.CertChain = (function() {
     function CertChain(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -170861,7 +170861,7 @@ var proto = $root.proto = (() => {
     })();
     return CertChain;
   })();
-  proto2.ChatLockSettings = (function() {
+  proto3.ChatLockSettings = (function() {
     function ChatLockSettings(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -170957,7 +170957,7 @@ var proto = $root.proto = (() => {
     };
     return ChatLockSettings;
   })();
-  proto2.ChatRowOpaqueData = (function() {
+  proto3.ChatRowOpaqueData = (function() {
     function ChatRowOpaqueData(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -171642,7 +171642,7 @@ var proto = $root.proto = (() => {
     })();
     return ChatRowOpaqueData;
   })();
-  proto2.Citation = (function() {
+  proto3.Citation = (function() {
     function Citation(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -171755,7 +171755,7 @@ var proto = $root.proto = (() => {
     };
     return Citation;
   })();
-  proto2.ClientPairingProps = (function() {
+  proto3.ClientPairingProps = (function() {
     function ClientPairingProps(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -171868,7 +171868,7 @@ var proto = $root.proto = (() => {
     };
     return ClientPairingProps;
   })();
-  proto2.ClientPayload = (function() {
+  proto3.ClientPayload = (function() {
     function ClientPayload(p) {
       this.shards = [];
       if (p) {
@@ -174560,7 +174560,7 @@ var proto = $root.proto = (() => {
     })();
     return ClientPayload;
   })();
-  proto2.CollectionName = (function() {
+  proto3.CollectionName = (function() {
     const valuesById = {}, values = Object.create(valuesById);
     values[valuesById[0] = "COLLECTION_NAME_UNKNOWN"] = 0;
     values[valuesById[1] = "REGULAR"] = 1;
@@ -174570,7 +174570,7 @@ var proto = $root.proto = (() => {
     values[valuesById[5] = "CRITICAL_UNBLOCK_LOW"] = 5;
     return values;
   })();
-  proto2.CommentMetadata = (function() {
+  proto3.CommentMetadata = (function() {
     function CommentMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -174666,7 +174666,7 @@ var proto = $root.proto = (() => {
     };
     return CommentMetadata;
   })();
-  proto2.CompanionCommitment = (function() {
+  proto3.CompanionCommitment = (function() {
     function CompanionCommitment(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -174744,7 +174744,7 @@ var proto = $root.proto = (() => {
     };
     return CompanionCommitment;
   })();
-  proto2.CompanionEphemeralIdentity = (function() {
+  proto3.CompanionEphemeralIdentity = (function() {
     function CompanionEphemeralIdentity(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -174965,7 +174965,7 @@ var proto = $root.proto = (() => {
     };
     return CompanionEphemeralIdentity;
   })();
-  proto2.Config = (function() {
+  proto3.Config = (function() {
     function Config(p) {
       this.field = {};
       if (p) {
@@ -175091,7 +175091,7 @@ var proto = $root.proto = (() => {
     };
     return Config;
   })();
-  proto2.ContextInfo = (function() {
+  proto3.ContextInfo = (function() {
     function ContextInfo(p) {
       this.mentionedJid = [];
       this.groupMentions = [];
@@ -178253,7 +178253,7 @@ var proto = $root.proto = (() => {
     })();
     return ContextInfo;
   })();
-  proto2.Conversation = (function() {
+  proto3.Conversation = (function() {
     function Conversation(p) {
       this.messages = [];
       this.participant = [];
@@ -179523,7 +179523,7 @@ var proto = $root.proto = (() => {
     })();
     return Conversation;
   })();
-  proto2.DeviceCapabilities = (function() {
+  proto3.DeviceCapabilities = (function() {
     function DeviceCapabilities(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -179963,7 +179963,7 @@ var proto = $root.proto = (() => {
     })();
     return DeviceCapabilities;
   })();
-  proto2.DeviceConsistencyCodeMessage = (function() {
+  proto3.DeviceConsistencyCodeMessage = (function() {
     function DeviceConsistencyCodeMessage(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -180060,7 +180060,7 @@ var proto = $root.proto = (() => {
     };
     return DeviceConsistencyCodeMessage;
   })();
-  proto2.DeviceListMetadata = (function() {
+  proto3.DeviceListMetadata = (function() {
     function DeviceListMetadata(p) {
       this.senderKeyIndexes = [];
       this.recipientKeyIndexes = [];
@@ -180352,7 +180352,7 @@ var proto = $root.proto = (() => {
     };
     return DeviceListMetadata;
   })();
-  proto2.DeviceProps = (function() {
+  proto3.DeviceProps = (function() {
     function DeviceProps(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -181209,7 +181209,7 @@ var proto = $root.proto = (() => {
     })();
     return DeviceProps;
   })();
-  proto2.DisappearingMode = (function() {
+  proto3.DisappearingMode = (function() {
     function DisappearingMode(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -181409,7 +181409,7 @@ var proto = $root.proto = (() => {
     })();
     return DisappearingMode;
   })();
-  proto2.EmbeddedContent = (function() {
+  proto3.EmbeddedContent = (function() {
     function EmbeddedContent(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -181503,7 +181503,7 @@ var proto = $root.proto = (() => {
     };
     return EmbeddedContent;
   })();
-  proto2.EmbeddedMessage = (function() {
+  proto3.EmbeddedMessage = (function() {
     function EmbeddedMessage(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -181599,7 +181599,7 @@ var proto = $root.proto = (() => {
     };
     return EmbeddedMessage;
   })();
-  proto2.EmbeddedMusic = (function() {
+  proto3.EmbeddedMusic = (function() {
     function EmbeddedMusic(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -181963,7 +181963,7 @@ var proto = $root.proto = (() => {
     };
     return EmbeddedMusic;
   })();
-  proto2.EncryptedPairingRequest = (function() {
+  proto3.EncryptedPairingRequest = (function() {
     function EncryptedPairingRequest(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -182063,7 +182063,7 @@ var proto = $root.proto = (() => {
     };
     return EncryptedPairingRequest;
   })();
-  proto2.EphemeralSetting = (function() {
+  proto3.EphemeralSetting = (function() {
     function EphemeralSetting(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -182167,7 +182167,7 @@ var proto = $root.proto = (() => {
     };
     return EphemeralSetting;
   })();
-  proto2.EventAdditionalMetadata = (function() {
+  proto3.EventAdditionalMetadata = (function() {
     function EventAdditionalMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -182242,7 +182242,7 @@ var proto = $root.proto = (() => {
     };
     return EventAdditionalMetadata;
   })();
-  proto2.EventResponse = (function() {
+  proto3.EventResponse = (function() {
     function EventResponse(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -182388,7 +182388,7 @@ var proto = $root.proto = (() => {
     };
     return EventResponse;
   })();
-  proto2.ExitCode = (function() {
+  proto3.ExitCode = (function() {
     function ExitCode(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -182492,7 +182492,7 @@ var proto = $root.proto = (() => {
     };
     return ExitCode;
   })();
-  proto2.ExternalBlobReference = (function() {
+  proto3.ExternalBlobReference = (function() {
     function ExternalBlobReference(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -182681,7 +182681,7 @@ var proto = $root.proto = (() => {
     };
     return ExternalBlobReference;
   })();
-  proto2.Field = (function() {
+  proto3.Field = (function() {
     function Field(p) {
       this.subfield = {};
       if (p) {
@@ -182864,7 +182864,7 @@ var proto = $root.proto = (() => {
     };
     return Field;
   })();
-  proto2.ForwardedAIBotMessageInfo = (function() {
+  proto3.ForwardedAIBotMessageInfo = (function() {
     function ForwardedAIBotMessageInfo(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -182977,7 +182977,7 @@ var proto = $root.proto = (() => {
     };
     return ForwardedAIBotMessageInfo;
   })();
-  proto2.GlobalSettings = (function() {
+  proto3.GlobalSettings = (function() {
     function GlobalSettings(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -183468,7 +183468,7 @@ var proto = $root.proto = (() => {
     };
     return GlobalSettings;
   })();
-  proto2.GroupHistoryBundleInfo = (function() {
+  proto3.GroupHistoryBundleInfo = (function() {
     function GroupHistoryBundleInfo(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -183598,7 +183598,7 @@ var proto = $root.proto = (() => {
     })();
     return GroupHistoryBundleInfo;
   })();
-  proto2.GroupHistoryIndividualMessageInfo = (function() {
+  proto3.GroupHistoryIndividualMessageInfo = (function() {
     function GroupHistoryIndividualMessageInfo(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -183694,7 +183694,7 @@ var proto = $root.proto = (() => {
     };
     return GroupHistoryIndividualMessageInfo;
   })();
-  proto2.GroupMention = (function() {
+  proto3.GroupMention = (function() {
     function GroupMention(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -183788,7 +183788,7 @@ var proto = $root.proto = (() => {
     };
     return GroupMention;
   })();
-  proto2.GroupParticipant = (function() {
+  proto3.GroupParticipant = (function() {
     function GroupParticipant(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -183924,7 +183924,7 @@ var proto = $root.proto = (() => {
     })();
     return GroupParticipant;
   })();
-  proto2.HandshakeMessage = (function() {
+  proto3.HandshakeMessage = (function() {
     function HandshakeMessage(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -184472,7 +184472,7 @@ var proto = $root.proto = (() => {
     })();
     return HandshakeMessage;
   })();
-  proto2.HistorySync = (function() {
+  proto3.HistorySync = (function() {
     function HistorySync(p) {
       this.conversations = [];
       this.statusV3Messages = [];
@@ -185001,7 +185001,7 @@ var proto = $root.proto = (() => {
     })();
     return HistorySync;
   })();
-  proto2.HistorySyncMsg = (function() {
+  proto3.HistorySyncMsg = (function() {
     function HistorySyncMsg(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -185107,7 +185107,7 @@ var proto = $root.proto = (() => {
     };
     return HistorySyncMsg;
   })();
-  proto2.HydratedTemplateButton = (function() {
+  proto3.HydratedTemplateButton = (function() {
     function HydratedTemplateButton(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -185581,7 +185581,7 @@ var proto = $root.proto = (() => {
     })();
     return HydratedTemplateButton;
   })();
-  proto2.IdentityKeyPairStructure = (function() {
+  proto3.IdentityKeyPairStructure = (function() {
     function IdentityKeyPairStructure(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -185681,7 +185681,7 @@ var proto = $root.proto = (() => {
     };
     return IdentityKeyPairStructure;
   })();
-  proto2.InThreadSurveyMetadata = (function() {
+  proto3.InThreadSurveyMetadata = (function() {
     function InThreadSurveyMetadata(p) {
       this.questions = [];
       this.privacyStatementParts = [];
@@ -186414,7 +186414,7 @@ var proto = $root.proto = (() => {
     })();
     return InThreadSurveyMetadata;
   })();
-  proto2.InteractiveAnnotation = (function() {
+  proto3.InteractiveAnnotation = (function() {
     function InteractiveAnnotation(p) {
       this.polygonVertices = [];
       if (p) {
@@ -186654,7 +186654,7 @@ var proto = $root.proto = (() => {
     })();
     return InteractiveAnnotation;
   })();
-  proto2.InteractiveMessageAdditionalMetadata = (function() {
+  proto3.InteractiveMessageAdditionalMetadata = (function() {
     function InteractiveMessageAdditionalMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -186729,7 +186729,7 @@ var proto = $root.proto = (() => {
     };
     return InteractiveMessageAdditionalMetadata;
   })();
-  proto2.KeepInChat = (function() {
+  proto3.KeepInChat = (function() {
     function KeepInChat(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -186948,14 +186948,14 @@ var proto = $root.proto = (() => {
     };
     return KeepInChat;
   })();
-  proto2.KeepType = (function() {
+  proto3.KeepType = (function() {
     const valuesById = {}, values = Object.create(valuesById);
     values[valuesById[0] = "UNKNOWN"] = 0;
     values[valuesById[1] = "KEEP_FOR_ALL"] = 1;
     values[valuesById[2] = "UNDO_KEEP_FOR_ALL"] = 2;
     return values;
   })();
-  proto2.KeyExchangeMessage = (function() {
+  proto3.KeyExchangeMessage = (function() {
     function KeyExchangeMessage(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -187118,7 +187118,7 @@ var proto = $root.proto = (() => {
     };
     return KeyExchangeMessage;
   })();
-  proto2.KeyId = (function() {
+  proto3.KeyId = (function() {
     function KeyId(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -187196,7 +187196,7 @@ var proto = $root.proto = (() => {
     };
     return KeyId;
   })();
-  proto2.LIDMigrationMapping = (function() {
+  proto3.LIDMigrationMapping = (function() {
     function LIDMigrationMapping(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -187339,7 +187339,7 @@ var proto = $root.proto = (() => {
     };
     return LIDMigrationMapping;
   })();
-  proto2.LIDMigrationMappingSyncMessage = (function() {
+  proto3.LIDMigrationMappingSyncMessage = (function() {
     function LIDMigrationMappingSyncMessage(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -187417,7 +187417,7 @@ var proto = $root.proto = (() => {
     };
     return LIDMigrationMappingSyncMessage;
   })();
-  proto2.LIDMigrationMappingSyncPayload = (function() {
+  proto3.LIDMigrationMappingSyncPayload = (function() {
     function LIDMigrationMappingSyncPayload(p) {
       this.pnToLidMappings = [];
       if (p) {
@@ -187533,7 +187533,7 @@ var proto = $root.proto = (() => {
     };
     return LIDMigrationMappingSyncPayload;
   })();
-  proto2.LegacyMessage = (function() {
+  proto3.LegacyMessage = (function() {
     function LegacyMessage(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -187631,7 +187631,7 @@ var proto = $root.proto = (() => {
     };
     return LegacyMessage;
   })();
-  proto2.LimitSharing = (function() {
+  proto3.LimitSharing = (function() {
     function LimitSharing(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -187802,7 +187802,7 @@ var proto = $root.proto = (() => {
     })();
     return LimitSharing;
   })();
-  proto2.LocalizedName = (function() {
+  proto3.LocalizedName = (function() {
     function LocalizedName(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -187915,7 +187915,7 @@ var proto = $root.proto = (() => {
     };
     return LocalizedName;
   })();
-  proto2.Location = (function() {
+  proto3.Location = (function() {
     function Location(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -188028,7 +188028,7 @@ var proto = $root.proto = (() => {
     };
     return Location;
   })();
-  proto2.MediaData = (function() {
+  proto3.MediaData = (function() {
     function MediaData(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -188103,7 +188103,7 @@ var proto = $root.proto = (() => {
     };
     return MediaData;
   })();
-  proto2.MediaNotifyMessage = (function() {
+  proto3.MediaNotifyMessage = (function() {
     function MediaNotifyMessage(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -188229,7 +188229,7 @@ var proto = $root.proto = (() => {
     };
     return MediaNotifyMessage;
   })();
-  proto2.MediaRetryNotification = (function() {
+  proto3.MediaRetryNotification = (function() {
     function MediaRetryNotification(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -188393,14 +188393,14 @@ var proto = $root.proto = (() => {
     })();
     return MediaRetryNotification;
   })();
-  proto2.MediaVisibility = (function() {
+  proto3.MediaVisibility = (function() {
     const valuesById = {}, values = Object.create(valuesById);
     values[valuesById[0] = "DEFAULT"] = 0;
     values[valuesById[1] = "OFF"] = 1;
     values[valuesById[2] = "ON"] = 2;
     return values;
   })();
-  proto2.MemberLabel = (function() {
+  proto3.MemberLabel = (function() {
     function MemberLabel(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -188504,7 +188504,7 @@ var proto = $root.proto = (() => {
     };
     return MemberLabel;
   })();
-  proto2.Message = (function() {
+  proto3.Message = (function() {
     function Message(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -215950,7 +215950,7 @@ var proto = $root.proto = (() => {
     })();
     return Message;
   })();
-  proto2.MessageAddOn = (function() {
+  proto3.MessageAddOn = (function() {
     function MessageAddOn(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -216249,7 +216249,7 @@ var proto = $root.proto = (() => {
     })();
     return MessageAddOn;
   })();
-  proto2.MessageAddOnContextInfo = (function() {
+  proto3.MessageAddOnContextInfo = (function() {
     function MessageAddOnContextInfo(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -216356,7 +216356,7 @@ var proto = $root.proto = (() => {
     };
     return MessageAddOnContextInfo;
   })();
-  proto2.MessageAssociation = (function() {
+  proto3.MessageAssociation = (function() {
     function MessageAssociation(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -216580,7 +216580,7 @@ var proto = $root.proto = (() => {
     })();
     return MessageAssociation;
   })();
-  proto2.MessageContextInfo = (function() {
+  proto3.MessageContextInfo = (function() {
     function MessageContextInfo(p) {
       this.threadId = [];
       if (p) {
@@ -217003,7 +217003,7 @@ var proto = $root.proto = (() => {
     })();
     return MessageContextInfo;
   })();
-  proto2.MessageKey = (function() {
+  proto3.MessageKey = (function() {
     function MessageKey(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -217135,7 +217135,7 @@ var proto = $root.proto = (() => {
     };
     return MessageKey;
   })();
-  proto2.MessageSecretMessage = (function() {
+  proto3.MessageSecretMessage = (function() {
     function MessageSecretMessage(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -217254,7 +217254,7 @@ var proto = $root.proto = (() => {
     };
     return MessageSecretMessage;
   })();
-  proto2.Money = (function() {
+  proto3.Money = (function() {
     function Money(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -217377,7 +217377,7 @@ var proto = $root.proto = (() => {
     };
     return Money;
   })();
-  proto2.MsgOpaqueData = (function() {
+  proto3.MsgOpaqueData = (function() {
     function MsgOpaqueData(p) {
       this.pollOptions = [];
       if (p) {
@@ -218814,7 +218814,7 @@ var proto = $root.proto = (() => {
     })();
     return MsgOpaqueData;
   })();
-  proto2.MsgRowOpaqueData = (function() {
+  proto3.MsgRowOpaqueData = (function() {
     function MsgRowOpaqueData(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -218912,7 +218912,7 @@ var proto = $root.proto = (() => {
     };
     return MsgRowOpaqueData;
   })();
-  proto2.MutationProps = (function() {
+  proto3.MutationProps = (function() {
     const valuesById = {}, values = Object.create(valuesById);
     values[valuesById[2] = "STAR_ACTION"] = 2;
     values[valuesById[3] = "CONTACT_ACTION"] = 3;
@@ -218989,7 +218989,7 @@ var proto = $root.proto = (() => {
     values[valuesById[10002] = "BUSINESS_BROADCAST_ACTION"] = 10002;
     return values;
   })();
-  proto2.NoiseCertificate = (function() {
+  proto3.NoiseCertificate = (function() {
     function NoiseCertificate(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -219253,7 +219253,7 @@ var proto = $root.proto = (() => {
     })();
     return NoiseCertificate;
   })();
-  proto2.NotificationMessageInfo = (function() {
+  proto3.NotificationMessageInfo = (function() {
     function NotificationMessageInfo(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -219399,7 +219399,7 @@ var proto = $root.proto = (() => {
     };
     return NotificationMessageInfo;
   })();
-  proto2.NotificationSettings = (function() {
+  proto3.NotificationSettings = (function() {
     function NotificationSettings(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -219569,7 +219569,7 @@ var proto = $root.proto = (() => {
     };
     return NotificationSettings;
   })();
-  proto2.PairingRequest = (function() {
+  proto3.PairingRequest = (function() {
     function PairingRequest(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -219691,7 +219691,7 @@ var proto = $root.proto = (() => {
     };
     return PairingRequest;
   })();
-  proto2.PastParticipant = (function() {
+  proto3.PastParticipant = (function() {
     function PastParticipant(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -219833,7 +219833,7 @@ var proto = $root.proto = (() => {
     })();
     return PastParticipant;
   })();
-  proto2.PastParticipants = (function() {
+  proto3.PastParticipants = (function() {
     function PastParticipants(p) {
       this.pastParticipants = [];
       if (p) {
@@ -219939,7 +219939,7 @@ var proto = $root.proto = (() => {
     };
     return PastParticipants;
   })();
-  proto2.PatchDebugData = (function() {
+  proto3.PatchDebugData = (function() {
     function PatchDebugData(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -220291,7 +220291,7 @@ var proto = $root.proto = (() => {
     })();
     return PatchDebugData;
   })();
-  proto2.PaymentBackground = (function() {
+  proto3.PaymentBackground = (function() {
     function PaymentBackground(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -220738,7 +220738,7 @@ var proto = $root.proto = (() => {
     })();
     return PaymentBackground;
   })();
-  proto2.PaymentInfo = (function() {
+  proto3.PaymentInfo = (function() {
     function PaymentInfo(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -221334,7 +221334,7 @@ var proto = $root.proto = (() => {
     })();
     return PaymentInfo;
   })();
-  proto2.PhoneNumberToLIDMapping = (function() {
+  proto3.PhoneNumberToLIDMapping = (function() {
     function PhoneNumberToLIDMapping(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -221428,7 +221428,7 @@ var proto = $root.proto = (() => {
     };
     return PhoneNumberToLIDMapping;
   })();
-  proto2.PhotoChange = (function() {
+  proto3.PhotoChange = (function() {
     function PhotoChange(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -221547,7 +221547,7 @@ var proto = $root.proto = (() => {
     };
     return PhotoChange;
   })();
-  proto2.PinInChat = (function() {
+  proto3.PinInChat = (function() {
     function PinInChat(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -221746,7 +221746,7 @@ var proto = $root.proto = (() => {
     })();
     return PinInChat;
   })();
-  proto2.Point = (function() {
+  proto3.Point = (function() {
     function Point(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -221878,7 +221878,7 @@ var proto = $root.proto = (() => {
     };
     return Point;
   })();
-  proto2.PollAdditionalMetadata = (function() {
+  proto3.PollAdditionalMetadata = (function() {
     function PollAdditionalMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -221953,7 +221953,7 @@ var proto = $root.proto = (() => {
     };
     return PollAdditionalMetadata;
   })();
-  proto2.PollEncValue = (function() {
+  proto3.PollEncValue = (function() {
     function PollEncValue(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -222053,7 +222053,7 @@ var proto = $root.proto = (() => {
     };
     return PollEncValue;
   })();
-  proto2.PollUpdate = (function() {
+  proto3.PollUpdate = (function() {
     function PollUpdate(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -222228,7 +222228,7 @@ var proto = $root.proto = (() => {
     };
     return PollUpdate;
   })();
-  proto2.PreKeyRecordStructure = (function() {
+  proto3.PreKeyRecordStructure = (function() {
     function PreKeyRecordStructure(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -222347,7 +222347,7 @@ var proto = $root.proto = (() => {
     };
     return PreKeyRecordStructure;
   })();
-  proto2.PreKeySignalMessage = (function() {
+  proto3.PreKeySignalMessage = (function() {
     function PreKeySignalMessage(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -222526,7 +222526,7 @@ var proto = $root.proto = (() => {
     };
     return PreKeySignalMessage;
   })();
-  proto2.PremiumMessageInfo = (function() {
+  proto3.PremiumMessageInfo = (function() {
     function PremiumMessageInfo(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -222601,7 +222601,7 @@ var proto = $root.proto = (() => {
     };
     return PremiumMessageInfo;
   })();
-  proto2.PrimaryEphemeralIdentity = (function() {
+  proto3.PrimaryEphemeralIdentity = (function() {
     function PrimaryEphemeralIdentity(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -222701,14 +222701,14 @@ var proto = $root.proto = (() => {
     };
     return PrimaryEphemeralIdentity;
   })();
-  proto2.PrivacySystemMessage = (function() {
+  proto3.PrivacySystemMessage = (function() {
     const valuesById = {}, values = Object.create(valuesById);
     values[valuesById[1] = "E2EE_MSG"] = 1;
     values[valuesById[2] = "NE2EE_SELF"] = 2;
     values[valuesById[3] = "NE2EE_OTHER"] = 3;
     return values;
   })();
-  proto2.ProcessedVideo = (function() {
+  proto3.ProcessedVideo = (function() {
     function ProcessedVideo(p) {
       this.capabilities = [];
       if (p) {
@@ -222968,7 +222968,7 @@ var proto = $root.proto = (() => {
     })();
     return ProcessedVideo;
   })();
-  proto2.ProloguePayload = (function() {
+  proto3.ProloguePayload = (function() {
     function ProloguePayload(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -223067,7 +223067,7 @@ var proto = $root.proto = (() => {
     };
     return ProloguePayload;
   })();
-  proto2.Pushname = (function() {
+  proto3.Pushname = (function() {
     function Pushname(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -223161,7 +223161,7 @@ var proto = $root.proto = (() => {
     };
     return Pushname;
   })();
-  proto2.QuarantinedMessage = (function() {
+  proto3.QuarantinedMessage = (function() {
     function QuarantinedMessage(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -223258,7 +223258,7 @@ var proto = $root.proto = (() => {
     };
     return QuarantinedMessage;
   })();
-  proto2.Reaction = (function() {
+  proto3.Reaction = (function() {
     function Reaction(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -223421,7 +223421,7 @@ var proto = $root.proto = (() => {
     };
     return Reaction;
   })();
-  proto2.RecentEmojiWeight = (function() {
+  proto3.RecentEmojiWeight = (function() {
     function RecentEmojiWeight(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -223515,7 +223515,7 @@ var proto = $root.proto = (() => {
     };
     return RecentEmojiWeight;
   })();
-  proto2.RecordStructure = (function() {
+  proto3.RecordStructure = (function() {
     function RecordStructure(p) {
       this.previousSessions = [];
       if (p) {
@@ -223623,7 +223623,7 @@ var proto = $root.proto = (() => {
     };
     return RecordStructure;
   })();
-  proto2.Reportable = (function() {
+  proto3.Reportable = (function() {
     function Reportable(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -223755,7 +223755,7 @@ var proto = $root.proto = (() => {
     };
     return Reportable;
   })();
-  proto2.ReportingTokenInfo = (function() {
+  proto3.ReportingTokenInfo = (function() {
     function ReportingTokenInfo(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -223833,7 +223833,7 @@ var proto = $root.proto = (() => {
     };
     return ReportingTokenInfo;
   })();
-  proto2.SenderKeyDistributionMessage = (function() {
+  proto3.SenderKeyDistributionMessage = (function() {
     function SenderKeyDistributionMessage3(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -223971,7 +223971,7 @@ var proto = $root.proto = (() => {
     };
     return SenderKeyDistributionMessage3;
   })();
-  proto2.SenderKeyMessage = (function() {
+  proto3.SenderKeyMessage = (function() {
     function SenderKeyMessage2(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -224087,7 +224087,7 @@ var proto = $root.proto = (() => {
     };
     return SenderKeyMessage2;
   })();
-  proto2.SenderKeyRecordStructure = (function() {
+  proto3.SenderKeyRecordStructure = (function() {
     function SenderKeyRecordStructure(p) {
       this.senderKeyStates = [];
       if (p) {
@@ -224173,7 +224173,7 @@ var proto = $root.proto = (() => {
     };
     return SenderKeyRecordStructure;
   })();
-  proto2.SenderKeyStateStructure = (function() {
+  proto3.SenderKeyStateStructure = (function() {
     function SenderKeyStateStructure(p) {
       this.senderMessageKeys = [];
       if (p) {
@@ -224615,7 +224615,7 @@ var proto = $root.proto = (() => {
     })();
     return SenderKeyStateStructure;
   })();
-  proto2.ServerErrorReceipt = (function() {
+  proto3.ServerErrorReceipt = (function() {
     function ServerErrorReceipt(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -224690,7 +224690,7 @@ var proto = $root.proto = (() => {
     };
     return ServerErrorReceipt;
   })();
-  proto2.SessionStructure = (function() {
+  proto3.SessionStructure = (function() {
     function SessionStructure(p) {
       this.receiverChains = [];
       if (p) {
@@ -225736,7 +225736,7 @@ var proto = $root.proto = (() => {
     })();
     return SessionStructure;
   })();
-  proto2.SessionTransparencyMetadata = (function() {
+  proto3.SessionTransparencyMetadata = (function() {
     function SessionTransparencyMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -225862,13 +225862,13 @@ var proto = $root.proto = (() => {
     };
     return SessionTransparencyMetadata;
   })();
-  proto2.SessionTransparencyType = (function() {
+  proto3.SessionTransparencyType = (function() {
     const valuesById = {}, values = Object.create(valuesById);
     values[valuesById[0] = "UNKNOWN_TYPE"] = 0;
     values[valuesById[1] = "NY_AI_SAFETY_DISCLAIMER"] = 1;
     return values;
   })();
-  proto2.SignalMessage = (function() {
+  proto3.SignalMessage = (function() {
     function SignalMessage(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -226006,7 +226006,7 @@ var proto = $root.proto = (() => {
     };
     return SignalMessage;
   })();
-  proto2.SignedPreKeyRecordStructure = (function() {
+  proto3.SignedPreKeyRecordStructure = (function() {
     function SignedPreKeyRecordStructure(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -226176,7 +226176,7 @@ var proto = $root.proto = (() => {
     };
     return SignedPreKeyRecordStructure;
   })();
-  proto2.StatusAttribution = (function() {
+  proto3.StatusAttribution = (function() {
     function StatusAttribution(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -227331,7 +227331,7 @@ var proto = $root.proto = (() => {
     })();
     return StatusAttribution;
   })();
-  proto2.StatusMentionMessage = (function() {
+  proto3.StatusMentionMessage = (function() {
     function StatusMentionMessage(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -227408,7 +227408,7 @@ var proto = $root.proto = (() => {
     };
     return StatusMentionMessage;
   })();
-  proto2.StatusPSA = (function() {
+  proto3.StatusPSA = (function() {
     function StatusPSA(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -227523,7 +227523,7 @@ var proto = $root.proto = (() => {
     };
     return StatusPSA;
   })();
-  proto2.StickerMetadata = (function() {
+  proto3.StickerMetadata = (function() {
     function StickerMetadata(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -227874,7 +227874,7 @@ var proto = $root.proto = (() => {
     };
     return StickerMetadata;
   })();
-  proto2.SyncActionData = (function() {
+  proto3.SyncActionData = (function() {
     function SyncActionData(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -228014,7 +228014,7 @@ var proto = $root.proto = (() => {
     };
     return SyncActionData;
   })();
-  proto2.SyncActionValue = (function() {
+  proto3.SyncActionValue = (function() {
     function SyncActionValue(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -236780,7 +236780,7 @@ var proto = $root.proto = (() => {
     })();
     return SyncActionValue;
   })();
-  proto2.SyncdIndex = (function() {
+  proto3.SyncdIndex = (function() {
     function SyncdIndex(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -236858,7 +236858,7 @@ var proto = $root.proto = (() => {
     };
     return SyncdIndex;
   })();
-  proto2.SyncdMutation = (function() {
+  proto3.SyncdMutation = (function() {
     function SyncdMutation(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -236973,7 +236973,7 @@ var proto = $root.proto = (() => {
     })();
     return SyncdMutation;
   })();
-  proto2.SyncdMutations = (function() {
+  proto3.SyncdMutations = (function() {
     function SyncdMutations(p) {
       this.mutations = [];
       if (p) {
@@ -237059,7 +237059,7 @@ var proto = $root.proto = (() => {
     };
     return SyncdMutations;
   })();
-  proto2.SyncdPatch = (function() {
+  proto3.SyncdPatch = (function() {
     function SyncdPatch(p) {
       this.mutations = [];
       if (p) {
@@ -237315,7 +237315,7 @@ var proto = $root.proto = (() => {
     };
     return SyncdPatch;
   })();
-  proto2.SyncdRecord = (function() {
+  proto3.SyncdRecord = (function() {
     function SyncdRecord(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -237434,7 +237434,7 @@ var proto = $root.proto = (() => {
     };
     return SyncdRecord;
   })();
-  proto2.SyncdSnapshot = (function() {
+  proto3.SyncdSnapshot = (function() {
     function SyncdSnapshot(p) {
       this.records = [];
       if (p) {
@@ -237585,7 +237585,7 @@ var proto = $root.proto = (() => {
     };
     return SyncdSnapshot;
   })();
-  proto2.SyncdValue = (function() {
+  proto3.SyncdValue = (function() {
     function SyncdValue(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -237663,7 +237663,7 @@ var proto = $root.proto = (() => {
     };
     return SyncdValue;
   })();
-  proto2.SyncdVersion = (function() {
+  proto3.SyncdVersion = (function() {
     function SyncdVersion(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -237748,7 +237748,7 @@ var proto = $root.proto = (() => {
     };
     return SyncdVersion;
   })();
-  proto2.TapLinkAction = (function() {
+  proto3.TapLinkAction = (function() {
     function TapLinkAction(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -237842,7 +237842,7 @@ var proto = $root.proto = (() => {
     };
     return TapLinkAction;
   })();
-  proto2.TemplateButton = (function() {
+  proto3.TemplateButton = (function() {
     function TemplateButton(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -238264,7 +238264,7 @@ var proto = $root.proto = (() => {
     })();
     return TemplateButton;
   })();
-  proto2.ThreadID = (function() {
+  proto3.ThreadID = (function() {
     function ThreadID(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -238384,7 +238384,7 @@ var proto = $root.proto = (() => {
     })();
     return ThreadID;
   })();
-  proto2.UrlTrackingMap = (function() {
+  proto3.UrlTrackingMap = (function() {
     function UrlTrackingMap(p) {
       this.urlTrackingMapElements = [];
       if (p) {
@@ -238602,7 +238602,7 @@ var proto = $root.proto = (() => {
     })();
     return UrlTrackingMap;
   })();
-  proto2.UserPassword = (function() {
+  proto3.UserPassword = (function() {
     function UserPassword(p) {
       this.transformerArg = [];
       if (p) {
@@ -238981,7 +238981,7 @@ var proto = $root.proto = (() => {
     })();
     return UserPassword;
   })();
-  proto2.UserReceipt = (function() {
+  proto3.UserReceipt = (function() {
     function UserReceipt(p) {
       this.pendingDeviceJid = [];
       this.deliveredDeviceJid = [];
@@ -239196,7 +239196,7 @@ var proto = $root.proto = (() => {
     };
     return UserReceipt;
   })();
-  proto2.VerifiedNameCertificate = (function() {
+  proto3.VerifiedNameCertificate = (function() {
     function VerifiedNameCertificate(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -239501,7 +239501,7 @@ var proto = $root.proto = (() => {
     })();
     return VerifiedNameCertificate;
   })();
-  proto2.WallpaperSettings = (function() {
+  proto3.WallpaperSettings = (function() {
     function WallpaperSettings(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -239595,7 +239595,7 @@ var proto = $root.proto = (() => {
     };
     return WallpaperSettings;
   })();
-  proto2.WebFeatures = (function() {
+  proto3.WebFeatures = (function() {
     function WebFeatures(p) {
       if (p) {
         for (var ks = Object.keys(p), i2 = 0; i2 < ks.length; ++i2)
@@ -241459,13 +241459,13 @@ var proto = $root.proto = (() => {
     })();
     return WebFeatures;
   })();
-  proto2.WebLinkRenderConfig = (function() {
+  proto3.WebLinkRenderConfig = (function() {
     const valuesById = {}, values = Object.create(valuesById);
     values[valuesById[0] = "WEBVIEW"] = 0;
     values[valuesById[1] = "SYSTEM"] = 1;
     return values;
   })();
-  proto2.WebMessageInfo = (function() {
+  proto3.WebMessageInfo = (function() {
     function WebMessageInfo(p) {
       this.messageStubParameters = [];
       this.labels = [];
@@ -244156,7 +244156,7 @@ var proto = $root.proto = (() => {
     })();
     return WebMessageInfo;
   })();
-  proto2.WebNotificationsInfo = (function() {
+  proto3.WebNotificationsInfo = (function() {
     function WebNotificationsInfo(p) {
       this.notifyMessages = [];
       if (p) {
@@ -244310,7 +244310,7 @@ var proto = $root.proto = (() => {
     };
     return WebNotificationsInfo;
   })();
-  return proto2;
+  return proto3;
 })();
 
 // ../../node_modules/.pnpm/@whiskeysockets+baileys@7.0.0-rc14/node_modules/@whiskeysockets/baileys/lib/Signal/libsignal.js
@@ -268003,9 +268003,9 @@ var WhatsAppService = class {
     }
   }
   /**
-   * Send an interactive message with CTA buttons (like Amazon/WhatsApp Business).
-   * Renders native action buttons directly at the bottom of the card.
-   * Seamlessly falls back to formatted text with links if the client does not support native flow.
+   * Send a rich WhatsApp message with 1-tap action links.
+   * Formats headers, body, action links and footer cleanly to ensure 100% reliable
+   * delivery across all WhatsApp devices (iOS, Android, Desktop, Web).
    */
   async sendInteractiveButtonsMessage(phone, params) {
     if (this.state.status !== "connected" || !this.sock) {
@@ -268020,71 +268020,33 @@ var WhatsAppService = class {
       logger.warn({ phone }, "[WhatsApp] Invalid phone number provided");
       return false;
     }
-    try {
-      const nativeButtons = params.buttons.map((btn) => {
-        if (btn.type === "url" && btn.url) {
-          return {
-            name: "cta_url",
-            buttonParamsJson: JSON.stringify({
-              display_text: btn.text,
-              url: btn.url,
-              merchant_url: btn.url
-            })
-          };
-        }
-        return {
-          name: "quick_reply",
-          buttonParamsJson: JSON.stringify({
-            display_text: btn.text,
-            id: btn.id || btn.text
-          })
-        };
-      });
-      const interactiveMsg = proto.Message.InteractiveMessage.create({
-        body: proto.Message.InteractiveMessage.Body.create({
-          text: params.body
-        }),
-        footer: proto.Message.InteractiveMessage.Footer.create({
-          text: params.footer || "SwiftMart Order Automation"
-        }),
-        header: proto.Message.InteractiveMessage.Header.create({
-          title: params.header || "SwiftMart Notification",
-          hasMediaAttachment: false
-        }),
-        nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
-          buttons: nativeButtons
-        })
-      });
-      const waMsg = generateWAMessageFromContent(
-        jid,
-        {
-          viewOnceMessage: {
-            message: {
-              interactiveMessage: interactiveMsg
-            }
-          }
-        },
-        { userJid: this.sock.user?.id || jid }
-      );
-      await this.sock.relayMessage(jid, waMsg.message, { messageId: waMsg.key.id });
-      logger.info({ jid }, "[WhatsApp] Interactive button message dispatched successfully");
-      return true;
-    } catch (err) {
-      logger.warn({ err, jid }, "[WhatsApp] Failed to dispatch interactive button message, falling back to text");
-      let fallbackText = `${params.header ? `${params.header}
+    let messageText = "";
+    if (params.header) {
+      messageText += `${params.header}
 
-` : ""}${params.body}`;
-      if (params.buttons.length > 0) {
-        fallbackText += "\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\u26A1 *ACTIONS:*\n";
-        for (const b of params.buttons) {
-          if (b.type === "url" && b.url) {
-            fallbackText += `\u{1F449} *${b.text}:* ${b.url}
 `;
-          }
+    }
+    messageText += params.body;
+    if (params.buttons && params.buttons.length > 0) {
+      messageText += "\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\u26A1 *SELECT ACTION:*";
+      for (const btn of params.buttons) {
+        if (btn.type === "url" && btn.url) {
+          messageText += `
+\u{1F449} *${btn.text}:*
+${btn.url}
+`;
+        } else if (btn.text) {
+          messageText += `
+\u{1F449} *${btn.text}*`;
         }
       }
-      return this.sendMessage(phone, fallbackText);
     }
+    if (params.footer) {
+      messageText += `
+
+_${params.footer}_`;
+    }
+    return this.sendMessage(phone, messageText.trim());
   }
   /**
    * Sends a rich new order notification to the vendor with native 1-tap Accept/Reject buttons.
@@ -268454,6 +268416,120 @@ var WhatsAppService = class {
           type: "url",
           text: "\u{1F6CD}\uFE0F Order Again",
           url: shopUrl
+        }
+      ]
+    });
+  }
+  /**
+   * Returns the phone number currently connected to WhatsApp gateway.
+   */
+  getConnectedPhone() {
+    return this.state.connectedPhone || null;
+  }
+  /**
+   * Sends an automated WhatsApp order confirmation alert to the CUSTOMER when an order is placed.
+   */
+  async sendOrderPlacedToCustomer(params) {
+    const {
+      customerPhone,
+      customerName,
+      shopName,
+      orderNumber,
+      orderId,
+      netAmount,
+      paymentMethod,
+      items
+    } = params;
+    let itemsPreview = "";
+    if (Array.isArray(items) && items.length > 0) {
+      const names = items.slice(0, 5).map((i2) => {
+        const w = i2.selectedWeight ? ` (${i2.selectedWeight})` : "";
+        const cost = i2.totalPrice ? ` = \u20B9${i2.totalPrice}` : i2.price ? ` = \u20B9${i2.price * (i2.qty || 1)}` : "";
+        return `\u2022 *${i2.productName || i2.name || "Item"}${w}* \xD7 ${i2.qty || 1}${cost}`;
+      }).join("\n");
+      const extra = items.length > 5 ? `
+\u2022 _+${items.length - 5} more items_` : "";
+      itemsPreview = `
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+\u{1F4CB} *ITEMS ORDERED:*
+${names}${extra}`;
+    }
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    const trackUrl = `${baseUrl}/orders?track=${orderId}`;
+    const body = [
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `Thank you for your order, *${customerName || "Customer"}*! \u{1F389}`,
+      `Your order with *${shopName}* has been placed successfully.`,
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `\u{1F4E6} *Order ID:* #${orderNumber}`,
+      `\u{1F4B0} *Total Amount:* \u20B9${netAmount} (${(paymentMethod || "COD").toUpperCase()})`,
+      itemsPreview,
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `The store is reviewing your order. We'll send you an update as soon as preparation starts!`
+    ].filter(Boolean).join("\n");
+    return this.sendInteractiveButtonsMessage(customerPhone, {
+      header: `\u{1F6CD}\uFE0F *ORDER PLACED CONFIRMATION \u2014 SWIFTMART*`,
+      body,
+      footer: `SwiftMart Hyperlocal Delivery`,
+      buttons: [
+        {
+          type: "url",
+          text: "\u{1F4CD} Track Live Order",
+          url: trackUrl
+        }
+      ]
+    });
+  }
+  /**
+   * Sends an automated WhatsApp alert to the platform ADMIN when any new order is placed across any shop.
+   */
+  async sendAdminNewOrderAlert(params) {
+    const adminPhone = params.adminPhone || process.env.ADMIN_PHONE || this.state.connectedPhone;
+    if (!adminPhone) {
+      logger.info("[WhatsApp] No admin phone configured for admin order alert");
+      return false;
+    }
+    const {
+      shopName,
+      orderNumber,
+      orderId,
+      customerName,
+      customerPhone,
+      netAmount,
+      paymentMethod,
+      items
+    } = params;
+    let itemsPreview = "";
+    if (Array.isArray(items) && items.length > 0) {
+      const names = items.slice(0, 5).map((i2) => `\u2022 *${i2.productName || i2.name || "Item"}* (\xD7${i2.qty || 1})`).join("\n");
+      const extra = items.length > 5 ? `
+\u2022 _+${items.length - 5} more_` : "";
+      itemsPreview = `
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+\u{1F4CB} *ITEMS:*
+${names}${extra}`;
+    }
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    const adminOrdersUrl = `${baseUrl}/admin?tab=orders`;
+    const body = [
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `\u{1F4E6} *Order ID:* #${orderNumber}`,
+      `\u{1F3EA} *Shop:* ${shopName}`,
+      `\u{1F464} *Customer:* ${customerName} (${customerPhone})`,
+      `\u{1F4B0} *Bill:* \u20B9${netAmount} (${(paymentMethod || "COD").toUpperCase()})`,
+      itemsPreview,
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `Assign rider or monitor dispatch status in Central Control.`
+    ].filter(Boolean).join("\n");
+    return this.sendInteractiveButtonsMessage(adminPhone, {
+      header: `\u{1F6A8} *NEW DISPATCH ALERT \u2014 CENTRAL CONTROL*`,
+      body,
+      footer: `SwiftMart Central Control`,
+      buttons: [
+        {
+          type: "url",
+          text: "\u{1F4CA} Open Admin Orders",
+          url: adminOrdersUrl
         }
       ]
     });
@@ -269181,46 +269257,69 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
     data: { orderId: createdOrder.id }
   }).catch(() => {
   });
+  if (createdOrder.customerPhone) {
+    whatsappService.sendOrderPlacedToCustomer({
+      customerPhone: createdOrder.customerPhone,
+      customerName: createdOrder.customerName || "Customer",
+      shopName: shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop",
+      orderNumber: createdOrder.id.slice(-6).toUpperCase(),
+      orderId: createdOrder.id,
+      netAmount: createdOrder.netAmount,
+      paymentMethod: createdOrder.paymentMethod || "COD",
+      items: createdOrder.items || []
+    }).catch((err) => {
+      logger.warn({ err }, "[WhatsApp] Background customer alert error on order placement");
+    });
+  }
   try {
+    let targetPhone = shop?.phone;
+    let vendorName = shop?.ownerName ?? shop?.shopName ?? "Partner";
+    let vendorUserId = shop?.ownerId;
     if (shop?.ownerId) {
       const [vendor] = await db.select({ id: users.id, phone: users.phone, name: users.name }).from(users).where(eq13(users.id, shop.ownerId)).limit(1);
       if (vendor) {
-        await createNotificationLimited(vendor.id, {
-          type: "order_update",
-          title: "New Order Received",
-          message: `You have a new order #${createdOrder.id.slice(-6).toUpperCase()} worth \u20B9${createdOrder.netAmount}.`,
-          data: { orderId: createdOrder.id }
-        });
-        const targetPhone = vendor.phone || shop.phone;
-        if (targetPhone) {
-          whatsappService.sendOrderAlertToVendor({
-            vendorPhone: targetPhone,
-            vendorName: vendor.name ?? shop.ownerName ?? "Partner",
-            shopName: shop.shopName ?? "SwiftMart Shop",
-            orderNumber: createdOrder.id.slice(-6).toUpperCase(),
-            orderId: createdOrder.id,
-            customerName: createdOrder.customerName || "Customer",
-            customerPhone: createdOrder.customerPhone || "N/A",
-            deliveryAddress: [
-              createdOrder.address?.line1,
-              createdOrder.address?.line2,
-              createdOrder.address?.city
-            ].filter(Boolean).join(", "),
-            items: createdOrder.items || [],
-            netAmount: createdOrder.netAmount,
-            paymentMethod: createdOrder.paymentMethod || "COD"
-          }).catch((err) => {
-            logger.warn({ err }, "[WhatsApp] Background vendor alert error");
-          });
-        }
+        vendorUserId = vendor.id;
+        if (vendor.phone) targetPhone = vendor.phone;
+        if (vendor.name) vendorName = vendor.name;
       }
     }
-  } catch {
+    if (vendorUserId) {
+      createNotificationLimited(vendorUserId, {
+        type: "order_update",
+        title: "New Order Received",
+        message: `You have a new order #${createdOrder.id.slice(-6).toUpperCase()} worth \u20B9${createdOrder.netAmount}.`,
+        data: { orderId: createdOrder.id }
+      }).catch(() => {
+      });
+    }
+    if (targetPhone) {
+      whatsappService.sendOrderAlertToVendor({
+        vendorPhone: targetPhone,
+        vendorName,
+        shopName: shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop",
+        orderNumber: createdOrder.id.slice(-6).toUpperCase(),
+        orderId: createdOrder.id,
+        customerName: createdOrder.customerName || "Customer",
+        customerPhone: createdOrder.customerPhone || "N/A",
+        deliveryAddress: [
+          createdOrder.address?.line1,
+          createdOrder.address?.line2,
+          createdOrder.address?.city
+        ].filter(Boolean).join(", "),
+        items: createdOrder.items || [],
+        netAmount: createdOrder.netAmount,
+        paymentMethod: createdOrder.paymentMethod || "COD"
+      }).catch((err) => {
+        logger.warn({ err }, "[WhatsApp] Background vendor alert error");
+      });
+    }
+  } catch (err) {
+    logger.warn({ err }, "[WhatsApp] Error sending vendor order notification");
   }
   try {
-    const adminUsers = await db.select({ id: users.id }).from(users).where(or7(eq13(users.role, "admin"), eq13(users.role, "super_admin")));
+    const adminUsers = await db.select({ id: users.id, phone: users.phone }).from(users).where(or7(eq13(users.role, "admin"), eq13(users.role, "super_admin")));
     const shortId = createdOrder.id.slice(-6).toUpperCase();
-    const shopName = shop?.shopName ?? "a shop";
+    const shopName = shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop";
     await Promise.all(
       adminUsers.map(
         (admin) => createNotificationLimited(admin.id, {
@@ -269232,6 +269331,20 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
         })
       )
     );
+    const adminPhone = adminUsers.find((a) => Boolean(a.phone))?.phone ?? null;
+    whatsappService.sendAdminNewOrderAlert({
+      adminPhone,
+      shopName,
+      orderNumber: shortId,
+      orderId: createdOrder.id,
+      customerName: createdOrder.customerName || "Customer",
+      customerPhone: createdOrder.customerPhone || "N/A",
+      netAmount: createdOrder.netAmount,
+      paymentMethod: createdOrder.paymentMethod || "COD",
+      items: createdOrder.items || []
+    }).catch((err) => {
+      logger.warn({ err }, "[WhatsApp] Background admin alert error");
+    });
   } catch {
   }
   res.status(201).json({ success: true, order: mi(createdOrder) });
@@ -276777,8 +276890,8 @@ app.use((req, res, next) => {
     if (!req.path.startsWith("/api")) return "*";
     if (CAPACITOR_ORIGINS.has(origin)) return origin;
     const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "").split(",")[0]?.trim() ?? "";
-    const proto2 = (req.headers["x-forwarded-proto"] ?? "https").split(",")[0]?.trim() ?? "https";
-    if (host && origin === `${proto2}://${host}`) return origin;
+    const proto3 = (req.headers["x-forwarded-proto"] ?? "https").split(",")[0]?.trim() ?? "https";
+    if (host && origin === `${proto3}://${host}`) return origin;
     if (configuredOrigins.includes(origin)) return origin;
     return origin || "*";
   };
@@ -276814,9 +276927,9 @@ app.get("/health", (_req, res) => {
 app.use((req, res, next) => {
   const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "").split(",")[0]?.trim() ?? "";
   if (host.startsWith("www.")) {
-    const proto2 = (req.headers["x-forwarded-proto"] ?? "https").split(",")[0]?.trim() ?? "https";
+    const proto3 = (req.headers["x-forwarded-proto"] ?? "https").split(",")[0]?.trim() ?? "https";
     const bare = host.slice(4);
-    res.redirect(301, `${proto2}://${bare}${req.url}`);
+    res.redirect(301, `${proto3}://${bare}${req.url}`);
     return;
   }
   next();

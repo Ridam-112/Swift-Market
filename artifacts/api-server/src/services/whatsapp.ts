@@ -457,9 +457,9 @@ class WhatsAppService {
   }
 
   /**
-   * Send an interactive message with CTA buttons (like Amazon/WhatsApp Business).
-   * Renders native action buttons directly at the bottom of the card.
-   * Seamlessly falls back to formatted text with links if the client does not support native flow.
+   * Send a rich WhatsApp message with 1-tap action links.
+   * Formats headers, body, action links and footer cleanly to ensure 100% reliable
+   * delivery across all WhatsApp devices (iOS, Android, Desktop, Web).
    */
   public async sendInteractiveButtonsMessage(
     phone: string,
@@ -489,71 +489,28 @@ class WhatsAppService {
       return false;
     }
 
-    try {
-      const nativeButtons = params.buttons.map((btn) => {
+    let messageText = "";
+    if (params.header) {
+      messageText += `${params.header}\n\n`;
+    }
+    messageText += params.body;
+
+    if (params.buttons && params.buttons.length > 0) {
+      messageText += "\n\n━━━━━━━━━━━━━━━━━━━━━━\n⚡ *SELECT ACTION:*";
+      for (const btn of params.buttons) {
         if (btn.type === "url" && btn.url) {
-          return {
-            name: "cta_url",
-            buttonParamsJson: JSON.stringify({
-              display_text: btn.text,
-              url: btn.url,
-              merchant_url: btn.url,
-            }),
-          };
-        }
-        return {
-          name: "quick_reply",
-          buttonParamsJson: JSON.stringify({
-            display_text: btn.text,
-            id: btn.id || btn.text,
-          }),
-        };
-      });
-
-      const interactiveMsg = proto.Message.InteractiveMessage.create({
-        body: proto.Message.InteractiveMessage.Body.create({
-          text: params.body,
-        }),
-        footer: proto.Message.InteractiveMessage.Footer.create({
-          text: params.footer || "SwiftMart Order Automation",
-        }),
-        header: proto.Message.InteractiveMessage.Header.create({
-          title: params.header || "SwiftMart Notification",
-          hasMediaAttachment: false,
-        }),
-        nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
-          buttons: nativeButtons,
-        }),
-      });
-
-      const waMsg = generateWAMessageFromContent(
-        jid,
-        {
-          viewOnceMessage: {
-            message: {
-              interactiveMessage: interactiveMsg,
-            },
-          },
-        },
-        { userJid: this.sock.user?.id || jid }
-      );
-
-      await this.sock.relayMessage(jid, waMsg.message!, { messageId: waMsg.key.id! });
-      logger.info({ jid }, "[WhatsApp] Interactive button message dispatched successfully");
-      return true;
-    } catch (err) {
-      logger.warn({ err, jid }, "[WhatsApp] Failed to dispatch interactive button message, falling back to text");
-      let fallbackText = `${params.header ? `${params.header}\n\n` : ""}${params.body}`;
-      if (params.buttons.length > 0) {
-        fallbackText += "\n\n━━━━━━━━━━━━━━━━━━━━━━\n⚡ *ACTIONS:*\n";
-        for (const b of params.buttons) {
-          if (b.type === "url" && b.url) {
-            fallbackText += `👉 *${b.text}:* ${b.url}\n`;
-          }
+          messageText += `\n👉 *${btn.text}:*\n${btn.url}\n`;
+        } else if (btn.text) {
+          messageText += `\n👉 *${btn.text}*`;
         }
       }
-      return this.sendMessage(phone, fallbackText);
     }
+
+    if (params.footer) {
+      messageText += `\n\n_${params.footer}_`;
+    }
+
+    return this.sendMessage(phone, messageText.trim());
   }
 
   /**
@@ -1050,6 +1007,161 @@ class WhatsAppService {
           type: "url",
           text: "🛍️ Order Again",
           url: shopUrl,
+        },
+      ],
+    });
+  }
+
+  /**
+   * Returns the phone number currently connected to WhatsApp gateway.
+   */
+  public getConnectedPhone(): string | null {
+    return this.state.connectedPhone || null;
+  }
+
+  /**
+   * Sends an automated WhatsApp order confirmation alert to the CUSTOMER when an order is placed.
+   */
+  public async sendOrderPlacedToCustomer(params: {
+    customerPhone: string;
+    customerName?: string;
+    shopName: string;
+    orderNumber: string;
+    orderId: string;
+    netAmount: number;
+    paymentMethod: string;
+    items?: Array<{
+      productName?: string;
+      name?: string;
+      qty?: number;
+      price?: number;
+      totalPrice?: number;
+      selectedWeight?: string;
+    }>;
+  }): Promise<boolean> {
+    const {
+      customerPhone,
+      customerName,
+      shopName,
+      orderNumber,
+      orderId,
+      netAmount,
+      paymentMethod,
+      items,
+    } = params;
+
+    let itemsPreview = "";
+    if (Array.isArray(items) && items.length > 0) {
+      const names = items
+        .slice(0, 5)
+        .map((i) => {
+          const w = i.selectedWeight ? ` (${i.selectedWeight})` : "";
+          const cost = i.totalPrice ? ` = ₹${i.totalPrice}` : (i.price ? ` = ₹${i.price * (i.qty || 1)}` : "");
+          return `• *${i.productName || i.name || "Item"}${w}* × ${i.qty || 1}${cost}`;
+        })
+        .join("\n");
+      const extra = items.length > 5 ? `\n• _+${items.length - 5} more items_` : "";
+      itemsPreview = `\n━━━━━━━━━━━━━━━━━━━━━━\n📋 *ITEMS ORDERED:*\n${names}${extra}`;
+    }
+
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    const trackUrl = `${baseUrl}/orders?track=${orderId}`;
+
+    const body = [
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `Thank you for your order, *${customerName || "Customer"}*! 🎉`,
+      `Your order with *${shopName}* has been placed successfully.`,
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `📦 *Order ID:* #${orderNumber}`,
+      `💰 *Total Amount:* ₹${netAmount} (${(paymentMethod || "COD").toUpperCase()})`,
+      itemsPreview,
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `The store is reviewing your order. We'll send you an update as soon as preparation starts!`,
+    ].filter(Boolean).join("\n");
+
+    return this.sendInteractiveButtonsMessage(customerPhone, {
+      header: `🛍️ *ORDER PLACED CONFIRMATION — SWIFTMART*`,
+      body,
+      footer: `SwiftMart Hyperlocal Delivery`,
+      buttons: [
+        {
+          type: "url",
+          text: "📍 Track Live Order",
+          url: trackUrl,
+        },
+      ],
+    });
+  }
+
+  /**
+   * Sends an automated WhatsApp alert to the platform ADMIN when any new order is placed across any shop.
+   */
+  public async sendAdminNewOrderAlert(params: {
+    adminPhone?: string | null;
+    shopName: string;
+    orderNumber: string;
+    orderId: string;
+    customerName: string;
+    customerPhone: string;
+    netAmount: number;
+    paymentMethod: string;
+    items?: Array<{
+      productName?: string;
+      name?: string;
+      qty?: number;
+      price?: number;
+    }>;
+  }): Promise<boolean> {
+    const adminPhone = params.adminPhone || process.env.ADMIN_PHONE || this.state.connectedPhone;
+    if (!adminPhone) {
+      logger.info("[WhatsApp] No admin phone configured for admin order alert");
+      return false;
+    }
+
+    const {
+      shopName,
+      orderNumber,
+      orderId,
+      customerName,
+      customerPhone,
+      netAmount,
+      paymentMethod,
+      items,
+    } = params;
+
+    let itemsPreview = "";
+    if (Array.isArray(items) && items.length > 0) {
+      const names = items
+        .slice(0, 5)
+        .map((i) => `• *${i.productName || i.name || "Item"}* (×${i.qty || 1})`)
+        .join("\n");
+      const extra = items.length > 5 ? `\n• _+${items.length - 5} more_` : "";
+      itemsPreview = `\n━━━━━━━━━━━━━━━━━━━━━━\n📋 *ITEMS:*\n${names}${extra}`;
+    }
+
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    const adminOrdersUrl = `${baseUrl}/admin?tab=orders`;
+
+    const body = [
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `📦 *Order ID:* #${orderNumber}`,
+      `🏪 *Shop:* ${shopName}`,
+      `👤 *Customer:* ${customerName} (${customerPhone})`,
+      `💰 *Bill:* ₹${netAmount} (${(paymentMethod || "COD").toUpperCase()})`,
+      itemsPreview,
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `Assign rider or monitor dispatch status in Central Control.`,
+    ].filter(Boolean).join("\n");
+
+    return this.sendInteractiveButtonsMessage(adminPhone, {
+      header: `🚨 *NEW DISPATCH ALERT — CENTRAL CONTROL*`,
+      body,
+      footer: `SwiftMart Central Control`,
+      buttons: [
+        {
+          type: "url",
+          text: "📊 Open Admin Orders",
+          url: adminOrdersUrl,
         },
       ],
     });
