@@ -8,6 +8,11 @@ export interface ShopListing {
   ownerName: string;
   category: string;
   shopType?: string;
+  slug?: string;
+  verificationStatus?: "unverified" | "pending" | "verified" | "suspended" | string;
+  claimStatus?: "claimed" | "unclaimed" | string;
+  description?: string;
+  banner?: string;
   city: string;
   pincode: string;
   phone: string;
@@ -35,6 +40,13 @@ interface ApiShopItem {
   ownerName: string;
   shopType?: string;
   category?: string;
+  slug?: string;
+  verificationStatus?: string;
+  verification_status?: string;
+  claimStatus?: string;
+  claim_status?: string;
+  description?: string;
+  banner?: string;
   address?: Record<string, any>;
   phone: string;
   isOpen: boolean;
@@ -64,6 +76,11 @@ export function mapApiShop(s: ApiShopItem): ShopListing {
     ownerName: s.ownerName,
     category: s.category || s.shopType || "",
     shopType: s.shopType || s.category || "",
+    slug: s.slug || undefined,
+    verificationStatus: s.verificationStatus || s.verification_status || "pending",
+    claimStatus: s.claimStatus || s.claim_status || "claimed",
+    description: s.description || "",
+    banner: s.banner || undefined,
     city: addr.city ?? "",
     pincode: addr.pincode ?? "",
     phone: s.phone,

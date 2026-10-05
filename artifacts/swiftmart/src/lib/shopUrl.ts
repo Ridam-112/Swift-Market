@@ -21,8 +21,8 @@ export function toShopSlug(name?: string | null): string {
 
 /**
  * Returns the URL path for a shop.
- * Prefers the root-level vanity slug format `/:shopSlug` (e.g. `/kalpataru-sweets`),
- * falling back to `/shop/:id` if no valid shop name is present.
+ * Preferred storefront format: `/stores/{merchant-slug}`
+ * e.g., `/stores/rock-n-rolls`, `/stores/sudeshnas-cake-house`
  */
 export function getShopUrl(shop?: {
   id?: string;
@@ -30,13 +30,13 @@ export function getShopUrl(shop?: {
   storeName?: string;
   shopName?: string;
   name?: string;
+  slug?: string;
 } | null): string {
-  if (!shop) return "/shops";
-  const name = shop.storeName || shop.shopName || shop.name || "";
-  const slug = toShopSlug(name);
+  if (!shop) return "/stores";
+  const slug = (shop as any).slug || toShopSlug(shop.storeName || shop.shopName || shop.name || "");
   if (slug) {
-    return `/${slug}`;
+    return `/stores/${slug}`;
   }
   const id = shop.id || shop._id;
-  return id ? `/shop/${id}` : "/shops";
+  return id ? `/stores/${id}` : "/stores";
 }

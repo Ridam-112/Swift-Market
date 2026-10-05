@@ -51,6 +51,7 @@ const NotFound       = lazy(() => import("@/pages/not-found"));
 const Notifications  = lazy(() => import("@/pages/Notifications"));
 const Shops          = lazy(() => import("@/pages/Shops"));
 const ShopDetail     = lazy(() => import("@/pages/ShopDetail"));
+const StoresDispatcher = lazy(() => import("@/pages/StoresDispatcher"));
 const Search         = lazy(() => import("@/pages/Search"));
 
 const Privacy            = lazy(() => import("@/pages/legal/Privacy"));
@@ -345,6 +346,15 @@ function Router() {
         </Route>
         <Route path="/categories">
           <PublicLayout><Categories /></PublicLayout>
+        </Route>
+        <Route path="/stores">
+          <PublicLayout><Shops /></PublicLayout>
+        </Route>
+        <Route path="/stores/:city/:category">
+          <PublicLayout><Shops /></PublicLayout>
+        </Route>
+        <Route path="/stores/:slug">
+          <PublicLayout><StoresDispatcher /></PublicLayout>
         </Route>
         <Route path="/shops">
           <PublicLayout><Shops /></PublicLayout>

@@ -114,6 +114,9 @@ router.get("/", optionalAuth, async (req: Request, res: Response): Promise<void>
         ALTER TABLE shops ADD COLUMN IF NOT EXISTS verification_status text DEFAULT 'pending';
         ALTER TABLE shops ADD COLUMN IF NOT EXISTS google_business_url text;
         ALTER TABLE shops ADD COLUMN IF NOT EXISTS google_place_id text;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS slug text;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS claim_status text DEFAULT 'claimed';
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS eta text;
       `);
       const authReq = req as AuthRequest;
       const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
@@ -266,8 +269,22 @@ router.post("/admin-create", authenticate, A, async (req: AuthRequest, res: Resp
       [owner] = await tx.update(users).set(updates).where(eq(users.id, owner.id)).returning();
     }
 
+    const sName = String(body["shopName"]);
+    const rawSlug = body["slug"] ? String(body["slug"]) : sName;
+    const sSlug = rawSlug
+      .toLowerCase()
+      .trim()
+      .replace(/[^\p{L}\p{N}\s-]/gu, "")
+      .replace(/[\s_]+/gu, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/gu, "");
+
     const [shop] = await tx.insert(shops).values({
-      shopName: String(body["shopName"]),
+      shopName: sName,
+      slug: sSlug || undefined,
+      claimStatus: (body["claimStatus"] as string) || "claimed",
+      verificationStatus: (body["verificationStatus"] as string) || "verified",
+      eta: (body["eta"] as string) || undefined,
       ownerName: String(body["ownerName"] ?? owner.name),
       phone,
       ownerId: owner.id,
@@ -345,9 +362,20 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response): Promise<
   // Shop insert + user status update must be atomic — a partial write
   // would leave the user's role and the shop record out of sync.
   try {
+    const sSlug = d.shopName
+      .toLowerCase()
+      .trim()
+      .replace(/[^\p{L}\p{N}\s-]/gu, "")
+      .replace(/[\s_]+/gu, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/gu, "");
+
     const shop = await db.transaction(async (tx) => {
       const [shop] = await tx.insert(shops).values({
         shopName: d.shopName,
+        slug: sSlug || undefined,
+        claimStatus: "claimed",
+        eta: "15-25 min",
         ownerName: d.ownerName,
         phone: d.phone,
         ownerId: req.user!.userId,
@@ -534,7 +562,7 @@ const SHOP_PATCH_ALLOWED = new Set([
   "shopName", "ownerName", "phone", "address", "shopType", "category", "subcategory",
   "description", "image", "banner", "timings", "commissionRate", "status", "isOpen",
   "panNumber", "gstNumber", "bankAccountHolderName", "bankAccountNumber", "bankIfscCode", "upiId",
-  "googleBusinessUrl", "googlePlaceId",
+  "googleBusinessUrl", "googlePlaceId", "slug", "claimStatus", "verificationStatus", "eta",
 ]);
 router.patch("/:id", authenticate, A, async (req: AuthRequest, res: Response): Promise<void> => {
   const body = req.body as Record<string, unknown>;
@@ -568,8 +596,11 @@ router.post("/:id/approve", authenticate, A, async (req: AuthRequest, res: Respo
   const shopId = req.params["id"] as string;
 
   const [existing] = await db.select({
+    shopName: shops.shopName,
+    slug: shops.slug,
     certificateFile: shops.certificateFile,
     certificateStatus: shops.certificateStatus,
+    verificationStatus: shops.verificationStatus,
   }).from(shops).where(eq(shops.id, shopId)).limit(1);
 
   if (!existing) { res.status(404).json({ success: false, message: "Shop not found" }); return; }
@@ -579,6 +610,16 @@ router.post("/:id/approve", authenticate, A, async (req: AuthRequest, res: Respo
   const certUpdate: Record<string, unknown> = {};
   if (existing.certificateFile && existing.certificateStatus === "pending") {
     certUpdate["certificateStatus"] = "verified";
+  }
+  if (!existing.slug && existing.shopName) {
+    certUpdate["slug"] = existing.shopName.toLowerCase().trim()
+      .replace(/[^\p{L}\p{N}\s-]/gu, "")
+      .replace(/[\s_]+/gu, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/gu, "");
+  }
+  if (!existing.verificationStatus || existing.verificationStatus === "pending") {
+    certUpdate["verificationStatus"] = "verified";
   }
 
   const shop = await db.transaction(async (tx) => {

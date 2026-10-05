@@ -7,7 +7,7 @@ import { useShops } from "@/hooks/useShops";
 import { useProducts } from "@/hooks/useProducts";
 import { ProductGrid } from "@/components/ProductGrid";
 import { EmptyState } from "@/components/EmptyState";
-import { ArrowLeft, Star, Clock, MapPin, PackageOpen, Store, AlertCircle, Sparkles, Search, Share2, Check, Loader2, ExternalLink, Navigation } from "lucide-react";
+import { ArrowLeft, Star, Clock, MapPin, PackageOpen, Store, AlertCircle, Sparkles, Search, Share2, Check, Loader2, ExternalLink, Navigation, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
@@ -30,13 +30,45 @@ interface ApiShopDetail {
   commissionRate?: number;
   image?: string;
   status: string;
+  slug?: string;
+  claimStatus?: string;
+  verificationStatus?: string;
+  eta?: string;
+  googleBusinessUrl?: string;
+}
+
+function getMerchantSchemaType(category: string, shopType: string, name: string): string[] {
+  const text = `${category} ${shopType} ${name}`.toLowerCase();
+  if (text.includes("bakery") || text.includes("cake")) {
+    return ["Bakery", "FoodEstablishment", "LocalBusiness"];
+  }
+  if (text.includes("restaurant") || text.includes("fast-food") || text.includes("food") || text.includes("shawarma") || text.includes("roll")) {
+    return ["Restaurant", "FoodEstablishment", "LocalBusiness"];
+  }
+  if (text.includes("grocery") || text.includes("kirana") || text.includes("supermarket") || text.includes("fruit") || text.includes("vegetable")) {
+    return ["GroceryStore", "Store", "LocalBusiness"];
+  }
+  if (text.includes("electronic") || text.includes("mobile") || text.includes("computer")) {
+    return ["ElectronicsStore", "Store", "LocalBusiness"];
+  }
+  if (text.includes("clothing") || text.includes("fashion") || text.includes("dress") || text.includes("wear")) {
+    return ["ClothingStore", "Store", "LocalBusiness"];
+  }
+  if (text.includes("book") || text.includes("stationery") || text.includes("khatapatra")) {
+    return ["BookStore", "Store", "LocalBusiness"];
+  }
+  if (text.includes("service") || text.includes("repair") || text.includes("centre")) {
+    return ["LocalBusiness", "Service"];
+  }
+  return ["Store", "LocalBusiness"];
 }
 
 export default function ShopDetail() {
+  const [, storesParams] = useRoute("/stores/:slug");
   const [, shopParams] = useRoute("/shop/:vendorId");
   const [, shopsParams] = useRoute("/shops/:vendorId");
   const [, rootParams] = useRoute("/:shopSlug");
-  const rawIdentifier = shopParams?.vendorId || shopsParams?.vendorId || rootParams?.shopSlug || "";
+  const rawIdentifier = storesParams?.slug || shopParams?.vendorId || shopsParams?.vendorId || rootParams?.shopSlug || "";
   let identifier = "";
   try {
     identifier = rawIdentifier ? decodeURIComponent(rawIdentifier).trim() : "";
@@ -235,9 +267,9 @@ export default function ShopDetail() {
           title="Shop not found"
           description="The shop you are looking for doesn't exist or is currently unavailable."
           action={
-            <Link href="/shops">
+            <Link href="/stores">
               <Button className="mt-4 rounded-full px-8 neu-card shadow-none">
-                Back to Shops
+                Back to Stores
               </Button>
             </Link>
           }
@@ -248,26 +280,59 @@ export default function ShopDetail() {
 
   if (!shop) return null;
 
-  const isFoodShop = ['restaurant', 'cafe', 'cloud-kitchen', 'sweet-shop', 'bakery', 'fast-food', 'food', 'food_junction', 'cake'].some(t => 
-    (shop.shopType || '').toLowerCase().includes(t) || 
-    (shop.category || '').toLowerCase().includes(t) ||
-    (shop.storeName || '').toLowerCase().includes('cake') ||
-    (shop.storeName || '').toLowerCase().includes('roll')
+  const category = shop.category || "General Store";
+  const shopType = shop.shopType || category;
+  const storeName = shop.storeName || "Store";
+  const city = shop.city || "Local Area";
+  const pincode = shop.pincode || "";
+  const citySlug = toShopSlug(city);
+  const catSlug = toShopSlug(category);
+
+  const text = `${category} ${shopType} ${storeName}`.toLowerCase();
+  const isBakery = text.includes("bakery") || text.includes("cake");
+  const isRestaurant = !isBakery && (text.includes("restaurant") || text.includes("fast-food") || text.includes("food") || text.includes("shawarma") || text.includes("roll") || text.includes("cafe"));
+  const isService = text.includes("service") || text.includes("repair") || text.includes("centre") || text.includes("lab");
+
+  const schemaTypes = getMerchantSchemaType(category, shopType, storeName);
+
+  // Dynamic ETA based on merchant configuration and category
+  const dynamicEta = shop.eta || (
+    isService
+      ? "On-site visit & inspection"
+      : isBakery
+        ? "Same-day delivery & pre-order"
+        : isRestaurant
+          ? "20-30 min"
+          : "15-25 min"
   );
+
+  const isVerified = (shop.verificationStatus || "").toLowerCase() === "verified";
+  const isClaimed = (shop.claimStatus || "claimed").toLowerCase() === "claimed";
 
   const shopUrlPath = getShopUrl(shop);
   const shopCanonicalUrl = `https://swiftmart.space${shopUrlPath}`;
   const googleBusinessUrl = getShopGoogleBusinessUrl(shop);
-  const seoTitle = `${shop.storeName || "Shop"} (Balurghat) — Official Storefront & Online Ordering | SwiftMart`;
-  const seoDescription = `Order directly from ${shop.storeName || "Shop"}'s official online storefront in Balurghat on SwiftMart. ${shop.category ? `${shop.category} · ` : ""}Instant 10-15 min local delivery across Balurghat Pincodes 733101 & 733103. Live menu, verified prices, discounts & deals. ${vendorProducts.length > 0 ? `${vendorProducts.length} items available.` : ""}`;
-  const seoKeywords = `${shop.storeName || "Shop"}, ${shop.storeName || "Shop"} Balurghat, ${shop.storeName || "Shop"} storefront, ${shop.storeName || "Shop"} online shop, ${shop.storeName || "Shop"} menu, ${shop.storeName || "Shop"} delivery, order ${shop.storeName || "Shop"} online, SwiftMart Balurghat, Balurghat quick commerce, ${shop.category || 'grocery store'}`;
+
+  // Dynamic human-readable SEO title & description
+  const seoTitle = `${storeName} ${city ? `in ${city}` : ""} | ${category} | SwiftMart`;
+  const seoDescription = shop.description
+    ? `${shop.description} Order online from ${storeName} in ${city} on SwiftMart with ${dynamicEta} delivery.`
+    : isService
+      ? `Official online storefront for ${storeName} in ${city} on SwiftMart. Explore electronics, repair solutions, and book on-site visit.`
+      : isRestaurant
+        ? `Order food online from ${storeName} in ${city} on SwiftMart. Live menu, genuine prices, and ${dynamicEta} local delivery.`
+        : isBakery
+          ? `Order delicious cakes, fresh pastries, and custom designer cakes from ${storeName} in ${city} on SwiftMart. ${dynamicEta} doorstep delivery or pickup.`
+          : `Official online storefront for ${storeName} in ${city} on SwiftMart. Browse live products, verified prices, daily discounts, and order online with ${dynamicEta} delivery.`;
+
+  const seoKeywords = `${storeName}, ${storeName} ${city}, ${storeName} storefront, ${storeName} online shop, ${category}, ${storeName} delivery, order ${storeName} online, SwiftMart ${city}`;
 
   const handleShare = () => {
     const fullUrl = shopCanonicalUrl;
-    const shareText = `Order directly from ${shop.storeName}'s official online storefront in Balurghat with 10-15 min delivery on SwiftMart!`;
+    const shareText = `Order directly from ${storeName}'s storefront in ${city} with ${dynamicEta} delivery on SwiftMart!`;
     if (navigator.share) {
       navigator.share({
-        title: `${shop.storeName} — Official Storefront | SwiftMart`,
+        title: `${storeName} | SwiftMart`,
         text: shareText,
         url: fullUrl,
       }).catch(() => {});
@@ -288,18 +353,16 @@ export default function ShopDetail() {
         ogImage={shop.image && shop.image !== "/assets/shop-placeholder.png" ? shop.image : "https://swiftmart.space/opengraph.jpg"}
         jsonLd={[
           {
-            "@type": isFoodShop
-              ? ["Restaurant", "FoodEstablishment", "LocalBusiness"]
-              : ["Store", "LocalBusiness", "OnlineStore"],
+            "@type": schemaTypes,
             "@id": `${shopCanonicalUrl}#storefront`,
-            "name": shop.storeName,
-            "legalName": `${shop.storeName} — SwiftMart Official Storefront`,
+            "name": storeName,
+            "legalName": `${storeName} — SwiftMart ${isClaimed ? "Official Storefront" : "Storefront"}`,
             "alternateName": [
-              shop.storeName,
-              `${shop.storeName} Balurghat`,
-              `${shop.storeName} Storefront`,
-              `${shop.storeName} Online Store`,
-              `${shop.storeName} Menu`
+              storeName,
+              `${storeName} ${city}`,
+              `${storeName} Storefront`,
+              `${storeName} Online Store`,
+              ...(isRestaurant ? [`${storeName} Menu`] : [])
             ],
             "description": seoDescription,
             "image": shop.image && shop.image !== "/assets/shop-placeholder.png" ? shop.image : "https://swiftmart.space/opengraph.jpg",
@@ -308,7 +371,7 @@ export default function ShopDetail() {
             "priceRange": "₹₹",
             "currenciesAccepted": "INR",
             "paymentAccepted": "Cash on Delivery, UPI, Cards, Net Banking",
-            "servesCuisine": isFoodShop ? (shop.category || "Fast Food, Bakery, Sweets, Indian") : undefined,
+            ...(isRestaurant && { "servesCuisine": category }),
             "parentOrganization": {
               "@type": "OnlineBusiness",
               "name": "SwiftMart",
@@ -321,19 +384,14 @@ export default function ShopDetail() {
             },
             "address": {
               "@type": "PostalAddress",
-              "streetAddress": shop.address?.line1 || shop.address?.city || "Gourlo Math",
-              "addressLocality": shop.city || "Balurghat",
-              "postalCode": shop.pincode || "733103",
+              "streetAddress": shop.address?.line1 || city,
+              "addressLocality": city,
+              "postalCode": pincode || "733103",
               "addressRegion": "West Bengal",
               "addressCountry": "IN"
             },
-            "geo": {
-              "@type": "GeoCoordinates",
-              "latitude": 25.2167,
-              "longitude": 88.7667
-            },
-            "hasMap": googleBusinessUrl || `https://maps.google.com/?q=${encodeURIComponent(shop.storeName + " Balurghat")}`,
             ...(googleBusinessUrl && {
+              "hasMap": googleBusinessUrl,
               "sameAs": [googleBusinessUrl]
             }),
             "openingHoursSpecification": {
@@ -344,9 +402,9 @@ export default function ShopDetail() {
             },
             "areaServed": {
               "@type": "City",
-              "name": "Balurghat"
+              "name": city
             },
-            ...(Number(shop.rating || 0) > 0 && {
+            ...(Number(shop.rating || 0) > 0 && Number(shop.totalOrders || 0) > 0 && {
               "aggregateRating": {
                 "@type": "AggregateRating",
                 "ratingValue": Number(shop.rating || 0).toFixed(1),
@@ -373,14 +431,14 @@ export default function ShopDetail() {
             ...(vendorProducts.length > 0 && {
               "hasOfferCatalog": {
                 "@type": "OfferCatalog",
-                "name": `${shop.storeName || "Store"} Live Catalog & Menu`,
+                "name": `${storeName} Catalog`,
                 "numberOfItems": vendorProducts.length,
                 "itemListElement": vendorProducts.slice(0, 25).map(p => ({
                   "@type": "Offer",
                   "itemOffered": {
                     "@type": "Product",
                     "name": p?.name || "Product",
-                    "description": p?.description || `${p?.name || "Product"} from ${shop.storeName || "Store"} in Balurghat`,
+                    "description": p?.description || `${p?.name || "Product"} from ${storeName} in ${city}`,
                     "image": typeof p?.image === "string" && !p.image.includes('placeholder') ? p.image : undefined
                   },
                   "price": (p?.discountedPrice && p.discountedPrice > 0) ? p.discountedPrice : (p?.price || 0),
@@ -403,33 +461,52 @@ export default function ShopDetail() {
               {
                 "@type": "ListItem",
                 "position": 2,
-                "name": "Balurghat Stores",
-                "item": "https://swiftmart.space/shops"
+                "name": "Stores",
+                "item": "https://swiftmart.space/stores"
               },
               {
                 "@type": "ListItem",
                 "position": 3,
-                "name": shop.storeName || "Store",
+                "name": `${city} Stores`,
+                "item": `https://swiftmart.space/stores/${citySlug}`
+              },
+              {
+                "@type": "ListItem",
+                "position": 4,
+                "name": storeName,
                 "item": shopCanonicalUrl
               }
             ]
           }
         ]}
       />
+
       {/* ── Breadcrumb Navigation Outline for Search Engines & Users ── */}
       <nav aria-label="Breadcrumb" className="max-w-7xl mx-auto px-4 pt-3 pb-2 flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
         <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
         <span aria-hidden="true">/</span>
-        <Link href="/shops" className="hover:text-foreground transition-colors">Balurghat Stores</Link>
+        <Link href="/stores" className="hover:text-foreground transition-colors">Stores</Link>
+        {city && (
+          <>
+            <span aria-hidden="true">/</span>
+            <Link href={`/stores/${citySlug}`} className="hover:text-foreground transition-colors">{city}</Link>
+          </>
+        )}
+        {category && (
+          <>
+            <span aria-hidden="true">/</span>
+            <Link href={`/stores/${citySlug}/${catSlug}`} className="hover:text-foreground transition-colors">{category}</Link>
+          </>
+        )}
         <span aria-hidden="true">/</span>
-        <span className="text-foreground font-bold truncate">{shop.storeName || "Store"} Storefront</span>
+        <span className="text-foreground font-bold truncate">{storeName}</span>
       </nav>
 
       {/* ── Storefront Hero Banner ── */}
       <div className="relative h-48 md:h-64 w-full bg-muted">
         <img
           src={shop.image || "/assets/shop-placeholder.png"}
-          alt={`${shop.storeName || "Store"} — Official Storefront in Balurghat`}
+          alt={`${storeName} storefront in ${city}`}
           width={1200}
           height={400}
           loading="eager"
@@ -438,25 +515,30 @@ export default function ShopDetail() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/20" />
 
-        <Link href="/shops" className="absolute top-4 left-4 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-colors" aria-label="Back to all shops">
+        <Link href="/stores" className="absolute top-4 left-4 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-colors" aria-label="Back to all stores">
           <ArrowLeft className="w-5 h-5" />
         </Link>
 
         <div className="absolute bottom-4 left-4 right-4 text-white">
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span className="bg-amber-400 text-black text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
-              <Store className="w-3 h-3" /> Official Storefront
+              <Store className="w-3 h-3" /> {isClaimed ? "Official Storefront" : "Listed on SwiftMart"}
             </span>
+            {isVerified && (
+              <span className="bg-emerald-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                <CheckCircle2 className="w-3 h-3" /> Verified by SwiftMart
+              </span>
+            )}
             <span className="bg-primary/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
-              {shop.category}
+              {category}
             </span>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm ${shop.isOpen ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}>
               {shop.isOpen ? 'OPEN' : 'CLOSED'}
             </span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-black mb-1 leading-tight text-white drop-shadow-sm">{shop.storeName}</h1>
+          <h1 className="text-2xl md:text-3xl font-black mb-1 leading-tight text-white drop-shadow-sm">{storeName}</h1>
           <p className="text-xs md:text-sm text-white/90 line-clamp-1">
-            Official Balurghat Storefront · 10-15 Min Express Delivery by SwiftMart · {shop.city || "Balurghat"}
+            {isClaimed ? "Official Storefront" : "Storefront"} · {dynamicEta} · {city}
           </p>
         </div>
       </div>
@@ -469,17 +551,19 @@ export default function ShopDetail() {
               <Star className="w-5 h-5 text-yellow-500 fill-current" />
               <div className="flex flex-col">
                 <span className="font-bold text-sm leading-none text-foreground">
-                  {Number(shop.rating || 0) > 0 ? Number(shop.rating).toFixed(1) : "New"}
+                  {Number(shop.rating || 0) > 0 ? Number(shop.rating).toFixed(1) : "New on SwiftMart"}
                 </span>
-                <span className="text-[10px] text-muted-foreground">{(shop.totalOrders || 0)}+ orders</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {Number(shop.totalOrders || 0) > 0 ? `${shop.totalOrders}+ orders` : "Verified Merchant"}
+                </span>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
               <div className="flex flex-col">
-                <span className="font-bold text-sm leading-none text-foreground">{shop.eta || "15-20 min"}</span>
-                <span className="text-[10px] text-muted-foreground">Delivery time</span>
+                <span className="font-bold text-sm leading-none text-foreground">{dynamicEta}</span>
+                <span className="text-[10px] text-muted-foreground">{isService ? "Service window" : "Delivery estimate"}</span>
               </div>
             </div>
 
@@ -487,16 +571,18 @@ export default function ShopDetail() {
               <MapPin className="w-5 h-5 text-muted-foreground" />
               <div className="flex flex-col">
                 <span className="font-bold text-sm leading-none text-foreground truncate max-w-[140px]">
-                  {shop.city || "Balurghat"}
+                  {city}
                 </span>
-                <span className="text-[10px] text-muted-foreground">Pincode {shop.pincode || "733103"}</span>
+                <span className="text-[10px] text-muted-foreground">{pincode ? `Pincode ${pincode}` : "Local Area"}</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 px-3 py-1.5 rounded-xl">
-              <span className="text-green-700 dark:text-green-400 text-sm leading-none" aria-hidden="true">✅</span>
-              <span className="font-bold text-[11px] text-green-700 dark:text-green-400">Verified Partner</span>
-            </div>
+            {isVerified && (
+              <div className="flex items-center gap-1.5 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 px-3 py-1.5 rounded-xl">
+                <CheckCircle2 className="w-4 h-4 text-green-700 dark:text-green-400" />
+                <span className="font-bold text-[11px] text-green-700 dark:text-green-400">Verified by SwiftMart</span>
+              </div>
+            )}
 
             {googleBusinessUrl && (
               <a
@@ -527,7 +613,7 @@ export default function ShopDetail() {
               {copied ? "Link Copied!" : "Share Storefront"}
             </Button>
             <a
-              href={`https://wa.me/?text=${encodeURIComponent(`Order online directly from ${shop.storeName || "Store"}'s official storefront in Balurghat with 10-15 min delivery on SwiftMart! ${shopCanonicalUrl}`)}`}
+              href={`https://wa.me/?text=${encodeURIComponent(`Order online directly from ${storeName}'s storefront in ${city} with ${dynamicEta} delivery on SwiftMart! ${shopCanonicalUrl}`)}`}
               target="_blank"
               rel="noopener noreferrer nofollow"
               className="inline-flex items-center gap-1.5 bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold px-3.5 py-2 rounded-full transition-colors shadow-xs"
@@ -548,23 +634,29 @@ export default function ShopDetail() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white leading-tight">
-                      {shop.storeName} on Google
+                      {storeName} on Google
                     </h3>
                     <span className="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                       ✓ Verified Local Business
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-400 max-w-xl leading-relaxed">
-                    Official verified Google Maps listing in Balurghat. Read authentic customer reviews, photos, operating hours &amp; directions.
+                    Official verified Google Maps listing in {city}. Read authentic customer reviews, photos, operating hours &amp; directions.
                   </p>
                   <div className="flex items-center gap-2 pt-0.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium flex-wrap">
-                    <span className="inline-flex items-center gap-1 font-bold text-amber-500">
-                      ★ 4.8+ Local Rating
-                    </span>
+                    {Number(shop.rating || 0) > 0 ? (
+                      <span className="inline-flex items-center gap-1 font-bold text-amber-500">
+                        ★ {Number(shop.rating).toFixed(1)} Rating
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
+                        ✓ Verified Listing
+                      </span>
+                    )}
                     <span>•</span>
-                    <span>📍 Balurghat, West Bengal</span>
+                    <span>📍 {city}, West Bengal</span>
                     <span>•</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">⚡ 10-15 Min Express Delivery</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">⚡ {dynamicEta}</span>
                   </div>
                 </div>
               </div>
@@ -605,62 +697,43 @@ export default function ShopDetail() {
         )}
 
         {/* Custom Cake Banner for Bakeries & Cake Shops only */}
-        {(() => {
-          const cat = (shop.category || "").toLowerCase().trim();
-          const type = (shop.shopType || "").toLowerCase().trim();
-          const name = (shop.storeName || "").toLowerCase().trim();
-          const isBakery =
-            cat === "bakery" ||
-            cat === "cake" ||
-            cat === "cakes" ||
-            cat === "bakery-cakes" ||
-            cat === "cakes-bakery" ||
-            type === "bakery" ||
-            type === "cake" ||
-            type === "cakes" ||
-            name.includes("cake") ||
-            name.includes("bakery");
-
-          if (!isBakery) return null;
-
-          return (
-            <>
-              <div className="bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 rounded-3xl p-5 md:p-6 text-white shadow-lg shadow-pink-500/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-pink-100 text-xs font-bold uppercase tracking-wider">
-                    <Sparkles className="w-3.5 h-3.5" /> Customized Designer Cakes
-                  </div>
-                  <h3 className="text-xl md:text-2xl font-black tracking-tight">
-                    🎂 Customize Your Cake with {shop.storeName || "Store"}
-                  </h3>
-                  <p className="text-white/85 text-xs max-w-xl">
-                    Select flavour, weight, tiers & attach reference photo. Choose Doorstep Delivery or Free Store Pickup!
-                  </p>
+        {isBakery && (
+          <>
+            <div className="bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 rounded-3xl p-5 md:p-6 text-white shadow-lg shadow-pink-500/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-pink-100 text-xs font-bold uppercase tracking-wider">
+                  <Sparkles className="w-3.5 h-3.5" /> Customized Designer Cakes
                 </div>
-                <Button
-                  onClick={() => setIsCustomCakeOpen(true)}
-                  className="rounded-full font-black bg-white text-pink-600 hover:bg-pink-50 shadow-md text-sm px-6 shrink-0"
-                >
-                  Customize Cake 🎂
-                </Button>
+                <h3 className="text-xl md:text-2xl font-black tracking-tight">
+                  🎂 Customize Your Cake with {storeName}
+                </h3>
+                <p className="text-white/85 text-xs max-w-xl">
+                  Select flavour, weight, tiers &amp; attach reference photo. Choose Doorstep Delivery or Free Store Pickup!
+                </p>
               </div>
+              <Button
+                onClick={() => setIsCustomCakeOpen(true)}
+                className="rounded-full font-black bg-white text-pink-600 hover:bg-pink-50 shadow-md text-sm px-6 shrink-0"
+              >
+                Customize Cake 🎂
+              </Button>
+            </div>
 
-              {/* Custom Cake Modal */}
-              <CustomCakeModal
-                isOpen={isCustomCakeOpen}
-                onClose={() => setIsCustomCakeOpen(false)}
-                shop={{
-                  id: shop.id,
-                  shopName: shop.storeName || "Bakery",
-                  address: {
-                    city: shop.city,
-                    pincode: shop.pincode,
-                  }
-                }}
-              />
-            </>
-          );
-        })()}
+            {/* Custom Cake Modal */}
+            <CustomCakeModal
+              isOpen={isCustomCakeOpen}
+              onClose={() => setIsCustomCakeOpen(false)}
+              shop={{
+                id: shop.id,
+                shopName: storeName,
+                address: {
+                  city: shop.city,
+                  pincode: shop.pincode,
+                }
+              }}
+            />
+          </>
+        )}
 
         {/* ── In-Store Product Search ── */}
         {vendorProducts.length > 4 && (
@@ -670,17 +743,25 @@ export default function ShopDetail() {
               type="text"
               value={productSearch}
               onChange={(e) => setProductSearch(e.target.value)}
-              placeholder={`Search products inside ${shop.storeName || "Store"}...`}
+              placeholder={`Search items in ${storeName}...`}
               className="pl-10 h-11 bg-card rounded-2xl border-border/60 text-sm"
             />
           </div>
         )}
 
-        {/* ── Products Grid ── */}
+        {/* ── Products & Catalog Grid ── */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-foreground">
-              {productSearch.trim() ? `Search Results in ${shop.storeName || "Store"}` : "Store Products & Menu"}
+              {productSearch.trim()
+                ? `Search Results in ${storeName}`
+                : isService
+                  ? "Available Services & Repairs"
+                  : isRestaurant
+                    ? "Restaurant Menu & Food Items"
+                    : isBakery
+                      ? "Fresh Bakes & Cakes"
+                      : "Store Products & Essentials"}
             </h2>
             {!productsLoading && filteredProducts.length > 0 && (
               <span className="text-xs text-muted-foreground font-medium">({filteredProducts.length} items)</span>
@@ -715,7 +796,7 @@ export default function ShopDetail() {
               {productsLoadingMore && (
                 <div className="py-6 flex flex-col items-center justify-center gap-2">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  <span className="text-xs text-muted-foreground font-medium">Loading more products...</span>
+                  <span className="text-xs text-muted-foreground font-medium">Loading more items...</span>
                 </div>
               )}
 
@@ -726,7 +807,7 @@ export default function ShopDetail() {
                     onClick={() => shop && loadProducts(shop.id, shop.storeName, productsPage + 1, false)}
                     className="rounded-full neu-card text-xs font-semibold px-6 hover:bg-primary hover:text-primary-foreground transition-colors"
                   >
-                    Load More Products
+                    Load More Items
                   </Button>
                 </div>
               )}
@@ -734,56 +815,164 @@ export default function ShopDetail() {
           ) : (
             <EmptyState
               icon={PackageOpen}
-              title={productSearch.trim() ? "No matching products found" : "No products listed"}
-              description={productSearch.trim() ? `No items matched "${productSearch}" in ${shop.storeName || "Store"}.` : "This vendor hasn't listed any products yet. Check back later!"}
+              title={productSearch.trim() ? "No matching items found" : "No items listed yet"}
+              description={productSearch.trim() ? `No items matched "${productSearch}" in ${storeName}.` : "This merchant has not added items yet. Check back soon!"}
             />
           )}
         </div>
 
-        {/* ── Hyperlocal Storefront Information Card for Google Crawlers & Shoppers ── */}
-        <section aria-label="Storefront Information" className="mt-12 bg-card/60 border border-border/50 rounded-2xl p-5 space-y-3">
-          <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-            <Store className="w-4 h-4 text-primary" />
-            About {shop.storeName || "Store"} Online Storefront on SwiftMart
-          </h2>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Welcome to the official verified online storefront of <strong>{shop.storeName || "Store"}</strong> on SwiftMart. Serving customers across <strong>Balurghat, West Bengal</strong>, {shop.storeName || "Store"} partners with SwiftMart to deliver {shop.category || 'fresh grocery, food, sweets, and daily essentials'} directly to customer doorsteps in 10 to 15 minutes.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 text-xs">
-            <div className="bg-background/60 p-3 rounded-xl border border-border/40">
-              <span className="font-bold text-foreground block mb-0.5">⚡ Delivery Guarantee</span>
-              <span className="text-[11px] text-muted-foreground">Dispatched instantly via SwiftMart delivery fleet across Balurghat Pincodes 733101 &amp; 733103.</span>
-            </div>
-            <div className="bg-background/60 p-3 rounded-xl border border-border/40">
-              <span className="font-bold text-foreground block mb-0.5">💳 Payment Options</span>
-              <span className="text-[11px] text-muted-foreground">Cash on Delivery (COD), UPI (GPay, PhonePe, Paytm), and Net Banking accepted.</span>
-            </div>
-            <div className="bg-background/60 p-3 rounded-xl border border-border/40">
-              <span className="font-bold text-foreground block mb-0.5">📞 Direct Helpdesk</span>
-              <span className="text-[11px] text-muted-foreground">Store helpline: <a href="tel:+916296118949" className="text-primary font-bold">+91 62961 18949</a> (07:00 AM &ndash; 11:00 PM).</span>
-            </div>
-            {googleBusinessUrl && (
-              <div className="bg-background/60 p-3 rounded-xl border border-border/40 flex flex-col justify-between">
-                <div>
-                  <span className="font-bold text-foreground flex items-center gap-1.5 mb-0.5">
-                    <GoogleGLogo className="w-3.5 h-3.5" /> Google Business
-                  </span>
-                  <span className="text-[11px] text-muted-foreground block">
-                    Verified Google Profile &amp; reviews on Google Maps.
-                  </span>
-                </div>
-                <a
-                  href={googleBusinessUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary font-bold text-[11px] inline-flex items-center gap-1 mt-2 hover:underline"
-                >
-                  View on Google Maps <ExternalLink className="w-2.5 h-2.5" />
-                </a>
+        {/* ── Reusable Trust Section (Requirement #11) ── */}
+        <section aria-label="Trust and Transparency" className="bg-card/70 border border-border/60 rounded-3xl p-5 sm:p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <h3 className="text-base font-bold text-foreground">
+              Why shop with {storeName} on SwiftMart?
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            <div className="bg-background/80 p-3.5 rounded-2xl border border-border/40 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-foreground">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span>{isVerified ? "Verified Merchant" : "Listed on SwiftMart"}</span>
               </div>
-            )}
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {isVerified
+                  ? "Identity, physical presence, and merchant partnership verified by SwiftMart."
+                  : "Registered merchant on SwiftMart with secure order processing."}
+              </p>
+            </div>
+            <div className="bg-background/80 p-3.5 rounded-2xl border border-border/40 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-foreground">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span>Transparent Pricing</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Zero hidden store markups. Direct prices set by {storeName} with live discounts.
+              </p>
+            </div>
+            <div className="bg-background/80 p-3.5 rounded-2xl border border-border/40 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-foreground">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span>{isService ? "Service Fulfilled" : "Direct Fulfillment"}</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {isService
+                  ? `Estimated visit: ${dynamicEta}. Handled directly by trained technicians.`
+                  : `Estimated delivery: ${dynamicEta}. Dispatched via SwiftMart delivery network.`}
+              </p>
+            </div>
+            <div className="bg-background/80 p-3.5 rounded-2xl border border-border/40 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-foreground">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span>SwiftMart Order Support</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Dedicated platform support, real-time tracking, and verified customer assistance.
+              </p>
+            </div>
+          </div>
+          <div className="pt-2 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground flex-wrap gap-2">
+            <span>
+              {isService
+                ? `Service provided by ${storeName} · Booking powered by SwiftMart`
+                : `Sold & prepared by ${storeName} · Ordering & delivery powered by SwiftMart`}
+            </span>
+            <span className="font-medium text-foreground">Safe &amp; Encrypted Ordering</span>
           </div>
         </section>
+
+        {/* ── Reusable About This Store Section (Requirement #12) ── */}
+        <section aria-label="About This Store" className="bg-card/50 border border-border/50 rounded-3xl p-5 sm:p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Store className="w-5 h-5 text-primary" />
+            <h3 className="text-base font-bold text-foreground">
+              About {storeName}
+            </h3>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {shop.description ||
+              `Welcome to the storefront of ${storeName} on SwiftMart. Located in ${city}, ${storeName} offers ${category.toLowerCase()} with fast local fulfillment (${dynamicEta}) for customers across ${city}.`}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs pt-1">
+            <div className="bg-background/70 p-3 rounded-2xl border border-border/40">
+              <span className="font-bold text-foreground block mb-0.5">📍 Location &amp; Address</span>
+              <span className="text-[11px] text-muted-foreground block">
+                {shop.address?.line1 ? `${shop.address.line1}, ` : ""}{city}{pincode ? ` - ${pincode}` : ""}
+              </span>
+            </div>
+            <div className="bg-background/70 p-3 rounded-2xl border border-border/40">
+              <span className="font-bold text-foreground block mb-0.5">⏱️ Operating Hours</span>
+              <span className="text-[11px] text-muted-foreground block">
+                Mon &ndash; Sun: 07:00 AM &ndash; 11:00 PM
+              </span>
+            </div>
+            <div className="bg-background/70 p-3 rounded-2xl border border-border/40">
+              <span className="font-bold text-foreground block mb-0.5">📞 Public Contact</span>
+              <span className="text-[11px] text-muted-foreground block">
+                {shop.phone ? (
+                  <a href={`tel:${shop.phone}`} className="text-primary font-bold hover:underline">
+                    {shop.phone}
+                  </a>
+                ) : (
+                  "Contact via SwiftMart Support"
+                )}
+              </span>
+            </div>
+            <div className="bg-background/70 p-3 rounded-2xl border border-border/40">
+              <span className="font-bold text-foreground block mb-0.5">⚡ Fulfillment Area</span>
+              <span className="text-[11px] text-muted-foreground block">
+                {city} local areas &amp; surrounding neighborhoods
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Internal Linking: Related Stores in City (Requirement #20) ── */}
+        {(() => {
+          const allList = (allShops && allShops.length > 0) ? allShops : shops;
+          const related = (allList || [])
+            .filter(s => s && s.id !== shop.id && (s.city || "").toLowerCase() === (shop.city || "").toLowerCase())
+            .slice(0, 4);
+
+          if (related.length === 0) return null;
+
+          return (
+            <section aria-label="Related Stores" className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-foreground">
+                  More Stores in {city}
+                </h3>
+                <Link href={citySlug ? `/stores/${citySlug}` : "/stores"} className="text-xs font-bold text-primary hover:underline">
+                  View All {city} Stores &rarr;
+                </Link>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {related.map(r => (
+                  <Link
+                    key={r.id}
+                    href={getShopUrl(r)}
+                    className="group block bg-card rounded-2xl border border-border/50 p-2.5 hover:border-primary/50 transition-all hover:shadow-sm"
+                  >
+                    <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted mb-2">
+                      <img
+                        src={r.image || "/assets/shop-placeholder.png"}
+                        alt={`${r.storeName} storefront`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        loading="lazy"
+                      />
+                    </div>
+                    <p className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                      {r.storeName}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {r.category || "Store"} · {r.eta || "Fast Delivery"}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
       </div>
     </div>
   );

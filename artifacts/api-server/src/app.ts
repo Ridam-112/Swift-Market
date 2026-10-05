@@ -20,21 +20,68 @@ import { eq, or } from "drizzle-orm";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BASE_URL = "https://swiftmart.space";
 
-// ─── Dynamic sitemap ──────────────────────────────────────────────────────────
-// Generated from DB at request time. In-memory cache expires after 1 hour so
-// newly approved shops/products appear in the sitemap within ~60 minutes.
-// Includes every public indexable URL; keeps Googlebot from flagging "page
-// discovered but not in sitemap".
-let sitemapCache: { xml: string; builtAt: number } | null = null;
+// ─── Dynamic Split XML Sitemap System ───────────────────────────────────────
+// Generated dynamically from DB records. Caches expire after 1 hour.
+// Fully compliant with Google Search Console sitemap index protocol.
+let sitemapIndexCache: { xml: string; builtAt: number } | null = null;
+let sitemapPagesCache: { xml: string; builtAt: number } | null = null;
+let sitemapStoresCache: { xml: string; builtAt: number } | null = null;
+let sitemapCategoriesCache: { xml: string; builtAt: number } | null = null;
+let sitemapProductsCache: { xml: string; builtAt: number } | null = null;
 const SITEMAP_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function normalizeSlug(name?: string | null): string {
+  if (!name) return "";
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    .replace(/[\s_]+/gu, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/gu, "");
+}
+
+function formatCategoryTitle(slug: string): string {
+  return slug
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function getMerchantSchemaType(category: string, shopType: string, name: string): string[] {
+  const text = `${category} ${shopType} ${name}`.toLowerCase();
+  if (text.includes("bakery") || text.includes("cake")) {
+    return ["Bakery", "FoodEstablishment", "LocalBusiness"];
+  }
+  if (text.includes("restaurant") || text.includes("fast-food") || text.includes("food") || text.includes("shawarma") || text.includes("roll")) {
+    return ["Restaurant", "FoodEstablishment", "LocalBusiness"];
+  }
+  if (text.includes("grocery") || text.includes("kirana") || text.includes("supermarket") || text.includes("fruit") || text.includes("vegetable")) {
+    return ["GroceryStore", "Store", "LocalBusiness"];
+  }
+  if (text.includes("electronic") || text.includes("mobile") || text.includes("computer")) {
+    return ["ElectronicsStore", "Store", "LocalBusiness"];
+  }
+  if (text.includes("clothing") || text.includes("fashion") || text.includes("dress") || text.includes("wear")) {
+    return ["ClothingStore", "Store", "LocalBusiness"];
+  }
+  if (text.includes("book") || text.includes("stationery") || text.includes("khatapatra")) {
+    return ["BookStore", "Store", "LocalBusiness"];
+  }
+  if (text.includes("service") || text.includes("repair") || text.includes("centre")) {
+    return ["LocalBusiness", "Service"];
+  }
+  return ["Store", "LocalBusiness"];
+}
 
 const STATIC_SITEMAP_URLS: Array<{ loc: string; changefreq: string; priority: string }> = [
   { loc: `${BASE_URL}/`,                    changefreq: "daily",   priority: "1.0" },
-  { loc: `${BASE_URL}/shops`,               changefreq: "daily",   priority: "0.9" },
+  { loc: `${BASE_URL}/stores`,              changefreq: "daily",   priority: "0.9" },
   { loc: `${BASE_URL}/products`,            changefreq: "daily",   priority: "0.9" },
-  { loc: `${BASE_URL}/grocery`,             changefreq: "daily",   priority: "0.8" },
-  { loc: `${BASE_URL}/about`,               changefreq: "weekly",  priority: "0.8" },
   { loc: `${BASE_URL}/categories`,          changefreq: "weekly",  priority: "0.8" },
+  { loc: `${BASE_URL}/grocery`,             changefreq: "daily",   priority: "0.8" },
+  { loc: `${BASE_URL}/services`,            changefreq: "weekly",  priority: "0.8" },
+  { loc: `${BASE_URL}/mall`,                changefreq: "weekly",  priority: "0.8" },
+  { loc: `${BASE_URL}/about`,               changefreq: "monthly", priority: "0.7" },
   { loc: `${BASE_URL}/search`,              changefreq: "weekly",  priority: "0.7" },
   { loc: `${BASE_URL}/contact-support`,     changefreq: "monthly", priority: "0.6" },
   { loc: `${BASE_URL}/privacy`,             changefreq: "monthly", priority: "0.5" },
@@ -42,51 +89,84 @@ const STATIC_SITEMAP_URLS: Array<{ loc: string; changefreq: string; priority: st
   { loc: `${BASE_URL}/refund-cancellation`, changefreq: "monthly", priority: "0.5" },
 ];
 
-async function buildSitemap(): Promise<string> {
-  if (sitemapCache && Date.now() - sitemapCache.builtAt < SITEMAP_TTL_MS) {
-    return sitemapCache.xml;
+async function buildSitemapIndex(): Promise<string> {
+  if (sitemapIndexCache && Date.now() - sitemapIndexCache.builtAt < SITEMAP_TTL_MS) {
+    return sitemapIndexCache.xml;
   }
+  const today = new Date().toISOString().split("T")[0]!;
+  const xml = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+    `  <sitemap><loc>${BASE_URL}/sitemap-pages.xml</loc><lastmod>${today}</lastmod></sitemap>`,
+    `  <sitemap><loc>${BASE_URL}/sitemap-stores.xml</loc><lastmod>${today}</lastmod></sitemap>`,
+    `  <sitemap><loc>${BASE_URL}/sitemap-categories.xml</loc><lastmod>${today}</lastmod></sitemap>`,
+    `  <sitemap><loc>${BASE_URL}/sitemap-products.xml</loc><lastmod>${today}</lastmod></sitemap>`,
+    `</sitemapindex>`,
+  ].join("\n");
+  sitemapIndexCache = { xml, builtAt: Date.now() };
+  return xml;
+}
 
+async function buildPagesSitemap(): Promise<string> {
+  if (sitemapPagesCache && Date.now() - sitemapPagesCache.builtAt < SITEMAP_TTL_MS) {
+    return sitemapPagesCache.xml;
+  }
+  const today = new Date().toISOString().split("T")[0]!;
+  const urlTags = STATIC_SITEMAP_URLS.map(u =>
+    `  <url><loc>${u.loc}</loc><lastmod>${today}</lastmod><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`
+  );
+  const xml = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+    ...urlTags,
+    `</urlset>`,
+  ].join("\n");
+  sitemapPagesCache = { xml, builtAt: Date.now() };
+  return xml;
+}
+
+async function buildStoresSitemap(): Promise<string> {
+  if (sitemapStoresCache && Date.now() - sitemapStoresCache.builtAt < SITEMAP_TTL_MS) {
+    return sitemapStoresCache.xml;
+  }
   const fmt = (d: Date | string | null | undefined): string =>
     d ? new Date(d as Date).toISOString().split("T")[0]! : new Date().toISOString().split("T")[0]!;
   const today = new Date().toISOString().split("T")[0]!;
 
-  const [shopRows, productRows, categoryRows] = await Promise.all([
-    db.select({ id: schema.shops.id, shopName: schema.shops.shopName, updatedAt: schema.shops.updatedAt })
-      .from(schema.shops).where(or(eq(schema.shops.status, "approved"), eq(schema.shops.status, "active"))),
-    db.select({ id: schema.products.id, updatedAt: schema.products.updatedAt })
-      .from(schema.products).where(eq(schema.products.status, "active")),
-    db.select({ slug: schema.categories.slug, updatedAt: schema.categories.updatedAt })
-      .from(schema.categories).where(eq(schema.categories.isActive, true)),
-  ]);
+  const shopRows = await db
+    .select({
+      id: schema.shops.id,
+      shopName: schema.shops.shopName,
+      slug: schema.shops.slug,
+      address: schema.shops.address,
+      updatedAt: schema.shops.updatedAt,
+    })
+    .from(schema.shops)
+    .where(or(eq(schema.shops.status, "approved"), eq(schema.shops.status, "active")));
 
-  const urlTags = [
-    ...STATIC_SITEMAP_URLS.map(u =>
-      `  <url><loc>${u.loc}</loc><lastmod>${today}</lastmod><changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`
-    ),
-    ...shopRows.flatMap((s: { id: string; shopName: string | null; updatedAt: Date | null }) => {
-      const slug = (s.shopName || "")
-        .toLowerCase()
-        .trim()
-        .replace(/[^\p{L}\p{N}\s-]/gu, "")
-        .replace(/[\s_]+/gu, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-+|-+$/gu, "");
-      const tags = [
-        `  <url><loc>${BASE_URL}/shop/${s.id}</loc><lastmod>${fmt(s.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
-      ];
-      if (slug) {
-        tags.unshift(`  <url><loc>${BASE_URL}/${slug}</loc><lastmod>${fmt(s.updatedAt)}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`);
-      }
-      return tags;
-    }),
-    ...productRows.map((p: { id: string; updatedAt: Date | null }) =>
-      `  <url><loc>${BASE_URL}/product/${p.id}</loc><lastmod>${fmt(p.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
-    ),
-    ...categoryRows.map((c: { slug: string; updatedAt: Date | null }) =>
-      `  <url><loc>${BASE_URL}/category/${c.slug}</loc><lastmod>${fmt(c.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
-    ),
-  ];
+  const distinctCities = new Set<string>();
+  const urlTags: string[] = [];
+
+  for (const s of shopRows) {
+    const slug = s.slug || normalizeSlug(s.shopName);
+    if (slug) {
+      urlTags.push(
+        `  <url><loc>${BASE_URL}/stores/${slug}</loc><lastmod>${fmt(s.updatedAt)}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`
+      );
+    }
+    const addr = s.address as Record<string, any> | null;
+    const city = addr?.city ? String(addr.city).trim() : "";
+    if (city) {
+      distinctCities.add(normalizeSlug(city));
+    }
+  }
+
+  // Include dynamic location pages for cities with verified merchant content
+  for (const citySlug of distinctCities) {
+    urlTags.push(
+      `  <url><loc>${BASE_URL}/stores/${citySlug}</loc><lastmod>${today}</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>`
+    );
+  }
 
   const xml = [
     `<?xml version="1.0" encoding="UTF-8"?>`,
@@ -94,36 +174,132 @@ async function buildSitemap(): Promise<string> {
     ...urlTags,
     `</urlset>`,
   ].join("\n");
+  sitemapStoresCache = { xml, builtAt: Date.now() };
+  return xml;
+}
 
-  sitemapCache = { xml, builtAt: Date.now() };
+async function buildCategoriesSitemap(): Promise<string> {
+  if (sitemapCategoriesCache && Date.now() - sitemapCategoriesCache.builtAt < SITEMAP_TTL_MS) {
+    return sitemapCategoriesCache.xml;
+  }
+  const fmt = (d: Date | string | null | undefined): string =>
+    d ? new Date(d as Date).toISOString().split("T")[0]! : new Date().toISOString().split("T")[0]!;
+  const today = new Date().toISOString().split("T")[0]!;
+
+  const [categoryRows, shopRows] = await Promise.all([
+    db.select({ slug: schema.categories.slug, updatedAt: schema.categories.updatedAt })
+      .from(schema.categories)
+      .where(eq(schema.categories.isActive, true)),
+    db.select({ category: schema.shops.category, address: schema.shops.address })
+      .from(schema.shops)
+      .where(or(eq(schema.shops.status, "approved"), eq(schema.shops.status, "active"))),
+  ]);
+
+  const urlTags: string[] = categoryRows.map(c =>
+    `  <url><loc>${BASE_URL}/category/${c.slug}</loc><lastmod>${fmt(c.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`
+  );
+
+  // Dynamic city+category combination pages that contain active real merchants
+  const seenCityCat = new Set<string>();
+  for (const s of shopRows) {
+    const addr = s.address as Record<string, any> | null;
+    const city = addr?.city ? normalizeSlug(String(addr.city)) : "";
+    const cat = s.category ? normalizeSlug(s.category) : "";
+    if (city && cat) {
+      const key = `${city}/${cat}`;
+      if (!seenCityCat.has(key)) {
+        seenCityCat.add(key);
+        urlTags.push(
+          `  <url><loc>${BASE_URL}/stores/${key}</loc><lastmod>${today}</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>`
+        );
+      }
+    }
+  }
+
+  const xml = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+    ...urlTags,
+    `</urlset>`,
+  ].join("\n");
+  sitemapCategoriesCache = { xml, builtAt: Date.now() };
+  return xml;
+}
+
+async function buildProductsSitemap(): Promise<string> {
+  if (sitemapProductsCache && Date.now() - sitemapProductsCache.builtAt < SITEMAP_TTL_MS) {
+    return sitemapProductsCache.xml;
+  }
+  const fmt = (d: Date | string | null | undefined): string =>
+    d ? new Date(d as Date).toISOString().split("T")[0]! : new Date().toISOString().split("T")[0]!;
+
+  const productRows = await db
+    .select({ id: schema.products.id, updatedAt: schema.products.updatedAt })
+    .from(schema.products)
+    .where(eq(schema.products.status, "active"));
+
+  const urlTags = productRows.map(p =>
+    `  <url><loc>${BASE_URL}/product/${p.id}</loc><lastmod>${fmt(p.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
+  );
+
+  const xml = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+    ...urlTags,
+    `</urlset>`,
+  ].join("\n");
+  sitemapProductsCache = { xml, builtAt: Date.now() };
   return xml;
 }
 
 // ─── Shop Storefront In-Memory SEO Cache ─────────────────────────────────────
 // Caches shop metadata for 30 minutes so crawling or sharing shop storefront
-// links (e.g. /rock-n-rolls or /shop/:id) serves dynamically pre-rendered HTML
+// links (e.g. /stores/rock-n-rolls) serves dynamically pre-rendered HTML
 // instantly with 0 ms DB query delay and zero Neon DB compute overhead.
-interface ShopSeoMeta {
+export interface ShopSeoMeta {
   id: string;
   name: string;
   slug: string;
   description: string;
   category: string;
+  shopType: string;
   image: string;
-  addressText: string;
+  streetAddress: string;
+  city: string;
+  citySlug: string;
+  pincode: string;
   rating: number;
+  totalOrders: number;
   phone: string;
-  isFoodShop: boolean;
+  eta: string;
+  claimStatus: string;
+  verificationStatus: string;
+  googleBusinessUrl?: string;
+  lat?: number;
+  lng?: number;
+  schemaTypes: string[];
+}
+
+export interface CitySeoMeta {
+  city: string;
+  citySlug: string;
+  count: number;
+  categories: Set<string>;
 }
 
 let shopSeoCache: {
   bySlug: Map<string, ShopSeoMeta>;
   byId: Map<string, ShopSeoMeta>;
+  cities: Map<string, CitySeoMeta>;
   cachedAt: number;
 } | null = null;
 const SHOP_SEO_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-async function getShopSeoMaps(): Promise<{ bySlug: Map<string, ShopSeoMeta>; byId: Map<string, ShopSeoMeta> }> {
+async function getShopSeoMaps(): Promise<{
+  bySlug: Map<string, ShopSeoMeta>;
+  byId: Map<string, ShopSeoMeta>;
+  cities: Map<string, CitySeoMeta>;
+}> {
   if (shopSeoCache && Date.now() - shopSeoCache.cachedAt < SHOP_SEO_TTL_MS) {
     return shopSeoCache;
   }
@@ -139,57 +315,110 @@ async function getShopSeoMaps(): Promise<{ bySlug: Map<string, ShopSeoMeta>; byI
         banner: schema.shops.banner,
         address: schema.shops.address,
         rating: schema.shops.rating,
+        totalOrders: schema.shops.totalOrders,
         phone: schema.shops.phone,
+        slug: schema.shops.slug,
+        claimStatus: schema.shops.claimStatus,
+        verificationStatus: schema.shops.verificationStatus,
+        eta: schema.shops.eta,
+        googleBusinessUrl: schema.shops.googleBusinessUrl,
       })
       .from(schema.shops)
       .where(or(eq(schema.shops.status, "approved"), eq(schema.shops.status, "active")));
 
     const bySlug = new Map<string, ShopSeoMeta>();
     const byId = new Map<string, ShopSeoMeta>();
+    const cities = new Map<string, CitySeoMeta>();
 
     for (const s of shopRows) {
-      const slug = (s.shopName || "")
-        .toLowerCase()
-        .trim()
-        .replace(/[^\p{L}\p{N}\s-]/gu, "")
-        .replace(/[\s_]+/gu, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-+|-+$/gu, "");
-
-      const isFood = ["restaurant", "cafe", "cloud-kitchen", "sweet-shop", "bakery", "fast-food", "food", "food_junction", "cake"].some(t => 
-        (s.shopType || "").toLowerCase().includes(t) || 
-        (s.category || "").toLowerCase().includes(t) ||
-        (s.shopName || "").toLowerCase().includes("cake") ||
-        (s.shopName || "").toLowerCase().includes("roll")
-      );
-
+      const slug = s.slug || normalizeSlug(s.shopName);
       const addr = s.address as Record<string, any> | null;
-      const addrLine = addr?.line1 || addr?.city || "Balurghat";
+      const city = addr?.city ? String(addr.city).trim() : "Local";
+      const citySlug = normalizeSlug(city);
+      const pincode = addr?.pincode ? String(addr.pincode).trim() : "";
+      const streetAddress = addr?.line1 ? String(addr.line1).trim() : (addr?.city || "");
+      const lat = typeof addr?.lat === "number" ? addr.lat : (typeof addr?.latitude === "number" ? addr.latitude : undefined);
+      const lng = typeof addr?.lng === "number" ? addr.lng : (typeof addr?.longitude === "number" ? addr.longitude : undefined);
+      const category = s.category || "General Store";
+      const shopType = s.shopType || category;
+      const schemaTypes = getMerchantSchemaType(category, shopType, s.shopName || "");
+
+      // Dynamic ETA based on merchant capability
+      let eta = s.eta;
+      if (!eta) {
+        if (schemaTypes.includes("Service")) {
+          eta = "On-site visit & inspection";
+        } else if (schemaTypes.includes("Bakery")) {
+          eta = "Same-day delivery & pre-order";
+        } else if (schemaTypes.includes("Restaurant")) {
+          eta = "20-30 min";
+        } else {
+          eta = "15-25 min";
+        }
+      }
+
+      // Dynamic human-readable meta description using actual merchant data
+      let autoDesc = s.description;
+      if (!autoDesc) {
+        if (schemaTypes.includes("Service")) {
+          autoDesc = `Official online storefront for ${s.shopName} in ${city}. Explore electronics, repair solutions, and book on-site inspection directly on SwiftMart.`;
+        } else if (schemaTypes.includes("Restaurant")) {
+          autoDesc = `Order food online from ${s.shopName} in ${city} on SwiftMart. Live menu, genuine prices, and fast ${eta} local delivery to your doorstep.`;
+        } else if (schemaTypes.includes("Bakery")) {
+          autoDesc = `Order delicious cakes, fresh pastries, and custom designer cakes from ${s.shopName} in ${city} on SwiftMart. ${eta} doorstep delivery or pickup.`;
+        } else if (schemaTypes.includes("ClothingStore")) {
+          autoDesc = `Shop apparel, footwear, and fashion collections from ${s.shopName} in ${city} on SwiftMart. ${eta} local doorstep delivery.`;
+        } else {
+          autoDesc = `Official online storefront for ${s.shopName} in ${city} on SwiftMart. Browse live products, verified prices, daily discounts, and order online with ${eta} delivery.`;
+        }
+      }
 
       const info: ShopSeoMeta = {
         id: s.id,
         name: s.shopName || "Local Store",
         slug,
-        description: s.description || `Official online storefront for ${s.shopName} in Balurghat. Browse live products, verified prices, daily discounts, and order online with 10-15 minute delivery on SwiftMart.`,
-        category: s.category || "Grocery & Essentials",
+        description: autoDesc,
+        category,
+        shopType,
         image: s.image || s.banner || `${BASE_URL}/opengraph.jpg`,
-        addressText: addrLine,
-        rating: s.rating || 4.8,
+        streetAddress,
+        city,
+        citySlug,
+        pincode,
+        rating: Number(s.rating || 0),
+        totalOrders: Number(s.totalOrders || 0),
         phone: s.phone || "+91 62961 18949",
-        isFoodShop: isFood,
+        eta,
+        claimStatus: s.claimStatus || "claimed",
+        verificationStatus: s.verificationStatus || "verified",
+        googleBusinessUrl: s.googleBusinessUrl || undefined,
+        lat,
+        lng,
+        schemaTypes,
       };
 
       byId.set(s.id, info);
       if (slug) {
         bySlug.set(slug, info);
       }
+
+      // Group cities for dynamic city discovery pages
+      if (citySlug) {
+        let cityRecord = cities.get(citySlug);
+        if (!cityRecord) {
+          cityRecord = { city, citySlug, count: 0, categories: new Set() };
+          cities.set(citySlug, cityRecord);
+        }
+        cityRecord.count++;
+        if (category) cityRecord.categories.add(normalizeSlug(category));
+      }
     }
 
-    shopSeoCache = { bySlug, byId, cachedAt: Date.now() };
+    shopSeoCache = { bySlug, byId, cities, cachedAt: Date.now() };
     return shopSeoCache;
   } catch (err) {
     logger.error({ err }, "Failed to load shop SEO cache");
-    return shopSeoCache || { bySlug: new Map(), byId: new Map() };
+    return shopSeoCache || { bySlug: new Map(), byId: new Map(), cities: new Map() };
   }
 }
 
@@ -218,6 +447,7 @@ const RESERVED_ROOT_PATHS = new Set([
   "categories",
   "products",
   "shops",
+  "stores",
   "grocery",
   "sitemap",
   "health",
@@ -433,7 +663,13 @@ if (process.env.NODE_ENV === "production") {
   const ROBOTS_TXT = [
     "User-agent: *",
     "Allow: /",
+    "Allow: /stores",
+    "Allow: /stores/",
     "Allow: /sitemap.xml",
+    "Allow: /sitemap-pages.xml",
+    "Allow: /sitemap-stores.xml",
+    "Allow: /sitemap-categories.xml",
+    "Allow: /sitemap-products.xml",
     "Allow: /robots.txt",
     "Disallow: /auth",
     "Disallow: /google-callback",
@@ -485,6 +721,9 @@ if (process.env.NODE_ENV === "production") {
     "Allow: /",
     "",
     "Sitemap: https://swiftmart.space/sitemap.xml",
+    "Sitemap: https://swiftmart.space/sitemap-stores.xml",
+    "Sitemap: https://swiftmart.space/sitemap-categories.xml",
+    "Sitemap: https://swiftmart.space/sitemap-products.xml",
     "",
   ].join("\n");
   app.get("/robots.txt", (_req: Request, res: Response) => {
@@ -493,27 +732,74 @@ if (process.env.NODE_ENV === "production") {
     res.send(ROBOTS_TXT);
   });
 
-
-  // Dynamic sitemap — registered BEFORE express.static so this route takes
-  // precedence over the static public/sitemap.xml baked into the build.
+  // Dynamic split sitemaps — registered BEFORE express.static
   app.get("/sitemap.xml", async (_req: Request, res: Response) => {
     try {
-      const xml = await buildSitemap();
+      const xml = await buildSitemapIndex();
       res.setHeader("Content-Type", "application/xml; charset=utf-8");
       res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
       res.send(xml);
     } catch (err) {
-      logger.error({ err }, "Failed to generate dynamic sitemap; serving empty fallback");
-      // Return a valid but empty sitemap so Googlebot doesn't see a 5xx
-      res.status(200)
-        .setHeader("Content-Type", "application/xml; charset=utf-8")
+      logger.error({ err }, "Failed to generate sitemap index");
+      res.status(200).setHeader("Content-Type", "application/xml; charset=utf-8")
+        .send(`<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></sitemapindex>`);
+    }
+  });
+
+  app.get("/sitemap-pages.xml", async (_req: Request, res: Response) => {
+    try {
+      const xml = await buildPagesSitemap();
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
+      res.send(xml);
+    } catch (err) {
+      logger.error({ err }, "Failed to generate pages sitemap");
+      res.status(200).setHeader("Content-Type", "application/xml; charset=utf-8")
+        .send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`);
+    }
+  });
+
+  app.get("/sitemap-stores.xml", async (_req: Request, res: Response) => {
+    try {
+      const xml = await buildStoresSitemap();
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
+      res.send(xml);
+    } catch (err) {
+      logger.error({ err }, "Failed to generate stores sitemap");
+      res.status(200).setHeader("Content-Type", "application/xml; charset=utf-8")
+        .send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`);
+    }
+  });
+
+  app.get("/sitemap-categories.xml", async (_req: Request, res: Response) => {
+    try {
+      const xml = await buildCategoriesSitemap();
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
+      res.send(xml);
+    } catch (err) {
+      logger.error({ err }, "Failed to generate categories sitemap");
+      res.status(200).setHeader("Content-Type", "application/xml; charset=utf-8")
+        .send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`);
+    }
+  });
+
+  app.get("/sitemap-products.xml", async (_req: Request, res: Response) => {
+    try {
+      const xml = await buildProductsSitemap();
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
+      res.send(xml);
+    } catch (err) {
+      logger.error({ err }, "Failed to generate products sitemap");
+      res.status(200).setHeader("Content-Type", "application/xml; charset=utf-8")
         .send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`);
     }
   });
 
   // Hashed assets (e.g. /assets/index-DP9kdDoW.js) are content-addressed — safe to cache forever.
   // HTML, manifest, robots.txt: use no-cache (revalidate) but NOT no-store.
-  // no-store tells Google it cannot keep a copy → "No information available for this page".
   app.use(express.static(frontendDist, {
     setHeaders(res, filePath) {
       if (filePath.includes(`${path.sep}assets${path.sep}`)) {
@@ -530,8 +816,7 @@ if (process.env.NODE_ENV === "production") {
         res.status(404).json({ success: false, message: "API endpoint not found" });
         return;
       }
-      // Never serve SPA for dotfiles or scanner paths (already blocked above,
-      // but guard here too so static middleware bypasses don't sneak through)
+      // Never serve SPA for dotfiles or scanner paths
       if (/\/\./.test(req.path) || SCANNER_RE.test(req.path)) {
         res.status(404).end();
         return;
@@ -548,117 +833,189 @@ if (process.env.NODE_ENV === "production") {
       res.setHeader("Cache-Control", "no-cache, must-revalidate");
 
       const cleanPath = req.path.replace(/^\/+|\/+$/g, "");
-      let matchedShop: ShopSeoMeta | undefined;
-
       try {
-        if (cleanPath.startsWith("shop/")) {
-          const shopId = cleanPath.slice(5).trim();
-          const maps = await getShopSeoMaps();
-          matchedShop = maps.byId.get(shopId);
-        } else if (cleanPath && !RESERVED_ROOT_PATHS.has(cleanPath.toLowerCase()) && !cleanPath.includes("/")) {
-          const maps = await getShopSeoMaps();
-          matchedShop = maps.bySlug.get(cleanPath.toLowerCase());
+        const maps = await getShopSeoMaps();
+
+      // ── 1. Legacy Permanent Redirects (301) ──────────────────────────────
+      // /shops -> /stores
+      if (cleanPath === "shops") {
+        res.redirect(301, `${BASE_URL}/stores`);
+        return;
+      }
+
+      // /shop/:id or /shops/:id -> /stores/:merchantSlug
+      if (cleanPath.startsWith("shop/") || cleanPath.startsWith("shops/")) {
+        const rawId = cleanPath.split("/")[1]?.trim();
+        if (rawId) {
+          const matched = maps.byId.get(rawId) || maps.bySlug.get(rawId.toLowerCase());
+          if (matched?.slug) {
+            res.redirect(301, `${BASE_URL}/stores/${matched.slug}`);
+            return;
+          }
         }
+        res.redirect(301, `${BASE_URL}/stores`);
+        return;
+      }
+
+      // Root vanity slug /:shopSlug -> /stores/:merchantSlug (301)
+      if (cleanPath && !RESERVED_ROOT_PATHS.has(cleanPath.toLowerCase()) && !cleanPath.includes("/")) {
+        const rootShop = maps.bySlug.get(cleanPath.toLowerCase());
+        if (rootShop) {
+          res.redirect(301, `${BASE_URL}/stores/${rootShop.slug}`);
+          return;
+        }
+      }
+
+      // ── 2. Pre-rendered SEO for Store Directory (/stores) ────────────────
+      if (cleanPath === "stores") {
+        let html = await fs.promises.readFile(indexPath, "utf8");
+        const title = "Stores & Local Merchants | SwiftMart";
+        const desc = "Browse all verified local stores, bakeries, restaurants, grocery marts, and electronics service centers on SwiftMart. Transparent pricing and fast local doorstep delivery.";
+        const escapeAttr = (s: string) =>
+          s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+        html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(title)}</title>`);
+        html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(desc)}" />`);
+        html = html.replace(/<link rel="canonical"[^>]*href=".*?"\s*\/?>/i, `<link rel="canonical" data-rh="true" href="${canonicalUrl}" />`);
+        html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(title)}" />`);
+        html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(desc)}" />`);
+        html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
+
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.send(html);
+        return;
+      }
+
+      // ── 3. Storefronts & Dynamic Location/Category Pages (/stores/*) ─────
+      if (cleanPath.startsWith("stores/")) {
+        const segments = cleanPath.split("/").slice(1).map(s => s.trim().toLowerCase());
+        const part1 = segments[0] || "";
+        const part2 = segments[1] || "";
+
+        // Check if part1 matches a specific merchant storefront
+        const matchedShop = maps.bySlug.get(part1) || maps.byId.get(part1);
 
         if (matchedShop) {
           let html = await fs.promises.readFile(indexPath, "utf8");
-          const title = `${matchedShop.name} (Balurghat) — Official Storefront & Online Ordering | SwiftMart`;
-          const desc = `Order directly from ${matchedShop.name}'s official online storefront in Balurghat on SwiftMart. ${matchedShop.category ? `${matchedShop.category} · ` : ""}Instant 10-15 min local delivery across Balurghat Pincodes 733101 & 733103. Live menu, verified prices, discounts & deals.`;
+          const escapeAttr = (s: string) =>
+            s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+          const city = matchedShop.city || "Local";
+          const catTitle = formatCategoryTitle(matchedShop.category);
+
+          // Dynamic category-tailored Title system (Requirement #3)
+          let title = `${matchedShop.name} ${city} | ${catTitle} | SwiftMart`;
+          if (matchedShop.schemaTypes.includes("Bakery")) {
+            title = `${matchedShop.name} in ${city} | Designer Cakes & Bakery | SwiftMart`;
+          } else if (matchedShop.schemaTypes.includes("Restaurant")) {
+            title = `${matchedShop.name} in ${city} | Order Food Online | SwiftMart`;
+          } else if (matchedShop.schemaTypes.includes("Service")) {
+            title = `${matchedShop.name} ${city} | Electronics & On-Site Service | SwiftMart`;
+          } else if (matchedShop.schemaTypes.includes("ClothingStore")) {
+            title = `${matchedShop.name} ${city} | Fashion & Clothing | SwiftMart`;
+          }
+
+          const desc = matchedShop.description;
           const img = matchedShop.image.startsWith("http")
             ? matchedShop.image
             : `${BASE_URL}${matchedShop.image.startsWith("/") ? "" : "/"}${matchedShop.image}`;
 
-          const shopJsonLd = {
+          // Merchant Structured Data Engine (Requirement #6)
+          const isService = matchedShop.schemaTypes.includes("Service");
+          const shopJsonLd: any = {
             "@context": "https://schema.org",
             "@graph": [
               {
-                "@type": matchedShop.isFoodShop
-                  ? ["Restaurant", "FoodEstablishment", "LocalBusiness"]
-                  : ["Store", "LocalBusiness", "OnlineStore"],
+                "@type": matchedShop.schemaTypes,
                 "@id": `${canonicalUrl}#storefront`,
                 "name": matchedShop.name,
-                "legalName": `${matchedShop.name} — SwiftMart Official Storefront`,
+                "legalName": `${matchedShop.name} — SwiftMart ${matchedShop.claimStatus === "claimed" ? "Official Storefront" : "Store"}`,
                 "alternateName": [
                   matchedShop.name,
-                  `${matchedShop.name} Balurghat`,
+                  `${matchedShop.name} ${city}`,
                   `${matchedShop.name} Storefront`,
-                  `${matchedShop.name} Online Store`,
-                  `${matchedShop.name} Menu`
+                  `${matchedShop.name} Online`,
                 ],
                 "description": desc,
                 "image": img,
                 "url": canonicalUrl,
-                "telephone": matchedShop.phone,
+                ...(matchedShop.phone ? { "telephone": matchedShop.phone } : {}),
                 "priceRange": "₹₹",
                 "currenciesAccepted": "INR",
                 "paymentAccepted": "Cash on Delivery, UPI, Cards, Net Banking",
                 "parentOrganization": {
                   "@type": "OnlineBusiness",
                   "name": "SwiftMart",
-                  "url": BASE_URL
+                  "url": BASE_URL,
                 },
                 "address": {
                   "@type": "PostalAddress",
-                  "streetAddress": matchedShop.addressText,
-                  "addressLocality": "Balurghat",
-                  "postalCode": "733101",
+                  ...(matchedShop.streetAddress ? { "streetAddress": matchedShop.streetAddress } : {}),
+                  "addressLocality": city,
+                  ...(matchedShop.pincode ? { "postalCode": matchedShop.pincode } : {}),
                   "addressRegion": "West Bengal",
-                  "addressCountry": "IN"
+                  "addressCountry": "IN",
                 },
-                "geo": {
-                  "@type": "GeoCoordinates",
-                  "latitude": 25.2167,
-                  "longitude": 88.7667
-                },
-                "aggregateRating": {
-                  "@type": "AggregateRating",
-                  "ratingValue": Number((matchedShop.rating || 4.8).toFixed(1)),
-                  "reviewCount": 120,
-                  "bestRating": 5,
-                  "worstRating": 1
-                }
+                ...(matchedShop.lat && matchedShop.lng ? {
+                  "geo": {
+                    "@type": "GeoCoordinates",
+                    "latitude": matchedShop.lat,
+                    "longitude": matchedShop.lng,
+                  }
+                } : {}),
+                ...(matchedShop.googleBusinessUrl ? {
+                  "sameAs": [matchedShop.googleBusinessUrl],
+                  "hasMap": matchedShop.googleBusinessUrl,
+                } : {}),
+                // Only genuine reviews & ratings — never fabricated (Requirement #6 & #14)
+                ...(matchedShop.rating > 0 && matchedShop.totalOrders > 0 ? {
+                  "aggregateRating": {
+                    "@type": "AggregateRating",
+                    "ratingValue": Number(matchedShop.rating.toFixed(1)),
+                    "reviewCount": matchedShop.totalOrders,
+                    "bestRating": 5,
+                    "worstRating": 1,
+                  }
+                } : {}),
               },
               {
                 "@type": "BreadcrumbList",
                 "itemListElement": [
                   { "@type": "ListItem", "position": 1, "name": "SwiftMart Home", "item": `${BASE_URL}/` },
-                  { "@type": "ListItem", "position": 2, "name": "Balurghat Stores", "item": `${BASE_URL}/shops` },
-                  { "@type": "ListItem", "position": 3, "name": `${matchedShop.name} Storefront`, "item": canonicalUrl }
+                  { "@type": "ListItem", "position": 2, "name": `${city} Stores`, "item": `${BASE_URL}/stores/${matchedShop.citySlug}` },
+                  { "@type": "ListItem", "position": 3, "name": catTitle, "item": `${BASE_URL}/stores/${matchedShop.citySlug}/${normalizeSlug(matchedShop.category)}` },
+                  { "@type": "ListItem", "position": 4, "name": matchedShop.name, "item": canonicalUrl },
                 ]
               }
             ]
           };
 
-          const escapeAttr = (s: string) =>
-            s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-          // Inject dynamic Title
+          // Inject Dynamic Meta Tags into index.html
           html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(title)}</title>`);
-          // Inject dynamic Meta Description
           html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(desc)}" />`);
-          // Inject dynamic Canonical
           html = html.replace(/<link rel="canonical"[^>]*href=".*?"\s*\/?>/i, `<link rel="canonical" data-rh="true" href="${canonicalUrl}" />`);
-          // Inject Open Graph tags
           html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(title)}" />`);
           html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(desc)}" />`);
           html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
           html = html.replace(/<meta property="og:image" content=".*?"\s*\/?>/i, `<meta property="og:image" content="${escapeAttr(img)}" />`);
-          // Inject Twitter tags
           html = html.replace(/<meta name="twitter:title" content=".*?"\s*\/?>/i, `<meta name="twitter:title" content="${escapeAttr(title)}" />`);
           html = html.replace(/<meta name="twitter:description" content=".*?"\s*\/?>/i, `<meta name="twitter:description" content="${escapeAttr(desc)}" />`);
           html = html.replace(/<meta name="twitter:image" content=".*?"\s*\/?>/i, `<meta name="twitter:image" content="${escapeAttr(img)}" />`);
 
-          // Inject Shop Schema.org JSON-LD before </head>
+          // Inject Schema.org JSON-LD before </head>
           const ldJsonTag = `\n    <script type="application/ld+json">\n    ${JSON.stringify(shopJsonLd, null, 2)}\n    </script>\n  </head>`;
           html = html.replace(/<\/head>/i, ldJsonTag);
 
-          // Prepend visible noscript storefront banner for non-JS crawlers
+          // Visible noscript storefront banner for non-JS crawlers
+          const claimLabel = matchedShop.claimStatus === "claimed" ? "Official Storefront" : "Listed on SwiftMart";
+          const verifiedBadge = matchedShop.verificationStatus === "verified" ? " &bull; &#10003; Verified by SwiftMart" : "";
+          const serviceOrDeliveryText = isService ? "On-site service booking powered by SwiftMart." : `Fast ${matchedShop.eta} doorstep delivery powered by SwiftMart.`;
           const storefrontNoscriptBanner = `
           <header class="swm-preamble-header" style="border:2px solid #f59e0b; padding:16px; border-radius:12px; margin-bottom:20px; background:#fffbeb;">
-            <div style="font-size:12px; font-weight:bold; color:#b45309; text-transform:uppercase; letter-spacing:1px;">🏪 Official Online Storefront</div>
-            <h1 style="font-size:24px; font-weight:800; color:#1e293b; margin:6px 0;">${escapeAttr(matchedShop.name)} — Balurghat Storefront &amp; Menu</h1>
+            <div style="font-size:12px; font-weight:bold; color:#b45309; text-transform:uppercase; letter-spacing:1px;">🏪 ${escapeAttr(claimLabel)}${verifiedBadge}</div>
+            <h1 style="font-size:24px; font-weight:800; color:#1e293b; margin:6px 0;">${escapeAttr(matchedShop.name)} — ${escapeAttr(city)} Storefront</h1>
             <p style="font-size:14px; color:#475569;">${escapeAttr(desc)}</p>
-            <p style="font-size:13px; color:#64748b;">📍 ${escapeAttr(matchedShop.addressText)}, Balurghat, West Bengal &bull; Fast 10-15 Min Express Doorstep Delivery by SwiftMart.</p>
+            <p style="font-size:13px; color:#64748b;">📍 ${escapeAttr(matchedShop.streetAddress)}, ${escapeAttr(city)} &bull; ${escapeAttr(serviceOrDeliveryText)}</p>
           </header>`;
           html = html.replace(/(<noscript[^>]*>\s*<div[^>]*>)/i, `$1${storefrontNoscriptBanner}`);
 
@@ -666,30 +1023,73 @@ if (process.env.NODE_ENV === "production") {
           res.send(html);
           return;
         }
-      } catch (injectionErr) {
-        logger.error({ injectionErr }, "Failed to inject shop storefront meta tags into index.html; falling back to static");
-      }
 
+        // Check if part1 matches a City discovery page (Requirement #18)
+        const cityMeta = maps.cities.get(part1);
+        if (cityMeta && !part2) {
+          let html = await fs.promises.readFile(indexPath, "utf8");
+          const escapeAttr = (s: string) =>
+            s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          const title = `Local Shops & Stores in ${cityMeta.city} | SwiftMart`;
+          const desc = `Browse ${cityMeta.count} verified local stores, bakeries, restaurants, and grocery marts in ${cityMeta.city}. Fast doorstep delivery and authentic local merchants on SwiftMart.`;
+
+          html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(title)}</title>`);
+          html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(desc)}" />`);
+          html = html.replace(/<link rel="canonical"[^>]*href=".*?"\s*\/?>/i, `<link rel="canonical" data-rh="true" href="${canonicalUrl}" />`);
+          html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(title)}" />`);
+          html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(desc)}" />`);
+          html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
+
+          res.setHeader("Content-Type", "text/html; charset=utf-8");
+          res.send(html);
+          return;
+        }
+
+        // Check if part1 is a City and part2 is a Category (Requirement #19)
+        if (cityMeta && part2) {
+          let html = await fs.promises.readFile(indexPath, "utf8");
+          const escapeAttr = (s: string) =>
+            s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          const catTitle = formatCategoryTitle(part2);
+          const title = `${catTitle} in ${cityMeta.city} | Order Online on SwiftMart`;
+          const desc = `Order from top ${catTitle} shops in ${cityMeta.city}. Authentic quality, verified merchants, and quick local doorstep delivery on SwiftMart.`;
+
+          html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(title)}</title>`);
+          html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(desc)}" />`);
+          html = html.replace(/<link rel="canonical"[^>]*href=".*?"\s*\/?>/i, `<link rel="canonical" data-rh="true" href="${canonicalUrl}" />`);
+          html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(title)}" />`);
+          html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(desc)}" />`);
+          html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
+
+          res.setHeader("Content-Type", "text/html; charset=utf-8");
+          res.send(html);
+          return;
+        }
+      }
+    } catch (injectionErr) {
+      logger.error({ injectionErr }, "Failed to inject dynamic SEO metadata into index.html; serving standard SPA");
+    }
+
+    res.sendFile(indexPath, (fileErr) => {
+      if (fileErr && !res.headersSent) {
+        logger.error({ fileErr }, "res.sendFile failed; sending inline HTML fallback");
+        res.status(200).type("html").send("<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'/><title>SwiftMart</title><meta name='viewport' content='width=device-width,initial-scale=1'/></head><body><div id='root'></div><script>window.location.reload();</script></body></html>");
+      }
+    });
+  } catch (topErr) {
+    logger.error({ topErr }, "Error in SPA fallback handler; serving static index.html");
+    const indexPath = path.join(frontendDist, "index.html");
+    if (fs.existsSync(indexPath)) {
       res.sendFile(indexPath, (fileErr) => {
         if (fileErr && !res.headersSent) {
-          logger.error({ fileErr }, "res.sendFile failed; sending inline HTML fallback");
-          res.status(200).type("html").send("<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'/><title>SwiftMart</title><meta name='viewport' content='width=device-width,initial-scale=1'/></head><body><div id='root'></div><script>window.location.reload();</script></body></html>");
+          res.status(200).type("html").send("<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'/><title>SwiftMart</title></head><body><div id='root'></div></body></html>");
         }
       });
-    } catch (topErr) {
-      logger.error({ topErr }, "Error in SPA fallback handler; serving static index.html");
-      const indexPath = path.join(frontendDist, "index.html");
-      if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath, (fileErr) => {
-          if (fileErr && !res.headersSent) {
-            res.status(200).type("html").send("<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'/><title>SwiftMart</title></head><body><div id='root'></div></body></html>");
-          }
-        });
-      } else {
-        res.status(200).json({ ok: true, message: "SwiftMart API Server is running" });
-      }
+    } else {
+      res.status(200).json({ ok: true, message: "SwiftMart API Server is running" });
     }
-  });
+  }
+});
 }
 
 // Global error handler

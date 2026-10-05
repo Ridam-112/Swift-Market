@@ -48,12 +48,16 @@ export const shops = pgTable("shops", {
   lastQrScanAt: timestamp("last_qr_scan_at"),
   googleBusinessUrl: text("google_business_url"),
   googlePlaceId: text("google_place_id"),
+  slug: text("slug"),
+  claimStatus: text("claim_status").notNull().default("claimed"),
+  eta: text("eta"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => [
   index("shops_owner_id_idx").on(t.ownerId),
   index("shops_status_idx").on(t.status),
   index("shops_shop_type_idx").on(t.shopType),
+  index("shops_slug_idx").on(t.slug),
   index("shops_pickup_qr_token_idx").on(t.pickupQrToken),
   index("shops_store_code_idx").on(t.storeCode),
 ]);
