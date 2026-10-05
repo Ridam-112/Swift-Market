@@ -267644,12 +267644,19 @@ async function ensureGatewayTable() {
         status TEXT NOT NULL,
         qr TEXT,
         phone TEXT,
+        connected_at TIMESTAMP WITH TIME ZONE,
+        expires_at TIMESTAMP WITH TIME ZONE,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS whatsapp_session_store (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
     `);
     isGatewayTableEnsured = true;
   } catch (err) {
-    logger.warn({ err }, "[WhatsApp] Non-fatal: Could not ensure whatsapp_gateway_state table");
+    logger.warn({ err }, "[WhatsApp] Non-fatal: Could not ensure whatsapp tables");
   }
 }
 var WhatsAppService = class {
@@ -267663,8 +267670,8 @@ var WhatsAppService = class {
   };
   isInitializing = false;
   reconnectAttempts = 0;
-  maxReconnectAttempts = 5;
   qrListeners = [];
+  syncTimeout = null;
   constructor() {
     this.ensureSessionDir();
   }
@@ -267686,22 +267693,94 @@ var WhatsAppService = class {
       }
     }
   }
+  scheduleDbSync() {
+    if (this.syncTimeout) clearTimeout(this.syncTimeout);
+    this.syncTimeout = setTimeout(() => {
+      void this.persistSessionToDb();
+    }, 1500);
+  }
+  /**
+   * Restores all stored session files from PostgreSQL into local SESSION_DIR.
+   * Returns true if creds.json exists and was restored.
+   */
+  async restoreSessionFromDb() {
+    try {
+      await ensureGatewayTable();
+      const res = await db.execute(sql3`SELECT key, value FROM whatsapp_session_store;`);
+      const rows = res?.rows;
+      if (!rows || rows.length === 0) {
+        return false;
+      }
+      this.ensureSessionDir();
+      let hasCreds = false;
+      for (const row of rows) {
+        if (!row.key || !row.value) continue;
+        const filePath = path2.join(SESSION_DIR, row.key);
+        try {
+          fs5.writeFileSync(filePath, row.value, "utf8");
+          if (row.key === "creds.json") {
+            hasCreds = true;
+          }
+        } catch {
+        }
+      }
+      logger.info({ fileCount: rows.length, hasCreds }, "[WhatsApp] Restored 30-day session files from PostgreSQL database");
+      return hasCreds;
+    } catch (err) {
+      logger.warn({ err }, "[WhatsApp] Failed to restore session from DB");
+      return false;
+    }
+  }
+  /**
+   * Persists all session JSON files from SESSION_DIR into PostgreSQL whatsapp_session_store.
+   */
+  async persistSessionToDb() {
+    try {
+      await ensureGatewayTable();
+      if (!fs5.existsSync(SESSION_DIR)) return;
+      const files = fs5.readdirSync(SESSION_DIR);
+      if (!files.includes("creds.json")) return;
+      for (const file of files) {
+        if (!file.endsWith(".json")) continue;
+        const filePath = path2.join(SESSION_DIR, file);
+        try {
+          const content = fs5.readFileSync(filePath, "utf8");
+          await db.execute(sql3`
+            INSERT INTO whatsapp_session_store (key, value, updated_at)
+            VALUES (${file}, ${content}, NOW())
+            ON CONFLICT (key) DO UPDATE
+            SET value = EXCLUDED.value,
+                updated_at = NOW();
+          `);
+        } catch {
+        }
+      }
+      logger.info({ fileCount: files.length }, "[WhatsApp] Synced active session to PostgreSQL database");
+    } catch (err) {
+      logger.warn({ err }, "[WhatsApp] Failed to persist session to DB");
+    }
+  }
   async syncGatewayStateToDb() {
     try {
       await ensureGatewayTable();
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3);
       await db.execute(sql3`
-        INSERT INTO whatsapp_gateway_state (id, status, qr, phone, updated_at)
+        INSERT INTO whatsapp_gateway_state (id, status, qr, phone, connected_at, expires_at, updated_at)
         VALUES (
           'current',
           ${this.state.status},
           ${this.state.qrCodeDataUrl},
           ${this.state.connectedPhone},
+          ${this.state.lastConnectedAt ? this.state.lastConnectedAt.toISOString() : null},
+          ${this.state.status === "connected" ? expiresAt.toISOString() : null},
           NOW()
         )
         ON CONFLICT (id) DO UPDATE
         SET status = EXCLUDED.status,
             qr = EXCLUDED.qr,
             phone = EXCLUDED.phone,
+            connected_at = COALESCE(EXCLUDED.connected_at, whatsapp_gateway_state.connected_at),
+            expires_at = COALESCE(EXCLUDED.expires_at, whatsapp_gateway_state.expires_at),
             updated_at = NOW();
       `);
     } catch {
@@ -267713,7 +267792,9 @@ var WhatsAppService = class {
       qr: this.state.qrCodeDataUrl,
       phone: this.state.connectedPhone,
       lastConnectedAt: this.state.lastConnectedAt,
-      disconnectReason: this.state.disconnectReason
+      disconnectReason: this.state.disconnectReason,
+      expiresAt: this.state.status === "connected" ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3).toISOString() : null,
+      sessionDurationDays: 30
     };
   }
   async getStatusAsync() {
@@ -267722,23 +267803,45 @@ var WhatsAppService = class {
     }
     try {
       await ensureGatewayTable();
+      const credRows = await db.execute(sql3`
+        SELECT 1 FROM whatsapp_session_store WHERE key = 'creds.json' LIMIT 1;
+      `).then((r2) => r2?.rows || []);
+      const hasDbSession = credRows.length > 0;
       const res = await db.execute(sql3`
-        SELECT status, qr, phone, updated_at
+        SELECT status, qr, phone, connected_at, expires_at, updated_at
         FROM whatsapp_gateway_state
         WHERE id = 'current'
         LIMIT 1;
       `);
       const row = res?.rows?.[0];
+      if (hasDbSession) {
+        if (!this.sock && !this.isInitializing) {
+          logger.info("[WhatsApp] Persistent 30-day session found in DB. Auto-restoring connection...");
+          void this.init();
+        }
+        return {
+          status: row?.status === "connected" ? "connected" : "connecting",
+          qr: null,
+          // Never flash QR code when session is saved!
+          phone: row?.phone || this.state.connectedPhone,
+          lastConnectedAt: row?.connected_at ? new Date(row.connected_at) : this.state.lastConnectedAt,
+          disconnectReason: null,
+          expiresAt: row?.expires_at ? new Date(row.expires_at).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3).toISOString(),
+          sessionDurationDays: 30
+        };
+      }
       if (row) {
         const updatedAt = new Date(row.updated_at).getTime();
         const isFresh = Date.now() - updatedAt < 12e4;
-        if (row.status === "connected" || row.qr && isFresh) {
+        if (row.qr && isFresh) {
           return {
-            status: row.status,
-            qr: isFresh ? row.qr : null,
+            status: "qr_ready",
+            qr: row.qr,
             phone: row.phone,
-            lastConnectedAt: this.state.lastConnectedAt,
-            disconnectReason: this.state.disconnectReason
+            lastConnectedAt: null,
+            disconnectReason: null,
+            expiresAt: null,
+            sessionDurationDays: 30
           };
         }
       }
@@ -267818,7 +267921,16 @@ var WhatsAppService = class {
     void this.syncGatewayStateToDb();
     this.notifyListeners();
     try {
+      const credsPath = path2.join(SESSION_DIR, "creds.json");
+      if (!fs5.existsSync(credsPath)) {
+        await this.restoreSessionFromDb();
+      }
       const { state: authState, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
+      const originalKeysSet = authState.keys.set;
+      authState.keys.set = async (data) => {
+        await originalKeysSet(data);
+        this.scheduleDbSync();
+      };
       const { version: version3 } = await fetchLatestBaileysVersion().catch(() => ({ version: [2, 3e3, 1015901307] }));
       const silentLogger = (0, import_pino3.default)({ level: "silent" });
       if (this.sock) {
@@ -267832,14 +267944,17 @@ var WhatsAppService = class {
         version: version3,
         logger: silentLogger,
         auth: authState,
-        printQRInTerminal: true,
+        printQRInTerminal: false,
         // Critical: Do NOT sync full history to keep memory & bandwidth close to zero
         syncFullHistory: false,
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
-        browser: ["SwiftMart POS", "Chrome", "1.0.0"]
+        browser: ["SwiftMart Central", "Chrome", "120.0.0"]
       });
-      this.sock.ev.on("creds.update", saveCreds);
+      this.sock.ev.on("creds.update", async () => {
+        await saveCreds();
+        this.scheduleDbSync();
+      });
       this.sock.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect, qr } = update;
         if (qr) {
@@ -267867,19 +267982,18 @@ var WhatsAppService = class {
           logger.warn({ statusCode, shouldReconnect }, "[WhatsApp] Connection closed");
           void this.syncGatewayStateToDb();
           this.notifyListeners();
-          if (shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
+          if (shouldReconnect) {
             this.reconnectAttempts++;
-            const delay2 = Math.min(1e3 * Math.pow(2, this.reconnectAttempts), 3e4);
-            logger.info(`[WhatsApp] Reconnecting in ${delay2 / 1e3}s (Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+            const delay2 = Math.min(2e3 * Math.pow(1.4, Math.min(this.reconnectAttempts, 8)), 3e4);
+            logger.info(`[WhatsApp] Reconnecting in ${Math.round(delay2 / 1e3)}s (Attempt ${this.reconnectAttempts})...`);
             setTimeout(() => {
               this.isInitializing = false;
               this.init().catch(() => {
               });
             }, delay2);
-          } else if (!shouldReconnect) {
-            this.clearSession();
-            this.isInitializing = false;
           } else {
+            logger.warn("[WhatsApp] Session explicitly logged out by user. Purging session storage.");
+            void this.clearSession();
             this.isInitializing = false;
           }
         } else if (connection === "open") {
@@ -267892,9 +268006,10 @@ var WhatsAppService = class {
           const userJid = this.sock?.user?.id ?? "";
           const phone = userJid.split(":")[0]?.replace(/\D/g, "") || userJid.split("@")[0] || "Unknown";
           this.state.connectedPhone = phone;
-          logger.info(`[WhatsApp] \u{1F680} CONNECTED SUCCESSFULLY to WhatsApp as +${phone}!`);
+          logger.info(`[WhatsApp] \u{1F680} CONNECTED SUCCESSFULLY to WhatsApp as +${phone}! 30-day session saved.`);
           void this.syncGatewayStateToDb();
           this.notifyListeners();
+          void this.persistSessionToDb();
         }
       });
     } catch (err) {
@@ -267907,7 +268022,7 @@ var WhatsAppService = class {
     }
   }
   /**
-   * Log out and wipe stored session from disk.
+   * Log out and wipe stored session from disk and PostgreSQL database.
    */
   async logout() {
     try {
@@ -267917,7 +268032,7 @@ var WhatsAppService = class {
         this.sock = null;
       }
     } finally {
-      this.clearSession();
+      await this.clearSession();
       this.state = {
         status: "disconnected",
         qrCodeDataUrl: null,
@@ -267929,12 +268044,20 @@ var WhatsAppService = class {
       this.notifyListeners();
     }
   }
-  clearSession() {
+  async clearSession() {
     try {
       if (fs5.existsSync(SESSION_DIR)) {
         fs5.rmSync(SESSION_DIR, { recursive: true, force: true });
         fs5.mkdirSync(SESSION_DIR, { recursive: true });
       }
+      await ensureGatewayTable();
+      await db.execute(sql3`TRUNCATE TABLE whatsapp_session_store;`);
+      await db.execute(sql3`
+        UPDATE whatsapp_gateway_state
+        SET status = 'disconnected', qr = NULL, phone = NULL, connected_at = NULL, expires_at = NULL, updated_at = NOW()
+        WHERE id = 'current';
+      `);
+      logger.info("[WhatsApp] Cleared session files and purged database store");
     } catch (err) {
       logger.error({ err }, "[WhatsApp] Failed to clear session directory");
     }
@@ -267944,12 +268067,15 @@ var WhatsAppService = class {
    * If not connected but session credentials exist on disk or DB indicates connected,
    * attempts to initialize and waits up to timeoutMs.
    */
-  async ensureConnected(timeoutMs = 6e3) {
+  async ensureConnected(timeoutMs = 8e3) {
     if (this.state.status === "connected" && this.sock) {
       return true;
     }
     const credsPath = path2.join(SESSION_DIR, "creds.json");
-    const hasCreds = fs5.existsSync(credsPath);
+    let hasCreds = fs5.existsSync(credsPath);
+    if (!hasCreds) {
+      hasCreds = await this.restoreSessionFromDb();
+    }
     if (!hasCreds) {
       const dbStatus = await this.getStatusAsync();
       if (dbStatus.status !== "connected") {
@@ -267957,7 +268083,7 @@ var WhatsAppService = class {
       }
     }
     if (!this.sock && !this.isInitializing) {
-      logger.info("[WhatsApp] Socket disconnected. Auto-restoring connection using stored session...");
+      logger.info("[WhatsApp] Socket disconnected. Auto-restoring connection using stored 30-day session...");
       void this.init();
     }
     const result = await this.waitForConnection(timeoutMs);

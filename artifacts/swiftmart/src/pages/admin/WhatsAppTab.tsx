@@ -13,6 +13,8 @@ interface WhatsAppStatus {
   status: "connected" | "connecting" | "disconnected" | "qr_ready";
   phone: string | null;
   qr: string | null;
+  expiresAt?: string | null;
+  sessionDurationDays?: number;
 }
 
 export function WhatsAppTab() {
@@ -240,8 +242,16 @@ export function WhatsAppTab() {
                   <p className="text-sm text-muted-foreground mt-1">
                     Linked Phone: <span className="font-mono font-bold text-foreground">+{statusData.phone}</span>
                   </p>
-                  <p className="text-xs text-muted-foreground mt-2 max-w-md mx-auto">
-                    Whenever a customer places an order, the vendor will instantly receive the order list and 1-tap accept/reject links on their WhatsApp.
+                  <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <ShieldCheck className="w-3.5 h-3.5" /> ৩০ দিনের পারসিস্টেন্ট সেশন (Auto-Renewed)
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                      ☁️ ক্লাউড ডাটাবেজে সেভড
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3 max-w-md mx-auto">
+                    সেশনটি ক্লাউড ডাটাবেজে পার্মানেন্টলি সেভ করা আছে। ওয়েবসাইট রিলোড বা সার্ভার রিস্টার্ট করলেও সেশন ডিসকানেক্ট হবে না।
                   </p>
                 </div>
 
@@ -275,8 +285,9 @@ export function WhatsAppTab() {
                       <li><strong className="text-foreground">Linked Devices (যুক্ত ডিভাইস)</strong> সিলেক্ট করুন।</li>
                       <li><strong className="text-foreground">Link a Device</strong>-এ ট্যাপ করে এই QR কোডটি স্ক্যান করুন।</li>
                     </ol>
-                    <p className="text-[11px] text-amber-500 font-medium pt-1">
-                      ⏳ QR কোডটি প্রতি ২০ সেকেন্ডে রিফ্রেশ হয়। স্ক্যান করার সাথে সাথে অটোমেটিক কানেক্ট হয়ে যাবে।
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold pt-1 flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                      একবার স্ক্যান করলেই ক্লাউড ডাটাবেজে ৩০ দিনের জন্য সেভ থাকবে — বারবার স্ক্যান করতে হবে না!
                     </p>
                   </div>
                 </div>
