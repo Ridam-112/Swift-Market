@@ -191,6 +191,22 @@ export default function ShopDetail() {
     };
   }, [productsHasMore, productsLoading, productsLoadingMore, shop, productsPage, loadProducts]);
 
+  const vendorProducts = useMemo(() => {
+    if (shopProducts.length > 0) return shopProducts;
+    if (!shop?.id || !Array.isArray(products)) return [];
+    return products.filter(p => Boolean(p && (p.vendorId === shop.id || p.shopId === shop.id)));
+  }, [shopProducts, products, shop?.id]);
+
+  const filteredProducts = useMemo(() => {
+    if (!productSearch.trim()) return vendorProducts;
+    const q = productSearch.toLowerCase().trim();
+    return vendorProducts.filter(p =>
+      (p?.name || "").toLowerCase().includes(q) ||
+      (p?.description || "").toLowerCase().includes(q) ||
+      (p?.category || "").toLowerCase().includes(q)
+    );
+  }, [vendorProducts, productSearch]);
+
   if (shopsLoading || fetchLoading || (!shop && !notFound && !isInitialCheckDone)) {
     return (
       <div className="pb-24 min-h-[100dvh] animate-pulse">
@@ -231,12 +247,6 @@ export default function ShopDetail() {
 
   if (!shop) return null;
 
-  const vendorProducts = useMemo(() => {
-    if (shopProducts.length > 0) return shopProducts;
-    if (!Array.isArray(products) || !shop?.id) return [];
-    return products.filter(p => Boolean(p && (p.vendorId === shop.id || p.shopId === shop.id)));
-  }, [shopProducts, products, shop?.id]);
-
   const isFoodShop = ['restaurant', 'cafe', 'cloud-kitchen', 'sweet-shop', 'bakery', 'fast-food', 'food', 'food_junction', 'cake'].some(t => 
     (shop.shopType || '').toLowerCase().includes(t) || 
     (shop.category || '').toLowerCase().includes(t) ||
@@ -249,16 +259,6 @@ export default function ShopDetail() {
   const seoTitle = `${shop.storeName || "Shop"} (Balurghat) — Official Storefront & Online Ordering | SwiftMart`;
   const seoDescription = `Order directly from ${shop.storeName || "Shop"}'s official online storefront in Balurghat on SwiftMart. ${shop.category ? `${shop.category} · ` : ""}Instant 10-15 min local delivery across Balurghat Pincodes 733101 & 733103. Live menu, verified prices, discounts & deals. ${vendorProducts.length > 0 ? `${vendorProducts.length} items available.` : ""}`;
   const seoKeywords = `${shop.storeName || "Shop"}, ${shop.storeName || "Shop"} Balurghat, ${shop.storeName || "Shop"} storefront, ${shop.storeName || "Shop"} online shop, ${shop.storeName || "Shop"} menu, ${shop.storeName || "Shop"} delivery, order ${shop.storeName || "Shop"} online, SwiftMart Balurghat, Balurghat quick commerce, ${shop.category || 'grocery store'}`;
-
-  const filteredProducts = useMemo(() => {
-    if (!productSearch.trim()) return vendorProducts;
-    const q = productSearch.toLowerCase().trim();
-    return vendorProducts.filter(p =>
-      (p?.name || "").toLowerCase().includes(q) ||
-      (p?.description || "").toLowerCase().includes(q) ||
-      (p?.category || "").toLowerCase().includes(q)
-    );
-  }, [vendorProducts, productSearch]);
 
   const handleShare = () => {
     const fullUrl = shopCanonicalUrl;
