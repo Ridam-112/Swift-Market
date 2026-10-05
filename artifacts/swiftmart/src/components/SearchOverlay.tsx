@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, ArrowRight, Store, PackageSearch } from "lucide-react";
 import { Link } from "wouter";
 import { useProducts } from "@/hooks/useProducts";
+import { api } from "@/lib/api";
 import { formatINR } from "@/lib/currency";
 import type { Product } from "@/types";
 
@@ -72,9 +73,9 @@ export function SearchOverlay({ isOpen, onClose }: Props) {
     }
     const timer = setTimeout(() => {
       api.get<{ success: boolean; products: any[] }>(`/products?search=${encodeURIComponent(q)}&limit=30`)
-        .then(d => {
+        .then((d: { success: boolean; products: any[] }) => {
           if (d.success && Array.isArray(d.products)) {
-            setServerResults(d.products.map(p => ({
+            setServerResults(d.products.map((p: any) => ({
               id: p._id || p.id,
               name: p.name,
               category: p.category,

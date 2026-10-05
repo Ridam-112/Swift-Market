@@ -89,10 +89,6 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
   );
 
   const handleAdd = () => {
-    if (!user) {
-      openLoginModal("Please log in to add items to your cart");
-      return;
-    }
     if (isCustomCake) {
       if (product.shopId) {
         navigate(getShopUrl({ id: product.shopId, shopName: product.shopName }));
@@ -110,10 +106,6 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
   };
 
   const handleStepperChange = (newQty: number) => {
-    if (!user) {
-      openLoginModal("Please log in to update your cart");
-      return;
-    }
     if (hasVariants) {
       navigate(`/product/${product.id}`);
     } else {
@@ -122,10 +114,6 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
   };
 
   const handleWeightChange = (grams: number) => {
-    if (!user) {
-      openLoginModal("Please log in to update your cart");
-      return;
-    }
     updateWeight(simpleKey, grams);
   };
 

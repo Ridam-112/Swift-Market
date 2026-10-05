@@ -11,7 +11,7 @@ import { CartSummary } from "@/components/CartSummary";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Wallet, Banknote, Loader2, AlertCircle, Tag, X, Zap, Clock, Store, MapPin, Bike, Package } from "lucide-react";
+import { Plus, Wallet, Banknote, Loader2, AlertCircle, Tag, X, Zap, Clock, Store, MapPin, Bike, Package, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -45,13 +45,29 @@ import { SEO } from "@/components/SEO";
 
 export default function Checkout() {
   const [, setLocation] = useLocation();
-  const { items, subtotal, clearCart } = useCart();
+  const { items, subtotal, clearCart, removeFromCart } = useCart();
   const { user, addAddress, selectedDeliveryAddress, setSelectedDeliveryAddress } = useAuth();
   const { shops } = useShops();
+
+  const allAddresses = useMemo(() => {
+    const list = [...(user?.addresses || [])];
+    if (selectedDeliveryAddress && !list.some(a => a.id === selectedDeliveryAddress.id)) {
+      list.unshift(selectedDeliveryAddress);
+    }
+    return list;
+  }, [user?.addresses, selectedDeliveryAddress]);
 
   const [selectedAddress, setSelectedAddress] = useState<string | null>(
     selectedDeliveryAddress?.id || user?.addresses[0]?.id || null
   );
+  const [phone, setPhone] = useState(user?.phone || "");
+
+  useEffect(() => {
+    if (user?.phone && !phone) {
+      setPhone(user.phone);
+    }
+  }, [user?.phone, phone]);
+
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [deliverySlot, setDeliverySlot] = useState<'instant' | 'standard' | 'saver'>('instant');
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'COD'>('UPI');
@@ -75,7 +91,7 @@ export default function Checkout() {
     }
   }, [items.length, orderPlaced, setLocation]);
 
-  const address = user?.addresses.find(a => a.id === selectedAddress);
+  const address = allAddresses.find(a => a.id === selectedAddress) || (selectedDeliveryAddress?.id === selectedAddress ? selectedDeliveryAddress : selectedDeliveryAddress) || allAddresses[0];
   const addressPincodeInvalid = address && !isServicePincode(address.pincode);
 
   // Unique shops in cart
@@ -258,13 +274,14 @@ export default function Checkout() {
     shopDeliveryCharge: number,
     shopCouponDiscount: number,
     shopCouponCode?: string,
+    customerPhoneNum?: string,
   ) => {
     const shopObj = shops.find(s => s.id === sid);
     return api.post<ApiOrderResponse>("/orders", {
       shopId: sid,
       shopName: shopObj?.storeName ?? "Unknown Shop",
-      customerName: user!.name,
-      customerPhone: user!.phone,
+      customerName: user!.name || "Customer",
+      customerPhone: customerPhoneNum || phone || user?.phone || "",
       items: shopItems.map(item => {
         // Compute the effective unit price for this variant (weight-adjusted if applicable)
         const basePrice = item.product.discountedPrice != null && item.product.discountedPrice < item.product.price
@@ -340,6 +357,12 @@ export default function Checkout() {
       return;
     }
 
+    const rawPhone = (phone || user?.phone || "").replace(/\D/g, "");
+    if (!rawPhone || rawPhone.length < 10) {
+      toast.error("Please enter a valid 10-digit mobile number for delivery updates.");
+      return;
+    }
+
     if (!user) {
       toast.error("Please sign in to place an order");
       return;
@@ -397,8 +420,12 @@ export default function Checkout() {
         const shopCouponCode     = !couponAppliedToFirst ? couponApplied?.code : undefined;
         couponAppliedToFirst = true;
 
-        const data = await createOrderForShop(sid, shopItems, shopSub, slotFee, shopCouponDiscount, shopCouponCode);
+        const data = await createOrderForShop(sid, shopItems, shopSub, slotFee, shopCouponDiscount, shopCouponCode, rawPhone);
         createdOrderIds.push(data.order._id);
+        // Remove succeeded shop items from cart immediately
+        for (const it of shopItems) {
+          removeFromCart(it.product.id);
+        }
       }
 
       setOrderPlaced(true);
@@ -451,7 +478,7 @@ export default function Checkout() {
             />
           ) : (
             <div className="grid gap-3">
-              {user?.addresses.map(addr => (
+              {allAddresses.map(addr => (
                 <AddressCard
                   key={addr.id}
                   address={addr}
@@ -462,7 +489,7 @@ export default function Checkout() {
                   }}
                 />
               ))}
-              {(!user?.addresses || user.addresses.length === 0) && (
+              {allAddresses.length === 0 && (
                 <button
                   onClick={() => setShowAddressForm(true)}
                   className="text-center p-6 bg-card rounded-2xl neu-inset text-muted-foreground hover:text-primary transition-colors w-full"
@@ -488,6 +515,28 @@ export default function Checkout() {
               Quick Delivery available — this shop is in your area!
             </div>
           )}
+        </section>
+
+        {/* ── Contact Mobile Number ── */}
+        <section className="bg-card rounded-2xl p-4 neu-card space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm flex items-center gap-2">
+              <Phone className="w-4 h-4 text-primary" /> Delivery Contact Number
+            </h3>
+            <span className="text-[11px] text-muted-foreground">Required for rider calls & SMS</span>
+          </div>
+          <div className="flex gap-2">
+            <div className="flex items-center bg-background neu-inset rounded-xl px-3 text-xs font-bold text-muted-foreground">
+              +91
+            </div>
+            <Input
+              type="tel"
+              placeholder="Enter 10-digit mobile number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+              className="bg-background rounded-xl text-sm font-semibold flex-1"
+            />
+          </div>
         </section>
 
         {/* ── Delivery ETA Banner ── */}

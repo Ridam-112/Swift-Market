@@ -6,7 +6,7 @@ import { CartSummary } from "@/components/CartSummary";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, AlertCircle } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { SectionHeader } from "@/components/SectionHeader";
 import { AddonSuggestions } from "@/components/AddonSuggestions";
 import { cartKey } from "@/context/CartContext";
@@ -17,13 +17,16 @@ import { SEO } from "@/components/SEO";
 import { isFoodCategory, calculateDeliveryFee } from "@/lib/deliveryEta";
 
 export default function Cart() {
+  const [, setLocation] = useLocation();
   const { user, openLoginModal } = useAuth();
   const { items, subtotal } = useCart();
   const { shops } = useShops();
 
-  const cartShopId = items[0]?.product.vendorId;
-  const cartShop = cartShopId ? shops.find(s => s.id === cartShopId) : null;
-  const shopClosed = cartShop ? !cartShop.isOpen : false;
+  const uniqueShopIds = [...new Set(items.map(i => i.product.vendorId))];
+  const closedShops = uniqueShopIds
+    .map(id => shops.find(s => s.id === id))
+    .filter((s): s is NonNullable<typeof s> => !!s && !s.isOpen);
+  const shopClosed = closedShops.length > 0;
   const belowMinimum = subtotal < MINIMUM_ORDER_AMOUNT;
 
   const hasFood = items.some(i => {
@@ -67,7 +70,9 @@ export default function Cart() {
           <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
           <div>
             <p className="font-bold text-sm">Shop Closed</p>
-            <p className="text-xs mt-0.5 opacity-80">{cartShop?.storeName} has paused orders. Checkout is disabled until the shop reopens.</p>
+            <p className="text-xs mt-0.5 opacity-80">
+              {closedShops.map(s => s.storeName).join(", ")} {closedShops.length === 1 ? "has" : "have"} paused orders. Please remove their items to proceed.
+            </p>
           </div>
         </div>
       )}
@@ -118,7 +123,7 @@ export default function Cart() {
                 if (!user) {
                   openLoginModal("Please log in to proceed to checkout");
                 } else {
-                  window.location.href = "/checkout";
+                  setLocation("/checkout");
                 }
               }}
             >

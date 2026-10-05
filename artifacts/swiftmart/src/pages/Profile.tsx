@@ -69,12 +69,12 @@ export default function Profile() {
     }
     setIsSubmittingHelp(true);
     try {
-      const res = await fetch("/api/support", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("sm_at")}` },
-        body: JSON.stringify({ subject: helpSubject.trim(), message: helpMessage.trim(), category: helpCategory, userName: user.name }),
+      const data = await api.post<{ success: boolean; message?: string }>("/support", {
+        subject: helpSubject.trim(),
+        message: helpMessage.trim(),
+        category: helpCategory,
+        userName: user.name,
       });
-      const data = await res.json() as { success: boolean; message?: string };
       if (!data.success) throw new Error(data.message ?? "Failed");
       toast.success("Your complaint has been submitted. We'll get back to you shortly.");
       setHelpSubject("");

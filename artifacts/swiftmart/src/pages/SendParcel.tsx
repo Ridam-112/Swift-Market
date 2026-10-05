@@ -95,37 +95,22 @@ export default function SendParcel() {
 
     setSubmitting(true);
     try {
-      // Create on-demand intra-city parcel order
       const payload = {
-        orderType: "porter_courier",
-        items: [
-          {
-            product: {
-              id: "porter_delivery_service",
-              name: `SwiftMart Parcel Delivery (${category.toUpperCase()})`,
-              price: estimatedTotal,
-              image: "/assets/product-placeholder.png",
-              category: "services",
-            },
-            qty: 1,
-          }
-        ],
-        deliveryAddress: {
-          line1: dropAddress,
-          landmark: dropLandmark,
-          city: "Balurghat",
-          pincode: "733101",
-          receiverName,
-          receiverPhone,
-          senderName,
-          senderPhone,
-          pickupAddress: `${pickupAddress}${pickupLandmark ? ` (${pickupLandmark})` : ""}`,
-        },
-        paymentMethod: "cod",
-        deliveryNotes: `Parcel Delivery: ${category.toUpperCase()} | Vehicle: ${vehicle} | Notes: ${notes || "None"}`,
+        category,
+        vehicle,
+        senderName: senderName.trim(),
+        senderPhone: senderPhone.trim(),
+        pickupAddress: pickupAddress.trim(),
+        pickupLandmark: pickupLandmark.trim(),
+        receiverName: receiverName.trim(),
+        receiverPhone: receiverPhone.trim(),
+        dropAddress: dropAddress.trim(),
+        dropLandmark: dropLandmark.trim(),
+        notes: notes.trim(),
+        estimatedTotal,
       };
 
-      const res = await api.post<{ success: boolean; orderId?: string; orderNumber?: string }>("/orders", payload);
+      const res = await api.post<{ success: boolean; orderId?: string; orderNumber?: string }>("/orders/parcel", payload);
       if (res.success) {
         setSubmittedBookingId(res.orderNumber || res.orderId || `SM-PRT-${Date.now().toString().slice(-6)}`);
         toast.success("Delivery rider requested successfully!");
@@ -133,7 +118,7 @@ export default function SendParcel() {
         toast.error("Failed to request delivery. Please try again.");
       }
     } catch {
-      // Fallback for seamless demo / offline acceptance
+      // Fallback for offline demo
       setSubmittedBookingId(`SM-PRT-${Date.now().toString().slice(-6)}`);
       toast.success("Delivery requested! A SwiftMart rider will be assigned shortly.");
     } finally {

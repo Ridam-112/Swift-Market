@@ -9,7 +9,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { Cake, Upload, Sparkles, CheckCircle2, Truck, Store, Calendar, Clock, Image as ImageIcon, AlertCircle } from "lucide-react";
+import { Cake, Upload, Sparkles, CheckCircle2, Truck, Store, Calendar, Clock, Image as ImageIcon, AlertCircle, X } from "lucide-react";
 
 interface CustomCakeModalProps {
   isOpen: boolean;

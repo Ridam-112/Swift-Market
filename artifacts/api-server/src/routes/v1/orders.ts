@@ -531,6 +531,111 @@ router.get("/:id/rider-location", authenticate, validateUuidParams("id"), async 
   });
 });
 
+// POST /api/orders/parcel — on-demand intra-city parcel / courier delivery booking
+router.post("/parcel", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const body = req.body as Record<string, any>;
+    const senderName = String(body["senderName"] || "Sender").trim();
+    const senderPhone = String(body["senderPhone"] || req.user?.phone || "").trim();
+    const receiverName = String(body["receiverName"] || "").trim();
+    const receiverPhone = String(body["receiverPhone"] || "").trim();
+    const pickupAddress = String(body["pickupAddress"] || "").trim();
+    const dropAddress = String(body["dropAddress"] || "").trim();
+    const vehicle = String(body["vehicle"] || "two_wheeler").trim();
+    const category = String(body["category"] || "general").trim();
+    const notes = String(body["notes"] || "").trim();
+    const estimatedTotal = Number(body["estimatedTotal"]) || 39;
+
+    if (!receiverName || !receiverPhone || !dropAddress || !pickupAddress) {
+      res.status(400).json({ success: false, message: "Missing required parcel pickup or delivery information." });
+      return;
+    }
+
+    // Lookup a shopId or fallback
+    let shopId = "00000000-0000-0000-0000-000000000001";
+    let shopName = "SwiftMart Parcel Express";
+    try {
+      const [existingShop] = await db.select({ id: shops.id, shopName: shops.shopName }).from(shops).limit(1);
+      if (existingShop) {
+        shopId = existingShop.id;
+        shopName = `SwiftMart Parcel Express (${existingShop.shopName})`;
+      }
+    } catch (_) {}
+
+    const orderId = crypto.randomUUID();
+    const deliveryOtp = String(Math.floor(1000 + Math.random() * 9000));
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const orderNumber = `SM-PRT-${randomSuffix}`;
+
+    const parcelItem = {
+      productId: crypto.randomUUID(),
+      productName: `SwiftMart Parcel Delivery (${category.toUpperCase()})`,
+      qty: 1,
+      price: estimatedTotal,
+      category: "parcel_courier",
+      totalPrice: estimatedTotal,
+    };
+
+    const deliveryAddress = {
+      label: "Parcel Delivery",
+      line1: dropAddress,
+      line2: body["dropLandmark"] ? `Landmark: ${body["dropLandmark"]}` : "",
+      city: "Balurghat",
+      pincode: "733101",
+      receiverName,
+      receiverPhone,
+      senderName,
+      senderPhone,
+      pickupAddress: `${pickupAddress}${body["pickupLandmark"] ? ` (Near ${body["pickupLandmark"]})` : ""}`,
+      vehicle,
+      category,
+      notes,
+    };
+
+    const [order] = await db.insert(orders).values({
+      id: orderId,
+      customerId: userId,
+      customerName: senderName,
+      customerPhone: senderPhone || req.user?.phone || "",
+      shopId,
+      shopName,
+      items: [parcelItem],
+      subtotal: 0,
+      deliveryCharge: estimatedTotal,
+      packagingFee: 0,
+      gstAmount: 0,
+      couponDiscount: 0,
+      netAmount: estimatedTotal,
+      status: "placed",
+      deliveryType: "instant",
+      paymentMethod: "COD",
+      paymentStatus: "pending",
+      address: deliveryAddress,
+      deliveryOtp,
+    }).returning();
+
+    // Send in-app notification to customer
+    void createNotificationLimited(userId, {
+      type: "order_update",
+      title: "Parcel Booking Confirmed! 📦",
+      message: `Your intra-city parcel booking #${orderNumber} has been placed. A delivery partner is being assigned.`,
+      data: { orderId, url: `/orders` },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Parcel delivery booking created successfully",
+      orderId,
+      orderNumber,
+      order: mi(order!),
+    });
+  } catch (err: any) {
+    logger.error({ err: err?.message || err }, "POST /api/orders/parcel failed");
+    res.status(500).json({ success: false, message: "Failed to place parcel delivery order." });
+  }
+});
+
 // POST /api/orders
 // Bug fixes applied:
 //   #3 — All writes (stock, order, payout, coupon) are wrapped in a single DB transaction.

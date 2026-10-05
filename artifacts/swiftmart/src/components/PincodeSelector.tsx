@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { MapPin, CheckCircle2, XCircle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -92,8 +92,17 @@ export function PincodeSelector({ onDone, compact = false }: PincodeSelectorProp
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm space-y-6 py-8"
+        className="w-full max-w-sm space-y-6 py-8 relative"
       >
+        <button
+          type="button"
+          onClick={() => onDone?.()}
+          className="absolute right-0 top-6 p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          aria-label="Close"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
         <div className="text-center space-y-2">
           <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center text-primary mx-auto neu-inset mb-4">
             <MapPin className="w-8 h-8" />
@@ -135,8 +144,8 @@ export function PincodeSelector({ onDone, compact = false }: PincodeSelectorProp
                 className="bg-background neu-inset border-none h-12 rounded-xl pr-10"
                 maxLength={6}
               />
-              {pincodeValid && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />}
-              {pincodeOutOfArea && <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-destructive" />}
+              {pincodeValid && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />}
+              {pincodeOutOfArea && <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-destructive" />}
             </div>
 
             {pincodeValid && (
@@ -153,13 +162,24 @@ export function PincodeSelector({ onDone, compact = false }: PincodeSelectorProp
           </div>
         </div>
 
-        <Button
-          onClick={handleSave}
-          disabled={saving || !pincodeValid || !addressLine.trim() || !area.trim()}
-          className="w-full h-12 rounded-2xl text-base font-bold shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving…</> : "Continue to SwiftMart"}
-        </Button>
+        <div className="flex flex-col gap-2">
+          <Button
+            onClick={handleSave}
+            disabled={saving || !pincodeValid || !addressLine.trim() || !area.trim()}
+            className="w-full h-12 rounded-2xl text-base font-bold shadow-none neu-card bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving…</> : "Continue to SwiftMart"}
+          </Button>
+
+          <Button
+            variant="ghost"
+            type="button"
+            onClick={() => onDone?.()}
+            className="w-full h-10 rounded-2xl text-sm font-semibold text-muted-foreground hover:text-foreground"
+          >
+            Browse as Guest / Set Later →
+          </Button>
+        </div>
 
         <p className="text-xs text-center text-muted-foreground">
           Available areas: Balurghat (733101 · 733103)

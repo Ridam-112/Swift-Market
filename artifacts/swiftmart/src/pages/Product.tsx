@@ -309,10 +309,6 @@ export default function Product() {
   const { user, openLoginModal } = useAuth();
 
   const handleAddToCart = () => {
-    if (!user) {
-      openLoginModal("Please log in to add this item to your cart");
-      return;
-    }
     if (!variantSelectionValid()) {
       setShowVariantError(true);
       return;
@@ -644,7 +640,6 @@ export default function Product() {
                 presets={weightPresetList}
                 maxGrams={maxGrams}
                 onChange={(grams) => {
-                  if (!user) { openLoginModal("Please log in to update your cart"); return; }
                   updateWeight(itemKey, grams);
                 }}
               />
@@ -658,7 +653,6 @@ export default function Product() {
               qty={qty}
               maxQty={limit !== undefined ? (product.stock > 0 ? Math.min(limit, product.stock) : limit) : product.stock}
               onChange={(newQty) => {
-                if (!user) { openLoginModal("Please log in to update your cart"); return; }
                 updateQty(itemKey, newQty);
               }}
             />

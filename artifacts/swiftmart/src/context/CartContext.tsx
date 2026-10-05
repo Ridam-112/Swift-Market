@@ -185,10 +185,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const matchesKey = (item: CartItem, targetKey: string): boolean => {
     if (!item?.product?.id) return false;
     const fullKey = cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams, item.selectedVariantId);
+    if (fullKey === targetKey) return true;
+
     const shortKey = cartKey(item.product.id, item.selectedColor, item.selectedSize, item.selectedGrams);
+    if (shortKey === targetKey) return true;
+
     const vIdKey = cartKey(item.product.id, item.selectedColor, item.selectedSize, undefined, item.selectedVariantId);
+    if (vIdKey === targetKey) return true;
+
+    const isTargetKeyCompound = targetKey.includes("::");
+    if (!isTargetKeyCompound) {
+      return item.product.id === targetKey;
+    }
+
     const bareKey = cartKey(item.product.id);
-    return fullKey === targetKey || shortKey === targetKey || vIdKey === targetKey || item.product.id === targetKey || bareKey === targetKey;
+    if (targetKey === bareKey) {
+      return !item.selectedColor && !item.selectedSize && !item.selectedGrams && !item.selectedVariantId;
+    }
+
+    return false;
   };
 
   const removeFromCart = (key: string) => {

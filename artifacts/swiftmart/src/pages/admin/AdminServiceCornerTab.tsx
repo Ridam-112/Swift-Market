@@ -415,7 +415,7 @@ export function AdminServiceCornerTab() {
                     {/* Status quick select */}
                     <select
                       value={b.status}
-                      onChange={(e) => handleQuickStatusChange(b.id || b._id, e.target.value)}
+                      onChange={(e) => handleQuickStatusChange(b.id || b._id || "", e.target.value)}
                       className="px-2.5 py-1.5 rounded-xl bg-muted text-foreground text-xs font-semibold border border-border focus:outline-hidden"
                     >
                       <option value="requested">🟡 Requested</option>
@@ -437,7 +437,7 @@ export function AdminServiceCornerTab() {
 
                     <button
                       type="button"
-                      onClick={() => handleDeleteBooking(b.id || b._id)}
+                      onClick={() => handleDeleteBooking(b.id || b._id || "")}
                       className="p-1.5 text-muted-foreground hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition-colors"
                       title="Delete booking"
                     >
