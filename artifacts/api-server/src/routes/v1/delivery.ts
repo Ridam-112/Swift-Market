@@ -1,6 +1,6 @@
 import { Router, type Response } from "express";
 import { db, deliveryPartners, deliveryChargeRules, deliverySettings, orders, users, shops, pickupVerificationSessions, pickupScanLogs } from "@workspace/db";
-import { eq, desc, and, or, inArray, sql } from "drizzle-orm";
+import { eq, ne, desc, and, or, inArray, sql } from "drizzle-orm";
 import { authenticate, optionalAuth, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { validateUuidParams } from "../../middlewares/validateUuid.js";
 import { mi, miArr } from "../../utils/mapId.js";
@@ -437,6 +437,9 @@ router.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("ord
   res.json({ success: true, order: mi(updated!) });
 });
 
+// In-memory brute-force protection for delivery OTP verification
+const otpAttemptTracker = new Map<string, { attempts: number; lockedUntil: number }>();
+
 // POST /delivery/me/orders/:orderId/verify-otp — rider enters customer OTP to confirm delivery
 router.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams("orderId"), async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.user!.userId;
@@ -454,9 +457,40 @@ router.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams("
   if (order.status === "delivered" || order.status === "cancelled" || order.status === "refunded") {
     res.status(400).json({ success: false, message: `Order is already ${order.status.replace(/_/g, " ")}` }); return;
   }
-  if (!order.deliveryOtp || order.deliveryOtp !== String(otp ?? "").trim()) {
-    res.status(400).json({ success: false, message: "Incorrect OTP. Please ask the customer for the correct code." }); return;
+
+  // Brute-force lockout check (Requirement #10)
+  const now = Date.now();
+  const attemptInfo = otpAttemptTracker.get(orderId);
+  if (attemptInfo && attemptInfo.lockedUntil > now) {
+    const remainingSecs = Math.ceil((attemptInfo.lockedUntil - now) / 1000);
+    res.status(429).json({
+      success: false,
+      message: `Too many incorrect OTP attempts. Verification locked for ${remainingSecs} seconds.`,
+    });
+    return;
   }
+
+  if (!order.deliveryOtp || order.deliveryOtp !== String(otp ?? "").trim()) {
+    const currentAttempts = (attemptInfo?.attempts || 0) + 1;
+    if (currentAttempts >= 5) {
+      otpAttemptTracker.set(orderId, { attempts: 0, lockedUntil: now + 15 * 60 * 1000 });
+      res.status(429).json({
+        success: false,
+        message: "Too many incorrect OTP attempts. Verification locked for 15 minutes. Contact support if needed.",
+      });
+      return;
+    } else {
+      otpAttemptTracker.set(orderId, { attempts: currentAttempts, lockedUntil: 0 });
+      res.status(400).json({
+        success: false,
+        message: `Incorrect OTP. Please ask the customer for the correct code. (${5 - currentAttempts} attempts remaining)`,
+      });
+      return;
+    }
+  }
+
+  // Clear tracker on success
+  otpAttemptTracker.delete(orderId);
 
   const isCod = (order.paymentMethod ?? "COD").toUpperCase() === "COD";
   const paymentStatusUpdate = (isCod && confirmCash) ? { paymentStatus: "paid" } : {};
@@ -590,17 +624,29 @@ router.post("/orders/:id/accept", authenticate, validateUuidParams("id"), async 
     return;
   }
 
-  // Atomic update: only succeeds if deliveryPartnerId is still NULL
+  // Atomic update: only succeeds if deliveryPartnerId is still NULL and order is not cancelled/refunded
   const updatedRows = await db
     .update(orders)
     .set({
       deliveryPartnerId: partner.id,
       updatedAt: new Date(),
     })
-    .where(and(eq(orders.id, orderId), eq(orders.deliveryPartnerId, null as any)))
+    .where(
+      and(
+        eq(orders.id, orderId),
+        eq(orders.deliveryPartnerId, null as any),
+        ne(orders.status, "cancelled"),
+        ne(orders.status, "refunded")
+      )
+    )
     .returning();
 
   if (updatedRows.length === 0) {
+    const [existing] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, orderId)).limit(1);
+    if (existing?.status === "cancelled" || existing?.status === "refunded") {
+      res.status(410).json({ success: false, message: "This order was cancelled by the customer or store." });
+      return;
+    }
     res.status(409).json({ success: false, message: "Order already accepted by another rider!" });
     return;
   }

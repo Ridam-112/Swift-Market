@@ -211,6 +211,24 @@ const VALID_STATUSES = new Set([
   "placed", "accepted", "preparing", "confirmed", "packed", "ready", "shipped", "out_for_delivery", "delivered", "cancelled", "refunded",
 ]);
 
+// Permitted order status state machine transitions (Requirement #4)
+const ALLOWED_ORDER_TRANSITIONS: Record<string, Set<string>> = {
+  placed:           new Set(["accepted", "preparing", "confirmed", "cancelled"]),
+  accepted:         new Set(["preparing", "packed", "ready", "cancelled"]),
+  preparing:        new Set(["packed", "ready", "cancelled"]),
+  confirmed:        new Set(["preparing", "packed", "ready", "cancelled"]),
+  packed:           new Set(["ready", "shipped", "out_for_delivery", "cancelled"]),
+  ready:            new Set(["shipped", "out_for_delivery", "cancelled"]),
+  shipped:          new Set(["out_for_delivery", "delivered", "cancelled"]),
+  out_for_delivery: new Set(["delivered", "cancelled"]),
+  delivered:        new Set([]), // Terminal state
+  cancelled:        new Set(["refunded"]),
+  refunded:         new Set([]), // Terminal state
+};
+
+// In-memory idempotency deduplication cache for rapid double-click orders (15-second TTL)
+const recentOrderDeduplication = new Map<string, { order: any; expires: number }>();
+
 // Restore stock for a list of order items and re-activate any that had gone out_of_stock
 async function restoreStock(items: OrderItem[]): Promise<void> {
   await Promise.all(items.map(async item => {
@@ -662,6 +680,29 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
   const items = parsed.data.items as OrderItemInput[];
   const shopId = String(body["shopId"] ?? "");
 
+  const rawRzpId = typeof body["razorpayOrderId"] === "string" && body["razorpayOrderId"].trim()
+    ? body["razorpayOrderId"].trim()
+    : null;
+
+  // 1. Prevent duplicate orders on Razorpay retries
+  if (rawRzpId) {
+    const [existingRzpOrder] = await db.select().from(orders).where(eq(orders.razorpayOrderId, rawRzpId)).limit(1);
+    if (existingRzpOrder) {
+      res.json({ success: true, order: mi(existingRzpOrder), message: "Order already placed" });
+      return;
+    }
+  }
+
+  // 2. In-memory idempotency check: rapid duplicate submissions (double clicks / retries within 15s)
+  const itemsKey = items.map(i => `${i.productId}:${i.qty}:${i.selectedGrams || ""}:${i.selectedVariantId || ""}`).sort().join("|");
+  const idempotencyKey = `${req.user!.userId}_${shopId}_${itemsKey}`;
+  const now = Date.now();
+  const cachedRecent = recentOrderDeduplication.get(idempotencyKey);
+  if (cachedRecent && cachedRecent.expires > now) {
+    res.json({ success: true, order: cachedRecent.order, message: "Order already processed" });
+    return;
+  }
+
   // Pre-transaction read: fetch shop (needed for commission resolution + payout + packaging/GST)
   const [shop] = await db
     .select({ id: shops.id, ownerId: shops.ownerId, shopType: shops.shopType, ownerName: shops.ownerName, shopName: shops.shopName, phone: shops.phone, packagingCharge: shops.packagingCharge, gstEnabled: shops.gstEnabled, gstRate: shops.gstRate })
@@ -1094,6 +1135,7 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
     });
   } catch { /* ignore admin notification errors */ }
 
+  recentOrderDeduplication.set(idempotencyKey, { order: mi(createdOrder), expires: Date.now() + 15000 });
   res.status(201).json({ success: true, order: mi(createdOrder) });
 });
 
@@ -1107,6 +1149,16 @@ router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: 
     return;
   }
 
+  const [current] = await db.select({
+    id: orders.id,
+    status: orders.status,
+    customerId: orders.customerId,
+    shopId: orders.shopId,
+    couponCode: orders.couponCode,
+    items: orders.items,
+  }).from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!current) { res.status(404).json({ success: false, message: "Not found" }); return; }
+
   const role = req.user!.role;
   const userId = req.user!.userId;
 
@@ -1115,11 +1167,16 @@ router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: 
       res.status(403).json({ success: false, message: "Customers can only cancel orders" });
       return;
     }
-    const [customerOrder] = await db.select({ customerId: orders.customerId })
-      .from(orders).where(eq(orders.id, orderId)).limit(1);
-    if (!customerOrder) { res.status(404).json({ success: false, message: "Not found" }); return; }
-    if (customerOrder.customerId !== userId) {
-      res.status(403).json({ success: false, message: "Forbidden" });
+    if (current.customerId !== userId) {
+      res.status(403).json({ success: false, message: "Forbidden: not your order" });
+      return;
+    }
+    // Customers may only cancel an order before store preparation has begun (Requirement #4)
+    if (current.status !== "placed" && current.status !== "accepted") {
+      res.status(400).json({
+        success: false,
+        message: `Order cannot be cancelled directly once preparation has started (${current.status.replace(/_/g, " ")}). Please contact the store or support.`,
+      });
       return;
     }
   } else if (role === "vendor") {
@@ -1129,18 +1186,27 @@ router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: 
     }
     const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq(shops.ownerId, userId));
     const vendorShopIds = new Set(vendorShops.map(s => s.id));
-    const [vendorOrder] = await db.select({ shopId: orders.shopId })
-      .from(orders).where(eq(orders.id, orderId)).limit(1);
-    if (!vendorOrder) { res.status(404).json({ success: false, message: "Not found" }); return; }
-    if (!vendorShopIds.has(vendorOrder.shopId)) {
+    if (!vendorShopIds.has(current.shopId)) {
       res.status(403).json({ success: false, message: "Forbidden: you do not own this shop" });
       return;
     }
   }
 
-  const [current] = await db.select({ status: orders.status, couponCode: orders.couponCode })
-    .from(orders).where(eq(orders.id, orderId)).limit(1);
-  if (!current) { res.status(404).json({ success: false, message: "Not found" }); return; }
+  // Idempotent: already at requested status
+  if (current.status === status) {
+    res.json({ success: true, order: mi(current) });
+    return;
+  }
+
+  // State Machine Validation (Requirement #4)
+  const allowed = ALLOWED_ORDER_TRANSITIONS[current.status];
+  if (!allowed || !allowed.has(status)) {
+    res.status(400).json({
+      success: false,
+      message: `Invalid order status transition from '${current.status}' to '${status}'.`,
+    });
+    return;
+  }
 
   const update: Record<string, unknown> = { status };
   if (cancelReason) update["cancelReason"] = cancelReason;

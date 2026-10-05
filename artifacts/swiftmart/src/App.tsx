@@ -472,11 +472,7 @@ function Router() {
           </AdminLayout>
         </Route>
 
-        {/* Root-level shop vanity URL: swiftmart.space/(shop-name) */}
-        <Route path="/:shopSlug">
-          <PublicLayout><ShopDetail /></PublicLayout>
-        </Route>
-
+        {/* Fallback 404 for all unmatched routes */}
         <Route>
           <PublicLayout><NotFound /></PublicLayout>
         </Route>

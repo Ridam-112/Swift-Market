@@ -179,7 +179,7 @@ export default function SearchPage() {
   const filteredStores = useMemo(() => {
     if (queryTerms.length === 0) return shops;
     return shops.filter((s) => {
-      const sName = (s.storeName || s.name || "").toLowerCase();
+      const sName = (s.storeName || (s as any).name || "").toLowerCase();
       const sCat = (s.category || "").toLowerCase();
       const sAddress = (s.address || "").toLowerCase();
       const sCity = (s.city || "").toLowerCase();

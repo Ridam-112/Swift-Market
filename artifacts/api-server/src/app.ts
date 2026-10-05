@@ -430,8 +430,10 @@ const RESERVED_ROOT_PATHS = new Set([
   "admin",
   "cart",
   "checkout",
+  "order",
   "orders",
   "profile",
+  "notifications",
   "vendor",
   "vendor-register",
   "vendor-status",
@@ -445,10 +447,19 @@ const RESERVED_ROOT_PATHS = new Set([
   "refund-cancellation",
   "search",
   "categories",
+  "category",
   "products",
+  "product",
+  "section",
   "shops",
   "stores",
   "grocery",
+  "services",
+  "service-corner",
+  "send-parcel",
+  "mall",
+  "super-mall",
+  "custom-cakes",
   "sitemap",
   "health",
   "robots.txt",
@@ -460,6 +471,110 @@ const RESERVED_ROOT_PATHS = new Set([
   "google-callback",
   "delete-account",
 ]);
+
+const KNOWN_SPA_PREFIXES = new Set([
+  "",
+  "stores",
+  "shop",
+  "shops",
+  "products",
+  "product",
+  "categories",
+  "category",
+  "section",
+  "grocery",
+  "services",
+  "service-corner",
+  "send-parcel",
+  "mall",
+  "super-mall",
+  "cart",
+  "checkout",
+  "order",
+  "orders",
+  "custom-cakes",
+  "profile",
+  "notifications",
+  "vendor-register",
+  "vendor-status",
+  "auth",
+  "about",
+  "contact-support",
+  "privacy",
+  "terms",
+  "refund-cancellation",
+  "search",
+  "vendor",
+  "admin",
+  "delivery",
+  "manager-panel",
+  "complete-profile",
+  "google-callback",
+  "delete-account",
+]);
+
+const STATIC_PAGE_SEO: Record<string, { title: string; desc: string }> = {
+  "": {
+    title: "SwiftMart — Everything You Need, Delivered Fast | Local Stores, Food & Services",
+    desc: "Shop from verified local stores, order food and fresh groceries, discover products, and book home electronics services across Balurghat on SwiftMart.",
+  },
+  "about": {
+    title: "About SwiftMart | Local Commerce, Food, Groceries & Services",
+    desc: "Learn about SwiftMart — Balurghat's local commerce platform connecting customers with verified local merchants, restaurants, and home service providers.",
+  },
+  "privacy": {
+    title: "Privacy Policy | SwiftMart",
+    desc: "Read the SwiftMart privacy policy to understand how customer, merchant, and delivery partner information is safely processed and protected.",
+  },
+  "terms": {
+    title: "Terms of Service | SwiftMart",
+    desc: "Terms and conditions governing the use of SwiftMart's local marketplace, delivery services, and vendor platform.",
+  },
+  "refund-cancellation": {
+    title: "Refund & Cancellation Policy | SwiftMart",
+    desc: "Transparent refund, return, and cancellation policies for grocery, food, retail orders and home service bookings on SwiftMart.",
+  },
+  "contact-support": {
+    title: "Contact & Support | SwiftMart",
+    desc: "Reach SwiftMart customer support for order tracking, payment inquiries, merchant help, and customer assistance.",
+  },
+  "search": {
+    title: "Search Products, Stores & Services | SwiftMart",
+    desc: "Search across hundreds of verified local stores, products, restaurant dishes, groceries, and home electronics repair services.",
+  },
+  "grocery": {
+    title: "Grocery & Fresh Essentials | SwiftMart",
+    desc: "Order fresh vegetables, fruits, dairy, staples, and daily household essentials from verified local grocers delivered fast to your doorstep.",
+  },
+  "services": {
+    title: "Service Corner | TV, AC, Appliances & Home Services | SwiftMart",
+    desc: "Book verified local technicians for TV, AC, refrigerator, washing machine, and electrical repairs with transparent pricing on SwiftMart.",
+  },
+  "service-corner": {
+    title: "Service Corner | TV, AC, Appliances & Home Services | SwiftMart",
+    desc: "Book verified local technicians for TV, AC, refrigerator, washing machine, and electrical repairs with transparent pricing on SwiftMart.",
+  },
+  "mall": {
+    title: "SwiftMart Mall | Direct Products & Collections",
+    desc: "Explore fashion, electronics, beauty, and home lifestyle collections delivered across India directly from SwiftMart Mall.",
+  },
+  "super-mall": {
+    title: "SwiftMart Mall | Direct Products & Collections",
+    desc: "Explore fashion, electronics, beauty, and home lifestyle collections delivered across India directly from SwiftMart Mall.",
+  },
+  "products": {
+    title: "All Products & Catalog | SwiftMart",
+    desc: "Browse our complete catalog of groceries, daily essentials, electronics, fashion, and home products with real-time stock and prices.",
+  },
+  "categories": {
+    title: "Browse by Category | SwiftMart",
+    desc: "Explore all product and store categories on SwiftMart including groceries, food, bakery, electronics, fashion, and home repairs.",
+  },
+  "send-parcel": {
+    title: "Send Parcel | Fast Local Doorstep Pickup & Delivery | SwiftMart",
+    desc: "Send documents, keys, packages, and parcels across the city with SwiftMart's reliable doorstep pickup and delivery partner network.",
+  },
+};
 // ─────────────────────────────────────────────────────────────────────────────
 
 const app: Express = express();
@@ -1065,6 +1180,47 @@ if (process.env.NODE_ENV === "production") {
           res.send(html);
           return;
         }
+      }
+
+      // ── 4. Static Pages Dynamic Metadata Injection ─────────────────────
+      const staticMeta = STATIC_PAGE_SEO[cleanPath];
+      if (staticMeta) {
+        let html = await fs.promises.readFile(indexPath, "utf8");
+        const escapeAttr = (s: string) =>
+          s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+        html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(staticMeta.title)}</title>`);
+        html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(staticMeta.desc)}" />`);
+        html = html.replace(/<link rel="canonical"[^>]*href=".*?"\s*\/?>/i, `<link rel="canonical" data-rh="true" href="${canonicalUrl}" />`);
+        html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(staticMeta.title)}" />`);
+        html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(staticMeta.desc)}" />`);
+        html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
+
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.send(html);
+        return;
+      }
+
+      // ── 5. Hard 404 for Unknown Non-App Routes (Soft-404 Elimination) ───
+      const firstSegment = cleanPath.split("/")[0]?.toLowerCase() || "";
+      const isKnownRoute =
+        cleanPath === "" ||
+        KNOWN_SPA_PREFIXES.has(firstSegment) ||
+        maps.bySlug.has(firstSegment) ||
+        maps.byId.has(firstSegment);
+
+      if (!isKnownRoute) {
+        let html = await fs.promises.readFile(indexPath, "utf8");
+        const title = "404 — Page Not Found | SwiftMart";
+        const desc = "The requested page was not found on SwiftMart. Return to home or explore local stores.";
+        const escapeAttr = (s: string) =>
+          s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+        html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(title)}</title>`);
+        html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(desc)}" /><meta name="robots" content="noindex, nofollow" />`);
+
+        res.status(404).setHeader("Content-Type", "text/html; charset=utf-8").send(html);
+        return;
       }
     } catch (injectionErr) {
       logger.error({ injectionErr }, "Failed to inject dynamic SEO metadata into index.html; serving standard SPA");

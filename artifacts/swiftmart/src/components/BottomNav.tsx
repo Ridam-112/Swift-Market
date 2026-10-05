@@ -30,7 +30,7 @@ export function BottomNav() {
   ];
 
   const tabs = role === 'vendor' ? vendorTabs : customerTabs;
-  const isCustomer = role !== 'vendor' && role !== 'delivery';
+  const isCustomer = role !== 'vendor';
   const showStickyCart = isCustomer && totalItems > 0 && !location.startsWith("/cart") && !location.startsWith("/checkout");
 
   return (
