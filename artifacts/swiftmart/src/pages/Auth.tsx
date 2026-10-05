@@ -94,12 +94,12 @@ function GoogleButton({
       type="button"
       onClick={onClick}
       disabled={configFetching}
-      className="w-full flex items-center gap-3 bg-white text-gray-800 font-medium text-sm rounded-xl px-4 h-12 border border-gray-200 hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-60 disabled:cursor-wait"
+      className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-800 font-semibold text-sm rounded-xl px-4 h-12 border border-slate-200 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-wait"
     >
       {configFetching
-        ? <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+        ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
         : <GoogleLogo />}
-      Continue with Google
+      <span className="font-semibold text-slate-800">Continue with Google</span>
     </button>
   );
 }

@@ -166,10 +166,10 @@ export function AuthModal() {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={googleLoading}
-              className="w-full flex items-center justify-center gap-3 bg-white dark:bg-card text-foreground font-bold text-sm rounded-2xl px-4 h-11 border border-border/80 hover:bg-muted/50 active:scale-[0.98] transition-all shadow-sm cursor-pointer disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 active:scale-[0.98] transition-all text-slate-800 font-semibold text-sm rounded-2xl px-4 h-11 border border-slate-200 shadow-sm cursor-pointer disabled:opacity-60"
             >
-              {googleLoading ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> : <GoogleLogo />}
-              <span>Continue with Google</span>
+              {googleLoading ? <Loader2 className="w-4 h-4 animate-spin text-slate-500" /> : <GoogleLogo />}
+              <span className="font-semibold text-slate-800">Continue with Google</span>
             </button>
 
             {isAndroidPhone && truecallerAppKey && (
