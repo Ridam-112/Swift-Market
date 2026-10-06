@@ -263,12 +263,11 @@ export function Header() {
 
           {/* Right side — icons + desktop nav */}
           <div className="flex items-center gap-1.5 md:gap-2 shrink-0 ml-auto md:ml-0">
-            {/* Desktop nav links (Requirement #6) */}
+            {/* Desktop customer nav links (Requirement #2: Stores, Mall, Services, Orders) */}
             {role === 'customer' && (
               <nav className="hidden md:flex items-center gap-1">
                 {[
                   { href: "/stores", icon: Store, label: "Stores" },
-                  { href: "/categories", icon: LayoutGrid, label: "Categories" },
                   { href: "/mall", icon: ShoppingBag, label: "Mall" },
                   { href: "/services", icon: Wrench, label: "Services" },
                   { href: "/orders", icon: Clock, label: "Orders" },
@@ -290,20 +289,6 @@ export function Header() {
                     </Link>
                   );
                 })}
-                {isAdmin && (
-                  <Link
-                    href="/admin"
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-all",
-                      location.startsWith("/admin")
-                        ? "bg-primary/10 text-primary neu-inset"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                    )}
-                  >
-                    <Shield className="w-4 h-4" />
-                    Admin
-                  </Link>
-                )}
               </nav>
             )}
 
@@ -361,24 +346,38 @@ export function Header() {
               </Link>
             )}
 
-            {/* Mobile search + cart icons */}
+            {/* Cart link — desktop & mobile */}
             {role === 'customer' && (
-              <>
-                <Link href="/cart" aria-label={totalItems > 0 ? `Shopping cart (${totalItems} items)` : "Shopping cart"} className="relative p-2 rounded-full neu-card">
-                  <ShoppingBag aria-hidden="true" className="w-4 h-4 text-foreground" />
-                  {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-destructive text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                      {totalItems}
-                    </span>
-                  )}
-                </Link>
-              </>
+              <Link
+                href="/cart"
+                aria-label={totalItems > 0 ? `Shopping cart (${totalItems} items)` : "Shopping cart"}
+                className={cn(
+                  "relative flex items-center gap-1.5 px-2.5 py-1.5 md:px-3 rounded-full neu-card transition-all",
+                  location.startsWith("/cart") ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted/50"
+                )}
+              >
+                <ShoppingBag aria-hidden="true" className="w-4 h-4 text-foreground" />
+                <span className="hidden md:inline text-xs font-bold">Cart</span>
+                {totalItems > 0 && (
+                  <span className="bg-primary text-primary-foreground text-[10px] font-extrabold px-1.5 py-0.2 rounded-full min-w-[18px] text-center">
+                    {totalItems}
+                  </span>
+                )}
+              </Link>
             )}
 
-            {/* Profile icon */}
+            {/* Profile / Account link */}
             {user && (
-              <Link href="/profile" aria-label="My Profile" className="relative p-2 rounded-full neu-card flex items-center justify-center hover:opacity-85 transition-opacity">
-                <User aria-hidden="true" className={cn("w-4 h-4", location.startsWith("/profile") ? "text-primary" : "text-foreground")} />
+              <Link
+                href="/profile"
+                aria-label="My Profile"
+                className={cn(
+                  "relative flex items-center gap-1.5 p-2 md:px-3 md:py-1.5 rounded-full neu-card hover:opacity-85 transition-opacity",
+                  location.startsWith("/profile") ? "bg-primary/10 text-primary" : "text-foreground"
+                )}
+              >
+                <User aria-hidden="true" className="w-4 h-4" />
+                <span className="hidden md:inline text-xs font-semibold">Account</span>
               </Link>
             )}
           </div>
