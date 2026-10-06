@@ -121,7 +121,7 @@ export function Header() {
         <div className="max-w-7xl mx-auto flex items-center gap-2 md:gap-4">
           {/* Logo — always visible */}
           <Link href="/" className="shrink-0 flex items-center">
-            <img src="/logo.png" alt="SwiftMart" width={140} height={36} className="h-9 w-auto object-contain" />
+            <img src="/logo.png" alt="SwiftMart" width={140} height={36} className="h-7 sm:h-9 w-auto object-contain" />
           </Link>
 
           {/* Location pill — customer only, takes remaining space on mobile */}
@@ -252,10 +252,10 @@ export function Header() {
               <button
                 type="button"
                 onClick={() => openLoginModal()}
-                className="flex items-center gap-2 bg-primary text-primary-foreground font-semibold text-sm px-4 py-2 rounded-2xl neu-card shadow-none hover:opacity-90 transition-opacity cursor-pointer"
+                className="flex items-center gap-1.5 bg-primary text-primary-foreground font-semibold text-xs sm:text-sm px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl neu-card shadow-none hover:opacity-90 transition-opacity cursor-pointer"
               >
-                <LogIn className="w-4 h-4" />
-                <span className="hidden sm:inline">Login</span>
+                <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>Login</span>
                 <span className="hidden md:inline">/ Sign Up</span>
               </button>
             </div>

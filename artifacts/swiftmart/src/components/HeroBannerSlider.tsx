@@ -147,7 +147,7 @@ export function HeroBannerSlider() {
 
   useEffect(() => {
     if (paused) return;
-    const interval = setInterval(next, 3000);
+    const interval = setInterval(next, 4000);
     return () => clearInterval(interval);
   }, [next, paused]);
 
@@ -183,37 +183,46 @@ export function HeroBannerSlider() {
 
   const sharedContainer = (children: React.ReactNode, slideCount: number) => (
     <div
-      className="relative w-full aspect-[16/9] sm:aspect-[21/9] md:aspect-[2.3/1] max-h-72 sm:max-h-80 md:max-h-96 rounded-2xl overflow-hidden my-2 select-none shadow-xs border border-border/40"
+      className="relative w-full aspect-[2/1] sm:aspect-[2.4/1] md:aspect-[3.1/1] max-h-56 sm:max-h-72 md:max-h-84 rounded-2xl sm:rounded-3xl overflow-hidden my-2 sm:my-3 select-none shadow-xs border border-border/50 group"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {children}
+      {/* Horizontal Sliding Track (Flipkart-style carousel) */}
+      <div
+        className="flex w-full h-full transition-transform duration-500 ease-out"
+        style={{ transform: `translateX(-${current * 100}%)` }}
+      >
+        {children}
+      </div>
 
+      {/* Flipkart-Style Round Prev Arrow */}
       <button
-        onClick={prev}
-        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 md:w-9 md:h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white flex items-center justify-center transition-all z-10 shadow-md cursor-pointer active:scale-95"
+        onClick={(e) => { e.stopPropagation(); prev(); }}
+        className="absolute left-2.5 sm:left-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/95 hover:bg-white text-slate-800 shadow-md flex items-center justify-center transition-all z-20 cursor-pointer active:scale-95 opacity-0 group-hover:opacity-100 sm:opacity-90"
         aria-label="Previous slide"
       >
-        <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
+        <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-slate-800" />
       </button>
 
+      {/* Flipkart-Style Round Next Arrow */}
       <button
-        onClick={next}
-        className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 md:w-9 md:h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white flex items-center justify-center transition-all z-10 shadow-md cursor-pointer active:scale-95"
+        onClick={(e) => { e.stopPropagation(); next(); }}
+        className="absolute right-2.5 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/95 hover:bg-white text-slate-800 shadow-md flex items-center justify-center transition-all z-20 cursor-pointer active:scale-95 opacity-0 group-hover:opacity-100 sm:opacity-90"
         aria-label="Next slide"
       >
-        <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-slate-800" />
       </button>
 
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+      {/* Flipkart-Style Indicator Dots Pill */}
+      <div className="absolute bottom-2.5 sm:bottom-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/35 backdrop-blur-xs z-20">
         {Array.from({ length: slideCount }, (_, i) => (
           <button
             key={i}
-            onClick={() => setCurrent(i)}
-            className={`h-1.5 rounded-full transition-all duration-300 drop-shadow-sm ${
-              i === current ? "w-6 bg-white shadow-sm" : "w-1.5 bg-white/60 hover:bg-white/80"
+            onClick={(e) => { e.stopPropagation(); setCurrent(i); }}
+            className={`rounded-full transition-all duration-300 cursor-pointer ${
+              i === current ? "w-5 sm:w-6 h-1.5 bg-white shadow-xs" : "w-1.5 h-1.5 bg-white/60 hover:bg-white/90"
             }`}
             aria-label={`Go to slide ${i + 1}`}
           />
@@ -227,37 +236,35 @@ export function HeroBannerSlider() {
       banners.map((b, i) => (
         <div
           key={b._id}
-          className={`absolute inset-0 transition-opacity duration-700 cursor-pointer ${
-            i === current ? "opacity-100" : "opacity-0 pointer-events-none"
-          }`}
+          className="w-full h-full shrink-0 relative cursor-pointer overflow-hidden"
           onClick={() => handleBannerClick(b)}
         >
           <img
             src={b.imageUrl}
-            alt={b.title || "SwiftMart 10-Minute Delivery Balurghat"}
+            alt={b.title || "SwiftMart Balurghat"}
             width={1200}
             height={400}
             decoding="async"
-            className="w-full h-full object-cover object-center"
+            className="w-full h-full object-cover object-center select-none"
             loading={i === 0 ? "eager" : "lazy"}
             fetchPriority={i === 0 ? "high" : "low"}
           />
           {(b.title || b.subtitle || b.buttonText) && (
-            <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-transparent flex items-center px-5 md:px-8">
-              <div className="flex flex-col gap-2 max-w-[65%]">
+            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent flex items-center px-4 sm:px-8">
+              <div className="flex flex-col gap-1.5 max-w-[70%] sm:max-w-[60%]">
                 {b.title && (
-                  <h2 className="text-lg md:text-2xl font-black text-white leading-tight drop-shadow">
+                  <h2 className="text-base sm:text-2xl md:text-3xl font-black text-white leading-tight drop-shadow-md">
                     {b.title}
                   </h2>
                 )}
                 {b.subtitle && (
-                  <p className="text-xs md:text-sm text-white/85 font-medium leading-snug">
+                  <p className="text-xs sm:text-sm text-white/90 font-medium leading-snug drop-shadow line-clamp-2">
                     {b.subtitle}
                   </p>
                 )}
                 {b.buttonText && (
                   <button
-                    className="mt-1 inline-flex items-center bg-white text-black text-xs md:text-sm font-bold px-4 py-2 rounded-full hover:bg-white/90 transition-colors w-fit"
+                    className="mt-1 sm:mt-2 inline-flex items-center bg-white text-black text-xs sm:text-sm font-bold px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full hover:bg-white/90 shadow-sm transition-colors w-fit"
                     onClick={e => { e.stopPropagation(); handleBannerClick(b); }}
                   >
                     {b.buttonText}
@@ -273,29 +280,28 @@ export function HeroBannerSlider() {
   }
 
   return sharedContainer(
-    staticSlides.map((s, i) => (
+    staticSlides.map((s) => (
       <div
         key={s.id}
-        className={`absolute inset-0 bg-gradient-to-br ${s.gradient} transition-opacity duration-700 ${
-          i === current ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
+        className={`w-full h-full shrink-0 relative bg-gradient-to-br ${s.gradient} overflow-hidden cursor-pointer`}
+        onClick={() => setLocation("/stores")}
       >
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_70%_50%,white,transparent)]" />
-        <div className="absolute inset-0 flex items-center justify-between px-5 md:px-8">
-          <div className="flex flex-col gap-1.5 max-w-[55%]">
-            <span className="inline-block text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/70 bg-white/20 px-2.5 py-0.5 rounded-full w-fit">
+        <div className="absolute inset-0 flex items-center justify-between px-4 sm:px-8">
+          <div className="flex flex-col gap-1 max-w-[60%]">
+            <span className="inline-block text-[9px] sm:text-xs font-bold uppercase tracking-widest text-white/80 bg-white/20 px-2 py-0.5 rounded-full w-fit backdrop-blur-xs">
               {s.tag}
             </span>
-            <h2 className="text-lg md:text-2xl font-black text-white leading-tight drop-shadow">
+            <h2 className="text-sm sm:text-2xl md:text-3xl font-black text-white leading-tight drop-shadow">
               {s.title}
             </h2>
-            <p className="text-xs md:text-sm text-white/85 font-medium leading-snug">
+            <p className="text-[11px] sm:text-sm text-white/90 font-medium leading-snug line-clamp-2">
               {s.subtitle}
             </p>
           </div>
-          <div className="flex flex-col items-center gap-1 opacity-90">
-            <span className="text-4xl md:text-6xl drop-shadow-lg">{s.emoji}</span>
-            <span className="text-base md:text-xl tracking-widest opacity-60">{s.decoration}</span>
+          <div className="flex flex-col items-center gap-1 opacity-95 shrink-0 pr-2 sm:pr-4">
+            <span className="text-3xl sm:text-5xl md:text-6xl drop-shadow-lg">{s.emoji}</span>
+            <span className="text-xs sm:text-lg tracking-widest opacity-70 hidden sm:inline">{s.decoration}</span>
           </div>
         </div>
       </div>

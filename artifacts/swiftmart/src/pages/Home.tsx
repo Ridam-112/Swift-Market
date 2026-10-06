@@ -434,7 +434,6 @@ export default function Home() {
   const [announcementDismissed, setAnnouncementDismissed] = useState(() =>
     typeof localStorage !== "undefined" && localStorage.getItem("sm_announcement_back_v1") === "1"
   );
-  const [heroSearchQuery, setHeroSearchQuery] = useState("");
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
 
   useEffect(() => {
@@ -454,8 +453,8 @@ export default function Home() {
   const isCityEmpty = !!selectedCity && !shopsLoading && shops.length === 0;
 
   return (
-    <div className="w-full flex flex-col min-h-screen">
-      <div className="pb-16 pt-4 px-3 w-full max-w-7xl mx-auto space-y-6 flex-1">
+    <div className="w-full flex flex-col min-h-screen overflow-x-clip">
+      <div className="pb-24 pt-4 px-2.5 sm:px-3 w-full max-w-7xl mx-auto space-y-5 sm:space-y-6 flex-1 min-w-0">
         {/* Visually-hidden H1 anchors the page outline for crawlers */}
       <h1 className="sr-only">SwiftMart — Everything you need, delivered fast | Balurghat</h1>
       <SEO
@@ -551,224 +550,91 @@ export default function Home() {
             </div>
           )}
 
-          {/* ── 2. Redesigned Hero Section (Requirement #1 & #2) ── */}
-          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-card via-card/95 to-background border border-border/60 p-6 sm:p-10 neu-card shadow-sm text-center md:text-left">
-            <div className="max-w-3xl mx-auto md:mx-0 space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold tracking-wide">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Unified Local Commerce Platform</span>
-              </div>
-
-              <h1 className="text-3xl sm:text-5xl font-black text-foreground tracking-tight leading-[1.15]">
-                Everything you need, <br className="hidden sm:inline" />
-                <span className="bg-gradient-to-r from-primary via-orange-500 to-amber-500 bg-clip-text text-transparent">
-                  delivered fast.
-                </span>
-              </h1>
-
-              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-2xl">
-                Shop local stores, order food &amp; groceries, discover products and book home services — all in one place.
-              </p>
-
-              {/* Large Universal Search Input */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (heroSearchQuery.trim()) {
-                    setLocation(`/search?q=${encodeURIComponent(heroSearchQuery.trim())}`);
-                  } else {
-                    setSearchOpen(true);
-                  }
-                }}
-                className="pt-2 max-w-2xl"
-              >
-                <div className="relative flex items-center">
-                  <Search className="absolute left-4 w-5 h-5 text-muted-foreground pointer-events-none" />
-                  <input
-                    type="text"
-                    value={heroSearchQuery}
-                    onChange={(e) => setHeroSearchQuery(e.target.value)}
-                    placeholder="Search products, stores or services (e.g. rice, cake, AC repair, store name)..."
-                    className="w-full h-12 sm:h-13 pl-12 pr-24 rounded-2xl bg-background border-2 border-border/80 focus:border-primary text-sm font-medium text-foreground placeholder:text-muted-foreground outline-none transition-all shadow-inner"
-                  />
-                  <button
-                    type="submit"
-                    className="absolute right-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-                  >
-                    Search
-                  </button>
-                </div>
-                <div className="flex items-center gap-2 mt-2.5 text-xs text-muted-foreground flex-wrap">
-                  <span className="font-semibold text-foreground/80">Try searching:</span>
-                  {["Rice", "Cake", "AC Repair", "Stationery", "Fashion"].map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => setLocation(`/search?q=${encodeURIComponent(tag)}`)}
-                      className="px-2.5 py-0.5 rounded-full bg-muted hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer text-[11px]"
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </form>
-
-              {/* Action CTAs */}
-              <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-3">
-                <a
-                  href="#primary-services"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-sm shadow-md transition-all active:scale-95 cursor-pointer"
-                >
-                  <span>Start Shopping</span>
-                  <ArrowRight className="w-4 h-4" />
-                </a>
-                <Link
-                  href="/services"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-muted/80 hover:bg-muted text-foreground font-bold text-sm border border-border/80 transition-all cursor-pointer"
-                >
-                  <Wrench className="w-4 h-4 text-primary" />
-                  <span>Book Home Services</span>
-                </Link>
-              </div>
-            </div>
-          </section>
-
-          {/* ── 3. Primary 4 SwiftMart Services (Requirement #3) ── */}
-          <section id="primary-services" className="space-y-3 pt-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-                  What would you like today?
-                </h2>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Shop local stores, order fresh meals, discover Super Mall products or book repair services.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-              {/* Card 1: Local Stores */}
-              <Link href="/stores" className="group block">
-                <div className="h-full p-5 rounded-2xl bg-card border border-border/70 neu-card hover:border-emerald-500/50 hover:shadow-md transition-all flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                      🏪
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-extrabold text-base text-foreground group-hover:text-emerald-600 transition-colors">
-                          Local Stores
-                        </h3>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">
-                          30–60m
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                        Groceries, vegetables, sweets, stationery and daily essentials.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-xs font-bold text-emerald-600">
-                    <span>Browse Local Stores</span>
-                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              </Link>
-
-              {/* Card 2: Food & Sweets */}
-              <Link href="/stores" className="group block">
-                <div className="h-full p-5 rounded-2xl bg-card border border-border/70 neu-card hover:border-orange-500/50 hover:shadow-md transition-all flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-orange-500/10 text-orange-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                      🍱
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-extrabold text-base text-foreground group-hover:text-orange-600 transition-colors">
-                          Food &amp; Sweets
-                        </h3>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600">
-                          30–45m
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                        Restaurants, ready-made food, bakery and mithai.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-xs font-bold text-orange-600">
-                    <span>Order Food &amp; Bakery</span>
-                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              </Link>
-
-              {/* Card 3: SwiftMart Mall */}
-              <Link href="/mall" className="group block">
-                <div className="h-full p-5 rounded-2xl bg-card border border-border/70 neu-card hover:border-indigo-500/50 hover:shadow-md transition-all flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                      🛍️
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-extrabold text-base text-foreground group-hover:text-indigo-600 transition-colors">
-                          SwiftMart Mall
-                        </h3>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600">
-                          2–4 Days
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                        Fashion, beauty, electronics, gifts and other products.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-xs font-bold text-indigo-600">
-                    <span>Explore Mall</span>
-                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              </Link>
-
-              {/* Card 4: Service Corner */}
-              <Link href="/services" className="group block">
-                <div className="h-full p-5 rounded-2xl bg-card border border-border/70 neu-card hover:border-blue-500/50 hover:shadow-md transition-all flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                      🛠️
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-extrabold text-base text-foreground group-hover:text-blue-600 transition-colors">
-                          Service Corner
-                        </h3>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600">
-                          Book Slot
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                        TV, AC, fridge, fan and electronics/home services.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-xs font-bold text-blue-600">
-                    <span>Book Service</span>
-                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              </Link>
-            </div>
-          </section>
-
-          {/* ── 4. Marketing Hero Banners ── */}
+          {/* ── 2. Hero Banner Slider (Flipkart-Style) ── */}
           <HeroBannerSlider />
 
-          {/* ── Quick Services: Send Parcel & Service Corner (Side-by-Side Dual Cards) ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          {/* ── 3. Four Main Pillars (Compact Single-Row Shortcuts) ── */}
+          <section id="primary-services" className="pt-1">
+            <div className="grid grid-cols-4 gap-1 sm:gap-3">
+              {/* Pillar 1: Local Stores */}
+              <Link href="/stores" className="group block min-w-0">
+                <div className="p-1.5 xs:p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-card border border-border/60 hover:border-emerald-500/50 transition-all flex flex-col items-center justify-center text-center sm:flex-row sm:items-center sm:text-left gap-1 sm:gap-3 shadow-xs hover:shadow-sm min-w-0 w-full overflow-hidden">
+                  <div className="w-7 h-7 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm sm:text-xl shrink-0 group-hover:scale-105 transition-transform">
+                    🏪
+                  </div>
+                  <div className="min-w-0 w-full overflow-hidden">
+                    <p className="font-extrabold text-[10px] sm:text-sm text-foreground truncate group-hover:text-emerald-600 transition-colors w-full text-center sm:text-left">
+                      <span className="sm:hidden">Stores</span>
+                      <span className="hidden sm:inline">Local Stores</span>
+                    </p>
+                    <span className="text-[8px] sm:text-xs font-bold text-emerald-600 dark:text-emerald-400 block truncate w-full text-center sm:text-left">
+                      30–60m
+                    </span>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Pillar 2: Food & Sweets */}
+              <Link href="/stores" className="group block min-w-0">
+                <div className="p-1.5 xs:p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-card border border-border/60 hover:border-orange-500/50 transition-all flex flex-col items-center justify-center text-center sm:flex-row sm:items-center sm:text-left gap-1 sm:gap-3 shadow-xs hover:shadow-sm min-w-0 w-full overflow-hidden">
+                  <div className="w-7 h-7 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center text-sm sm:text-xl shrink-0 group-hover:scale-105 transition-transform">
+                    🍱
+                  </div>
+                  <div className="min-w-0 w-full overflow-hidden">
+                    <p className="font-extrabold text-[10px] sm:text-sm text-foreground truncate group-hover:text-orange-600 transition-colors w-full text-center sm:text-left">
+                      <span className="sm:hidden">Food</span>
+                      <span className="hidden sm:inline">Food &amp; Sweets</span>
+                    </p>
+                    <span className="text-[8px] sm:text-xs font-bold text-orange-600 dark:text-orange-400 block truncate w-full text-center sm:text-left">
+                      30–45m
+                    </span>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Pillar 3: SwiftMart Mall */}
+              <Link href="/mall" className="group block min-w-0">
+                <div className="p-1.5 xs:p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-card border border-border/60 hover:border-indigo-500/50 transition-all flex flex-col items-center justify-center text-center sm:flex-row sm:items-center sm:text-left gap-1 sm:gap-3 shadow-xs hover:shadow-sm min-w-0 w-full overflow-hidden">
+                  <div className="w-7 h-7 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm sm:text-xl shrink-0 group-hover:scale-105 transition-transform">
+                    🛍️
+                  </div>
+                  <div className="min-w-0 w-full overflow-hidden">
+                    <p className="font-extrabold text-[10px] sm:text-sm text-foreground truncate group-hover:text-indigo-600 transition-colors w-full text-center sm:text-left">
+                      <span className="sm:hidden">Mall</span>
+                      <span className="hidden sm:inline">SwiftMart Mall</span>
+                    </p>
+                    <span className="text-[8px] sm:text-xs font-bold text-indigo-600 dark:text-indigo-400 block truncate w-full text-center sm:text-left">
+                      2–4 Days
+                    </span>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Pillar 4: Service Corner */}
+              <Link href="/services" className="group block min-w-0">
+                <div className="p-1.5 xs:p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-card border border-border/60 hover:border-blue-500/50 transition-all flex flex-col items-center justify-center text-center sm:flex-row sm:items-center sm:text-left gap-1 sm:gap-3 shadow-xs hover:shadow-sm min-w-0 w-full overflow-hidden">
+                  <div className="w-7 h-7 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-sm sm:text-xl shrink-0 group-hover:scale-105 transition-transform">
+                    🛠️
+                  </div>
+                  <div className="min-w-0 w-full overflow-hidden">
+                    <p className="font-extrabold text-[10px] sm:text-sm text-foreground truncate group-hover:text-blue-600 transition-colors w-full text-center sm:text-left">
+                      <span className="sm:hidden">Services</span>
+                      <span className="hidden sm:inline">Service Corner</span>
+                    </p>
+                    <span className="text-[8px] sm:text-xs font-bold text-blue-600 dark:text-blue-400 block truncate w-full text-center sm:text-left">
+                      Book Slot
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </section>
+
+          {/* ── Quick Services: Send Parcel & Service Corner (Side-by-Side Dual Cards on Mobile & Desktop) ── */}
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             {/* 1. Send Parcel Card */}
-            <Link href="/send-parcel" className="block group">
-              <div className="relative h-full min-h-[136px] sm:min-h-[148px] p-4 sm:p-5 rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between border border-emerald-500/25 shadow-xs hover:shadow-md transition-all group-hover:-translate-y-0.5">
+            <Link href="/send-parcel" className="block group min-w-0">
+              <div className="relative h-full min-h-[105px] sm:min-h-[140px] p-2.5 sm:p-4 rounded-xl sm:rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between border border-emerald-500/25 shadow-xs hover:shadow-md transition-all group-hover:-translate-y-0.5 min-w-0">
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700" />
                 <div
                   className="absolute inset-0 opacity-10 pointer-events-none"
@@ -777,37 +643,37 @@ export default function Home() {
                     backgroundSize: "20px 20px",
                   }}
                 />
-                <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full pointer-events-none" />
+                <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-white/10 rounded-full pointer-events-none" />
 
                 {/* Top: Icons & Badge */}
-                <div className="relative z-10 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-base shadow-xs">
+                <div className="relative z-10 flex items-center justify-between gap-1 min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                    <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-xs sm:text-base shadow-xs shrink-0">
                       📦
                     </span>
-                    <span className="text-white font-black text-base sm:text-lg">Send Parcel</span>
+                    <span className="text-white font-black text-xs sm:text-base md:text-lg truncate">Send Parcel</span>
                   </div>
-                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white/25 text-white backdrop-blur-xs border border-white/20">
-                    Flat ₹39 Base · 30–45m
+                  <span className="text-[8px] sm:text-[11px] font-bold px-1.5 sm:px-2.5 py-0.5 rounded-full bg-white/25 text-white backdrop-blur-xs border border-white/20 whitespace-nowrap shrink-0">
+                    Flat ₹39
                   </span>
                 </div>
 
-                {/* Bottom: Text & Button */}
-                <div className="relative z-10 mt-3 flex items-end justify-between gap-3">
-                  <p className="text-white/90 text-xs sm:text-sm line-clamp-1">
-                    Intra-city express delivery across Balurghat
+                {/* Bottom: Subtitle & Button */}
+                <div className="relative z-10 mt-2 sm:mt-3 flex items-center justify-between gap-1">
+                  <p className="text-white/90 text-[10px] sm:text-xs md:text-sm line-clamp-1 hidden sm:block">
+                    Express city delivery
                   </p>
-                  <div className="shrink-0 flex items-center gap-1 text-xs font-bold text-emerald-950 bg-white hover:bg-emerald-50 px-3 py-1.5 rounded-xl shadow-xs transition-colors">
-                    <span>Book Delivery</span>
-                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  <div className="shrink-0 flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs font-bold text-emerald-950 bg-white hover:bg-emerald-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-xl shadow-xs transition-colors ml-auto">
+                    <span>Book</span>
+                    <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
               </div>
             </Link>
 
             {/* 2. Service Corner Card */}
-            <Link href="/services" className="block group">
-              <div className="relative h-full min-h-[136px] sm:min-h-[148px] p-4 sm:p-5 rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between border border-blue-500/25 shadow-xs hover:shadow-md transition-all group-hover:-translate-y-0.5">
+            <Link href="/services" className="block group min-w-0">
+              <div className="relative h-full min-h-[105px] sm:min-h-[140px] p-2.5 sm:p-4 rounded-xl sm:rounded-2xl overflow-hidden cursor-pointer flex flex-col justify-between border border-blue-500/25 shadow-xs hover:shadow-md transition-all group-hover:-translate-y-0.5 min-w-0">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-700 via-indigo-600 to-sky-600" />
                 <div
                   className="absolute inset-0 opacity-10 pointer-events-none"
@@ -816,29 +682,29 @@ export default function Home() {
                     backgroundSize: "20px 20px",
                   }}
                 />
-                <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full pointer-events-none" />
+                <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-white/10 rounded-full pointer-events-none" />
 
                 {/* Top: Icons & Badge */}
-                <div className="relative z-10 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-base shadow-xs">
+                <div className="relative z-10 flex items-center justify-between gap-1 min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                    <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-xs sm:text-base shadow-xs shrink-0">
                       🛠️
                     </span>
-                    <span className="text-white font-black text-base sm:text-lg">Service Corner</span>
+                    <span className="text-white font-black text-xs sm:text-base md:text-lg truncate">Service Corner</span>
                   </div>
-                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-900 shadow-xs">
-                    Upahar Lab
+                  <span className="text-[8px] sm:text-[11px] font-bold px-1.5 sm:px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-900 shadow-xs whitespace-nowrap shrink-0">
+                    Upahar
                   </span>
                 </div>
 
-                {/* Bottom: Text & Button */}
-                <div className="relative z-10 mt-3 flex items-end justify-between gap-3">
-                  <p className="text-white/90 text-xs sm:text-sm line-clamp-1">
-                    TV, AC, Fridge, RO &amp; Home Appliance Repair
+                {/* Bottom: Subtitle & Button */}
+                <div className="relative z-10 mt-2 sm:mt-3 flex items-center justify-between gap-1">
+                  <p className="text-white/90 text-[10px] sm:text-xs md:text-sm line-clamp-1 hidden sm:block">
+                    AC, TV, Fridge repair
                   </p>
-                  <div className="shrink-0 flex items-center gap-1 text-xs font-bold text-blue-950 bg-white hover:bg-blue-50 px-3 py-1.5 rounded-xl shadow-xs transition-colors">
-                    <span>Book Service</span>
-                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  <div className="shrink-0 flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs font-bold text-blue-950 bg-white hover:bg-blue-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-xl shadow-xs transition-colors ml-auto">
+                    <span>Book</span>
+                    <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
               </div>
