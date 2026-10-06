@@ -1,6 +1,6 @@
 import { Router, type Response } from "express";
 import { db, serviceBookings, users, shops } from "@workspace/db";
-import { eq, desc, and, or, sql, ilike } from "drizzle-orm";
+import { eq, ne, desc, and, or, sql, ilike } from "drizzle-orm";
 import { authenticate, optionalAuth, requireRole, type AuthRequest } from "../../middlewares/auth.js";
 import { mi, miArr } from "../../utils/mapId.js";
 import { createNotificationLimited } from "../../utils/notification.js";
@@ -47,12 +47,15 @@ async function ensureTableExists() {
         admin_notes text,
         cancel_reason text,
         completed_at timestamp,
+        idempotency_key text,
         created_at timestamp NOT NULL DEFAULT NOW(),
         updated_at timestamp NOT NULL DEFAULT NOW()
       );
+      ALTER TABLE service_bookings ADD COLUMN IF NOT EXISTS idempotency_key text;
       CREATE INDEX IF NOT EXISTS service_bookings_cust_idx ON service_bookings(customer_id);
       CREATE INDEX IF NOT EXISTS service_bookings_stat_idx ON service_bookings(status);
       CREATE INDEX IF NOT EXISTS service_bookings_bnum_idx ON service_bookings(booking_number);
+      CREATE UNIQUE INDEX IF NOT EXISTS service_bookings_idempotency_idx ON service_bookings(idempotency_key);
     `);
     tableInitialized = true;
   } catch (err: any) {
@@ -217,6 +220,31 @@ router.post("/book", authenticate, async (req: AuthRequest, res: Response): Prom
       return;
     }
 
+    const clientKey = typeof req.body.idempotencyKey === "string" && req.body.idempotencyKey.trim()
+      ? req.body.idempotencyKey.trim()
+      : (typeof req.headers["x-idempotency-key"] === "string" ? req.headers["x-idempotency-key"].trim() : null);
+
+    // Derive deterministic key: customer + serviceType + preferredDate + preferredTimeSlot
+    const safeKey = `${userId}_${String(serviceType).trim()}_${String(preferredDate).trim()}_${String(preferredTimeSlot).trim()}`.toLowerCase().replace(/\s+/g, "_");
+    const idempotencyKey = clientKey || safeKey;
+
+    // Check if an existing active booking already exists for this slot
+    const [existingBooking] = await db.select().from(serviceBookings)
+      .where(and(
+        eq(serviceBookings.idempotencyKey, idempotencyKey),
+        ne(serviceBookings.status, "cancelled")
+      ))
+      .limit(1);
+
+    if (existingBooking) {
+      res.json({
+        success: true,
+        message: "Service already booked for this time slot! Our technician will reach out to you.",
+        booking: mi(existingBooking),
+      });
+      return;
+    }
+
     // Lookup Upahar Electronics Lab shop ID
     let shopId: string | null = null;
     try {
@@ -236,6 +264,7 @@ router.post("/book", authenticate, async (req: AuthRequest, res: Response): Prom
 
     const [newBooking] = await db.insert(serviceBookings).values({
       bookingNumber,
+      idempotencyKey,
       shopId,
       shopName: "Upahar Electronics Lab",
       customerId: userId,
@@ -273,6 +302,34 @@ router.post("/book", authenticate, async (req: AuthRequest, res: Response): Prom
       booking: mi(newBooking),
     });
   } catch (err: any) {
+    if (
+      err?.code === "23505" ||
+      err?.cause?.code === "23505" ||
+      String(err?.message || "").includes("service_bookings_idempotency_idx") ||
+      String(err?.detail || "").includes("idempotency_key")
+    ) {
+      logger.info("Concurrent duplicate service booking caught by unique index. Returning existing booking.");
+      try {
+        const clientKey = typeof req.body.idempotencyKey === "string" && req.body.idempotencyKey.trim()
+          ? req.body.idempotencyKey.trim()
+          : (typeof req.headers["x-idempotency-key"] === "string" ? req.headers["x-idempotency-key"].trim() : null);
+        const safeKey = `${req.user?.userId}_${String(req.body.serviceType).trim()}_${String(req.body.preferredDate).trim()}_${String(req.body.preferredTimeSlot).trim()}`.toLowerCase().replace(/\s+/g, "_");
+        const idempotencyKey = clientKey || safeKey;
+
+        const [existingBooking] = await db.select().from(serviceBookings)
+          .where(eq(serviceBookings.idempotencyKey, idempotencyKey))
+          .limit(1);
+
+        if (existingBooking) {
+          res.json({
+            success: true,
+            message: "Service already booked for this time slot! Our technician will reach out to you.",
+            booking: mi(existingBooking),
+          });
+          return;
+        }
+      } catch (_) {}
+    }
     logger.error({ err: err?.message || err }, "POST /api/services/book failed");
     res.status(500).json({ success: false, message: "Failed to book service. Please try again." });
   }

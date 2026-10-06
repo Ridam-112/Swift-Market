@@ -113,7 +113,8 @@ async function autoEnsureDatabaseTablesAndColumns() {
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS otp_failed_attempts integer DEFAULT 0;
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS otp_locked_until timestamp;
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS idempotency_key text;
-      CREATE INDEX IF NOT EXISTS orders_idempotency_key_idx ON orders (idempotency_key);
+      DROP INDEX IF EXISTS orders_idempotency_key_idx;
+      CREATE UNIQUE INDEX IF NOT EXISTS orders_idempotency_key_unique ON orders (idempotency_key);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at timestamp;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_source text DEFAULT 'web';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_online boolean DEFAULT false;

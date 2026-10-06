@@ -1,10 +1,11 @@
-import { pgTable, text, timestamp, doublePrecision, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, doublePrecision, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { users } from "./users.js";
 import { shops } from "./shops.js";
 
 export const serviceBookings = pgTable("service_bookings", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   bookingNumber: text("booking_number").notNull().unique(), // e.g. "SRV-202610-1234"
+  idempotencyKey: text("idempotency_key"),
   shopId: text("shop_id").references(() => shops.id, { onDelete: "set null" }),
   shopName: text("shop_name").notNull().default("Upahar Electronics Lab"),
   
@@ -57,6 +58,7 @@ export const serviceBookings = pgTable("service_bookings", {
   index("service_bookings_status_idx").on(t.status),
   index("service_bookings_booking_num_idx").on(t.bookingNumber),
   index("service_bookings_created_at_idx").on(t.createdAt),
+  uniqueIndex("service_bookings_idempotency_idx").on(t.idempotencyKey),
 ]);
 
 export type ServiceBooking = typeof serviceBookings.$inferSelect;

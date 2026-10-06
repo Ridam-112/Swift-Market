@@ -18805,14 +18805,14 @@ var require_etag = __commonJS({
   "../../node_modules/.pnpm/etag@1.8.1/node_modules/etag/index.js"(exports, module) {
     "use strict";
     module.exports = etag;
-    var crypto4 = __require("crypto");
+    var crypto5 = __require("crypto");
     var Stats2 = __require("fs").Stats;
     var toString3 = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash2 = crypto4.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash2 = crypto5.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash2 + '"';
     }
@@ -22265,17 +22265,17 @@ var require_content_disposition = __commonJS({
 // ../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js"(exports) {
-    var crypto4 = __require("crypto");
+    var crypto5 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto4.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto5.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(input, secret) {
       if ("string" != typeof input) throw new TypeError("Signed cookie string must be provided.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
       var tentativeValue = input.slice(0, input.lastIndexOf(".")), expectedInput = exports.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input);
-      return expectedBuffer.length === inputBuffer.length && crypto4.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
+      return expectedBuffer.length === inputBuffer.length && crypto5.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
 });
@@ -33933,14 +33933,14 @@ var require_buffer_equal_constant_time = __commonJS({
 var require_jwa = __commonJS({
   "../../node_modules/.pnpm/jwa@2.0.1/node_modules/jwa/index.js"(exports, module) {
     var Buffer4 = require_safe_buffer().Buffer;
-    var crypto4 = __require("crypto");
+    var crypto5 = __require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
     var util2 = __require("util");
     var MSG_INVALID_ALGORITHM = '"%s" is not a valid algorithm.\n  Supported algorithms are:\n  "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512" and "none".';
     var MSG_INVALID_SECRET = "secret must be a string or buffer";
     var MSG_INVALID_VERIFIER_KEY = "key must be a string or a buffer";
     var MSG_INVALID_SIGNER_KEY = "key must be a string, a buffer or an object";
-    var supportsKeyObjects = typeof crypto4.createPublicKey === "function";
+    var supportsKeyObjects = typeof crypto5.createPublicKey === "function";
     if (supportsKeyObjects) {
       MSG_INVALID_VERIFIER_KEY += " or a KeyObject";
       MSG_INVALID_SECRET += "or a KeyObject";
@@ -34030,17 +34030,17 @@ var require_jwa = __commonJS({
       return function sign(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
-        var hmac = crypto4.createHmac("sha" + bits, secret);
+        var hmac = crypto5.createHmac("sha" + bits, secret);
         var sig = (hmac.update(thing), hmac.digest("base64"));
         return fromBase64(sig);
       };
     }
     var bufferEqual;
-    var timingSafeEqual = "timingSafeEqual" in crypto4 ? function timingSafeEqual2(a, b) {
+    var timingSafeEqual = "timingSafeEqual" in crypto5 ? function timingSafeEqual2(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
-      return crypto4.timingSafeEqual(a, b);
+      return crypto5.timingSafeEqual(a, b);
     } : function timingSafeEqual2(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
@@ -34057,7 +34057,7 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey4) {
         checkIsPrivateKey(privateKey4);
         thing = normalizeInput(thing);
-        var signer = crypto4.createSign("RSA-SHA" + bits);
+        var signer = crypto5.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign(privateKey4, "base64"));
         return fromBase64(sig);
       };
@@ -34067,7 +34067,7 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey3);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto4.createVerify("RSA-SHA" + bits);
+        var verifier = crypto5.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify(publicKey3, signature, "base64");
       };
@@ -34076,11 +34076,11 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey4) {
         checkIsPrivateKey(privateKey4);
         thing = normalizeInput(thing);
-        var signer = crypto4.createSign("RSA-SHA" + bits);
+        var signer = crypto5.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign({
           key: privateKey4,
-          padding: crypto4.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto4.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto5.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto5.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig);
       };
@@ -34090,12 +34090,12 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey3);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto4.createVerify("RSA-SHA" + bits);
+        var verifier = crypto5.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify({
           key: publicKey3,
-          padding: crypto4.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto4.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto5.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto5.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
       };
     }
@@ -47846,15 +47846,15 @@ var require_bignumber = __commonJS({
           };
         })();
         function format(n, i2, rm, id) {
-          var c0, e2, ne4, len, str;
+          var c0, e2, ne6, len, str;
           if (rm == null) rm = ROUNDING_MODE;
           else intCheck(rm, 0, 8);
           if (!n.c) return n.toString();
           c0 = n.c[0];
-          ne4 = n.e;
+          ne6 = n.e;
           if (i2 == null) {
             str = coeffToString(n.c);
-            str = id == 1 || id == 2 && (ne4 <= TO_EXP_NEG || ne4 >= TO_EXP_POS) ? toExponential(str, ne4) : toFixedPoint(str, ne4, "0");
+            str = id == 1 || id == 2 && (ne6 <= TO_EXP_NEG || ne6 >= TO_EXP_POS) ? toExponential(str, ne6) : toFixedPoint(str, ne6, "0");
           } else {
             n = round(new BigNumber2(n), i2, rm);
             e2 = n.e;
@@ -47864,7 +47864,7 @@ var require_bignumber = __commonJS({
               for (; len < i2; str += "0", len++) ;
               str = toExponential(str, e2);
             } else {
-              i2 -= ne4 + (id === 2 && e2 > ne4);
+              i2 -= ne6 + (id === 2 && e2 > ne6);
               str = toFixedPoint(str, e2, "0");
               if (e2 + 1 > len) {
                 if (--i2 > 0) for (str += "."; i2--; str += "0") ;
@@ -49946,22 +49946,22 @@ var require_crypto2 = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.NodeCrypto = void 0;
-    var crypto4 = __require("crypto");
+    var crypto5 = __require("crypto");
     var NodeCrypto = class {
       async sha256DigestBase64(str) {
-        return crypto4.createHash("sha256").update(str).digest("base64");
+        return crypto5.createHash("sha256").update(str).digest("base64");
       }
       randomBytesBase64(count12) {
-        return crypto4.randomBytes(count12).toString("base64");
+        return crypto5.randomBytes(count12).toString("base64");
       }
       async verify(pubkey, data, signature) {
-        const verifier = crypto4.createVerify("RSA-SHA256");
+        const verifier = crypto5.createVerify("RSA-SHA256");
         verifier.update(data);
         verifier.end();
         return verifier.verify(pubkey, signature, "base64");
       }
       async sign(privateKey4, data) {
-        const signer = crypto4.createSign("RSA-SHA256");
+        const signer = crypto5.createSign("RSA-SHA256");
         signer.update(data);
         signer.end();
         return signer.sign(privateKey4, "base64");
@@ -49979,7 +49979,7 @@ var require_crypto2 = __commonJS({
        *   string in hexadecimal encoding.
        */
       async sha256DigestHex(str) {
-        return crypto4.createHash("sha256").update(str).digest("hex");
+        return crypto5.createHash("sha256").update(str).digest("hex");
       }
       /**
        * Computes the HMAC hash of a message using the provided crypto key and the
@@ -49991,7 +49991,7 @@ var require_crypto2 = __commonJS({
        */
       async signWithHmacSha256(key, msg) {
         const cryptoKey = typeof key === "string" ? key : toBuffer2(key);
-        return toArrayBuffer(crypto4.createHmac("sha256", cryptoKey).update(msg).digest());
+        return toArrayBuffer(crypto5.createHmac("sha256", cryptoKey).update(msg).digest());
       }
     };
     exports.NodeCrypto = NodeCrypto;
@@ -50684,10 +50684,10 @@ var require_oauth2client = __commonJS({
        * https://github.com/googleapis/google-auth-library-nodejs/blob/main/samples/oauth2-codeVerifier.js
        */
       async generateCodeVerifierAsync() {
-        const crypto4 = (0, crypto_1.createCrypto)();
-        const randomString = crypto4.randomBytesBase64(96);
+        const crypto5 = (0, crypto_1.createCrypto)();
+        const randomString = crypto5.randomBytesBase64(96);
         const codeVerifier = randomString.replace(/\+/g, "~").replace(/=/g, "_").replace(/\//g, "-");
-        const unencodedCodeChallenge = await crypto4.sha256DigestBase64(codeVerifier);
+        const unencodedCodeChallenge = await crypto5.sha256DigestBase64(codeVerifier);
         const codeChallenge = unencodedCodeChallenge.split("=")[0].replace(/\+/g, "-").replace(/\//g, "_");
         return { codeVerifier, codeChallenge };
       }
@@ -51128,7 +51128,7 @@ var require_oauth2client = __commonJS({
        * @return Returns a promise resolving to LoginTicket on verification.
        */
       async verifySignedJwtWithCertsAsync(jwt5, certs, requiredAudience, issuers, maxExpiry) {
-        const crypto4 = (0, crypto_1.createCrypto)();
+        const crypto5 = (0, crypto_1.createCrypto)();
         if (!maxExpiry) {
           maxExpiry = _OAuth2Client.DEFAULT_MAX_TOKEN_LIFETIME_SECS_;
         }
@@ -51141,7 +51141,7 @@ var require_oauth2client = __commonJS({
         let envelope;
         let payload;
         try {
-          envelope = JSON.parse(crypto4.decodeBase64StringUtf8(segments[0]));
+          envelope = JSON.parse(crypto5.decodeBase64StringUtf8(segments[0]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token envelope: ${segments[0]}': ${err.message}`;
@@ -51152,7 +51152,7 @@ var require_oauth2client = __commonJS({
           throw new Error("Can't parse token envelope: " + segments[0]);
         }
         try {
-          payload = JSON.parse(crypto4.decodeBase64StringUtf8(segments[1]));
+          payload = JSON.parse(crypto5.decodeBase64StringUtf8(segments[1]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token payload '${segments[0]}`;
@@ -51169,7 +51169,7 @@ var require_oauth2client = __commonJS({
         if (envelope.alg === "ES256") {
           signature = formatEcdsa.joseToDer(signature, "ES256").toString("base64");
         }
-        const verified = await crypto4.verify(cert2, signed, signature);
+        const verified = await crypto5.verify(cert2, signed, signature);
         if (!verified) {
           throw new Error("Invalid token signature: " + jwt5);
         }
@@ -53739,14 +53739,14 @@ var require_awsrequestsigner = __commonJS({
       }
     };
     exports.AwsRequestSigner = AwsRequestSigner;
-    async function sign(crypto4, key, msg) {
-      return await crypto4.signWithHmacSha256(key, msg);
+    async function sign(crypto5, key, msg) {
+      return await crypto5.signWithHmacSha256(key, msg);
     }
-    async function getSigningKey(crypto4, key, dateStamp, region, serviceName) {
-      const kDate = await sign(crypto4, `AWS4${key}`, dateStamp);
-      const kRegion = await sign(crypto4, kDate, region);
-      const kService = await sign(crypto4, kRegion, serviceName);
-      const kSigning = await sign(crypto4, kService, "aws4_request");
+    async function getSigningKey(crypto5, key, dateStamp, region, serviceName) {
+      const kDate = await sign(crypto5, `AWS4${key}`, dateStamp);
+      const kRegion = await sign(crypto5, kDate, region);
+      const kService = await sign(crypto5, kRegion, serviceName);
+      const kSigning = await sign(crypto5, kService, "aws4_request");
       return kSigning;
     }
     async function generateAuthenticationHeaderMap(options) {
@@ -55465,24 +55465,24 @@ var require_googleauth = __commonJS({
           const signed = await client.sign(data);
           return signed.signedBlob;
         }
-        const crypto4 = (0, crypto_1.createCrypto)();
+        const crypto5 = (0, crypto_1.createCrypto)();
         if (client instanceof jwtclient_1.JWT && client.key) {
-          const sign = await crypto4.sign(client.key, data);
+          const sign = await crypto5.sign(client.key, data);
           return sign;
         }
         const creds = await this.getCredentials();
         if (!creds.client_email) {
           throw new Error("Cannot sign data without `client_email`.");
         }
-        return this.signBlob(crypto4, creds.client_email, data, endpoint);
+        return this.signBlob(crypto5, creds.client_email, data, endpoint);
       }
-      async signBlob(crypto4, emailOrUniqueId, data, endpoint) {
+      async signBlob(crypto5, emailOrUniqueId, data, endpoint) {
         const url = new URL(endpoint + `${emailOrUniqueId}:signBlob`);
         const res = await this.request({
           method: "POST",
           url: url.href,
           data: {
-            payload: crypto4.encodeBase64StringUtf8(data)
+            payload: crypto5.encodeBase64StringUtf8(data)
           },
           retry: true,
           retryConfig: {
@@ -57267,7 +57267,7 @@ var require_cert_signatures = __commonJS({
 var require_sasl = __commonJS({
   "../../node_modules/.pnpm/pg@8.20.0/node_modules/pg/lib/crypto/sasl.js"(exports, module) {
     "use strict";
-    var crypto4 = require_utils5();
+    var crypto5 = require_utils5();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
     function startSession(mechanisms, stream) {
       const candidates = ["SCRAM-SHA-256"];
@@ -57279,7 +57279,7 @@ var require_sasl = __commonJS({
       if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream.getPeerCertificate !== "function") {
         throw new Error("SASL: Mechanism SCRAM-SHA-256-PLUS requires a certificate");
       }
-      const clientNonce = crypto4.randomBytes(18).toString("base64");
+      const clientNonce = crypto5.randomBytes(18).toString("base64");
       const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream ? "y" : "n";
       return {
         mechanism,
@@ -57314,20 +57314,20 @@ var require_sasl = __commonJS({
         const peerCert = stream.getPeerCertificate().raw;
         let hashName = signatureAlgorithmHashFromCertificate(peerCert);
         if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
-        const certHash = await crypto4.hashByName(hashName, peerCert);
+        const certHash = await crypto5.hashByName(hashName, peerCert);
         const bindingData = Buffer.concat([Buffer.from("p=tls-server-end-point,,"), Buffer.from(certHash)]);
         channelBinding = bindingData.toString("base64");
       }
       const clientFinalMessageWithoutProof = "c=" + channelBinding + ",r=" + sv.nonce;
       const authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
       const saltBytes = Buffer.from(sv.salt, "base64");
-      const saltedPassword = await crypto4.deriveKey(password, saltBytes, sv.iteration);
-      const clientKey = await crypto4.hmacSha256(saltedPassword, "Client Key");
-      const storedKey = await crypto4.sha256(clientKey);
-      const clientSignature = await crypto4.hmacSha256(storedKey, authMessage);
+      const saltedPassword = await crypto5.deriveKey(password, saltBytes, sv.iteration);
+      const clientKey = await crypto5.hmacSha256(saltedPassword, "Client Key");
+      const storedKey = await crypto5.sha256(clientKey);
+      const clientSignature = await crypto5.hmacSha256(storedKey, authMessage);
       const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
-      const serverKey = await crypto4.hmacSha256(saltedPassword, "Server Key");
-      const serverSignatureBytes = await crypto4.hmacSha256(serverKey, authMessage);
+      const serverKey = await crypto5.hmacSha256(saltedPassword, "Server Key");
+      const serverSignatureBytes = await crypto5.hmacSha256(serverKey, authMessage);
       session.message = "SASLResponse";
       session.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
       session.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
@@ -59495,7 +59495,7 @@ var require_client = __commonJS({
     var Query2 = require_query();
     var defaults2 = require_defaults();
     var Connection2 = require_connection();
-    var crypto4 = require_utils5();
+    var crypto5 = require_utils5();
     var activeQueryDeprecationNotice = nodeUtils.deprecate(
       () => {
       },
@@ -59730,7 +59730,7 @@ var require_client = __commonJS({
       _handleAuthMD5Password(msg) {
         this._getPassword(async () => {
           try {
-            const hashedPassword = await crypto4.postgresMd5PasswordHash(this.user, this.password, msg.salt);
+            const hashedPassword = await crypto5.postgresMd5PasswordHash(this.user, this.password, msg.salt);
             this.connection.password(hashedPassword);
           } catch (e2) {
             this.emit("error", e2);
@@ -76510,7 +76510,7 @@ var require_form_data = __commonJS({
     var parseUrl = __require("url").parse;
     var fs7 = __require("fs");
     var Stream3 = __require("stream").Stream;
-    var crypto4 = __require("crypto");
+    var crypto5 = __require("crypto");
     var mime = require_mime_types2();
     var asynckit = require_asynckit();
     var setToStringTag = require_es_set_tostringtag();
@@ -76719,7 +76719,7 @@ var require_form_data = __commonJS({
       return Buffer.concat([dataBuffer, Buffer.from(this._lastBoundary())]);
     };
     FormData4.prototype._generateBoundary = function() {
-      this._boundary = "--------------------------" + crypto4.randomBytes(12).toString("hex");
+      this._boundary = "--------------------------" + crypto5.randomBytes(12).toString("hex");
     };
     FormData4.prototype.getLengthSync = function() {
       var knownLength = this._overheadLength + this._valueLength;
@@ -77806,7 +77806,7 @@ var require_axios = __commonJS({
   "../../node_modules/.pnpm/axios@1.16.1/node_modules/axios/dist/node/axios.cjs"(exports, module) {
     "use strict";
     var FormData$1 = require_form_data();
-    var crypto4 = __require("crypto");
+    var crypto5 = __require("crypto");
     var url = __require("url");
     var HttpsProxyAgent = require_dist6();
     var http3 = __require("http");
@@ -78946,7 +78946,7 @@ var require_axios = __commonJS({
         length
       } = alphabet;
       const randomValues = new Uint32Array(size);
-      crypto4.randomFillSync(randomValues);
+      crypto5.randomFillSync(randomValues);
       for (let i2 = 0; i2 < size; i2++) {
         str += alphabet[randomValues[i2] % length];
       }
@@ -99980,7 +99980,7 @@ var require_razorpay_utils = __commonJS({
     } : function(obj) {
       return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
     };
-    var crypto4 = __require("crypto");
+    var crypto5 = __require("crypto");
     function getDateInSecs(date) {
       return +new Date(date) / 1e3;
     }
@@ -100017,12 +100017,12 @@ var require_razorpay_utils = __commonJS({
       return new Error("\n" + summary + "\n" + ("Expected(" + (typeof expectedVal === "undefined" ? "undefined" : _typeof(expectedVal)) + ")\n" + prettify(expectedVal) + "\n\n") + ("Got(" + (typeof gotVal === "undefined" ? "undefined" : _typeof(gotVal)) + ")\n" + prettify(gotVal)));
     }
     function validateWebhookSignature(body, signature, secret) {
-      var crypto5 = __require("crypto");
+      var crypto6 = __require("crypto");
       if (!isDefined(body) || !isDefined(signature) || !isDefined(secret)) {
         throw Error("Invalid Parameters: Please give request body,signature sent in X-Razorpay-Signature header and webhook secret from dashboard as parameters");
       }
       body = body.toString();
-      var expectedSignature = crypto5.createHmac("sha256", secret).update(body).digest("hex");
+      var expectedSignature = crypto6.createHmac("sha256", secret).update(body).digest("hex");
       return expectedSignature === signature;
     }
     function validatePaymentVerification() {
@@ -100060,7 +100060,7 @@ var require_razorpay_utils = __commonJS({
         var keyBytes = Buffer.from(secret.slice(0, 16), "utf8");
         var iv = Buffer.alloc(12);
         keyBytes.copy(iv, 0, 0, 12);
-        var cipher = crypto4.createCipheriv("aes-128-gcm", keyBytes, iv);
+        var cipher = crypto5.createCipheriv("aes-128-gcm", keyBytes, iv);
         var encryptedData = cipher.update(dataToEncrypt, "utf8");
         encryptedData = Buffer.concat([encryptedData, cipher.final()]);
         var authTag = cipher.getAuthTag();
@@ -107057,7 +107057,7 @@ var require_session_builder = __commonJS({
     var BaseKeyType = require_base_key_type();
     var ChainType = require_chain_type();
     var SessionRecord3 = require_session_record();
-    var crypto4 = require_crypto4();
+    var crypto5 = require_crypto4();
     var curve2 = require_curve();
     var errors = require_errors2();
     var queueJob = require_queue_job();
@@ -107178,7 +107178,7 @@ var require_session_builder = __commonJS({
           const a4 = curve2.calculateAgreement(theirEphemeralPubKey, ourEphemeralKey.privKey);
           sharedSecret.set(new Uint8Array(a4), 32 * 4);
         }
-        const masterKey = crypto4.deriveSecrets(
+        const masterKey = crypto5.deriveSecrets(
           Buffer.from(sharedSecret),
           Buffer.alloc(32),
           Buffer.from("WhisperText")
@@ -107207,7 +107207,7 @@ var require_session_builder = __commonJS({
       calculateSendingRatchet(session, remoteKey) {
         const ratchet = session.currentRatchet;
         const sharedSecret = curve2.calculateAgreement(remoteKey, ratchet.ephemeralKeyPair.privKey);
-        const masterKey = crypto4.deriveSecrets(sharedSecret, ratchet.rootKey, Buffer.from("WhisperRatchet"));
+        const masterKey = crypto5.deriveSecrets(sharedSecret, ratchet.rootKey, Buffer.from("WhisperRatchet"));
         session.addChain(ratchet.ephemeralKeyPair.pubKey, {
           messageKeys: {},
           chainKey: {
@@ -107807,7 +107807,7 @@ var require_session_cipher = __commonJS({
     var ProtocolAddress3 = require_protocol_address();
     var SessionBuilder3 = require_session_builder();
     var SessionRecord3 = require_session_record();
-    var crypto4 = require_crypto4();
+    var crypto5 = require_crypto4();
     var curve2 = require_curve();
     var errors = require_errors2();
     var protobufs = require_protobufs();
@@ -107874,7 +107874,7 @@ var require_session_cipher = __commonJS({
             throw new Error("Tried to encrypt on a receiving chain");
           }
           this.fillMessageKeys(chain, chain.chainKey.counter + 1);
-          const keys = crypto4.deriveSecrets(
+          const keys = crypto5.deriveSecrets(
             chain.messageKeys[chain.chainKey.counter],
             Buffer.alloc(32),
             Buffer.from("WhisperMessageKeys")
@@ -107884,14 +107884,14 @@ var require_session_cipher = __commonJS({
           msg.ephemeralKey = session.currentRatchet.ephemeralKeyPair.pubKey;
           msg.counter = chain.chainKey.counter;
           msg.previousCounter = session.currentRatchet.previousCounter;
-          msg.ciphertext = crypto4.encrypt(keys[0], data, keys[2].slice(0, 16));
+          msg.ciphertext = crypto5.encrypt(keys[0], data, keys[2].slice(0, 16));
           const msgBuf = protobufs.WhisperMessage.encode(msg).finish();
           const macInput = Buffer.alloc(msgBuf.byteLength + 33 * 2 + 1);
           macInput.set(ourIdentityKey.pubKey);
           macInput.set(session.indexInfo.remoteIdentityKey, 33);
           macInput[33 * 2] = this._encodeTupleByte(VERSION, VERSION);
           macInput.set(msgBuf, 33 * 2 + 1);
-          const mac = crypto4.calculateMAC(keys[1], macInput);
+          const mac = crypto5.calculateMAC(keys[1], macInput);
           const result = Buffer.alloc(msgBuf.byteLength + 9);
           result[0] = this._encodeTupleByte(VERSION, VERSION);
           result.set(msgBuf, 1);
@@ -108018,7 +108018,7 @@ var require_session_cipher = __commonJS({
         }
         const messageKey = chain.messageKeys[message.counter];
         delete chain.messageKeys[message.counter];
-        const keys = crypto4.deriveSecrets(
+        const keys = crypto5.deriveSecrets(
           messageKey,
           Buffer.alloc(32),
           Buffer.from("WhisperMessageKeys")
@@ -108029,8 +108029,8 @@ var require_session_cipher = __commonJS({
         macInput.set(ourIdentityKey.pubKey, 33);
         macInput[33 * 2] = this._encodeTupleByte(VERSION, VERSION);
         macInput.set(messageProto, 33 * 2 + 1);
-        crypto4.verifyMAC(macInput, keys[1], messageBuffer.slice(-8), 8);
-        const plaintext = crypto4.decrypt(keys[0], message.ciphertext, keys[2].slice(0, 16));
+        crypto5.verifyMAC(macInput, keys[1], messageBuffer.slice(-8), 8);
+        const plaintext = crypto5.decrypt(keys[0], message.ciphertext, keys[2].slice(0, 16));
         delete session.pendingPreKey;
         return plaintext;
       }
@@ -108045,8 +108045,8 @@ var require_session_cipher = __commonJS({
           throw new errors.SessionError("Chain closed");
         }
         const key = chain.chainKey.key;
-        chain.messageKeys[chain.chainKey.counter + 1] = crypto4.calculateMAC(key, Buffer.from([1]));
-        chain.chainKey.key = crypto4.calculateMAC(key, Buffer.from([2]));
+        chain.messageKeys[chain.chainKey.counter + 1] = crypto5.calculateMAC(key, Buffer.from([1]));
+        chain.chainKey.key = crypto5.calculateMAC(key, Buffer.from([2]));
         chain.chainKey.counter += 1;
         return this.fillMessageKeys(chain, counter);
       }
@@ -108073,7 +108073,7 @@ var require_session_cipher = __commonJS({
       calculateRatchet(session, remoteKey, sending) {
         let ratchet = session.currentRatchet;
         const sharedSecret = curve2.calculateAgreement(remoteKey, ratchet.ephemeralKeyPair.privKey);
-        const masterKey = crypto4.deriveSecrets(
+        const masterKey = crypto5.deriveSecrets(
           sharedSecret,
           ratchet.rootKey,
           Buffer.from("WhisperRatchet"),
@@ -136765,9 +136765,9 @@ var require_disk = __commonJS({
     var fs7 = __require("fs");
     var os2 = __require("os");
     var path5 = __require("path");
-    var crypto4 = __require("crypto");
+    var crypto5 = __require("crypto");
     function getFilename(req, file, cb) {
-      crypto4.randomBytes(16, function(err, raw) {
+      crypto5.randomBytes(16, function(err, raw) {
         cb(err, err ? void 0 : raw.toString("hex"));
       });
     }
@@ -144630,7 +144630,7 @@ var require_urlsafe_base64_helper = __commonJS({
 var require_vapid_helper = __commonJS({
   "../../node_modules/.pnpm/web-push@3.6.7/node_modules/web-push/src/vapid-helper.js"(exports, module) {
     "use strict";
-    var crypto4 = __require("crypto");
+    var crypto5 = __require("crypto");
     var asn1 = require_asn1();
     var jws = require_jws();
     var { URL: URL4 } = __require("url");
@@ -144657,7 +144657,7 @@ var require_vapid_helper = __commonJS({
       });
     }
     function generateVAPIDKeys() {
-      const curve2 = crypto4.createECDH("prime256v1");
+      const curve2 = crypto5.createECDH("prime256v1");
       curve2.generateKeys();
       let publicKeyBuffer = curve2.getPublicKey();
       let privateKeyBuffer = curve2.getPrivateKey();
@@ -144807,7 +144807,7 @@ var require_vapid_helper = __commonJS({
 var require_ece = __commonJS({
   "../../node_modules/.pnpm/http_ece@1.2.0/node_modules/http_ece/ece.js"(exports, module) {
     "use strict";
-    var crypto4 = __require("crypto");
+    var crypto5 = __require("crypto");
     var AES_GCM = "aes-128-gcm";
     var PAD_SIZE = { "aes128gcm": 1, "aesgcm": 2 };
     var TAG_LENGTH = 16;
@@ -144834,7 +144834,7 @@ var require_ece = __commonJS({
       return b;
     }
     function HMAC_hash(key, input) {
-      var hmac = crypto4.createHmac("sha256", key);
+      var hmac = crypto5.createHmac("sha256", key);
       hmac.update(input);
       return hmac.digest();
     }
@@ -145102,7 +145102,7 @@ var require_ece = __commonJS({
     function decryptRecord(key, counter, buffer, header, last) {
       keylog("decrypt", buffer);
       var nonce = generateNonce(key.nonce, counter);
-      var gcm = crypto4.createDecipheriv(AES_GCM, key.key, nonce);
+      var gcm = crypto5.createDecipheriv(AES_GCM, key.key, nonce);
       gcm.setAuthTag(buffer.slice(buffer.length - TAG_LENGTH));
       var data = gcm.update(buffer.slice(0, buffer.length - TAG_LENGTH));
       data = Buffer.concat([data, gcm.final()]);
@@ -145150,7 +145150,7 @@ var require_ece = __commonJS({
       keylog("encrypt", buffer);
       pad = pad || 0;
       var nonce = generateNonce(key.nonce, counter);
-      var gcm = crypto4.createCipheriv(AES_GCM, key.key, nonce);
+      var gcm = crypto5.createCipheriv(AES_GCM, key.key, nonce);
       var ciphertext = [];
       var padSize = PAD_SIZE[header.version];
       var padding = Buffer.alloc(pad + padSize);
@@ -145193,7 +145193,7 @@ var require_ece = __commonJS({
       }
       var header = parseParams(params);
       if (!header.salt) {
-        header.salt = crypto4.randomBytes(KEY_LENGTH);
+        header.salt = crypto5.randomBytes(KEY_LENGTH);
       }
       var result;
       if (header.version === "aes128gcm") {
@@ -145258,7 +145258,7 @@ var require_ece = __commonJS({
 var require_encryption_helper = __commonJS({
   "../../node_modules/.pnpm/web-push@3.6.7/node_modules/web-push/src/encryption-helper.js"(exports, module) {
     "use strict";
-    var crypto4 = __require("crypto");
+    var crypto5 = __require("crypto");
     var ece = require_ece();
     var encrypt2 = function(userPublicKey, userAuth, payload, contentEncoding) {
       if (!userPublicKey) {
@@ -145285,9 +145285,9 @@ var require_encryption_helper = __commonJS({
       if (typeof payload === "string" || payload instanceof String) {
         payload = Buffer.from(payload);
       }
-      const localCurve = crypto4.createECDH("prime256v1");
+      const localCurve = crypto5.createECDH("prime256v1");
       const localPublicKey = localCurve.generateKeys();
-      const salt = crypto4.randomBytes(16).toString("base64url");
+      const salt = crypto5.randomBytes(16).toString("base64url");
       const cipherText = ece.encrypt(payload, {
         version: contentEncoding,
         dh: userPublicKey,
@@ -146246,7 +146246,6 @@ import { createHash, randomBytes } from "node:crypto";
 
 // ../../lib/db/dist/index.js
 import { drizzle } from "drizzle-orm/node-postgres";
-import { withReplicas } from "drizzle-orm/pg-core";
 
 // ../../node_modules/.pnpm/pg@8.20.0/node_modules/pg/esm/index.mjs
 var import_lib = __toESM(require_lib4(), 1);
@@ -146454,12 +146453,18 @@ var shops = pgTable6("shops", {
   pickupGpsRadiusMeters: integer4("pickup_gps_radius_meters").default(200),
   pickupGpsEnforced: boolean4("pickup_gps_enforced").notNull().default(true),
   lastQrScanAt: timestamp6("last_qr_scan_at"),
+  googleBusinessUrl: text6("google_business_url"),
+  googlePlaceId: text6("google_place_id"),
+  slug: text6("slug"),
+  claimStatus: text6("claim_status").notNull().default("claimed"),
+  eta: text6("eta"),
   createdAt: timestamp6("created_at").notNull().defaultNow(),
   updatedAt: timestamp6("updated_at").notNull().defaultNow()
 }, (t2) => [
   index2("shops_owner_id_idx").on(t2.ownerId),
   index2("shops_status_idx").on(t2.status),
   index2("shops_shop_type_idx").on(t2.shopType),
+  index2("shops_slug_idx").on(t2.slug),
   index2("shops_pickup_qr_token_idx").on(t2.pickupQrToken),
   index2("shops_store_code_idx").on(t2.storeCode)
 ]);
@@ -146562,7 +146567,7 @@ var productWrongReports = pgTable9("product_wrong_reports", {
 ]);
 
 // ../../lib/db/dist/schema/orders.js
-import { pgTable as pgTable10, text as text10, timestamp as timestamp10, doublePrecision as doublePrecision6, integer as integer6, jsonb as jsonb7, index as index6 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable10, text as text10, timestamp as timestamp10, doublePrecision as doublePrecision6, integer as integer6, jsonb as jsonb7, index as index6, uniqueIndex } from "drizzle-orm/pg-core";
 var orders = pgTable10("orders", {
   id: text10("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   customerId: text10("customer_id").notNull(),
@@ -146597,6 +146602,9 @@ var orders = pgTable10("orders", {
   substitutePreference: text10("substitute_preference").default("best_match"),
   swiftCoinsEarned: integer6("swift_coins_earned").default(10),
   swiftCoinsRedeemed: integer6("swift_coins_redeemed").default(0),
+  otpFailedAttempts: integer6("otp_failed_attempts").default(0),
+  otpLockedUntil: timestamp10("otp_locked_until"),
+  idempotencyKey: text10("idempotency_key"),
   createdAt: timestamp10("created_at").notNull().defaultNow(),
   updatedAt: timestamp10("updated_at").notNull().defaultNow()
 }, (t2) => [
@@ -146606,7 +146614,8 @@ var orders = pgTable10("orders", {
   index6("orders_payment_status_idx").on(t2.paymentStatus),
   index6("orders_created_at_idx").on(t2.createdAt),
   index6("orders_shop_status_idx").on(t2.shopId, t2.status),
-  index6("orders_rider_status_idx").on(t2.deliveryPartnerId, t2.status)
+  index6("orders_rider_status_idx").on(t2.deliveryPartnerId, t2.status),
+  uniqueIndex("orders_idempotency_key_unique").on(t2.idempotencyKey)
 ]);
 
 // ../../lib/db/dist/schema/otpSessions.js
@@ -146888,7 +146897,7 @@ var buckets = pgTable25("buckets", {
 });
 
 // ../../lib/db/dist/schema/usersMapping.js
-import { pgTable as pgTable26, text as text26, integer as integer13, timestamp as timestamp26, index as index12, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable as pgTable26, text as text26, integer as integer13, timestamp as timestamp26, index as index12, uniqueIndex as uniqueIndex2 } from "drizzle-orm/pg-core";
 var usersMapping = pgTable26("users_mapping", {
   id: text26("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text26("user_id").notNull(),
@@ -146896,12 +146905,12 @@ var usersMapping = pgTable26("users_mapping", {
   // 2 | 3 | 4 | 5
   createdAt: timestamp26("created_at").notNull().defaultNow()
 }, (t2) => [
-  uniqueIndex("users_mapping_user_id_idx").on(t2.userId),
+  uniqueIndex2("users_mapping_user_id_idx").on(t2.userId),
   index12("users_mapping_database_no_idx").on(t2.databaseNo)
 ]);
 
 // ../../lib/db/dist/schema/shopsMapping.js
-import { pgTable as pgTable27, text as text27, integer as integer14, timestamp as timestamp27, index as index13, uniqueIndex as uniqueIndex2 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable27, text as text27, integer as integer14, timestamp as timestamp27, index as index13, uniqueIndex as uniqueIndex3 } from "drizzle-orm/pg-core";
 var shopsMapping = pgTable27("shops_mapping", {
   id: text27("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   shopId: text27("shop_id").notNull(),
@@ -146909,7 +146918,7 @@ var shopsMapping = pgTable27("shops_mapping", {
   // 2 | 3 | 4 | 5
   createdAt: timestamp27("created_at").notNull().defaultNow()
 }, (t2) => [
-  uniqueIndex2("shops_mapping_shop_id_idx").on(t2.shopId),
+  uniqueIndex3("shops_mapping_shop_id_idx").on(t2.shopId),
   index13("shops_mapping_database_no_idx").on(t2.databaseNo)
 ]);
 
@@ -147098,11 +147107,12 @@ var customCakeRequests = pgTable37("custom_cake_requests", {
 ]);
 
 // ../../lib/db/dist/schema/serviceBookings.js
-import { pgTable as pgTable38, text as text38, timestamp as timestamp38, doublePrecision as doublePrecision15, boolean as boolean21, index as index17 } from "drizzle-orm/pg-core";
+import { pgTable as pgTable38, text as text38, timestamp as timestamp38, doublePrecision as doublePrecision15, boolean as boolean21, index as index17, uniqueIndex as uniqueIndex4 } from "drizzle-orm/pg-core";
 var serviceBookings = pgTable38("service_bookings", {
   id: text38("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   bookingNumber: text38("booking_number").notNull().unique(),
   // e.g. "SRV-202610-1234"
+  idempotencyKey: text38("idempotency_key"),
   shopId: text38("shop_id").references(() => shops.id, { onDelete: "set null" }),
   shopName: text38("shop_name").notNull().default("Upahar Electronics Lab"),
   customerId: text38("customer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -147151,7 +147161,8 @@ var serviceBookings = pgTable38("service_bookings", {
   index17("service_bookings_shop_id_idx").on(t2.shopId),
   index17("service_bookings_status_idx").on(t2.status),
   index17("service_bookings_booking_num_idx").on(t2.bookingNumber),
-  index17("service_bookings_created_at_idx").on(t2.createdAt)
+  index17("service_bookings_created_at_idx").on(t2.createdAt),
+  uniqueIndex4("service_bookings_idempotency_idx").on(t2.idempotencyKey)
 ]);
 
 // ../../lib/db/dist/index.js
@@ -147163,17 +147174,24 @@ var DB_URLS = [
   process.env.DATABASE4_URL,
   process.env.DATABASE5_URL
 ].filter((url) => Boolean(url && url.trim().length > 0));
-function createPgPool(connectionString, index18) {
+function toNeonPoolerUrl(url) {
+  return url;
+}
+function createPgPool(rawConnectionString, index18) {
+  const connectionString = toNeonPoolerUrl(rawConnectionString);
   const isNeon = connectionString.includes("neon") || connectionString.includes("sslmode=require");
   const poolInstance = new Pool2({
     connectionString,
     ssl: isNeon ? { rejectUnauthorized: false } : void 0,
-    max: 5,
-    // Keep small pool size so we never exceed Neon limits
-    idleTimeoutMillis: 15e3,
-    // 15s idle timeout: Neon auto-suspends to save 90% Compute Hours!
-    connectionTimeoutMillis: 1e4,
-    keepAlive: true
+    max: 3,
+    // Conservative pool per DB to stay well within Neon free tier connection limits
+    idleTimeoutMillis: 5e3,
+    // 5s idle timeout: lets Neon scale-to-zero immediately when traffic pauses!
+    connectionTimeoutMillis: 8e3,
+    keepAlive: false,
+    // Do NOT send TCP keepalives — allows Neon compute auto-suspend
+    allowExitOnIdle: true
+    // Allow node process to release sockets without lingering
   });
   poolInstance.on("error", (err) => {
     console.error(`[DB-${index18 + 1}] Idle client error:`, err.message);
@@ -147185,15 +147203,8 @@ var dbInstances = pools.map((p) => drizzle(p, { schema: schema_exports }));
 var pool = pools[0];
 var primaryDb = dbInstances[0];
 var replicaDbs = dbInstances.slice(1);
-var readCounter = 0;
-function getHealthyReplica(replicas) {
-  if (!replicas || replicas.length === 0)
-    return primaryDb;
-  const idx = readCounter++ % replicas.length;
-  return replicas[idx];
-}
-var db = replicaDbs.length > 0 ? withReplicas(primaryDb, replicaDbs, (reps) => getHealthyReplica(reps)) : primaryDb;
-console.log(`[DB] 5-Database Sharded Read/Write Multi-Pool active: 1 Primary Writer + ${replicaDbs.length} Read Replicas (Total ${DB_URLS.length} Neon DBs).`);
+var db = primaryDb;
+console.log(`[DB] Database connection active using primary master pool.`);
 
 // src/routes/v1/auth.ts
 import { eq as eq3, or } from "drizzle-orm";
@@ -152247,7 +152258,15 @@ var logger = (0, import_pino.default)({
   redact: [
     "req.headers.authorization",
     "req.headers.cookie",
-    "res.headers['set-cookie']"
+    "res.headers['set-cookie']",
+    "password",
+    "otp",
+    "deliveryOtp",
+    "token",
+    "*.password",
+    "*.otp",
+    "*.deliveryOtp",
+    "*.token"
   ]
 });
 
@@ -152669,7 +152688,8 @@ var orderLimiter = makeRateLimiter({
   windowMs: 10 * 60 * 1e3,
   max: isDev ? 100 : 10,
   keyFn: (req) => {
-    const userId = req.user?.id;
+    const user = req.user;
+    const userId = user?.userId ?? user?.id;
     return `order:user:${userId ?? req.ip ?? "unknown"}`;
   },
   message: "You are placing orders too quickly. Please wait a few minutes before trying again."
@@ -152684,7 +152704,8 @@ var vendorWriteLimiter = makeRateLimiter({
   windowMs: 15 * 60 * 1e3,
   max: isDev ? 500 : 50,
   keyFn: (req) => {
-    const userId = req.user?.id;
+    const user = req.user;
+    const userId = user?.userId ?? user?.id;
     return `vendor:write:${userId ?? req.ip ?? "unknown"}`;
   },
   message: "Too many product updates. Please slow down and try again in 15 minutes."
@@ -152693,7 +152714,8 @@ var uploadLimiter = makeRateLimiter({
   windowMs: 60 * 60 * 1e3,
   max: isDev ? 200 : 20,
   keyFn: (req) => {
-    const userId = req.user?.id;
+    const user = req.user;
+    const userId = user?.userId ?? user?.id;
     return `upload:user:${userId ?? req.ip ?? "unknown"}`;
   },
   message: "Upload limit reached. You can upload up to 20 images per hour."
@@ -154742,6 +154764,11 @@ router5.get("/", optionalAuth, async (req, res) => {
         ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_status text DEFAULT 'pending';
         ALTER TABLE shops ADD COLUMN IF NOT EXISTS certificate_reject_reason text;
         ALTER TABLE shops ADD COLUMN IF NOT EXISTS verification_status text DEFAULT 'pending';
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS google_business_url text;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS google_place_id text;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS slug text;
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS claim_status text DEFAULT 'claimed';
+        ALTER TABLE shops ADD COLUMN IF NOT EXISTS eta text;
       `);
       const authReq = req;
       const isAdmin = authReq.user?.role === "admin" || authReq.user?.role === "super_admin";
@@ -154883,8 +154910,15 @@ router5.post("/admin-create", authenticate, A4, async (req, res) => {
       if (!ADMIN_ROLES.has(owner2.role)) updates["role"] = "vendor";
       [owner2] = await tx.update(users).set(updates).where(eq7(users.id, owner2.id)).returning();
     }
+    const sName = String(body["shopName"]);
+    const rawSlug = body["slug"] ? String(body["slug"]) : sName;
+    const sSlug = rawSlug.toLowerCase().trim().replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/[\s_]+/gu, "-").replace(/-+/g, "-").replace(/^-+|-+$/gu, "");
     const [shop2] = await tx.insert(shops).values({
-      shopName: String(body["shopName"]),
+      shopName: sName,
+      slug: sSlug || void 0,
+      claimStatus: body["claimStatus"] || "claimed",
+      verificationStatus: body["verificationStatus"] || "verified",
+      eta: body["eta"] || void 0,
       ownerName: String(body["ownerName"] ?? owner2.name),
       phone,
       ownerId: owner2.id,
@@ -154951,9 +154985,13 @@ router5.post("/", authenticate, async (req, res) => {
   }
   const d = parsed.data;
   try {
+    const sSlug = d.shopName.toLowerCase().trim().replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/[\s_]+/gu, "-").replace(/-+/g, "-").replace(/^-+|-+$/gu, "");
     const shop = await db.transaction(async (tx) => {
       const [shop2] = await tx.insert(shops).values({
         shopName: d.shopName,
+        slug: sSlug || void 0,
+        claimStatus: "claimed",
+        eta: "15-25 min",
         ownerName: d.ownerName,
         phone: d.phone,
         ownerId: req.user.userId,
@@ -155041,7 +155079,7 @@ router5.post("/:id/reject-certificate", authenticate, A4, async (req, res) => {
 var RESTAURANT_SHOP_TYPES = /* @__PURE__ */ new Set(["restaurant", "fast-food", "cloud-kitchen"]);
 router5.patch("/my/profile", authenticate, async (req, res) => {
   try {
-    const allowed = ["shopName", "description", "image", "banner", "shopType", "category", "timings", "address"];
+    const allowed = ["shopName", "description", "image", "banner", "shopType", "category", "timings", "address", "googleBusinessUrl", "googlePlaceId"];
     const update = {};
     const body = req.body;
     for (const key of allowed) {
@@ -155134,7 +155172,13 @@ var SHOP_PATCH_ALLOWED = /* @__PURE__ */ new Set([
   "bankAccountHolderName",
   "bankAccountNumber",
   "bankIfscCode",
-  "upiId"
+  "upiId",
+  "googleBusinessUrl",
+  "googlePlaceId",
+  "slug",
+  "claimStatus",
+  "verificationStatus",
+  "eta"
 ]);
 router5.patch("/:id", authenticate, A4, async (req, res) => {
   const body = req.body;
@@ -155163,8 +155207,11 @@ router5.patch("/:id", authenticate, A4, async (req, res) => {
 router5.post("/:id/approve", authenticate, A4, async (req, res) => {
   const shopId = req.params["id"];
   const [existing] = await db.select({
+    shopName: shops.shopName,
+    slug: shops.slug,
     certificateFile: shops.certificateFile,
-    certificateStatus: shops.certificateStatus
+    certificateStatus: shops.certificateStatus,
+    verificationStatus: shops.verificationStatus
   }).from(shops).where(eq7(shops.id, shopId)).limit(1);
   if (!existing) {
     res.status(404).json({ success: false, message: "Shop not found" });
@@ -155173,6 +155220,12 @@ router5.post("/:id/approve", authenticate, A4, async (req, res) => {
   const certUpdate = {};
   if (existing.certificateFile && existing.certificateStatus === "pending") {
     certUpdate["certificateStatus"] = "verified";
+  }
+  if (!existing.slug && existing.shopName) {
+    certUpdate["slug"] = existing.shopName.toLowerCase().trim().replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/[\s_]+/gu, "-").replace(/-+/g, "-").replace(/^-+|-+$/gu, "");
+  }
+  if (!existing.verificationStatus || existing.verificationStatus === "pending") {
+    certUpdate["verificationStatus"] = "verified";
   }
   const shop = await db.transaction(async (tx) => {
     const [shop2] = await tx.update(shops).set({ status: "approved", isOpen: true, ...certUpdate }).where(eq7(shops.id, shopId)).returning();
@@ -156687,6 +156740,7 @@ function calculateCommissionAmount(netAmount, resolved) {
 import path2 from "node:path";
 import fs5 from "node:fs";
 import os from "node:os";
+import crypto3 from "node:crypto";
 
 // ../../node_modules/.pnpm/@whiskeysockets+baileys@7.0.0-rc14/node_modules/@whiskeysockets/baileys/WAProto/index.js
 var import_minimal = __toESM(require_minimal2(), 1);
@@ -267630,6 +267684,33 @@ var lib_default = Socket_default;
 var import_qrcode = __toESM(require_lib9(), 1);
 var import_pino3 = __toESM(require_pino(), 1);
 import { sql as sql3 } from "drizzle-orm";
+var DEFAULT_WHATSAPP_TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
+function generateWhatsAppActionToken(orderId, action, timestamp39) {
+  const secret = process.env.JWT_SECRET || "swiftmart-wa-action-token-secret";
+  const ts = timestamp39 ?? Date.now();
+  const signature = crypto3.createHmac("sha256", secret).update(`${orderId}:${action}:${ts}`).digest("hex").slice(0, 32);
+  return `${ts}.${signature}`;
+}
+function verifyWhatsAppActionToken(orderId, action, token, maxAgeMs = DEFAULT_WHATSAPP_TOKEN_MAX_AGE_MS) {
+  if (!token || typeof token !== "string") return false;
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+  const [tsStr, signature] = parts;
+  const ts = Number(tsStr);
+  if (!Number.isFinite(ts) || isNaN(ts)) return false;
+  const now = Date.now();
+  if (now - ts > maxAgeMs || ts > now + 6e4) {
+    return false;
+  }
+  const secret = process.env.JWT_SECRET || "swiftmart-wa-action-token-secret";
+  const expectedSig = crypto3.createHmac("sha256", secret).update(`${orderId}:${action}:${ts}`).digest("hex").slice(0, 32);
+  if (signature.length !== expectedSig.length) return false;
+  try {
+    return crypto3.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig));
+  } catch {
+    return false;
+  }
+}
 var isServerless = Boolean(
   process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT
 );
@@ -268196,8 +268277,10 @@ _${params.footer}_`;
       return `${idx + 1}. *${it.productName}${weight}* \xD7 ${it.qty} = \u20B9${lineTotal}`;
     }).join("\n");
     const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
-    const acceptUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=accept`;
-    const rejectUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=reject`;
+    const acceptToken = generateWhatsAppActionToken(orderId, "accept");
+    const rejectToken = generateWhatsAppActionToken(orderId, "reject");
+    const acceptUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=accept&token=${acceptToken}`;
+    const rejectUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=reject&token=${rejectToken}`;
     const dashboardUrl = `${baseUrl}/vendor/orders`;
     const bodyText = [
       `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
@@ -268250,7 +268333,8 @@ _${params.footer}_`;
       netAmount
     } = params;
     const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
-    const readyCallRiderUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=ready_call_rider`;
+    const readyToken = generateWhatsAppActionToken(orderId, "ready_call_rider");
+    const readyCallRiderUrl = `${baseUrl}/api/v1/whatsapp/order-action?orderId=${orderId}&action=ready_call_rider&token=${readyToken}`;
     const dashboardUrl = `${baseUrl}/vendor/orders`;
     const bodyText = [
       `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
@@ -268777,6 +268861,101 @@ var VALID_STATUSES = /* @__PURE__ */ new Set([
   "cancelled",
   "refunded"
 ]);
+var ALLOWED_ORDER_TRANSITIONS = {
+  placed: /* @__PURE__ */ new Set(["accepted", "preparing", "confirmed", "cancelled"]),
+  accepted: /* @__PURE__ */ new Set(["preparing", "packed", "ready", "cancelled"]),
+  preparing: /* @__PURE__ */ new Set(["packed", "ready", "cancelled"]),
+  confirmed: /* @__PURE__ */ new Set(["preparing", "packed", "ready", "cancelled"]),
+  packed: /* @__PURE__ */ new Set(["ready", "shipped", "out_for_delivery", "cancelled"]),
+  ready: /* @__PURE__ */ new Set(["shipped", "out_for_delivery", "cancelled"]),
+  shipped: /* @__PURE__ */ new Set(["out_for_delivery", "delivered", "cancelled"]),
+  out_for_delivery: /* @__PURE__ */ new Set(["delivered", "cancelled"]),
+  delivered: /* @__PURE__ */ new Set([]),
+  // Terminal state
+  cancelled: /* @__PURE__ */ new Set(["refunded"]),
+  refunded: /* @__PURE__ */ new Set([])
+  // Terminal state
+};
+var ROLE_ALLOWED_TRANSITIONS = {
+  customer: {
+    placed: /* @__PURE__ */ new Set(["cancelled"]),
+    accepted: /* @__PURE__ */ new Set(["cancelled"])
+  },
+  vendor: {
+    placed: /* @__PURE__ */ new Set(["accepted", "preparing", "cancelled"]),
+    accepted: /* @__PURE__ */ new Set(["preparing", "packed", "ready", "cancelled"]),
+    preparing: /* @__PURE__ */ new Set(["packed", "ready", "cancelled"]),
+    confirmed: /* @__PURE__ */ new Set(["preparing", "packed", "ready", "cancelled"]),
+    packed: /* @__PURE__ */ new Set(["ready", "cancelled"])
+  },
+  delivery_partner: {
+    ready: /* @__PURE__ */ new Set(["out_for_delivery"]),
+    packed: /* @__PURE__ */ new Set(["out_for_delivery"]),
+    out_for_delivery: /* @__PURE__ */ new Set(["delivered"])
+  },
+  rider: {
+    ready: /* @__PURE__ */ new Set(["out_for_delivery"]),
+    packed: /* @__PURE__ */ new Set(["out_for_delivery"]),
+    out_for_delivery: /* @__PURE__ */ new Set(["delivered"])
+  }
+};
+function calculateServerDeliveryFee(options) {
+  const { customerLat, customerLng, customerPincode, shopAddress, isFood, deliveryType } = options;
+  let distanceKm = null;
+  let shopLat = null;
+  let shopLng = null;
+  if (shopAddress && typeof shopAddress === "object") {
+    const rawLat = shopAddress.lat ?? shopAddress.latitude;
+    const rawLng = shopAddress.lng ?? shopAddress.longitude ?? shopAddress.lon;
+    if (rawLat != null && !isNaN(Number(rawLat))) shopLat = Number(rawLat);
+    if (rawLng != null && !isNaN(Number(rawLng))) shopLng = Number(rawLng);
+  }
+  const PINCODE_CENTROIDS = {
+    "733101": { lat: 25.2167, lng: 88.7667 },
+    // Balurghat main town
+    "733103": { lat: 25.231, lng: 88.782 }
+    // North-east Balurghat
+  };
+  if ((shopLat == null || isNaN(shopLat)) && shopAddress?.pincode && PINCODE_CENTROIDS[String(shopAddress.pincode)]) {
+    const c = PINCODE_CENTROIDS[String(shopAddress.pincode)];
+    shopLat = c.lat;
+    shopLng = c.lng;
+  }
+  const sLat = shopLat != null && !isNaN(shopLat) ? shopLat : 25.2167;
+  const sLng = shopLng != null && !isNaN(shopLng) ? shopLng : 88.7667;
+  if (customerLat != null && customerLng != null && !isNaN(customerLat) && !isNaN(customerLng)) {
+    const R2 = 6371;
+    const dLat = (sLat - customerLat) * Math.PI / 180;
+    const dLng = (sLng - customerLng) * Math.PI / 180;
+    const sinDLat = Math.sin(dLat / 2);
+    const sinDLng = Math.sin(dLng / 2);
+    const chord = sinDLat * sinDLat + Math.cos(customerLat * Math.PI / 180) * Math.cos(sLat * Math.PI / 180) * sinDLng * sinDLng;
+    distanceKm = R2 * 2 * Math.atan2(Math.sqrt(chord), Math.sqrt(1 - chord));
+  } else if (customerPincode && PINCODE_CENTROIDS[customerPincode]) {
+    const cust = PINCODE_CENTROIDS[customerPincode];
+    const R2 = 6371;
+    const dLat = (sLat - cust.lat) * Math.PI / 180;
+    const dLng = (sLng - cust.lng) * Math.PI / 180;
+    const sinDLat = Math.sin(dLat / 2);
+    const sinDLng = Math.sin(dLng / 2);
+    const chord = sinDLat * sinDLat + Math.cos(cust.lat * Math.PI / 180) * Math.cos(sLat * Math.PI / 180) * sinDLng * sinDLng;
+    distanceKm = R2 * 2 * Math.atan2(Math.sqrt(chord), Math.sqrt(1 - chord));
+  }
+  const rawDist = distanceKm != null && distanceKm > 0 ? distanceKm : 1.5;
+  const dist = Math.max(1, Math.round(rawDist * 10) / 10);
+  if (isFood || deliveryType === "instant" || deliveryType === "scheduled") {
+    const baseFee = 20;
+    const rawPetrol = Math.round(dist * 5);
+    return Math.min(50, baseFee + rawPetrol);
+  }
+  if (deliveryType === "standard") {
+    const baseFee = 15;
+    const rawPetrol = Math.round(dist * 3);
+    return Math.min(50, baseFee + rawPetrol);
+  }
+  return 0;
+}
+var recentOrderDeduplication = /* @__PURE__ */ new Map();
 async function restoreStock(items) {
   await Promise.all(items.map(async (item) => {
     const [updated] = await db.update(products).set({ stock: sql4`${products.stock} + ${item.qty}` }).where(eq13(products.id, item.productId)).returning({ stock: products.stock, status: products.status });
@@ -269158,7 +269337,45 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
   const body = req.body;
   const items = parsed.data.items;
   const shopId = String(body["shopId"] ?? "");
-  const [shop] = await db.select({ id: shops.id, ownerId: shops.ownerId, shopType: shops.shopType, ownerName: shops.ownerName, shopName: shops.shopName, phone: shops.phone, packagingCharge: shops.packagingCharge, gstEnabled: shops.gstEnabled, gstRate: shops.gstRate }).from(shops).where(eq13(shops.id, shopId)).limit(1);
+  const rawRzpId = typeof body["razorpayOrderId"] === "string" && body["razorpayOrderId"].trim() ? body["razorpayOrderId"].trim() : null;
+  if (rawRzpId) {
+    const [existingRzpOrder] = await db.select().from(orders).where(eq13(orders.razorpayOrderId, rawRzpId)).limit(1);
+    if (existingRzpOrder) {
+      res.json({ success: true, order: mi(existingRzpOrder), message: "Order already placed" });
+      return;
+    }
+  }
+  const itemsKey = items.map((i2) => `${i2.productId}:${i2.qty}:${i2.selectedGrams || ""}:${i2.selectedVariantId || ""}`).sort().join("|");
+  const clientKey = typeof body["idempotencyKey"] === "string" && body["idempotencyKey"].trim() ? body["idempotencyKey"].trim() : null;
+  const idempotencyKey = clientKey || `${req.user.userId}_${shopId}_${itemsKey}_${Math.floor(Date.now() / 15e3)}`;
+  const now = Date.now();
+  const cachedRecent = recentOrderDeduplication.get(idempotencyKey);
+  if (cachedRecent && cachedRecent.expires > now) {
+    res.json({ success: true, order: cachedRecent.order, message: "Order already processed" });
+    return;
+  }
+  const [existingOrder] = await db.select().from(orders).where(and7(
+    eq13(orders.idempotencyKey, idempotencyKey),
+    ne(orders.status, "cancelled"),
+    ne(orders.status, "refunded")
+  )).limit(1);
+  if (existingOrder) {
+    res.json({ success: true, order: mi(existingOrder), message: "Order already processed" });
+    return;
+  }
+  const [shop] = await db.select({
+    id: shops.id,
+    ownerId: shops.ownerId,
+    shopType: shops.shopType,
+    category: shops.category,
+    address: shops.address,
+    ownerName: shops.ownerName,
+    shopName: shops.shopName,
+    phone: shops.phone,
+    packagingCharge: shops.packagingCharge,
+    gstEnabled: shops.gstEnabled,
+    gstRate: shops.gstRate
+  }).from(shops).where(eq13(shops.id, shopId)).limit(1);
   const vendorId = shop ? shop.ownerId : shopId;
   const isRestaurantType = RESTAURANT_SHOP_TYPES2.has(shop?.shopType ?? "");
   let packagingFee = 0;
@@ -269277,12 +269494,18 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
         });
       }
       const commissionAmount = +totalCommissionAmount.toFixed(2);
-      const deliveryCharge = Number(body["deliveryCharge"] ?? 0);
-      const couponDiscount = Number(body["couponDiscount"] ?? 0);
-      const gstAmount = shop?.gstEnabled && shop?.gstRate && shop.gstRate > 0 ? +(subtotal * shop.gstRate / 100).toFixed(2) : 0;
-      const netAmount = subtotal + deliveryCharge + packagingFee + gstAmount - couponDiscount;
-      const vendorPayable = +(netAmount - commissionAmount - packagingFee).toFixed(2);
-      const avgRate = enrichedItems.length > 0 ? +(enrichedItems.reduce((s2, it) => s2 + it.commissionRate, 0) / enrichedItems.length).toFixed(2) : 0;
+      const isFoodOrder = RESTAURANT_SHOP_TYPES2.has(shop?.shopType ?? "") || shop?.category === "food" || shop?.category === "restaurant" || enrichedItems.some((it) => it.category === "food" || it.category === "restaurant");
+      const deliverySlot = parsed.data.deliveryType || "instant";
+      const addressInput = parsed.data.address;
+      const deliveryCharge = calculateServerDeliveryFee({
+        customerLat: addressInput?.lat,
+        customerLng: addressInput?.lng,
+        customerPincode: addressInput?.pincode,
+        shopAddress: shop?.address,
+        isFood: isFoodOrder,
+        deliveryType: deliverySlot
+      });
+      let realCouponDiscount = 0;
       if (couponCode) {
         const [coupon] = await tx.select().from(coupons).where(eq13(coupons.code, couponCode)).limit(1);
         if (!coupon || !coupon.isActive) {
@@ -269293,6 +269516,27 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
         }
         if (coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit) {
           throw Object.assign(new Error("Coupon usage limit has been reached."), { statusCode: 400 });
+        }
+        if (coupon.minimumOrder > 0 && subtotal < coupon.minimumOrder) {
+          throw Object.assign(
+            new Error(`Minimum order of \u20B9${coupon.minimumOrder} required to apply coupon ${couponCode}.`),
+            { statusCode: 400 }
+          );
+        }
+        if (coupon.appliesTo === "shop" && coupon.targetId && coupon.targetId !== shopId) {
+          throw Object.assign(
+            new Error(`Coupon ${couponCode} is only valid for a specific shop.`),
+            { statusCode: 400 }
+          );
+        }
+        if (coupon.appliesTo === "category" && coupon.targetId) {
+          const hasCategory = enrichedItems.some((it) => it.category === coupon.targetId);
+          if (!hasCategory) {
+            throw Object.assign(
+              new Error(`Coupon ${couponCode} is only valid for specific product categories.`),
+              { statusCode: 400 }
+            );
+          }
         }
         if (coupon.perUserLimit > 0) {
           const [{ uses }] = await tx.select({ uses: count6() }).from(orders).where(and7(
@@ -269308,7 +269552,22 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
             );
           }
         }
+        let calculatedDiscount = 0;
+        if (coupon.type === "percentage") {
+          calculatedDiscount = subtotal * coupon.value / 100;
+          if (coupon.maximumDiscount && coupon.maximumDiscount > 0) {
+            calculatedDiscount = Math.min(calculatedDiscount, coupon.maximumDiscount);
+          }
+        } else {
+          calculatedDiscount = Math.min(coupon.value, subtotal);
+        }
+        realCouponDiscount = Math.min(subtotal, Math.round(calculatedDiscount * 100) / 100);
       }
+      const couponDiscount = realCouponDiscount;
+      const gstAmount = shop?.gstEnabled && shop?.gstRate && shop.gstRate > 0 ? +(subtotal * shop.gstRate / 100).toFixed(2) : 0;
+      const netAmount = Math.max(0, +(subtotal + deliveryCharge + packagingFee + gstAmount - couponDiscount).toFixed(2));
+      const vendorPayable = Math.max(0, +(netAmount - commissionAmount - packagingFee).toFixed(2));
+      const avgRate = enrichedItems.length > 0 ? +(enrichedItems.reduce((s2, it) => s2 + it.commissionRate, 0) / enrichedItems.length).toFixed(2) : 0;
       const paymentMethod = String(body["paymentMethod"] ?? "COD");
       const deliveryOtp = String(Math.floor(1e3 + Math.random() * 9e3));
       const orderId = crypto.randomUUID();
@@ -269336,6 +269595,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
         address: body["address"] ?? {},
         couponCode: couponCode ?? void 0,
         deliveryOtp,
+        idempotencyKey,
         razorpayOrderId: typeof body["razorpayOrderId"] === "string" && body["razorpayOrderId"].trim() ? body["razorpayOrderId"].trim() : void 0,
         substitutePreference: parsed.data.substitutePreference ?? "best_match",
         swiftCoinsEarned: parsed.data.swiftCoinsEarned ?? 10,
@@ -269366,6 +269626,16 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
       return order;
     });
   } catch (err) {
+    const errorObj = err;
+    if (errorObj?.code === "23505" || errorObj?.cause?.code === "23505" || String(errorObj?.message || "").includes("orders_idempotency_key") || String(errorObj?.detail || "").includes("idempotency_key")) {
+      logger.info({ idempotencyKey }, "Concurrent duplicate order creation caught by UNIQUE constraint. Fetching original order.");
+      const [existingOrder2] = await db.select().from(orders).where(eq13(orders.idempotencyKey, idempotencyKey)).limit(1);
+      if (existingOrder2) {
+        recentOrderDeduplication.set(idempotencyKey, { order: mi(existingOrder2), expires: Date.now() + 15e3 });
+        res.status(200).json({ success: true, order: mi(existingOrder2), message: "Order already processed" });
+        return;
+      }
+    }
     logger.error({ err }, "Order creation error in POST /orders");
     const e2 = err;
     if (e2.statusCode) {
@@ -269473,6 +269743,7 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
     });
   } catch {
   }
+  recentOrderDeduplication.set(idempotencyKey, { order: mi(createdOrder), expires: Date.now() + 15e3 });
   res.status(201).json({ success: true, order: mi(createdOrder) });
 });
 router9.patch("/:id/status", authenticate, validateUuidParams("id"), async (req, res) => {
@@ -269482,42 +269753,80 @@ router9.patch("/:id/status", authenticate, validateUuidParams("id"), async (req,
     res.status(400).json({ success: false, message: `Invalid status '${status}'` });
     return;
   }
+  const [current] = await db.select({
+    id: orders.id,
+    status: orders.status,
+    customerId: orders.customerId,
+    shopId: orders.shopId,
+    deliveryPartnerId: orders.deliveryPartnerId,
+    couponCode: orders.couponCode,
+    items: orders.items
+  }).from(orders).where(eq13(orders.id, orderId)).limit(1);
+  if (!current) {
+    res.status(404).json({ success: false, message: "Not found" });
+    return;
+  }
   const role = req.user.role;
   const userId = req.user.userId;
+  const validRoles = /* @__PURE__ */ new Set(["admin", "super_admin", "city_manager", "customer", "vendor", "delivery_partner", "rider"]);
+  if (!validRoles.has(role)) {
+    res.status(403).json({ success: false, message: "Forbidden: insufficient permissions to update order status" });
+    return;
+  }
   if (role === "customer") {
-    if (status !== "cancelled") {
-      res.status(403).json({ success: false, message: "Customers can only cancel orders" });
+    if (current.customerId !== userId) {
+      res.status(403).json({ success: false, message: "Forbidden: not your order" });
       return;
     }
-    const [customerOrder] = await db.select({ customerId: orders.customerId }).from(orders).where(eq13(orders.id, orderId)).limit(1);
-    if (!customerOrder) {
-      res.status(404).json({ success: false, message: "Not found" });
-      return;
-    }
-    if (customerOrder.customerId !== userId) {
-      res.status(403).json({ success: false, message: "Forbidden" });
+    const customerAllowed = ROLE_ALLOWED_TRANSITIONS.customer[current.status];
+    if (!customerAllowed || !customerAllowed.has(status)) {
+      res.status(400).json({
+        success: false,
+        message: `Customers may only cancel orders before store preparation begins (current status: ${current.status}).`
+      });
       return;
     }
   } else if (role === "vendor") {
-    if (status === "refunded") {
-      res.status(403).json({ success: false, message: "Only admins can issue refunds" });
-      return;
-    }
     const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq13(shops.ownerId, userId));
     const vendorShopIds = new Set(vendorShops.map((s2) => s2.id));
-    const [vendorOrder] = await db.select({ shopId: orders.shopId }).from(orders).where(eq13(orders.id, orderId)).limit(1);
-    if (!vendorOrder) {
-      res.status(404).json({ success: false, message: "Not found" });
-      return;
-    }
-    if (!vendorShopIds.has(vendorOrder.shopId)) {
+    if (!vendorShopIds.has(current.shopId)) {
       res.status(403).json({ success: false, message: "Forbidden: you do not own this shop" });
       return;
     }
+    const vendorAllowed = ROLE_ALLOWED_TRANSITIONS.vendor[current.status];
+    if (!vendorAllowed || !vendorAllowed.has(status)) {
+      res.status(400).json({
+        success: false,
+        message: `Vendors cannot transition order from '${current.status}' to '${status}'. Permitted next states: ${Array.from(vendorAllowed ?? []).join(", ") || "none"}.`
+      });
+      return;
+    }
+  } else if (role === "delivery_partner" || role === "rider") {
+    const [partner] = await db.select({ id: deliveryPartners.id, userId: deliveryPartners.userId }).from(deliveryPartners).where(or7(eq13(deliveryPartners.userId, userId), eq13(deliveryPartners.id, userId))).limit(1);
+    const partnerId = partner?.id ?? userId;
+    if (current.deliveryPartnerId !== partnerId && current.deliveryPartnerId !== userId) {
+      res.status(403).json({ success: false, message: "Forbidden: you are not the assigned delivery partner for this order" });
+      return;
+    }
+    const riderAllowed = ROLE_ALLOWED_TRANSITIONS.delivery_partner[current.status];
+    if (!riderAllowed || !riderAllowed.has(status)) {
+      res.status(400).json({
+        success: false,
+        message: `Delivery partners cannot transition order from '${current.status}' to '${status}'. Permitted next states: ${Array.from(riderAllowed ?? []).join(", ") || "none"}.`
+      });
+      return;
+    }
   }
-  const [current] = await db.select({ status: orders.status, couponCode: orders.couponCode }).from(orders).where(eq13(orders.id, orderId)).limit(1);
-  if (!current) {
-    res.status(404).json({ success: false, message: "Not found" });
+  if (current.status === status) {
+    res.json({ success: true, order: mi(current) });
+    return;
+  }
+  const allowed = ALLOWED_ORDER_TRANSITIONS[current.status];
+  if (!allowed || !allowed.has(status)) {
+    res.status(400).json({
+      success: false,
+      message: `Invalid order status transition from '${current.status}' to '${status}'.`
+    });
     return;
   }
   const update = { status };
@@ -269682,6 +269991,17 @@ router9.post("/:id/refund", authenticate, A8, validateUuidParams("id"), async (r
   const [current] = await db.select().from(orders).where(eq13(orders.id, orderId)).limit(1);
   if (!current) {
     res.status(404).json({ success: false, message: "Order not found" });
+    return;
+  }
+  if (current.status === "refunded") {
+    res.status(400).json({ success: false, message: "Order is already refunded" });
+    return;
+  }
+  if (current.paymentMethod === "COD" && current.paymentStatus !== "paid") {
+    res.status(400).json({
+      success: false,
+      message: "Cannot issue monetary refund for a Cash on Delivery order where payment was never collected."
+    });
     return;
   }
   let razorpayWarning = null;
@@ -270055,7 +270375,7 @@ var commissions_default = router11;
 
 // src/routes/v1/delivery.ts
 var import_express12 = __toESM(require_express2(), 1);
-import { eq as eq16, desc as desc8, and as and10, or as or8, inArray as inArray6 } from "drizzle-orm";
+import { eq as eq16, ne as ne3, desc as desc8, and as and10, or as or8, inArray as inArray6 } from "drizzle-orm";
 var router12 = (0, import_express12.Router)();
 var A11 = requireRole("admin", "super_admin");
 router12.get("/", authenticate, A11, async (_req, res) => {
@@ -270385,6 +270705,7 @@ router12.patch("/me/orders/:orderId/status", authenticate, validateUuidParams("o
   }
   res.json({ success: true, order: mi(updated) });
 });
+var otpAttemptTracker = /* @__PURE__ */ new Map();
 router12.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams("orderId"), async (req, res) => {
   const userId = req.user.userId;
   const orderId = req.params["orderId"];
@@ -270407,10 +270728,42 @@ router12.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams
     res.status(400).json({ success: false, message: `Order is already ${order.status.replace(/_/g, " ")}` });
     return;
   }
-  if (!order.deliveryOtp || order.deliveryOtp !== String(otp ?? "").trim()) {
-    res.status(400).json({ success: false, message: "Incorrect OTP. Please ask the customer for the correct code." });
+  const now = Date.now();
+  const dbLockedUntil = order.otpLockedUntil ? order.otpLockedUntil.getTime() : 0;
+  const memAttemptInfo = otpAttemptTracker.get(orderId);
+  const effectiveLockedUntil = Math.max(dbLockedUntil, memAttemptInfo?.lockedUntil || 0);
+  if (effectiveLockedUntil > now) {
+    const remainingSecs = Math.ceil((effectiveLockedUntil - now) / 1e3);
+    res.status(429).json({
+      success: false,
+      message: `Too many incorrect OTP attempts. Verification locked for ${remainingSecs} seconds.`
+    });
     return;
   }
+  if (!order.deliveryOtp || order.deliveryOtp !== String(otp ?? "").trim()) {
+    const dbAttempts = order.otpFailedAttempts ?? 0;
+    const currentAttempts = Math.max(dbAttempts, memAttemptInfo?.attempts || 0) + 1;
+    if (currentAttempts >= 5) {
+      const lockUntilDate = new Date(now + 15 * 60 * 1e3);
+      otpAttemptTracker.set(orderId, { attempts: 0, lockedUntil: lockUntilDate.getTime() });
+      await db.update(orders).set({ otpFailedAttempts: 0, otpLockedUntil: lockUntilDate, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(orders.id, orderId));
+      res.status(429).json({
+        success: false,
+        message: "Too many incorrect OTP attempts. Verification locked for 15 minutes. Contact support if needed."
+      });
+      return;
+    } else {
+      otpAttemptTracker.set(orderId, { attempts: currentAttempts, lockedUntil: 0 });
+      await db.update(orders).set({ otpFailedAttempts: currentAttempts, otpLockedUntil: null, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(orders.id, orderId));
+      res.status(400).json({
+        success: false,
+        message: `Incorrect OTP. Please ask the customer for the correct code. (${5 - currentAttempts} attempts remaining)`
+      });
+      return;
+    }
+  }
+  otpAttemptTracker.delete(orderId);
+  const clearOtpLock = { otpFailedAttempts: 0, otpLockedUntil: null };
   const isCod = (order.paymentMethod ?? "COD").toUpperCase() === "COD";
   const paymentStatusUpdate = isCod && confirmCash ? { paymentStatus: "paid" } : {};
   await db.update(deliveryPartners).set({
@@ -270419,7 +270772,7 @@ router12.post("/me/orders/:orderId/verify-otp", authenticate, validateUuidParams
     currentOrderId: null,
     updatedAt: /* @__PURE__ */ new Date()
   }).where(eq16(deliveryPartners.id, partner.id));
-  const [updated] = await db.update(orders).set({ status: "delivered", ...paymentStatusUpdate, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(orders.id, orderId)).returning();
+  const [updated] = await db.update(orders).set({ status: "delivered", ...paymentStatusUpdate, ...clearOtpLock, updatedAt: /* @__PURE__ */ new Date() }).where(eq16(orders.id, orderId)).returning();
   try {
     await createNotificationLimited(order.customerId, {
       type: "order_update",
@@ -270481,7 +270834,10 @@ router12.get("/available-orders", authenticate, async (req, res) => {
   const unassignedOrders = await db.select({ order: orders, shopName: shops.shopName, shopAddress: shops.address }).from(orders).leftJoin(shops, eq16(orders.shopId, shops.id)).where(
     and10(
       eq16(orders.deliveryPartnerId, null),
-      or8(eq16(orders.status, "ready"), eq16(orders.status, "packed"), eq16(orders.status, "placed"), eq16(orders.status, "accepted"))
+      or8(eq16(orders.status, "ready"), eq16(orders.status, "packed"), eq16(orders.status, "placed"), eq16(orders.status, "accepted")),
+      ne3(orders.deliveryType, "mall_shipping"),
+      ne3(orders.deliveryType, "courier"),
+      ne3(orders.deliveryType, "pickup")
     )
   ).orderBy(desc8(orders.createdAt)).limit(20);
   const filtered = unassignedOrders.filter(({ order, shopAddress }) => {
@@ -270516,8 +270872,23 @@ router12.post("/orders/:id/accept", authenticate, validateUuidParams("id"), asyn
   const updatedRows = await db.update(orders).set({
     deliveryPartnerId: partner.id,
     updatedAt: /* @__PURE__ */ new Date()
-  }).where(and10(eq16(orders.id, orderId), eq16(orders.deliveryPartnerId, null))).returning();
+  }).where(
+    and10(
+      eq16(orders.id, orderId),
+      eq16(orders.deliveryPartnerId, null),
+      ne3(orders.status, "cancelled"),
+      ne3(orders.status, "refunded"),
+      ne3(orders.deliveryType, "mall_shipping"),
+      ne3(orders.deliveryType, "courier"),
+      ne3(orders.deliveryType, "pickup")
+    )
+  ).returning();
   if (updatedRows.length === 0) {
+    const [existing] = await db.select({ status: orders.status }).from(orders).where(eq16(orders.id, orderId)).limit(1);
+    if (existing?.status === "cancelled" || existing?.status === "refunded") {
+      res.status(410).json({ success: false, message: "This order was cancelled by the customer or store." });
+      return;
+    }
     res.status(409).json({ success: false, message: "Order already accepted by another rider!" });
     return;
   }
@@ -271872,7 +272243,7 @@ var hero_banners_default = router17;
 var import_express18 = __toESM(require_express2(), 1);
 var import_razorpay2 = __toESM(require_razorpay(), 1);
 init_zod();
-import crypto3 from "crypto";
+import crypto4 from "crypto";
 import { eq as eq22, inArray as inArray9, and as and14 } from "drizzle-orm";
 
 // src/utils/orderCleanup.ts
@@ -272038,7 +272409,7 @@ router18.post("/verify", authenticate, async (req, res) => {
     res.status(500).json({ success: false, message: "Payment service not configured" });
     return;
   }
-  const expected = crypto3.createHmac("sha256", keySecret).update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
+  const expected = crypto4.createHmac("sha256", keySecret).update(`${razorpay_order_id}|${razorpay_payment_id}`).digest("hex");
   if (expected !== razorpay_signature) {
     res.status(400).json({ success: false, message: "Invalid payment signature" });
     return;
@@ -272085,7 +272456,7 @@ router18.post("/webhook", async (req, res) => {
     res.status(400).json({ success: false, message: "Cannot verify signature" });
     return;
   }
-  const expected = crypto3.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
+  const expected = crypto4.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
   if (expected !== signature) {
     res.status(400).json({ success: false, message: "Invalid webhook signature" });
     return;
@@ -275233,7 +275604,7 @@ var customCakes_default = router33;
 
 // src/routes/v1/serviceBookings.ts
 var import_express34 = __toESM(require_express2(), 1);
-import { eq as eq37, desc as desc19, and as and24, or as or13, sql as sql15, ilike as ilike7 } from "drizzle-orm";
+import { eq as eq37, ne as ne5, desc as desc19, and as and24, or as or13, sql as sql15, ilike as ilike7 } from "drizzle-orm";
 var router34 = (0, import_express34.Router)();
 var A26 = requireRole("admin", "super_admin", "city_manager");
 var tableInitialized = false;
@@ -275273,12 +275644,15 @@ async function ensureTableExists() {
         admin_notes text,
         cancel_reason text,
         completed_at timestamp,
+        idempotency_key text,
         created_at timestamp NOT NULL DEFAULT NOW(),
         updated_at timestamp NOT NULL DEFAULT NOW()
       );
+      ALTER TABLE service_bookings ADD COLUMN IF NOT EXISTS idempotency_key text;
       CREATE INDEX IF NOT EXISTS service_bookings_cust_idx ON service_bookings(customer_id);
       CREATE INDEX IF NOT EXISTS service_bookings_stat_idx ON service_bookings(status);
       CREATE INDEX IF NOT EXISTS service_bookings_bnum_idx ON service_bookings(booking_number);
+      CREATE UNIQUE INDEX IF NOT EXISTS service_bookings_idempotency_idx ON service_bookings(idempotency_key);
     `);
     tableInitialized = true;
   } catch (err) {
@@ -275431,6 +275805,21 @@ router34.post("/book", authenticate, async (req, res) => {
       res.status(400).json({ success: false, message: "Valid contact phone number is required." });
       return;
     }
+    const clientKey = typeof req.body.idempotencyKey === "string" && req.body.idempotencyKey.trim() ? req.body.idempotencyKey.trim() : typeof req.headers["x-idempotency-key"] === "string" ? req.headers["x-idempotency-key"].trim() : null;
+    const safeKey = `${userId}_${String(serviceType).trim()}_${String(preferredDate).trim()}_${String(preferredTimeSlot).trim()}`.toLowerCase().replace(/\s+/g, "_");
+    const idempotencyKey = clientKey || safeKey;
+    const [existingBooking] = await db.select().from(serviceBookings).where(and24(
+      eq37(serviceBookings.idempotencyKey, idempotencyKey),
+      ne5(serviceBookings.status, "cancelled")
+    )).limit(1);
+    if (existingBooking) {
+      res.json({
+        success: true,
+        message: "Service already booked for this time slot! Our technician will reach out to you.",
+        booking: mi(existingBooking)
+      });
+      return;
+    }
     let shopId = null;
     try {
       const [upharShop] = await db.select({ id: shops.id }).from(shops).where(or13(
@@ -275445,6 +275834,7 @@ router34.post("/book", authenticate, async (req, res) => {
     const bookingNumber = `SRV-${datePrefix}-${randomSuffix}`;
     const [newBooking] = await db.insert(serviceBookings).values({
       bookingNumber,
+      idempotencyKey,
       shopId,
       shopName: "Upahar Electronics Lab",
       customerId: userId,
@@ -275479,6 +275869,24 @@ router34.post("/book", authenticate, async (req, res) => {
       booking: mi(newBooking)
     });
   } catch (err) {
+    if (err?.code === "23505" || err?.cause?.code === "23505" || String(err?.message || "").includes("service_bookings_idempotency_idx") || String(err?.detail || "").includes("idempotency_key")) {
+      logger.info("Concurrent duplicate service booking caught by unique index. Returning existing booking.");
+      try {
+        const clientKey = typeof req.body.idempotencyKey === "string" && req.body.idempotencyKey.trim() ? req.body.idempotencyKey.trim() : typeof req.headers["x-idempotency-key"] === "string" ? req.headers["x-idempotency-key"].trim() : null;
+        const safeKey = `${req.user?.userId}_${String(req.body.serviceType).trim()}_${String(req.body.preferredDate).trim()}_${String(req.body.preferredTimeSlot).trim()}`.toLowerCase().replace(/\s+/g, "_");
+        const idempotencyKey = clientKey || safeKey;
+        const [existingBooking] = await db.select().from(serviceBookings).where(eq37(serviceBookings.idempotencyKey, idempotencyKey)).limit(1);
+        if (existingBooking) {
+          res.json({
+            success: true,
+            message: "Service already booked for this time slot! Our technician will reach out to you.",
+            booking: mi(existingBooking)
+          });
+          return;
+        }
+      } catch (_) {
+      }
+    }
     logger.error({ err: err?.message || err }, "POST /api/services/book failed");
     res.status(500).json({ success: false, message: "Failed to book service. Please try again." });
   }
@@ -275919,9 +276327,14 @@ function renderActionHtml(params) {
 </html>`;
 }
 router35.get("/order-action", async (req, res) => {
-  const { orderId, action } = req.query;
+  const { orderId, action, token } = req.query;
   if (!orderId || !action) {
     res.status(400).send("<h3>Invalid order action request.</h3>");
+    return;
+  }
+  if (!verifyWhatsAppActionToken(orderId, action, token)) {
+    logger.warn({ orderId, action }, "[WhatsApp] Action token signature verification failed or token missing");
+    res.status(403).send("<h3>Security verification failed: Invalid or expired action link. Please manage this order through your SwiftMart Vendor Dashboard.</h3>");
     return;
   }
   const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
@@ -275932,6 +276345,7 @@ router35.get("/order-action", async (req, res) => {
       return;
     }
     const shortId = order.id.slice(-6).toUpperCase();
+    const readyToken = generateWhatsAppActionToken(order.id, "ready_call_rider");
     if (action === "accept") {
       if (order.status === "cancelled" || order.status === "refunded") {
         res.send(renderActionHtml({
@@ -275958,7 +276372,7 @@ router35.get("/order-action", async (req, res) => {
           shopName: order.shopName,
           description: isPreparing ? `Order #${shortId} is currently being prepared. Once items are packed and ready, summon a delivery rider below!` : `Order #${shortId} is currently in status: <strong>${order.status.toUpperCase()}</strong>.`,
           primaryBtnText: isPreparing ? "\u{1F6F5} Order is Ready \u2014 Call Rider" : "Open Vendor Dashboard",
-          primaryBtnUrl: isPreparing ? `${baseUrl}/api/v1/whatsapp/order-action?orderId=${order.id}&action=ready_call_rider` : `${baseUrl}/vendor/orders`,
+          primaryBtnUrl: isPreparing ? `${baseUrl}/api/v1/whatsapp/order-action?orderId=${order.id}&action=ready_call_rider&token=${readyToken}` : `${baseUrl}/vendor/orders`,
           secondaryBtnText: isPreparing ? "\u{1F4CA} Orders Dashboard" : void 0,
           secondaryBtnUrl: isPreparing ? `${baseUrl}/vendor/orders` : void 0
         }));
@@ -276020,7 +276434,7 @@ router35.get("/order-action", async (req, res) => {
         stepNotice: "STEP 1 OF 2 COMPLETED: Kitchen / Counter is preparing items",
         description: `Order #${shortId} is now marked <strong>PREPARING</strong>.<br><br>Please prepare and pack the items carefully. When everything is packed and ready to go, tap the button below to summon a delivery partner to your store.`,
         primaryBtnText: "\u{1F6F5} Order is Ready \u2014 Call Rider",
-        primaryBtnUrl: `${baseUrl}/api/v1/whatsapp/order-action?orderId=${order.id}&action=ready_call_rider`,
+        primaryBtnUrl: `${baseUrl}/api/v1/whatsapp/order-action?orderId=${order.id}&action=ready_call_rider&token=${readyToken}`,
         primaryBtnStyle: "call-rider",
         secondaryBtnText: "\u{1F4CA} View on Dashboard",
         secondaryBtnUrl: `${baseUrl}/vendor/orders`
@@ -276175,6 +276589,34 @@ router35.get("/order-action", async (req, res) => {
       return;
     }
     if (action === "reject") {
+      if (order.status === "cancelled" || order.status === "refunded") {
+        res.send(renderActionHtml({
+          icon: "\u26A0\uFE0F",
+          title: "Order Already Cancelled",
+          badge: "CANCELLED",
+          badgeColor: "#ef4444",
+          orderNumber: shortId,
+          shopName: order.shopName,
+          description: `Order #${shortId} was already cancelled or rejected.`,
+          primaryBtnText: "Open Vendor Dashboard",
+          primaryBtnUrl: `${baseUrl}/vendor/orders`
+        }));
+        return;
+      }
+      if (order.status === "out_for_delivery" || order.status === "delivered") {
+        res.send(renderActionHtml({
+          icon: "\u26A0\uFE0F",
+          title: "Order In Transit / Delivered",
+          badge: order.status.toUpperCase(),
+          badgeColor: "#8b5cf6",
+          orderNumber: shortId,
+          shopName: order.shopName,
+          description: `Order #${shortId} cannot be rejected because it is already ${order.status === "delivered" ? "delivered" : "out for delivery"}.`,
+          primaryBtnText: "Open Vendor Dashboard",
+          primaryBtnUrl: `${baseUrl}/vendor/orders`
+        }));
+        return;
+      }
       await db.update(orders).set({
         status: "cancelled",
         cancelReason: "Rejected by shop owner via WhatsApp",
@@ -276818,60 +277260,188 @@ var compression = compressionModule.default || compressionModule;
 var pinoHttp = pinoHttpModule.default || pinoHttpModule;
 var __dirname2 = path4.dirname(fileURLToPath(import.meta.url));
 var BASE_URL = "https://swiftmart.space";
-var sitemapCache = null;
+var sitemapIndexCache = null;
+var sitemapPagesCache = null;
+var sitemapStoresCache = null;
+var sitemapCategoriesCache = null;
+var sitemapProductsCache = null;
 var SITEMAP_TTL_MS = 60 * 60 * 1e3;
+function normalizeSlug(name) {
+  if (!name) return "";
+  return name.toLowerCase().trim().replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/[\s_]+/gu, "-").replace(/-+/g, "-").replace(/^-+|-+$/gu, "");
+}
+function formatCategoryTitle(slug) {
+  return slug.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+function getMerchantSchemaType(category, shopType, name) {
+  const text39 = `${category} ${shopType} ${name}`.toLowerCase();
+  if (text39.includes("bakery") || text39.includes("cake")) {
+    return ["Bakery", "FoodEstablishment", "LocalBusiness"];
+  }
+  if (text39.includes("restaurant") || text39.includes("fast-food") || text39.includes("food") || text39.includes("shawarma") || text39.includes("roll")) {
+    return ["Restaurant", "FoodEstablishment", "LocalBusiness"];
+  }
+  if (text39.includes("grocery") || text39.includes("kirana") || text39.includes("supermarket") || text39.includes("fruit") || text39.includes("vegetable")) {
+    return ["GroceryStore", "Store", "LocalBusiness"];
+  }
+  if (text39.includes("electronic") || text39.includes("mobile") || text39.includes("computer")) {
+    return ["ElectronicsStore", "Store", "LocalBusiness"];
+  }
+  if (text39.includes("clothing") || text39.includes("fashion") || text39.includes("dress") || text39.includes("wear")) {
+    return ["ClothingStore", "Store", "LocalBusiness"];
+  }
+  if (text39.includes("book") || text39.includes("stationery") || text39.includes("khatapatra")) {
+    return ["BookStore", "Store", "LocalBusiness"];
+  }
+  if (text39.includes("service") || text39.includes("repair") || text39.includes("centre")) {
+    return ["LocalBusiness", "Service"];
+  }
+  return ["Store", "LocalBusiness"];
+}
 var STATIC_SITEMAP_URLS = [
   { loc: `${BASE_URL}/`, changefreq: "daily", priority: "1.0" },
-  { loc: `${BASE_URL}/shops`, changefreq: "daily", priority: "0.9" },
+  { loc: `${BASE_URL}/stores`, changefreq: "daily", priority: "0.9" },
   { loc: `${BASE_URL}/products`, changefreq: "daily", priority: "0.9" },
-  { loc: `${BASE_URL}/grocery`, changefreq: "daily", priority: "0.8" },
-  { loc: `${BASE_URL}/about`, changefreq: "weekly", priority: "0.8" },
   { loc: `${BASE_URL}/categories`, changefreq: "weekly", priority: "0.8" },
+  { loc: `${BASE_URL}/grocery`, changefreq: "daily", priority: "0.8" },
+  { loc: `${BASE_URL}/services`, changefreq: "weekly", priority: "0.8" },
+  { loc: `${BASE_URL}/mall`, changefreq: "weekly", priority: "0.8" },
+  { loc: `${BASE_URL}/about`, changefreq: "monthly", priority: "0.7" },
   { loc: `${BASE_URL}/search`, changefreq: "weekly", priority: "0.7" },
   { loc: `${BASE_URL}/contact-support`, changefreq: "monthly", priority: "0.6" },
   { loc: `${BASE_URL}/privacy`, changefreq: "monthly", priority: "0.5" },
   { loc: `${BASE_URL}/terms`, changefreq: "monthly", priority: "0.5" },
   { loc: `${BASE_URL}/refund-cancellation`, changefreq: "monthly", priority: "0.5" }
 ];
-async function buildSitemap() {
-  if (sitemapCache && Date.now() - sitemapCache.builtAt < SITEMAP_TTL_MS) {
-    return sitemapCache.xml;
+async function buildSitemapIndex() {
+  if (sitemapIndexCache && Date.now() - sitemapIndexCache.builtAt < SITEMAP_TTL_MS) {
+    return sitemapIndexCache.xml;
   }
-  const fmt = (d) => d ? new Date(d).toISOString().split("T")[0] : (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-  const [shopRows, productRows, categoryRows] = await Promise.all([
-    db.select({ id: shops.id, shopName: shops.shopName, updatedAt: shops.updatedAt }).from(shops).where(or15(eq41(shops.status, "approved"), eq41(shops.status, "active"))),
-    db.select({ id: products.id, updatedAt: products.updatedAt }).from(products).where(eq41(products.status, "active")),
-    db.select({ slug: categories.slug, updatedAt: categories.updatedAt }).from(categories).where(eq41(categories.isActive, true))
-  ]);
-  const urlTags = [
-    ...STATIC_SITEMAP_URLS.map(
-      (u3) => `  <url><loc>${u3.loc}</loc><lastmod>${today}</lastmod><changefreq>${u3.changefreq}</changefreq><priority>${u3.priority}</priority></url>`
-    ),
-    ...shopRows.flatMap((s2) => {
-      const slug = (s2.shopName || "").toLowerCase().trim().replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/[\s_]+/gu, "-").replace(/-+/g, "-").replace(/^-+|-+$/gu, "");
-      const tags = [
-        `  <url><loc>${BASE_URL}/shop/${s2.id}</loc><lastmod>${fmt(s2.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
-      ];
-      if (slug) {
-        tags.unshift(`  <url><loc>${BASE_URL}/${slug}</loc><lastmod>${fmt(s2.updatedAt)}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`);
-      }
-      return tags;
-    }),
-    ...productRows.map(
-      (p) => `  <url><loc>${BASE_URL}/product/${p.id}</loc><lastmod>${fmt(p.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
-    ),
-    ...categoryRows.map(
-      (c) => `  <url><loc>${BASE_URL}/category/${c.slug}</loc><lastmod>${fmt(c.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
-    )
-  ];
+  const xml = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+    `  <sitemap><loc>${BASE_URL}/sitemap-pages.xml</loc><lastmod>${today}</lastmod></sitemap>`,
+    `  <sitemap><loc>${BASE_URL}/sitemap-stores.xml</loc><lastmod>${today}</lastmod></sitemap>`,
+    `  <sitemap><loc>${BASE_URL}/sitemap-categories.xml</loc><lastmod>${today}</lastmod></sitemap>`,
+    `  <sitemap><loc>${BASE_URL}/sitemap-products.xml</loc><lastmod>${today}</lastmod></sitemap>`,
+    `</sitemapindex>`
+  ].join("\n");
+  sitemapIndexCache = { xml, builtAt: Date.now() };
+  return xml;
+}
+async function buildPagesSitemap() {
+  if (sitemapPagesCache && Date.now() - sitemapPagesCache.builtAt < SITEMAP_TTL_MS) {
+    return sitemapPagesCache.xml;
+  }
+  const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  const urlTags = STATIC_SITEMAP_URLS.map(
+    (u3) => `  <url><loc>${u3.loc}</loc><lastmod>${today}</lastmod><changefreq>${u3.changefreq}</changefreq><priority>${u3.priority}</priority></url>`
+  );
   const xml = [
     `<?xml version="1.0" encoding="UTF-8"?>`,
     `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
     ...urlTags,
     `</urlset>`
   ].join("\n");
-  sitemapCache = { xml, builtAt: Date.now() };
+  sitemapPagesCache = { xml, builtAt: Date.now() };
+  return xml;
+}
+async function buildStoresSitemap() {
+  if (sitemapStoresCache && Date.now() - sitemapStoresCache.builtAt < SITEMAP_TTL_MS) {
+    return sitemapStoresCache.xml;
+  }
+  const fmt = (d) => d ? new Date(d).toISOString().split("T")[0] : (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  const shopRows = await db.select({
+    id: shops.id,
+    shopName: shops.shopName,
+    slug: shops.slug,
+    address: shops.address,
+    updatedAt: shops.updatedAt
+  }).from(shops).where(or15(eq41(shops.status, "approved"), eq41(shops.status, "active")));
+  const distinctCities = /* @__PURE__ */ new Set();
+  const urlTags = [];
+  for (const s2 of shopRows) {
+    const slug = s2.slug || normalizeSlug(s2.shopName);
+    if (slug) {
+      urlTags.push(
+        `  <url><loc>${BASE_URL}/stores/${slug}</loc><lastmod>${fmt(s2.updatedAt)}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`
+      );
+    }
+    const addr = s2.address;
+    const city = addr?.city ? String(addr.city).trim() : "";
+    if (city) {
+      distinctCities.add(normalizeSlug(city));
+    }
+  }
+  for (const citySlug of distinctCities) {
+    urlTags.push(
+      `  <url><loc>${BASE_URL}/stores/${citySlug}</loc><lastmod>${today}</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>`
+    );
+  }
+  const xml = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+    ...urlTags,
+    `</urlset>`
+  ].join("\n");
+  sitemapStoresCache = { xml, builtAt: Date.now() };
+  return xml;
+}
+async function buildCategoriesSitemap() {
+  if (sitemapCategoriesCache && Date.now() - sitemapCategoriesCache.builtAt < SITEMAP_TTL_MS) {
+    return sitemapCategoriesCache.xml;
+  }
+  const fmt = (d) => d ? new Date(d).toISOString().split("T")[0] : (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  const [categoryRows, shopRows] = await Promise.all([
+    db.select({ slug: categories.slug, updatedAt: categories.updatedAt }).from(categories).where(eq41(categories.isActive, true)),
+    db.select({ category: shops.category, address: shops.address }).from(shops).where(or15(eq41(shops.status, "approved"), eq41(shops.status, "active")))
+  ]);
+  const urlTags = categoryRows.map(
+    (c) => `  <url><loc>${BASE_URL}/category/${c.slug}</loc><lastmod>${fmt(c.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`
+  );
+  const seenCityCat = /* @__PURE__ */ new Set();
+  for (const s2 of shopRows) {
+    const addr = s2.address;
+    const city = addr?.city ? normalizeSlug(String(addr.city)) : "";
+    const cat = s2.category ? normalizeSlug(s2.category) : "";
+    if (city && cat) {
+      const key = `${city}/${cat}`;
+      if (!seenCityCat.has(key)) {
+        seenCityCat.add(key);
+        urlTags.push(
+          `  <url><loc>${BASE_URL}/stores/${key}</loc><lastmod>${today}</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>`
+        );
+      }
+    }
+  }
+  const xml = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+    ...urlTags,
+    `</urlset>`
+  ].join("\n");
+  sitemapCategoriesCache = { xml, builtAt: Date.now() };
+  return xml;
+}
+async function buildProductsSitemap() {
+  if (sitemapProductsCache && Date.now() - sitemapProductsCache.builtAt < SITEMAP_TTL_MS) {
+    return sitemapProductsCache.xml;
+  }
+  const fmt = (d) => d ? new Date(d).toISOString().split("T")[0] : (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  const productRows = await db.select({ id: products.id, updatedAt: products.updatedAt }).from(products).where(eq41(products.status, "active"));
+  const urlTags = productRows.map(
+    (p) => `  <url><loc>${BASE_URL}/product/${p.id}</loc><lastmod>${fmt(p.updatedAt)}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`
+  );
+  const xml = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+    ...urlTags,
+    `</urlset>`
+  ].join("\n");
+  sitemapProductsCache = { xml, builtAt: Date.now() };
   return xml;
 }
 var shopSeoCache = null;
@@ -276891,39 +277461,97 @@ async function getShopSeoMaps() {
       banner: shops.banner,
       address: shops.address,
       rating: shops.rating,
-      phone: shops.phone
+      totalOrders: shops.totalOrders,
+      phone: shops.phone,
+      slug: shops.slug,
+      claimStatus: shops.claimStatus,
+      verificationStatus: shops.verificationStatus,
+      eta: shops.eta,
+      googleBusinessUrl: shops.googleBusinessUrl
     }).from(shops).where(or15(eq41(shops.status, "approved"), eq41(shops.status, "active")));
     const bySlug = /* @__PURE__ */ new Map();
     const byId = /* @__PURE__ */ new Map();
+    const cities2 = /* @__PURE__ */ new Map();
     for (const s2 of shopRows) {
-      const slug = (s2.shopName || "").toLowerCase().trim().replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/[\s_]+/gu, "-").replace(/-+/g, "-").replace(/^-+|-+$/gu, "");
-      const isFood = ["restaurant", "cafe", "cloud-kitchen", "sweet-shop", "bakery", "fast-food", "food", "food_junction", "cake"].some(
-        (t2) => (s2.shopType || "").toLowerCase().includes(t2) || (s2.category || "").toLowerCase().includes(t2) || (s2.shopName || "").toLowerCase().includes("cake") || (s2.shopName || "").toLowerCase().includes("roll")
-      );
+      const slug = s2.slug || normalizeSlug(s2.shopName);
       const addr = s2.address;
-      const addrLine = addr?.line1 || addr?.city || "Balurghat";
+      const city = addr?.city ? String(addr.city).trim() : "Local";
+      const citySlug = normalizeSlug(city);
+      const pincode = addr?.pincode ? String(addr.pincode).trim() : "";
+      const streetAddress = addr?.line1 ? String(addr.line1).trim() : addr?.city || "";
+      const lat = typeof addr?.lat === "number" ? addr.lat : typeof addr?.latitude === "number" ? addr.latitude : void 0;
+      const lng = typeof addr?.lng === "number" ? addr.lng : typeof addr?.longitude === "number" ? addr.longitude : void 0;
+      const category = s2.category || "General Store";
+      const shopType = s2.shopType || category;
+      const schemaTypes = getMerchantSchemaType(category, shopType, s2.shopName || "");
+      let eta = s2.eta;
+      if (!eta) {
+        if (schemaTypes.includes("Service")) {
+          eta = "On-site visit & inspection";
+        } else if (schemaTypes.includes("Bakery")) {
+          eta = "Same-day delivery & pre-order";
+        } else if (schemaTypes.includes("Restaurant")) {
+          eta = "20-30 min";
+        } else {
+          eta = "15-25 min";
+        }
+      }
+      let autoDesc = s2.description;
+      if (!autoDesc) {
+        if (schemaTypes.includes("Service")) {
+          autoDesc = `Official online storefront for ${s2.shopName} in ${city}. Explore electronics, repair solutions, and book on-site inspection directly on SwiftMart.`;
+        } else if (schemaTypes.includes("Restaurant")) {
+          autoDesc = `Order food online from ${s2.shopName} in ${city} on SwiftMart. Live menu, genuine prices, and fast ${eta} local delivery to your doorstep.`;
+        } else if (schemaTypes.includes("Bakery")) {
+          autoDesc = `Order delicious cakes, fresh pastries, and custom designer cakes from ${s2.shopName} in ${city} on SwiftMart. ${eta} doorstep delivery or pickup.`;
+        } else if (schemaTypes.includes("ClothingStore")) {
+          autoDesc = `Shop apparel, footwear, and fashion collections from ${s2.shopName} in ${city} on SwiftMart. ${eta} local doorstep delivery.`;
+        } else {
+          autoDesc = `Official online storefront for ${s2.shopName} in ${city} on SwiftMart. Browse live products, verified prices, daily discounts, and order online with ${eta} delivery.`;
+        }
+      }
       const info = {
         id: s2.id,
         name: s2.shopName || "Local Store",
         slug,
-        description: s2.description || `Official online storefront for ${s2.shopName} in Balurghat. Browse live products, verified prices, daily discounts, and order online with 10-15 minute delivery on SwiftMart.`,
-        category: s2.category || "Grocery & Essentials",
+        description: autoDesc,
+        category,
+        shopType,
         image: s2.image || s2.banner || `${BASE_URL}/opengraph.jpg`,
-        addressText: addrLine,
-        rating: s2.rating || 4.8,
+        streetAddress,
+        city,
+        citySlug,
+        pincode,
+        rating: Number(s2.rating || 0),
+        totalOrders: Number(s2.totalOrders || 0),
         phone: s2.phone || "+91 62961 18949",
-        isFoodShop: isFood
+        eta,
+        claimStatus: s2.claimStatus || "claimed",
+        verificationStatus: s2.verificationStatus || "verified",
+        googleBusinessUrl: s2.googleBusinessUrl || void 0,
+        lat,
+        lng,
+        schemaTypes
       };
       byId.set(s2.id, info);
       if (slug) {
         bySlug.set(slug, info);
       }
+      if (citySlug) {
+        let cityRecord = cities2.get(citySlug);
+        if (!cityRecord) {
+          cityRecord = { city, citySlug, count: 0, categories: /* @__PURE__ */ new Set() };
+          cities2.set(citySlug, cityRecord);
+        }
+        cityRecord.count++;
+        if (category) cityRecord.categories.add(normalizeSlug(category));
+      }
     }
-    shopSeoCache = { bySlug, byId, cachedAt: Date.now() };
+    shopSeoCache = { bySlug, byId, cities: cities2, cachedAt: Date.now() };
     return shopSeoCache;
   } catch (err) {
     logger.error({ err }, "Failed to load shop SEO cache");
-    return shopSeoCache || { bySlug: /* @__PURE__ */ new Map(), byId: /* @__PURE__ */ new Map() };
+    return shopSeoCache || { bySlug: /* @__PURE__ */ new Map(), byId: /* @__PURE__ */ new Map(), cities: /* @__PURE__ */ new Map() };
   }
 }
 var RESERVED_ROOT_PATHS = /* @__PURE__ */ new Set([
@@ -276934,8 +277562,10 @@ var RESERVED_ROOT_PATHS = /* @__PURE__ */ new Set([
   "admin",
   "cart",
   "checkout",
+  "order",
   "orders",
   "profile",
+  "notifications",
   "vendor",
   "vendor-register",
   "vendor-status",
@@ -276949,9 +277579,19 @@ var RESERVED_ROOT_PATHS = /* @__PURE__ */ new Set([
   "refund-cancellation",
   "search",
   "categories",
+  "category",
   "products",
+  "product",
+  "section",
   "shops",
+  "stores",
   "grocery",
+  "services",
+  "service-corner",
+  "send-parcel",
+  "mall",
+  "super-mall",
+  "custom-cakes",
   "sitemap",
   "health",
   "robots.txt",
@@ -276963,6 +277603,108 @@ var RESERVED_ROOT_PATHS = /* @__PURE__ */ new Set([
   "google-callback",
   "delete-account"
 ]);
+var KNOWN_SPA_PREFIXES = /* @__PURE__ */ new Set([
+  "",
+  "stores",
+  "shop",
+  "shops",
+  "products",
+  "product",
+  "categories",
+  "category",
+  "section",
+  "grocery",
+  "services",
+  "service-corner",
+  "send-parcel",
+  "mall",
+  "super-mall",
+  "cart",
+  "checkout",
+  "order",
+  "orders",
+  "custom-cakes",
+  "profile",
+  "notifications",
+  "vendor-register",
+  "vendor-status",
+  "auth",
+  "about",
+  "contact-support",
+  "privacy",
+  "terms",
+  "refund-cancellation",
+  "search",
+  "vendor",
+  "admin",
+  "delivery",
+  "manager-panel",
+  "complete-profile",
+  "google-callback",
+  "delete-account"
+]);
+var STATIC_PAGE_SEO = {
+  "": {
+    title: "SwiftMart \u2014 Everything You Need, Delivered Fast | Local Stores, Food & Services",
+    desc: "Shop from verified local stores, order food and fresh groceries, discover products, and book home electronics services across Balurghat on SwiftMart."
+  },
+  "about": {
+    title: "About SwiftMart | Local Commerce, Food, Groceries & Services",
+    desc: "Learn about SwiftMart \u2014 Balurghat's local commerce platform connecting customers with verified local merchants, restaurants, and home service providers."
+  },
+  "privacy": {
+    title: "Privacy Policy | SwiftMart",
+    desc: "Read the SwiftMart privacy policy to understand how customer, merchant, and delivery partner information is safely processed and protected."
+  },
+  "terms": {
+    title: "Terms of Service | SwiftMart",
+    desc: "Terms and conditions governing the use of SwiftMart's local marketplace, delivery services, and vendor platform."
+  },
+  "refund-cancellation": {
+    title: "Refund & Cancellation Policy | SwiftMart",
+    desc: "Transparent refund, return, and cancellation policies for grocery, food, retail orders and home service bookings on SwiftMart."
+  },
+  "contact-support": {
+    title: "Contact & Support | SwiftMart",
+    desc: "Reach SwiftMart customer support for order tracking, payment inquiries, merchant help, and customer assistance."
+  },
+  "search": {
+    title: "Search Products, Stores & Services | SwiftMart",
+    desc: "Search across hundreds of verified local stores, products, restaurant dishes, groceries, and home electronics repair services."
+  },
+  "grocery": {
+    title: "Grocery & Fresh Essentials | SwiftMart",
+    desc: "Order fresh vegetables, fruits, dairy, staples, and daily household essentials from verified local grocers delivered fast to your doorstep."
+  },
+  "services": {
+    title: "Service Corner | TV, AC, Appliances & Home Services | SwiftMart",
+    desc: "Book verified local technicians for TV, AC, refrigerator, washing machine, and electrical repairs with transparent pricing on SwiftMart."
+  },
+  "service-corner": {
+    title: "Service Corner | TV, AC, Appliances & Home Services | SwiftMart",
+    desc: "Book verified local technicians for TV, AC, refrigerator, washing machine, and electrical repairs with transparent pricing on SwiftMart."
+  },
+  "mall": {
+    title: "SwiftMart Mall | Direct Products & Collections",
+    desc: "Explore fashion, electronics, beauty, and home lifestyle collections delivered across India directly from SwiftMart Mall."
+  },
+  "super-mall": {
+    title: "SwiftMart Mall | Direct Products & Collections",
+    desc: "Explore fashion, electronics, beauty, and home lifestyle collections delivered across India directly from SwiftMart Mall."
+  },
+  "products": {
+    title: "All Products & Catalog | SwiftMart",
+    desc: "Browse our complete catalog of groceries, daily essentials, electronics, fashion, and home products with real-time stock and prices."
+  },
+  "categories": {
+    title: "Browse by Category | SwiftMart",
+    desc: "Explore all product and store categories on SwiftMart including groceries, food, bakery, electronics, fashion, and home repairs."
+  },
+  "send-parcel": {
+    title: "Send Parcel | Fast Local Doorstep Pickup & Delivery | SwiftMart",
+    desc: "Send documents, keys, packages, and parcels across the city with SwiftMart's reliable doorstep pickup and delivery partner network."
+  }
+};
 var app = (0, import_express39.default)();
 app.use(compression({ threshold: 1024 }));
 app.use(
@@ -277088,7 +277830,13 @@ if (process.env.NODE_ENV === "production") {
   const ROBOTS_TXT = [
     "User-agent: *",
     "Allow: /",
+    "Allow: /stores",
+    "Allow: /stores/",
     "Allow: /sitemap.xml",
+    "Allow: /sitemap-pages.xml",
+    "Allow: /sitemap-stores.xml",
+    "Allow: /sitemap-categories.xml",
+    "Allow: /sitemap-products.xml",
     "Allow: /robots.txt",
     "Disallow: /auth",
     "Disallow: /google-callback",
@@ -277140,6 +277888,9 @@ if (process.env.NODE_ENV === "production") {
     "Allow: /",
     "",
     "Sitemap: https://swiftmart.space/sitemap.xml",
+    "Sitemap: https://swiftmart.space/sitemap-stores.xml",
+    "Sitemap: https://swiftmart.space/sitemap-categories.xml",
+    "Sitemap: https://swiftmart.space/sitemap-products.xml",
     ""
   ].join("\n");
   app.get("/robots.txt", (_req, res) => {
@@ -277149,12 +277900,56 @@ if (process.env.NODE_ENV === "production") {
   });
   app.get("/sitemap.xml", async (_req, res) => {
     try {
-      const xml = await buildSitemap();
+      const xml = await buildSitemapIndex();
       res.setHeader("Content-Type", "application/xml; charset=utf-8");
       res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
       res.send(xml);
     } catch (err) {
-      logger.error({ err }, "Failed to generate dynamic sitemap; serving empty fallback");
+      logger.error({ err }, "Failed to generate sitemap index");
+      res.status(200).setHeader("Content-Type", "application/xml; charset=utf-8").send(`<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></sitemapindex>`);
+    }
+  });
+  app.get("/sitemap-pages.xml", async (_req, res) => {
+    try {
+      const xml = await buildPagesSitemap();
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
+      res.send(xml);
+    } catch (err) {
+      logger.error({ err }, "Failed to generate pages sitemap");
+      res.status(200).setHeader("Content-Type", "application/xml; charset=utf-8").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`);
+    }
+  });
+  app.get("/sitemap-stores.xml", async (_req, res) => {
+    try {
+      const xml = await buildStoresSitemap();
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
+      res.send(xml);
+    } catch (err) {
+      logger.error({ err }, "Failed to generate stores sitemap");
+      res.status(200).setHeader("Content-Type", "application/xml; charset=utf-8").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`);
+    }
+  });
+  app.get("/sitemap-categories.xml", async (_req, res) => {
+    try {
+      const xml = await buildCategoriesSitemap();
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
+      res.send(xml);
+    } catch (err) {
+      logger.error({ err }, "Failed to generate categories sitemap");
+      res.status(200).setHeader("Content-Type", "application/xml; charset=utf-8").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`);
+    }
+  });
+  app.get("/sitemap-products.xml", async (_req, res) => {
+    try {
+      const xml = await buildProductsSitemap();
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
+      res.send(xml);
+    } catch (err) {
+      logger.error({ err }, "Failed to generate products sitemap");
       res.status(200).setHeader("Content-Type", "application/xml; charset=utf-8").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`);
     }
   });
@@ -277187,79 +277982,35 @@ if (process.env.NODE_ENV === "production") {
       res.setHeader("Link", `<${canonicalUrl}>; rel="canonical"`);
       res.setHeader("Cache-Control", "no-cache, must-revalidate");
       const cleanPath = req.path.replace(/^\/+|\/+$/g, "");
-      let matchedShop;
       try {
-        if (cleanPath.startsWith("shop/")) {
-          const shopId = cleanPath.slice(5).trim();
-          const maps = await getShopSeoMaps();
-          matchedShop = maps.byId.get(shopId);
-        } else if (cleanPath && !RESERVED_ROOT_PATHS.has(cleanPath.toLowerCase()) && !cleanPath.includes("/")) {
-          const maps = await getShopSeoMaps();
-          matchedShop = maps.bySlug.get(cleanPath.toLowerCase());
+        const maps = await getShopSeoMaps();
+        if (cleanPath === "shops") {
+          res.redirect(301, `${BASE_URL}/stores`);
+          return;
         }
-        if (matchedShop) {
+        if (cleanPath.startsWith("shop/") || cleanPath.startsWith("shops/")) {
+          const rawId = cleanPath.split("/")[1]?.trim();
+          if (rawId) {
+            const matched = maps.byId.get(rawId) || maps.bySlug.get(rawId.toLowerCase());
+            if (matched?.slug) {
+              res.redirect(301, `${BASE_URL}/stores/${matched.slug}`);
+              return;
+            }
+          }
+          res.redirect(301, `${BASE_URL}/stores`);
+          return;
+        }
+        if (cleanPath && !RESERVED_ROOT_PATHS.has(cleanPath.toLowerCase()) && !cleanPath.includes("/")) {
+          const rootShop = maps.bySlug.get(cleanPath.toLowerCase());
+          if (rootShop) {
+            res.redirect(301, `${BASE_URL}/stores/${rootShop.slug}`);
+            return;
+          }
+        }
+        if (cleanPath === "stores") {
           let html = await fs6.promises.readFile(indexPath, "utf8");
-          const title = `${matchedShop.name} (Balurghat) \u2014 Official Storefront & Online Ordering | SwiftMart`;
-          const desc20 = `Order directly from ${matchedShop.name}'s official online storefront in Balurghat on SwiftMart. ${matchedShop.category ? `${matchedShop.category} \xB7 ` : ""}Instant 10-15 min local delivery across Balurghat Pincodes 733101 & 733103. Live menu, verified prices, discounts & deals.`;
-          const img = matchedShop.image.startsWith("http") ? matchedShop.image : `${BASE_URL}${matchedShop.image.startsWith("/") ? "" : "/"}${matchedShop.image}`;
-          const shopJsonLd = {
-            "@context": "https://schema.org",
-            "@graph": [
-              {
-                "@type": matchedShop.isFoodShop ? ["Restaurant", "FoodEstablishment", "LocalBusiness"] : ["Store", "LocalBusiness", "OnlineStore"],
-                "@id": `${canonicalUrl}#storefront`,
-                "name": matchedShop.name,
-                "legalName": `${matchedShop.name} \u2014 SwiftMart Official Storefront`,
-                "alternateName": [
-                  matchedShop.name,
-                  `${matchedShop.name} Balurghat`,
-                  `${matchedShop.name} Storefront`,
-                  `${matchedShop.name} Online Store`,
-                  `${matchedShop.name} Menu`
-                ],
-                "description": desc20,
-                "image": img,
-                "url": canonicalUrl,
-                "telephone": matchedShop.phone,
-                "priceRange": "\u20B9\u20B9",
-                "currenciesAccepted": "INR",
-                "paymentAccepted": "Cash on Delivery, UPI, Cards, Net Banking",
-                "parentOrganization": {
-                  "@type": "OnlineBusiness",
-                  "name": "SwiftMart",
-                  "url": BASE_URL
-                },
-                "address": {
-                  "@type": "PostalAddress",
-                  "streetAddress": matchedShop.addressText,
-                  "addressLocality": "Balurghat",
-                  "postalCode": "733101",
-                  "addressRegion": "West Bengal",
-                  "addressCountry": "IN"
-                },
-                "geo": {
-                  "@type": "GeoCoordinates",
-                  "latitude": 25.2167,
-                  "longitude": 88.7667
-                },
-                "aggregateRating": {
-                  "@type": "AggregateRating",
-                  "ratingValue": Number((matchedShop.rating || 4.8).toFixed(1)),
-                  "reviewCount": 120,
-                  "bestRating": 5,
-                  "worstRating": 1
-                }
-              },
-              {
-                "@type": "BreadcrumbList",
-                "itemListElement": [
-                  { "@type": "ListItem", "position": 1, "name": "SwiftMart Home", "item": `${BASE_URL}/` },
-                  { "@type": "ListItem", "position": 2, "name": "Balurghat Stores", "item": `${BASE_URL}/shops` },
-                  { "@type": "ListItem", "position": 3, "name": `${matchedShop.name} Storefront`, "item": canonicalUrl }
-                ]
-              }
-            ]
-          };
+          const title = "Stores & Local Merchants | SwiftMart";
+          const desc20 = "Browse all verified local stores, bakeries, restaurants, grocery marts, and electronics service centers on SwiftMart. Transparent pricing and fast local doorstep delivery.";
           const escapeAttr = (s2) => s2.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
           html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(title)}</title>`);
           html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(desc20)}" />`);
@@ -277267,30 +278018,192 @@ if (process.env.NODE_ENV === "production") {
           html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(title)}" />`);
           html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(desc20)}" />`);
           html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
-          html = html.replace(/<meta property="og:image" content=".*?"\s*\/?>/i, `<meta property="og:image" content="${escapeAttr(img)}" />`);
-          html = html.replace(/<meta name="twitter:title" content=".*?"\s*\/?>/i, `<meta name="twitter:title" content="${escapeAttr(title)}" />`);
-          html = html.replace(/<meta name="twitter:description" content=".*?"\s*\/?>/i, `<meta name="twitter:description" content="${escapeAttr(desc20)}" />`);
-          html = html.replace(/<meta name="twitter:image" content=".*?"\s*\/?>/i, `<meta name="twitter:image" content="${escapeAttr(img)}" />`);
-          const ldJsonTag = `
-    <script type="application/ld+json">
-    ${JSON.stringify(shopJsonLd, null, 2)}
-    </script>
-  </head>`;
-          html = html.replace(/<\/head>/i, ldJsonTag);
-          const storefrontNoscriptBanner = `
-          <header class="swm-preamble-header" style="border:2px solid #f59e0b; padding:16px; border-radius:12px; margin-bottom:20px; background:#fffbeb;">
-            <div style="font-size:12px; font-weight:bold; color:#b45309; text-transform:uppercase; letter-spacing:1px;">\u{1F3EA} Official Online Storefront</div>
-            <h1 style="font-size:24px; font-weight:800; color:#1e293b; margin:6px 0;">${escapeAttr(matchedShop.name)} \u2014 Balurghat Storefront &amp; Menu</h1>
-            <p style="font-size:14px; color:#475569;">${escapeAttr(desc20)}</p>
-            <p style="font-size:13px; color:#64748b;">\u{1F4CD} ${escapeAttr(matchedShop.addressText)}, Balurghat, West Bengal &bull; Fast 10-15 Min Express Doorstep Delivery by SwiftMart.</p>
-          </header>`;
-          html = html.replace(/(<noscript[^>]*>\s*<div[^>]*>)/i, `$1${storefrontNoscriptBanner}`);
           res.setHeader("Content-Type", "text/html; charset=utf-8");
           res.send(html);
           return;
         }
+        if (cleanPath.startsWith("stores/")) {
+          const segments = cleanPath.split("/").slice(1).map((s2) => s2.trim().toLowerCase());
+          const part1 = segments[0] || "";
+          const part2 = segments[1] || "";
+          const matchedShop = maps.bySlug.get(part1) || maps.byId.get(part1);
+          if (matchedShop) {
+            let html = await fs6.promises.readFile(indexPath, "utf8");
+            const escapeAttr = (s2) => s2.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const city = matchedShop.city || "Local";
+            const catTitle = formatCategoryTitle(matchedShop.category);
+            let title = `${matchedShop.name} ${city} | ${catTitle} | SwiftMart`;
+            if (matchedShop.schemaTypes.includes("Bakery")) {
+              title = `${matchedShop.name} in ${city} | Designer Cakes & Bakery | SwiftMart`;
+            } else if (matchedShop.schemaTypes.includes("Restaurant")) {
+              title = `${matchedShop.name} in ${city} | Order Food Online | SwiftMart`;
+            } else if (matchedShop.schemaTypes.includes("Service")) {
+              title = `${matchedShop.name} ${city} | Electronics & On-Site Service | SwiftMart`;
+            } else if (matchedShop.schemaTypes.includes("ClothingStore")) {
+              title = `${matchedShop.name} ${city} | Fashion & Clothing | SwiftMart`;
+            }
+            const desc20 = matchedShop.description;
+            const img = matchedShop.image.startsWith("http") ? matchedShop.image : `${BASE_URL}${matchedShop.image.startsWith("/") ? "" : "/"}${matchedShop.image}`;
+            const isService = matchedShop.schemaTypes.includes("Service");
+            const shopJsonLd = {
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": matchedShop.schemaTypes,
+                  "@id": `${canonicalUrl}#storefront`,
+                  "name": matchedShop.name,
+                  "legalName": `${matchedShop.name} \u2014 SwiftMart ${matchedShop.claimStatus === "claimed" ? "Official Storefront" : "Store"}`,
+                  "alternateName": [
+                    matchedShop.name,
+                    `${matchedShop.name} ${city}`,
+                    `${matchedShop.name} Storefront`,
+                    `${matchedShop.name} Online`
+                  ],
+                  "description": desc20,
+                  "image": img,
+                  "url": canonicalUrl,
+                  ...matchedShop.phone ? { "telephone": matchedShop.phone } : {},
+                  "priceRange": "\u20B9\u20B9",
+                  "currenciesAccepted": "INR",
+                  "paymentAccepted": "Cash on Delivery, UPI, Cards, Net Banking",
+                  "parentOrganization": {
+                    "@type": "OnlineBusiness",
+                    "name": "SwiftMart",
+                    "url": BASE_URL
+                  },
+                  "address": {
+                    "@type": "PostalAddress",
+                    ...matchedShop.streetAddress ? { "streetAddress": matchedShop.streetAddress } : {},
+                    "addressLocality": city,
+                    ...matchedShop.pincode ? { "postalCode": matchedShop.pincode } : {},
+                    "addressRegion": "West Bengal",
+                    "addressCountry": "IN"
+                  },
+                  ...matchedShop.lat && matchedShop.lng ? {
+                    "geo": {
+                      "@type": "GeoCoordinates",
+                      "latitude": matchedShop.lat,
+                      "longitude": matchedShop.lng
+                    }
+                  } : {},
+                  ...matchedShop.googleBusinessUrl ? {
+                    "sameAs": [matchedShop.googleBusinessUrl],
+                    "hasMap": matchedShop.googleBusinessUrl
+                  } : {},
+                  // Only genuine reviews & ratings — never fabricated (Requirement #6 & #14)
+                  ...matchedShop.rating > 0 && matchedShop.totalOrders > 0 ? {
+                    "aggregateRating": {
+                      "@type": "AggregateRating",
+                      "ratingValue": Number(matchedShop.rating.toFixed(1)),
+                      "reviewCount": matchedShop.totalOrders,
+                      "bestRating": 5,
+                      "worstRating": 1
+                    }
+                  } : {}
+                },
+                {
+                  "@type": "BreadcrumbList",
+                  "itemListElement": [
+                    { "@type": "ListItem", "position": 1, "name": "SwiftMart Home", "item": `${BASE_URL}/` },
+                    { "@type": "ListItem", "position": 2, "name": `${city} Stores`, "item": `${BASE_URL}/stores/${matchedShop.citySlug}` },
+                    { "@type": "ListItem", "position": 3, "name": catTitle, "item": `${BASE_URL}/stores/${matchedShop.citySlug}/${normalizeSlug(matchedShop.category)}` },
+                    { "@type": "ListItem", "position": 4, "name": matchedShop.name, "item": canonicalUrl }
+                  ]
+                }
+              ]
+            };
+            html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(title)}</title>`);
+            html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(desc20)}" />`);
+            html = html.replace(/<link rel="canonical"[^>]*href=".*?"\s*\/?>/i, `<link rel="canonical" data-rh="true" href="${canonicalUrl}" />`);
+            html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(title)}" />`);
+            html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(desc20)}" />`);
+            html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
+            html = html.replace(/<meta property="og:image" content=".*?"\s*\/?>/i, `<meta property="og:image" content="${escapeAttr(img)}" />`);
+            html = html.replace(/<meta name="twitter:title" content=".*?"\s*\/?>/i, `<meta name="twitter:title" content="${escapeAttr(title)}" />`);
+            html = html.replace(/<meta name="twitter:description" content=".*?"\s*\/?>/i, `<meta name="twitter:description" content="${escapeAttr(desc20)}" />`);
+            html = html.replace(/<meta name="twitter:image" content=".*?"\s*\/?>/i, `<meta name="twitter:image" content="${escapeAttr(img)}" />`);
+            const ldJsonTag = `
+    <script type="application/ld+json">
+    ${JSON.stringify(shopJsonLd, null, 2)}
+    </script>
+  </head>`;
+            html = html.replace(/<\/head>/i, ldJsonTag);
+            const claimLabel = matchedShop.claimStatus === "claimed" ? "Official Storefront" : "Listed on SwiftMart";
+            const verifiedBadge = matchedShop.verificationStatus === "verified" ? " &bull; &#10003; Verified by SwiftMart" : "";
+            const serviceOrDeliveryText = isService ? "On-site service booking powered by SwiftMart." : `Fast ${matchedShop.eta} doorstep delivery powered by SwiftMart.`;
+            const storefrontNoscriptBanner = `
+          <header class="swm-preamble-header" style="border:2px solid #f59e0b; padding:16px; border-radius:12px; margin-bottom:20px; background:#fffbeb;">
+            <div style="font-size:12px; font-weight:bold; color:#b45309; text-transform:uppercase; letter-spacing:1px;">\u{1F3EA} ${escapeAttr(claimLabel)}${verifiedBadge}</div>
+            <h1 style="font-size:24px; font-weight:800; color:#1e293b; margin:6px 0;">${escapeAttr(matchedShop.name)} \u2014 ${escapeAttr(city)} Storefront</h1>
+            <p style="font-size:14px; color:#475569;">${escapeAttr(desc20)}</p>
+            <p style="font-size:13px; color:#64748b;">\u{1F4CD} ${escapeAttr(matchedShop.streetAddress)}, ${escapeAttr(city)} &bull; ${escapeAttr(serviceOrDeliveryText)}</p>
+          </header>`;
+            html = html.replace(/(<noscript[^>]*>\s*<div[^>]*>)/i, `$1${storefrontNoscriptBanner}`);
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            res.send(html);
+            return;
+          }
+          const cityMeta = maps.cities.get(part1);
+          if (cityMeta && !part2) {
+            let html = await fs6.promises.readFile(indexPath, "utf8");
+            const escapeAttr = (s2) => s2.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const title = `Local Shops & Stores in ${cityMeta.city} | SwiftMart`;
+            const desc20 = `Browse ${cityMeta.count} verified local stores, bakeries, restaurants, and grocery marts in ${cityMeta.city}. Fast doorstep delivery and authentic local merchants on SwiftMart.`;
+            html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(title)}</title>`);
+            html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(desc20)}" />`);
+            html = html.replace(/<link rel="canonical"[^>]*href=".*?"\s*\/?>/i, `<link rel="canonical" data-rh="true" href="${canonicalUrl}" />`);
+            html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(title)}" />`);
+            html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(desc20)}" />`);
+            html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            res.send(html);
+            return;
+          }
+          if (cityMeta && part2) {
+            let html = await fs6.promises.readFile(indexPath, "utf8");
+            const escapeAttr = (s2) => s2.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const catTitle = formatCategoryTitle(part2);
+            const title = `${catTitle} in ${cityMeta.city} | Order Online on SwiftMart`;
+            const desc20 = `Order from top ${catTitle} shops in ${cityMeta.city}. Authentic quality, verified merchants, and quick local doorstep delivery on SwiftMart.`;
+            html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(title)}</title>`);
+            html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(desc20)}" />`);
+            html = html.replace(/<link rel="canonical"[^>]*href=".*?"\s*\/?>/i, `<link rel="canonical" data-rh="true" href="${canonicalUrl}" />`);
+            html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(title)}" />`);
+            html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(desc20)}" />`);
+            html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            res.send(html);
+            return;
+          }
+        }
+        const staticMeta = STATIC_PAGE_SEO[cleanPath];
+        if (staticMeta) {
+          let html = await fs6.promises.readFile(indexPath, "utf8");
+          const escapeAttr = (s2) => s2.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(staticMeta.title)}</title>`);
+          html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(staticMeta.desc)}" />`);
+          html = html.replace(/<link rel="canonical"[^>]*href=".*?"\s*\/?>/i, `<link rel="canonical" data-rh="true" href="${canonicalUrl}" />`);
+          html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/i, `<meta property="og:title" content="${escapeAttr(staticMeta.title)}" />`);
+          html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/i, `<meta property="og:description" content="${escapeAttr(staticMeta.desc)}" />`);
+          html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/i, `<meta property="og:url" content="${canonicalUrl}" />`);
+          res.setHeader("Content-Type", "text/html; charset=utf-8");
+          res.send(html);
+          return;
+        }
+        const firstSegment = cleanPath.split("/")[0]?.toLowerCase() || "";
+        const isKnownRoute = cleanPath === "" || KNOWN_SPA_PREFIXES.has(firstSegment) || maps.bySlug.has(firstSegment) || maps.byId.has(firstSegment);
+        if (!isKnownRoute) {
+          let html = await fs6.promises.readFile(indexPath, "utf8");
+          const title = "404 \u2014 Page Not Found | SwiftMart";
+          const desc20 = "The requested page was not found on SwiftMart. Return to home or explore local stores.";
+          const escapeAttr = (s2) => s2.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          html = html.replace(/<title>.*?<\/title>/i, `<title>${escapeAttr(title)}</title>`);
+          html = html.replace(/<meta name="description" content=".*?"\s*\/?>/i, `<meta name="description" content="${escapeAttr(desc20)}" /><meta name="robots" content="noindex, nofollow" />`);
+          res.status(404).setHeader("Content-Type", "text/html; charset=utf-8").send(html);
+          return;
+        }
       } catch (injectionErr) {
-        logger.error({ injectionErr }, "Failed to inject shop storefront meta tags into index.html; falling back to static");
+        logger.error({ injectionErr }, "Failed to inject dynamic SEO metadata into index.html; serving standard SPA");
       }
       res.sendFile(indexPath, (fileErr) => {
         if (fileErr && !res.headersSent) {

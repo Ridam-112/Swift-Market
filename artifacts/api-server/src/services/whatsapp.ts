@@ -3,17 +3,40 @@ import fs from "node:fs";
 import os from "node:os";
 import crypto from "node:crypto";
 
-export function generateWhatsAppActionToken(orderId: string, action: string): string {
+export const DEFAULT_WHATSAPP_TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+export function generateWhatsAppActionToken(orderId: string, action: string, timestamp?: number): string {
   const secret = process.env.JWT_SECRET || "swiftmart-wa-action-token-secret";
-  return crypto.createHmac("sha256", secret).update(`${orderId}:${action}`).digest("hex").slice(0, 32);
+  const ts = timestamp ?? Date.now();
+  const signature = crypto.createHmac("sha256", secret).update(`${orderId}:${action}:${ts}`).digest("hex").slice(0, 32);
+  return `${ts}.${signature}`;
 }
 
-export function verifyWhatsAppActionToken(orderId: string, action: string, token?: string): boolean {
+export function verifyWhatsAppActionToken(
+  orderId: string,
+  action: string,
+  token?: string,
+  maxAgeMs: number = DEFAULT_WHATSAPP_TOKEN_MAX_AGE_MS
+): boolean {
   if (!token || typeof token !== "string") return false;
-  const expected = generateWhatsAppActionToken(orderId, action);
-  if (token.length !== expected.length) return false;
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+  const [tsStr, signature] = parts;
+  const ts = Number(tsStr);
+  if (!Number.isFinite(ts) || isNaN(ts)) return false;
+
+  const now = Date.now();
+  // Reject stale tokens (older than maxAgeMs) or tokens with future timestamp beyond 60s clock skew
+  if (now - ts > maxAgeMs || ts > now + 60000) {
+    return false;
+  }
+
+  const secret = process.env.JWT_SECRET || "swiftmart-wa-action-token-secret";
+  const expectedSig = crypto.createHmac("sha256", secret).update(`${orderId}:${action}:${ts}`).digest("hex").slice(0, 32);
+
+  if (signature.length !== expectedSig.length) return false;
   try {
-    return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig));
   } catch {
     return false;
   }

@@ -226,6 +226,120 @@ const ALLOWED_ORDER_TRANSITIONS: Record<string, Set<string>> = {
   refunded:         new Set([]), // Terminal state
 };
 
+// Role-specific permitted transitions matrix (Audit Item 3)
+const ROLE_ALLOWED_TRANSITIONS: Record<string, Record<string, Set<string>>> = {
+  customer: {
+    placed: new Set(["cancelled"]),
+    accepted: new Set(["cancelled"]),
+  },
+  vendor: {
+    placed: new Set(["accepted", "preparing", "cancelled"]),
+    accepted: new Set(["preparing", "packed", "ready", "cancelled"]),
+    preparing: new Set(["packed", "ready", "cancelled"]),
+    confirmed: new Set(["preparing", "packed", "ready", "cancelled"]),
+    packed: new Set(["ready", "cancelled"]),
+  },
+  delivery_partner: {
+    ready: new Set(["out_for_delivery"]),
+    packed: new Set(["out_for_delivery"]),
+    out_for_delivery: new Set(["delivered"]),
+  },
+  rider: {
+    ready: new Set(["out_for_delivery"]),
+    packed: new Set(["out_for_delivery"]),
+    out_for_delivery: new Set(["delivered"]),
+  },
+};
+
+// Server-side recalculation of delivery charges from trusted distance & slot rules (Audit Item 2)
+function calculateServerDeliveryFee(options: {
+  customerLat?: number | null;
+  customerLng?: number | null;
+  customerPincode?: string | null;
+  shopAddress?: any;
+  isFood: boolean;
+  deliveryType: "instant" | "standard" | "saver" | "scheduled";
+}): number {
+  const { customerLat, customerLng, customerPincode, shopAddress, isFood, deliveryType } = options;
+
+  let distanceKm: number | null = null;
+
+  // Extract shop lat/lng
+  let shopLat: number | null = null;
+  let shopLng: number | null = null;
+  if (shopAddress && typeof shopAddress === "object") {
+    const rawLat = shopAddress.lat ?? shopAddress.latitude;
+    const rawLng = shopAddress.lng ?? shopAddress.longitude ?? shopAddress.lon;
+    if (rawLat != null && !isNaN(Number(rawLat))) shopLat = Number(rawLat);
+    if (rawLng != null && !isNaN(Number(rawLng))) shopLng = Number(rawLng);
+  }
+
+  // Centroids for Balurghat delivery area
+  const PINCODE_CENTROIDS: Record<string, { lat: number; lng: number }> = {
+    "733101": { lat: 25.2167, lng: 88.7667 }, // Balurghat main town
+    "733103": { lat: 25.2310, lng: 88.7820 }, // North-east Balurghat
+  };
+
+  if ((shopLat == null || isNaN(shopLat)) && shopAddress?.pincode && PINCODE_CENTROIDS[String(shopAddress.pincode)]) {
+    const c = PINCODE_CENTROIDS[String(shopAddress.pincode)];
+    shopLat = c.lat;
+    shopLng = c.lng;
+  }
+
+  const sLat = (shopLat != null && !isNaN(shopLat)) ? shopLat : 25.2167;
+  const sLng = (shopLng != null && !isNaN(shopLng)) ? shopLng : 88.7667;
+
+  // Compute Haversine distance if customer coordinates or pincode are provided
+  if (customerLat != null && customerLng != null && !isNaN(customerLat) && !isNaN(customerLng)) {
+    const R = 6371;
+    const dLat = ((sLat - customerLat) * Math.PI) / 180;
+    const dLng = ((sLng - customerLng) * Math.PI) / 180;
+    const sinDLat = Math.sin(dLat / 2);
+    const sinDLng = Math.sin(dLng / 2);
+    const chord =
+      sinDLat * sinDLat +
+      Math.cos((customerLat * Math.PI) / 180) *
+        Math.cos((sLat * Math.PI) / 180) *
+        sinDLng * sinDLng;
+    distanceKm = R * 2 * Math.atan2(Math.sqrt(chord), Math.sqrt(1 - chord));
+  } else if (customerPincode && PINCODE_CENTROIDS[customerPincode]) {
+    const cust = PINCODE_CENTROIDS[customerPincode];
+    const R = 6371;
+    const dLat = ((sLat - cust.lat) * Math.PI) / 180;
+    const dLng = ((sLng - cust.lng) * Math.PI) / 180;
+    const sinDLat = Math.sin(dLat / 2);
+    const sinDLng = Math.sin(dLng / 2);
+    const chord =
+      sinDLat * sinDLat +
+      Math.cos((cust.lat * Math.PI) / 180) *
+        Math.cos((sLat * Math.PI) / 180) *
+        sinDLng * sinDLng;
+    distanceKm = R * 2 * Math.atan2(Math.sqrt(chord), Math.sqrt(1 - chord));
+  }
+
+  const rawDist = distanceKm != null && distanceKm > 0 ? distanceKm : 1.5;
+  const dist = Math.max(1.0, Math.round(rawDist * 10) / 10);
+
+  // Trusted delivery fee rules:
+  // Food orders MUST use instant slot delivery rates
+  if (isFood || deliveryType === "instant" || deliveryType === "scheduled") {
+    // Base fee = ₹20, Rider petrol = ₹5/km, capped at ₹50
+    const baseFee = 20;
+    const rawPetrol = Math.round(dist * 5);
+    return Math.min(50, baseFee + rawPetrol);
+  }
+
+  if (deliveryType === "standard") {
+    // Standard: Base fee ₹15, Rider petrol = ₹3/km, capped at ₹50
+    const baseFee = 15;
+    const rawPetrol = Math.round(dist * 3);
+    return Math.min(50, baseFee + rawPetrol);
+  }
+
+  // Saver: Free
+  return 0;
+}
+
 // In-memory idempotency deduplication cache for rapid double-click orders (15-second TTL)
 const recentOrderDeduplication = new Map<string, { order: any; expires: number }>();
 
@@ -720,9 +834,21 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
     return;
   }
 
-  // Pre-transaction read: fetch shop (needed for commission resolution + payout + packaging/GST)
+  // Pre-transaction read: fetch shop (needed for commission resolution + payout + packaging/GST + deliveryFee)
   const [shop] = await db
-    .select({ id: shops.id, ownerId: shops.ownerId, shopType: shops.shopType, ownerName: shops.ownerName, shopName: shops.shopName, phone: shops.phone, packagingCharge: shops.packagingCharge, gstEnabled: shops.gstEnabled, gstRate: shops.gstRate })
+    .select({
+      id: shops.id,
+      ownerId: shops.ownerId,
+      shopType: shops.shopType,
+      category: shops.category,
+      address: shops.address,
+      ownerName: shops.ownerName,
+      shopName: shops.shopName,
+      phone: shops.phone,
+      packagingCharge: shops.packagingCharge,
+      gstEnabled: shops.gstEnabled,
+      gstRate: shops.gstRate,
+    })
     .from(shops).where(eq(shops.id, shopId)).limit(1);
   const vendorId = shop ? shop.ownerId : shopId;
 
@@ -909,7 +1035,24 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
       }
 
       const commissionAmount = +totalCommissionAmount.toFixed(2);
-      const deliveryCharge = Math.max(0, Number(body["deliveryCharge"] ?? 0));
+
+      // Server-side recalculation of delivery charge from trusted distance & slot rules (Audit Item 2)
+      const isFoodOrder = RESTAURANT_SHOP_TYPES.has(shop?.shopType ?? "") ||
+        shop?.category === "food" ||
+        shop?.category === "restaurant" ||
+        enrichedItems.some(it => it.category === "food" || it.category === "restaurant");
+
+      const deliverySlot = (parsed.data.deliveryType || "instant") as 'instant' | 'standard' | 'saver' | 'scheduled';
+      const addressInput = parsed.data.address;
+
+      const deliveryCharge = calculateServerDeliveryFee({
+        customerLat: addressInput?.lat,
+        customerLng: addressInput?.lng,
+        customerPincode: addressInput?.pincode,
+        shopAddress: shop?.address,
+        isFood: isFoodOrder,
+        deliveryType: deliverySlot,
+      });
       // packagingFee determined pre-transaction from shop type / category config
 
       // 4. Re-validate & recalculate coupon inside the transaction (prevents client-side price manipulation & race conditions)
@@ -1059,6 +1202,28 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
       return order!;
     });
   } catch (err: unknown) {
+    const errorObj = err as any;
+    // Database UNIQUE constraint conflict handling for concurrent duplicate order inserts (Audit Item 1)
+    if (
+      errorObj?.code === "23505" ||
+      errorObj?.cause?.code === "23505" ||
+      String(errorObj?.message || "").includes("orders_idempotency_key") ||
+      String(errorObj?.detail || "").includes("idempotency_key")
+    ) {
+      logger.info({ idempotencyKey }, "Concurrent duplicate order creation caught by UNIQUE constraint. Fetching original order.");
+      const [existingOrder] = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.idempotencyKey, idempotencyKey))
+        .limit(1);
+
+      if (existingOrder) {
+        recentOrderDeduplication.set(idempotencyKey, { order: mi(existingOrder), expires: Date.now() + 15000 });
+        res.status(200).json({ success: true, order: mi(existingOrder), message: "Order already processed" });
+        return;
+      }
+    }
+
     logger.error({ err }, "Order creation error in POST /orders");
     // Known validation errors (stock, minimum order, coupon) — return 4xx to client
     const e = err as { statusCode?: number; message?: string };
@@ -1206,6 +1371,7 @@ router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: 
     status: orders.status,
     customerId: orders.customerId,
     shopId: orders.shopId,
+    deliveryPartnerId: orders.deliveryPartnerId,
     couponCode: orders.couponCode,
     items: orders.items,
   }).from(orders).where(eq(orders.id, orderId)).limit(1);
@@ -1214,37 +1380,58 @@ router.patch("/:id/status", authenticate, validateUuidParams("id"), async (req: 
   const role = req.user!.role;
   const userId = req.user!.userId;
 
-  if (role !== "admin" && role !== "super_admin" && role !== "customer" && role !== "vendor") {
+  const validRoles = new Set(["admin", "super_admin", "city_manager", "customer", "vendor", "delivery_partner", "rider"]);
+  if (!validRoles.has(role)) {
     res.status(403).json({ success: false, message: "Forbidden: insufficient permissions to update order status" });
     return;
   }
 
+  // Role-Specific State Transition Enforcement (Audit Item 3)
   if (role === "customer") {
-    if (status !== "cancelled") {
-      res.status(403).json({ success: false, message: "Customers can only cancel orders" });
-      return;
-    }
     if (current.customerId !== userId) {
       res.status(403).json({ success: false, message: "Forbidden: not your order" });
       return;
     }
-    // Customers may only cancel an order before store preparation has begun (Requirement #4)
-    if (current.status !== "placed" && current.status !== "accepted") {
+    const customerAllowed = ROLE_ALLOWED_TRANSITIONS.customer[current.status];
+    if (!customerAllowed || !customerAllowed.has(status)) {
       res.status(400).json({
         success: false,
-        message: `Order cannot be cancelled directly once preparation has started (${current.status.replace(/_/g, " ")}). Please contact the store or support.`,
+        message: `Customers may only cancel orders before store preparation begins (current status: ${current.status}).`,
       });
       return;
     }
   } else if (role === "vendor") {
-    if (status === "refunded") {
-      res.status(403).json({ success: false, message: "Only admins can issue refunds" });
-      return;
-    }
     const vendorShops = await db.select({ id: shops.id }).from(shops).where(eq(shops.ownerId, userId));
     const vendorShopIds = new Set(vendorShops.map(s => s.id));
     if (!vendorShopIds.has(current.shopId)) {
       res.status(403).json({ success: false, message: "Forbidden: you do not own this shop" });
+      return;
+    }
+    const vendorAllowed = ROLE_ALLOWED_TRANSITIONS.vendor[current.status];
+    if (!vendorAllowed || !vendorAllowed.has(status)) {
+      res.status(400).json({
+        success: false,
+        message: `Vendors cannot transition order from '${current.status}' to '${status}'. Permitted next states: ${Array.from(vendorAllowed ?? []).join(", ") || "none"}.`,
+      });
+      return;
+    }
+  } else if (role === "delivery_partner" || (role as string) === "rider") {
+    // Delivery partner must be assigned to this order
+    const [partner] = await db.select({ id: deliveryPartners.id, userId: deliveryPartners.userId })
+      .from(deliveryPartners)
+      .where(or(eq(deliveryPartners.userId, userId), eq(deliveryPartners.id, userId)))
+      .limit(1);
+    const partnerId = partner?.id ?? userId;
+    if (current.deliveryPartnerId !== partnerId && current.deliveryPartnerId !== userId) {
+      res.status(403).json({ success: false, message: "Forbidden: you are not the assigned delivery partner for this order" });
+      return;
+    }
+    const riderAllowed = ROLE_ALLOWED_TRANSITIONS.delivery_partner[current.status];
+    if (!riderAllowed || !riderAllowed.has(status)) {
+      res.status(400).json({
+        success: false,
+        message: `Delivery partners cannot transition order from '${current.status}' to '${status}'. Permitted next states: ${Array.from(riderAllowed ?? []).join(", ") || "none"}.`,
+      });
       return;
     }
   }
