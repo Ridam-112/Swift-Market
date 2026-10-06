@@ -157,56 +157,56 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
         )}
       </Link>
 
-      <div className="flex-1 flex flex-col justify-between">
-        <div>
-          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-            {product.unit && (
-              <span className="text-[10px] text-muted-foreground font-medium bg-muted/50 px-1.5 py-0.5 rounded">
-                {product.unit}
-              </span>
-            )}
-            {/* Show badge only for non-standard items like Cakes or Pan-India Mall shipping */}
-            {(() => {
-              const cat = (product.category || "").toLowerCase();
-              const shop = (product.shopName || "").toLowerCase();
-              if (isHeavyItem) {
-                return (
-                  <span className="text-[9px] font-bold border px-1.5 py-0.5 rounded text-amber-500 bg-amber-500/10 border-amber-500/20">
-                    🚚 Heavy (1–3d)
-                  </span>
-                );
-              }
-              if (cat.includes("cake") || cat.includes("bakery") || shop.includes("cake") || shop.includes("bakery")) {
-                return (
-                  <span className="text-[9px] font-bold border px-1.5 py-0.5 rounded text-pink-500 bg-pink-500/10 border-pink-500/20">
-                    🎂 Pre-order
-                  </span>
-                );
-              }
-              if (cat.includes("fashion") || cat.includes("clothing") || cat.includes("electronics")) {
-                return (
-                  <span className="text-[9px] font-bold border px-1.5 py-0.5 rounded text-blue-400 bg-blue-500/10 border-blue-500/20">
-                    📦 2–4 Days
-                  </span>
-                );
-              }
-              return null;
-            })()}
-          </div>
-
-          <Link href={`/product/${product.id}`} className="font-bold text-xs sm:text-sm text-foreground line-clamp-2 leading-snug mb-1 hover:text-primary transition-colors cursor-pointer min-h-[2.4em]">
-            {product.name}
-          </Link>
-
-          {product.shopName && (
-            <Link href={getShopUrl({ id: product.shopId, shopName: product.shopName })} className="flex items-center gap-1 mb-1.5 w-max max-w-full">
-              <Store className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
-              <span className="text-[10px] text-muted-foreground hover:text-primary font-medium truncate">
-                {product.shopName}
-              </span>
-            </Link>
+      <div className="flex-1 flex flex-col">
+        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+          {product.unit && (
+            <span className="text-[10px] text-muted-foreground font-medium bg-background/50 px-1.5 py-0.5 rounded-md neu-inset">
+              {product.unit}
+            </span>
           )}
+          {(() => {
+            const cat = (product.category || "").toLowerCase();
+            const shop = (product.shopName || "").toLowerCase();
+            let label = "30–60m";
+            let icon = "⚡";
+            let color = "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+
+            if (isHeavyItem) {
+              label = "1–3 Days";
+              icon = "🚚";
+              color = "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20";
+            } else if (cat.includes("cake") || cat.includes("bakery") || shop.includes("cake") || shop.includes("bakery")) {
+              label = "Pre-order";
+              icon = "🎂";
+              color = "text-pink-600 dark:text-pink-400 bg-pink-500/10 border-pink-500/20";
+            } else if (cat.includes("restaurant") || cat.includes("fast-food") || cat.includes("food") || cat.includes("roll")) {
+              label = "30–45m";
+              icon = "⚡";
+              color = "text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20";
+            } else if (cat.includes("fashion") || cat.includes("clothing") || cat.includes("electronics") || cat.includes("beauty") || cat.includes("home")) {
+              label = "2–4 Days";
+              icon = "📦";
+              color = "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20";
+            }
+
+            return (
+              <span className={`text-[9px] font-bold border px-1.5 py-0.5 rounded-md ${color}`}>
+                {icon} {label}
+              </span>
+            );
+          })()}
         </div>
+        <Link href={`/product/${product.id}`} className="font-semibold text-sm text-foreground line-clamp-2 leading-tight mb-1 hover:text-primary transition-colors cursor-pointer">
+          {product.name}
+        </Link>
+        {product.shopName && (
+          <Link href={getShopUrl({ id: product.shopId, shopName: product.shopName })} className="flex items-center gap-1 mb-1.5 w-max max-w-full">
+            <Store className="w-2.5 h-2.5 text-primary shrink-0" />
+            <span className="text-[10px] text-primary font-medium truncate hover:underline">
+              {product.shopName}
+            </span>
+          </Link>
+        )}
 
         {hasVariants && (
           <div className="flex gap-1 flex-wrap mb-1">
