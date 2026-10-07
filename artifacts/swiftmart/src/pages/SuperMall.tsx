@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "wouter";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingBag,
   Truck,
@@ -14,6 +14,18 @@ import {
   Loader2,
   Tag,
   Star,
+  Shirt,
+  Smartphone,
+  Laptop,
+  Heart,
+  Home,
+  Tv,
+  Gift,
+  Dumbbell,
+  BookOpen,
+  Wrench,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,13 +37,57 @@ import { useShops } from "@/hooks/useShops";
 import { isSameCity } from "@/lib/deliveryEta";
 import type { Product } from "@/types";
 
+// ── Flipkart-Style Categories with Icons on Top and Text Below ─────────────────
 const MALL_CATEGORIES = [
-  { id: "all", label: "All Mall Items", icon: "🛍️" },
-  { id: "fashion", label: "Fashion & Apparel", icon: "👗" },
-  { id: "electronics", label: "Electronics & Tech", icon: "🎧" },
-  { id: "home-kitchen", label: "Home & Living", icon: "🏺" },
-  { id: "beauty-personal-care", label: "Beauty & Grooming", icon: "💄" },
-  { id: "books-stationery", label: "Stationery & Gifts", icon: "✏️" },
+  { id: "all", label: "For You", icon: Sparkles },
+  { id: "fashion", label: "Fashion", icon: Shirt },
+  { id: "mobiles", label: "Mobiles", icon: Smartphone },
+  { id: "electronics", label: "Electronics", icon: Laptop },
+  { id: "beauty-personal-care", label: "Beauty", icon: Heart },
+  { id: "home-kitchen", label: "Home", icon: Home },
+  { id: "appliances", label: "Appliances", icon: Tv },
+  { id: "toys-baby", label: "Toys, Baby", icon: Gift },
+  { id: "food-health", label: "Food & Health", icon: PackageOpen },
+  { id: "auto", label: "Auto Acc.", icon: Wrench },
+  { id: "sports", label: "Sports", icon: Dumbbell },
+  { id: "books-stationery", label: "Books", icon: BookOpen },
+];
+
+// ── Compact Flipkart-Style Mall Banners (SwiftMart Theme) ─────────────────────
+const MALL_BANNERS = [
+  {
+    badge: "SUPER MALL MEGA OFFERS",
+    title: "Pan-India Tech & Gadgets",
+    subtitle: "Smart accessories, audio gear & peripherals with 7-Day Doorstep Courier",
+    gradient: "from-indigo-950 via-purple-900 to-slate-950",
+    border: "border-purple-500/25",
+    badgeBg: "bg-purple-500/20 text-purple-200 border-purple-400/30",
+    icon: "🎧",
+    cta: "Explore Tech",
+    cat: "electronics",
+  },
+  {
+    badge: "TRENDING APPAREL",
+    title: "Direct Merchant Fashion",
+    subtitle: "Curated ethnic & modern styles shipped straight from verified sellers",
+    gradient: "from-rose-950 via-pink-900 to-slate-950",
+    border: "border-pink-500/25",
+    badgeBg: "bg-pink-500/20 text-pink-200 border-pink-400/30",
+    icon: "👗",
+    cta: "Shop Fashion",
+    cat: "fashion",
+  },
+  {
+    badge: "PAN-INDIA COURIER",
+    title: "Verified 7-Day Express Shipping",
+    subtitle: "Live AWB tracking via BlueDart, Delhivery & Speed Post with 7-day guarantee",
+    gradient: "from-blue-950 via-teal-900 to-slate-950",
+    border: "border-teal-500/25",
+    badgeBg: "bg-teal-500/20 text-teal-200 border-teal-400/30",
+    icon: "📦",
+    cta: "View Protection",
+    cat: "all",
+  },
 ];
 
 export default function SuperMall() {
@@ -40,6 +96,7 @@ export default function SuperMall() {
   const customerCity = selectedDeliveryAddress?.city || "Balurghat";
 
   const [activeCategory, setActiveCategory] = useState("all");
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [pincode, setPincode] = useState("733101");
   const [pincodeChecked, setPincodeChecked] = useState(false);
   const [checkingPincode, setCheckingPincode] = useState(false);
@@ -50,6 +107,14 @@ export default function SuperMall() {
   const [hasMore, setHasMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const observerRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-rotate hero banner every 5 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentBannerIndex(prev => (prev + 1) % MALL_BANNERS.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchMallProducts = useCallback(async (cat: string, targetPage = 1, isInitial = true) => {
     if (isInitial) {
@@ -153,119 +218,194 @@ export default function SuperMall() {
     }, 400);
   };
 
+  const activeBanner = MALL_BANNERS[currentBannerIndex];
+
   return (
-    <div className="min-h-screen pb-24 pt-4 px-3 sm:px-4 max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen pb-24 max-w-7xl mx-auto space-y-4 px-2 sm:px-4">
       <SEO
-        title="SwiftMart Super Mall — Pan-India Shopping, Fashion & Electronics"
-        description="Shop fashion, lifestyle, electronics, gifts and home decor with nationwide express delivery (7 business days) via BlueDart and India Post on SwiftMart Super Mall."
+        title="SwiftMart Super Mall — Pan-India Direct Shopping, Fashion & Electronics"
+        description="Shop fashion, lifestyle, electronics, gifts and gadgets with nationwide express delivery (7 business days) via BlueDart and India Post on SwiftMart Super Mall."
         canonical="/mall"
       />
 
-      {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-950 text-white p-6 sm:p-10 shadow-xl border border-purple-500/20">
-        <div className="relative z-10 max-w-2xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 backdrop-blur-md border border-purple-400/30 text-purple-200 text-xs font-bold tracking-wide">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Pan-India Direct E-Commerce
-          </div>
-          <h1 className="text-2xl sm:text-4xl font-black tracking-tight">
-            SwiftMart Super Mall
-          </h1>
-          <p className="text-sm sm:text-base text-purple-200/90 leading-relaxed">
-            Discover fashion, tech gadgets, home decor, gifts &amp; lifestyle essentials delivered safely to your doorstep in 7 days.
-          </p>
-
-          <div className="flex flex-wrap gap-4 pt-2 text-xs font-semibold text-purple-200">
-            <span className="flex items-center gap-1.5"><Truck className="w-4 h-4 text-emerald-400" /> Doorstep Logistics (7 Days)</span>
-            <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-purple-300" /> 7 Day Replacement Guarantee</span>
-            <span className="flex items-center gap-1.5"><Tag className="w-4 h-4 text-amber-400" /> Verified Seller Pricing</span>
-          </div>
+      {/* ── 1. Flipkart-Style Horizontal Category Strip (Top Priority) ── */}
+      <section aria-label="Mall Categories" className="w-full bg-card rounded-2xl neu-card p-1.5 sm:p-2 border border-border/60">
+        <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-hide py-1 px-1">
+          {MALL_CATEGORIES.map(cat => {
+            const isSelected = activeCategory === cat.id;
+            const Icon = cat.icon;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`flex flex-col items-center justify-center min-w-[58px] sm:min-w-[72px] md:min-w-[80px] py-1.5 px-1 rounded-xl transition-all cursor-pointer relative shrink-0 group ${
+                  isSelected
+                    ? "text-primary font-bold"
+                    : "text-muted-foreground hover:text-foreground font-medium"
+                }`}
+              >
+                <div
+                  className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center mb-1 transition-all ${
+                    isSelected
+                      ? "bg-primary text-primary-foreground shadow-xs scale-105"
+                      : "bg-background neu-inset text-muted-foreground group-hover:text-foreground group-hover:scale-105"
+                  }`}
+                >
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <span className="text-[10px] sm:text-[11px] leading-tight text-center truncate max-w-[68px] sm:max-w-[78px]">
+                  {cat.label}
+                </span>
+                {isSelected && (
+                  <motion.div
+                    layoutId="activeMallCatIndicator"
+                    className="absolute -bottom-1 left-2 right-2 h-0.5 bg-primary rounded-full"
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
-      </div>
+      </section>
 
-      {/* Pincode Shipping Estimator Strip */}
-      <div className="bg-card neu-card p-4 sm:p-5 rounded-3xl border border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-            <MapPin className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold text-foreground">Pan-India Delivery Availability</h2>
-            <p className="text-xs text-muted-foreground">Check shipping transit times to your pincode</p>
-          </div>
-        </div>
+      {/* ── 2. Compact Flipkart-Style Hero Banner Carousel (SwiftMart Theme) ── */}
+      <section aria-label="Featured Promotions" className="relative">
+        <div
+          className={`relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br ${activeBanner.gradient} text-white p-4 sm:p-6 shadow-md border ${activeBanner.border} min-h-[135px] sm:min-h-[175px] flex flex-col justify-between transition-all duration-500`}
+        >
+          {/* Subtle decorative background circle */}
+          <div className="absolute -right-8 -bottom-8 w-36 h-36 bg-white/5 rounded-full pointer-events-none" />
 
-        <form onSubmit={handlePincodeCheck} className="flex items-center gap-2 w-full sm:w-auto">
-          <Input
-            value={pincode}
-            onChange={e => {
-              setPincode(e.target.value);
-              setPincodeChecked(false);
-            }}
-            placeholder="Enter 6-digit Pincode"
-            maxLength={6}
-            className="w-36 h-10 rounded-xl bg-background text-xs font-mono font-bold"
-          />
-          <Button
-            type="submit"
-            disabled={checkingPincode || pincode.length !== 6}
-            className="rounded-xl h-10 text-xs font-bold px-4"
+          {/* Banner content */}
+          <div className="relative z-10 max-w-xl space-y-1.5 sm:space-y-2">
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-extrabold tracking-wide border ${activeBanner.badgeBg}`}>
+              <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
+              <span>{activeBanner.badge}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl shrink-0">{activeBanner.icon}</span>
+              <h1 className="text-lg sm:text-2xl md:text-3xl font-black tracking-tight text-white leading-tight">
+                {activeBanner.title}
+              </h1>
+            </div>
+
+            <p className="text-xs sm:text-sm text-white/80 line-clamp-2 max-w-md">
+              {activeBanner.subtitle}
+            </p>
+          </div>
+
+          {/* Bottom Bar: Guarantee tags & Carousel navigation dots */}
+          <div className="relative z-10 flex items-center justify-between pt-2 mt-auto border-t border-white/10 text-[10px] sm:text-xs text-white/70">
+            <div className="flex items-center gap-3 sm:gap-4 font-semibold">
+              <span className="flex items-center gap-1">
+                <Truck className="w-3.5 h-3.5 text-emerald-400" /> 7 Days Delivery
+              </span>
+              <span className="hidden xs:flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-purple-300" /> Replacement Guaranteed
+              </span>
+            </div>
+
+            {/* Carousel navigation dots */}
+            <div className="flex items-center gap-1.5">
+              {MALL_BANNERS.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentBannerIndex(idx)}
+                  aria-label={`Go to slide ${idx + 1}`}
+                  className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                    currentBannerIndex === idx
+                      ? "w-5 bg-white shadow-xs"
+                      : "w-1.5 bg-white/40 hover:bg-white/70"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop Next/Prev arrows */}
+          <button
+            type="button"
+            onClick={() => setCurrentBannerIndex(prev => (prev - 1 + MALL_BANNERS.length) % MALL_BANNERS.length)}
+            aria-label="Previous slide"
+            className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-black/30 hover:bg-black/60 text-white items-center justify-center transition-all opacity-60 hover:opacity-100"
           >
-            {checkingPincode ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Check Pincode"}
-          </Button>
-        </form>
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setCurrentBannerIndex(prev => (prev + 1) % MALL_BANNERS.length)}
+            aria-label="Next slide"
+            className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-black/30 hover:bg-black/60 text-white items-center justify-center transition-all opacity-60 hover:opacity-100"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </section>
 
-        {pincodeChecked && (
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Delivers in 7 Days to {pincode}</span>
-          </div>
-        )}
-      </div>
+      {/* ── 3. Compact Pincode & Shipping Estimator Bar ── */}
+      <section aria-label="Delivery Check" className="bg-card neu-card px-3 py-2 rounded-2xl border border-border/60 flex flex-col sm:flex-row items-center justify-between gap-2 shadow-xs">
+        <div className="flex items-center gap-2 text-xs font-semibold text-foreground min-w-0 w-full sm:w-auto">
+          <Truck className="w-4 h-4 text-primary shrink-0" />
+          <span className="truncate">Pan-India Express Logistics • 7 Days Delivery</span>
+        </div>
 
-      {/* Mall Category Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        {MALL_CATEGORIES.map(tab => {
-          const isSelected = activeCategory === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveCategory(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
-                isSelected
-                  ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                  : "bg-card border-border/60 text-muted-foreground hover:text-foreground hover:border-border"
-              }`}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <form onSubmit={handlePincodeCheck} className="flex items-center gap-1.5">
+            <Input
+              value={pincode}
+              onChange={e => {
+                setPincode(e.target.value);
+                setPincodeChecked(false);
+              }}
+              placeholder="6-digit pincode"
+              maxLength={6}
+              className="w-28 h-8 text-xs font-mono font-bold rounded-xl px-2.5 bg-background neu-inset border-none"
+            />
+            <Button
+              type="submit"
+              disabled={checkingPincode || pincode.length !== 6}
+              size="sm"
+              className="h-8 text-[11px] px-3 rounded-xl font-bold neu-card"
             >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
+              {checkingPincode ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Check"}
+            </Button>
+          </form>
 
-      {/* Products Grid */}
-      <div className="space-y-4">
+          {pincodeChecked && (
+            <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-xl whitespace-nowrap">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>7 Days to {pincode}</span>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── 4. Mall Catalog / Products Section (Immediate Visual Access) ── */}
+      <section aria-label="Mall Products" className="space-y-3 pt-1">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-            <ShoppingBag className="w-5 h-5 text-primary" />
-            Trending on Super Mall
+          <h2 className="text-base sm:text-lg font-black text-foreground flex items-center gap-1.5">
+            <ShoppingBag className="w-4 h-4 text-primary" />
+            <span>
+              {activeCategory === "all" ? "Trending on Super Mall" : MALL_CATEGORIES.find(c => c.id === activeCategory)?.label || "Mall Collection"}
+            </span>
           </h2>
           {!loading && products.length > 0 && (
-            <span className="text-xs text-muted-foreground font-medium">
-              Showing {products.length} items
+            <span className="text-[11px] text-muted-foreground font-semibold">
+              {products.length} item{products.length !== 1 ? "s" : ""}
             </span>
           )}
         </div>
 
         {loading && products.length === 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-              <div key={i} className="h-64 bg-muted/60 rounded-2xl animate-pulse" />
+              <div key={i} className="h-56 bg-muted/60 rounded-2xl animate-pulse neu-inset" />
             ))}
           </div>
         ) : products.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {products.map((prod, idx) => (
                 <div key={prod.id} className="relative">
                   <ProductCard product={prod} index={idx} isMall={true} />
@@ -277,14 +417,14 @@ export default function SuperMall() {
             <div ref={observerRef} className="h-6 w-full" />
 
             {loadingMore && (
-              <div className="py-6 flex flex-col items-center justify-center gap-2">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <div className="py-4 flex flex-col items-center justify-center gap-1.5">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
                 <span className="text-xs text-muted-foreground font-medium">Loading more Super Mall items...</span>
               </div>
             )}
 
             {hasMore && !loadingMore && (
-              <div className="py-4 flex justify-center">
+              <div className="py-3 flex justify-center">
                 <Button
                   variant="outline"
                   onClick={() => fetchMallProducts(activeCategory, page + 1, false)}
@@ -296,50 +436,52 @@ export default function SuperMall() {
             )}
           </>
         ) : (
-          <div className="py-16 text-center bg-card rounded-3xl neu-card p-8 space-y-4 max-w-lg mx-auto border border-border/60">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto text-3xl">
+          <div className="py-12 sm:py-16 text-center bg-card rounded-3xl neu-card p-6 sm:p-8 space-y-4 max-w-lg mx-auto border border-border/60 shadow-xs">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto text-2xl sm:text-3xl neu-inset">
               🛍️
             </div>
-            <h3 className="text-xl font-black text-foreground">
-              Pan-India Super Mall — Coming Soon!
-            </h3>
-            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              Currently all active stores on SwiftMart are verified local neighborhood stores in <span className="font-semibold text-foreground">{customerCity}</span> delivering fresh in <span className="text-primary font-bold">30–60 minutes</span>. Curated regional merchants and Pan-India direct e-commerce with 7-day courier delivery will be live here soon!
-            </p>
+            <div className="space-y-1.5">
+              <h3 className="text-lg sm:text-xl font-black text-foreground">
+                Pan-India Super Mall — Coming Soon!
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                Currently all active stores on SwiftMart are verified local neighborhood stores in <span className="font-semibold text-foreground">{customerCity}</span> delivering fresh in <span className="text-primary font-bold">30–60 minutes</span>. Curated regional merchants and Pan-India direct e-commerce with 7-day courier delivery will be live here soon!
+              </p>
+            </div>
             <div className="pt-2">
               <Link href="/stores">
-                <Button className="rounded-xl font-bold text-xs h-11 px-6 neu-card gap-2">
+                <Button className="rounded-xl font-bold text-xs h-11 px-6 neu-card gap-2 w-full sm:w-auto">
                   <ShoppingBag className="w-4 h-4" /> Explore Local Stores (30–60m Delivery)
                 </Button>
               </Link>
             </div>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Trust & Guarantee Strip */}
-      <section className="mt-12 bg-card/60 border border-border/50 rounded-3xl p-6 sm:p-8 space-y-4">
-        <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-          <Truck className="w-5 h-5 text-primary" />
-          How SwiftMart Super Mall Delivery Works
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-          <div className="bg-background/80 p-4 rounded-2xl border border-border/40 space-y-1">
-            <strong className="text-foreground block">🇮🇳 Pan-India Shipping Network</strong>
-            <p className="text-muted-foreground leading-relaxed">
-              Orders from verified regional merchants and manufacturers are dispatched directly via BlueDart, India Post Speed Post, or Delhivery.
+      {/* ── 5. Compact Trust & Logistics Strip ── */}
+      <section aria-label="Mall Trust Guarantee" className="mt-8 bg-card/60 border border-border/50 rounded-2xl p-4 sm:p-6 space-y-3">
+        <h3 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5">
+          <Truck className="w-4 h-4 text-primary" />
+          <span>How SwiftMart Super Mall Delivery Works</span>
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="bg-background/80 p-3 rounded-xl border border-border/40 space-y-0.5 neu-inset">
+            <strong className="text-foreground block font-bold">🇮🇳 Pan-India Network</strong>
+            <p className="text-muted-foreground leading-relaxed text-[11px]">
+              Dispatched directly via BlueDart, India Post Speed Post, or Delhivery with 7-day delivery.
             </p>
           </div>
-          <div className="bg-background/80 p-4 rounded-2xl border border-border/40 space-y-1">
-            <strong className="text-foreground block">📦 Live AWB Courier Tracking</strong>
-            <p className="text-muted-foreground leading-relaxed">
-              Every parcel comes with a verified tracking number (AWB) allowing you to track transit steps from dispatch to your doorstep.
+          <div className="bg-background/80 p-3 rounded-xl border border-border/40 space-y-0.5 neu-inset">
+            <strong className="text-foreground block font-bold">📦 Live AWB Tracking</strong>
+            <p className="text-muted-foreground leading-relaxed text-[11px]">
+              Every parcel comes with a verified tracking number (AWB) to track transit steps to your doorstep.
             </p>
           </div>
-          <div className="bg-background/80 p-4 rounded-2xl border border-border/40 space-y-1">
-            <strong className="text-foreground block">🛡️ Buyer Protection &amp; Support</strong>
-            <p className="text-muted-foreground leading-relaxed">
-              Enjoy 7-day doorstep replacement for defective or incorrect items with dedicated SwiftMart Balurghat helpdesk support.
+          <div className="bg-background/80 p-3 rounded-xl border border-border/40 space-y-0.5 neu-inset">
+            <strong className="text-foreground block font-bold">🛡️ Buyer Protection</strong>
+            <p className="text-muted-foreground leading-relaxed text-[11px]">
+              Enjoy 7-day doorstep replacement with dedicated SwiftMart customer support.
             </p>
           </div>
         </div>
