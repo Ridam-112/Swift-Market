@@ -20,6 +20,9 @@ import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
 import { ProductCard } from "@/components/ProductCard";
 import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
+import { useShops } from "@/hooks/useShops";
+import { isSameCity } from "@/lib/deliveryEta";
 import type { Product } from "@/types";
 
 const MALL_CATEGORIES = [
@@ -32,6 +35,10 @@ const MALL_CATEGORIES = [
 ];
 
 export default function SuperMall() {
+  const { selectedDeliveryAddress } = useAuth();
+  const { allShops, getShopById, isLoading: shopsLoading } = useShops();
+  const customerCity = selectedDeliveryAddress?.city || "Balurghat";
+
   const [activeCategory, setActiveCategory] = useState("all");
   const [pincode, setPincode] = useState("733101");
   const [pincodeChecked, setPincodeChecked] = useState(false);
@@ -55,29 +62,43 @@ export default function SuperMall() {
       const catParam = cat !== "all" ? `&category=${encodeURIComponent(cat)}` : "";
       const searchParam = searchQuery.trim() ? `&search=${encodeURIComponent(searchQuery.trim())}` : "";
       const d = await api.get<{ success: boolean; products: any[]; hasMore?: boolean }>(
-        `/products?status=active&limit=24&page=${targetPage}${catParam}${searchParam}`
+        `/products?status=active&limit=50&page=${targetPage}${catParam}${searchParam}`
       );
 
-      const items = (d.products || []).map(p => ({
-        id: p._id || p.id,
-        name: p.name,
-        category: p.category,
-        price: Number(p.price) || 0,
-        discountedPrice: p.discountedPrice != null ? Number(p.discountedPrice) : undefined,
-        unit: p.unit ?? "1 piece",
-        image: p.images?.[0] ?? p.image ?? "/assets/product-placeholder.png",
-        images: p.images ?? (p.image ? [p.image] : []),
-        description: p.description ?? "",
-        stock: Number(p.stock) || 0,
-        rating: Number(p.rating) || 0,
-        vendorId: p.shopId ?? "",
-        shopId: p.shopId ?? "",
-        shopName: p.shopName || "SwiftMart Mall Partner",
-        trending: p.trending ?? false,
-        colors: p.colors,
-        sizes: p.sizes,
-        colorImages: p.colorImages,
-      }));
+      // Only include products from outside/different city shops, or products explicitly tagged as mall items
+      const rawProducts = d.products || [];
+      const items = rawProducts
+        .map(p => {
+          const shop = p.shopId ? getShopById(p.shopId) || allShops.find(s => s.id === p.shopId) : undefined;
+          const shopCity = (p as any).shopCity || (p as any).city || shop?.city || "";
+          const isMallTag = p.isMall === true || (p as any).deliveryType === "mall";
+          // If shopCity is known, check if it's from a different city than customerCity
+          const isOutsideShop = Boolean(shopCity && !isSameCity(customerCity, shopCity));
+
+          return {
+            id: p._id || p.id,
+            name: p.name,
+            category: p.category,
+            price: Number(p.price) || 0,
+            discountedPrice: p.discountedPrice != null ? Number(p.discountedPrice) : undefined,
+            unit: p.unit ?? "1 piece",
+            image: p.images?.[0] ?? p.image ?? "/assets/product-placeholder.png",
+            images: p.images ?? (p.image ? [p.image] : []),
+            description: p.description ?? "",
+            stock: Number(p.stock) || 0,
+            rating: Number(p.rating) || 0,
+            vendorId: p.shopId ?? "",
+            shopId: p.shopId ?? "",
+            shopName: p.shopName || shop?.storeName || "SwiftMart Mall Partner",
+            trending: p.trending ?? false,
+            colors: p.colors,
+            sizes: p.sizes,
+            colorImages: p.colorImages,
+            isOutsideShop,
+            isMallTag,
+          };
+        })
+        .filter(p => p.isOutsideShop || p.isMallTag);
 
       if (isInitial) {
         setProducts(items);
@@ -89,18 +110,20 @@ export default function SuperMall() {
       }
 
       setPage(targetPage);
-      setHasMore(d.hasMore ?? (items.length === 24));
+      setHasMore(d.hasMore ?? (items.length >= 24));
     } catch {
       if (isInitial) setProducts([]);
     } finally {
       if (isInitial) setLoading(false);
       setLoadingMore(false);
     }
-  }, [searchQuery]);
+  }, [searchQuery, allShops, customerCity, getShopById]);
 
   useEffect(() => {
-    fetchMallProducts(activeCategory, 1, true);
-  }, [activeCategory, fetchMallProducts]);
+    if (!shopsLoading) {
+      fetchMallProducts(activeCategory, 1, true);
+    }
+  }, [activeCategory, shopsLoading, fetchMallProducts]);
 
   // Infinite scroll
   useEffect(() => {
@@ -273,10 +296,23 @@ export default function SuperMall() {
             )}
           </>
         ) : (
-          <div className="py-16 text-center bg-card rounded-3xl neu-card p-8 space-y-3">
-            <PackageOpen className="w-12 h-12 text-muted-foreground mx-auto" />
-            <h3 className="text-lg font-bold text-foreground">No Mall Products in this Category</h3>
-            <p className="text-xs text-muted-foreground">Try selecting a different category above.</p>
+          <div className="py-16 text-center bg-card rounded-3xl neu-card p-8 space-y-4 max-w-lg mx-auto border border-border/60">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto text-3xl">
+              🛍️
+            </div>
+            <h3 className="text-xl font-black text-foreground">
+              Pan-India Super Mall — Coming Soon!
+            </h3>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Currently all active stores on SwiftMart are verified local neighborhood stores in <span className="font-semibold text-foreground">{customerCity}</span> delivering fresh in <span className="text-primary font-bold">30–60 minutes</span>. Curated regional merchants and Pan-India direct e-commerce with 7-day courier delivery will be live here soon!
+            </p>
+            <div className="pt-2">
+              <Link href="/stores">
+                <Button className="rounded-xl font-bold text-xs h-11 px-6 neu-card gap-2">
+                  <ShoppingBag className="w-4 h-4" /> Explore Local Stores (30–60m Delivery)
+                </Button>
+              </Link>
+            </div>
           </div>
         )}
       </div>
