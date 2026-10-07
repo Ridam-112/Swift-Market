@@ -134,7 +134,7 @@ export default function SuperMall() {
     <div className="min-h-screen pb-24 pt-4 px-3 sm:px-4 max-w-7xl mx-auto space-y-6">
       <SEO
         title="SwiftMart Super Mall — Pan-India Shopping, Fashion & Electronics"
-        description="Shop fashion, lifestyle, electronics, gifts and home decor with nationwide Pan-India express delivery (3–5 business days) via BlueDart and India Post on SwiftMart Super Mall."
+        description="Shop fashion, lifestyle, electronics, gifts and home decor with nationwide express delivery (7 business days) via BlueDart and India Post on SwiftMart Super Mall."
         canonical="/mall"
       />
 
@@ -148,12 +148,12 @@ export default function SuperMall() {
             SwiftMart Super Mall
           </h1>
           <p className="text-sm sm:text-base text-purple-200/90 leading-relaxed">
-            Discover fashion, tech gadgets, home decor, gifts &amp; lifestyle essentials delivered safely to your doorstep in 2–4 business days.
+            Discover fashion, tech gadgets, home decor, gifts &amp; lifestyle essentials delivered safely to your doorstep in 7 days.
           </p>
 
           <div className="flex flex-wrap gap-4 pt-2 text-xs font-semibold text-purple-200">
-            <span className="flex items-center gap-1.5"><Truck className="w-4 h-4 text-emerald-400" /> Doorstep Logistics (2–4 Days)</span>
-            <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-purple-300" /> 3–7 Day Replacement Guarantee</span>
+            <span className="flex items-center gap-1.5"><Truck className="w-4 h-4 text-emerald-400" /> Doorstep Logistics (7 Days)</span>
+            <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-purple-300" /> 7 Day Replacement Guarantee</span>
             <span className="flex items-center gap-1.5"><Tag className="w-4 h-4 text-amber-400" /> Verified Seller Pricing</span>
           </div>
         </div>
@@ -194,7 +194,7 @@ export default function SuperMall() {
         {pincodeChecked && (
           <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
             <CheckCircle2 className="w-4 h-4" />
-            <span>Delivers in 3–5 Days to {pincode}</span>
+            <span>Delivers in 7 Days to {pincode}</span>
           </div>
         )}
       </div>
@@ -245,7 +245,7 @@ export default function SuperMall() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {products.map((prod, idx) => (
                 <div key={prod.id} className="relative">
-                  <ProductCard product={prod} index={idx} />
+                  <ProductCard product={prod} index={idx} isMall={true} />
                 </div>
               ))}
             </div>

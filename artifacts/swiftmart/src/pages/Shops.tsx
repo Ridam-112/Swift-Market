@@ -8,6 +8,7 @@ import { useShops } from "@/hooks/useShops";
 import { useAuth } from "@/hooks/useAuth";
 import { SkeletonShopCardGrid } from "@/components/SkeletonShopCard";
 import { getShopUrl, toShopSlug } from "@/lib/shopUrl";
+import { isSameCity } from "@/lib/deliveryEta";
 
 function formatCategory(slug: string) {
   return slug
@@ -30,7 +31,8 @@ export default function Shops({ initialCity, initialCategory }: ShopsProps = {})
   const routeCategory = cityCatParams?.category || (initialCategory ? toShopSlug(initialCategory) : "");
 
   const { shops, allShops, isLoading } = useShops();
-  const { user } = useAuth();
+  const { user, selectedDeliveryAddress } = useAuth();
+  const customerCity = selectedDeliveryAddress?.city || "Balurghat";
   const candidateShops = (allShops && allShops.length > 0) ? allShops : shops;
 
   const [openOnly, setOpenOnly] = useState(false);
@@ -53,13 +55,17 @@ export default function Shops({ initialCity, initialCategory }: ShopsProps = {})
     return list.sort();
   }, [candidateShops]);
 
-  // Sync route params to state
+  // Sync route params to state (or default to customer city)
   useEffect(() => {
     if (routeCity && cities.length > 0) {
       const match = cities.find(c => toShopSlug(c) === routeCity.toLowerCase());
       if (match) setSelectedCity(match);
+    } else if (!selectedCity && cities.length > 0) {
+      const uCity = (selectedDeliveryAddress?.city || "Balurghat").trim().toLowerCase();
+      const match = cities.find(c => c.toLowerCase().includes(uCity) || uCity.includes(c.toLowerCase()));
+      if (match) setSelectedCity(match);
     }
-  }, [routeCity, cities]);
+  }, [routeCity, cities, selectedDeliveryAddress?.city]);
 
   // Distinct categories from actual database shops (filtered by city if city chosen)
   const categories = useMemo(() => {
@@ -403,7 +409,7 @@ export default function Shops({ initialCity, initialCategory }: ShopsProps = {})
                         {/* Dynamic ETA (Requirement #8) */}
                         <div className="flex items-center gap-1 text-muted-foreground bg-background neu-inset px-2 py-0.5 rounded-md">
                           <Clock className="w-3 h-3" />
-                          {vendor.eta || "15-25 min"}
+                          {isSameCity(customerCity, vendor.city) ? (vendor.eta || "30–60 min") : "7 Days"}
                         </div>
 
                         {/* Verification badge (Requirement #9) */}

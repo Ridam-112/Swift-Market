@@ -4,6 +4,8 @@ import { SEO } from "@/components/SEO";
 import { useProducts } from "@/hooks/useProducts";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
+import { useShops } from "@/hooks/useShops";
+import { getDeliveryEtaForShop, isFoodCategory } from "@/lib/deliveryEta";
 import { api } from "@/lib/api";
 import { formatINR } from "@/lib/currency";
 import { QuantityStepper } from "@/components/QuantityStepper";
@@ -148,6 +150,18 @@ export default function Product() {
   );
 
   const category = categories.find(c => c.id === product.category);
+  const { selectedDeliveryAddress } = useAuth();
+  const { getShopById } = useShops();
+  const shopObj = (product.shopId || product.vendorId) ? getShopById(product.shopId || product.vendorId) : undefined;
+  const customerCity = selectedDeliveryAddress?.city || "Balurghat";
+  const shopCity = (product as any).shopCity || (product as any).city || shopObj?.city || "Balurghat";
+
+  const etaInfo = getDeliveryEtaForShop(customerCity, shopCity, {
+    isFood: isFoodCategory(product.category, shopObj?.category),
+    isBakery: (product.category || "").includes("bakery") || (product.category || "").includes("sweets"),
+    isHeavy: isHeavyItem,
+    category: product.category,
+  });
   const productSeo = {
     title: product.name,
     description: product.description
@@ -577,40 +591,48 @@ export default function Product() {
             <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-muted/40 border border-border/60 neu-inset">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
                 isHeavyItem ? "bg-amber-500/10 text-amber-600" :
+                etaInfo.isMall ? "bg-blue-500/10 text-blue-600" :
                 product.category === "bakery" || product.category === "sweets" ? "bg-pink-500/10 text-pink-600" :
                 product.category === "food" || product.category === "restaurant" ? "bg-orange-500/10 text-orange-600" :
-                product.category === "fashion" || product.category === "beauty" || product.category === "electronics" ? "bg-blue-500/10 text-blue-600" :
                 "bg-emerald-500/10 text-emerald-600"
               }`}>
-                {isHeavyItem ? <Truck className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+                {isHeavyItem || etaInfo.isMall ? <Truck className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-bold text-sm text-foreground">
-                    {isHeavyItem ? "Scheduled Heavy Delivery (1–3 Days)" :
-                     product.category === "bakery" || product.category === "sweets" ? "Fresh Artisanal / Pre-order" :
-                     product.category === "food" || product.category === "restaurant" ? "Estimated Delivery: 30–45 Mins" :
-                     product.category === "fashion" || product.category === "beauty" || product.category === "electronics" ? "Standard Delivery: 2–4 Business Days" :
-                     "Estimated Delivery: 30–60 Mins"}
+                    {etaInfo.isMall
+                      ? "Pan-India Mall Delivery: 7 Days"
+                      : isHeavyItem
+                      ? "Scheduled Heavy Delivery (1–3 Days)"
+                      : product.category === "bakery" || product.category === "sweets"
+                      ? "Fresh Artisanal / Pre-order"
+                      : product.category === "food" || product.category === "restaurant"
+                      ? "Estimated Delivery: 30–45 Mins"
+                      : "Estimated Delivery: 30–60 Mins"}
                   </span>
                   <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                    {isHeavyItem ? "Bulky Logistics" :
-                     product.category === "bakery" || product.category === "sweets" ? "Artisan Bakery" :
-                     product.category === "food" || product.category === "restaurant" ? "Hot Kitchen Delivery" :
-                     product.category === "fashion" || product.category === "beauty" || product.category === "electronics" ? "SwiftMart Mall" :
-                     "Local Store Delivery"}
+                    {etaInfo.isMall
+                      ? "SwiftMart Mall (7 Days)"
+                      : isHeavyItem
+                      ? "Bulky Logistics"
+                      : product.category === "bakery" || product.category === "sweets"
+                      ? "Artisan Bakery"
+                      : product.category === "food" || product.category === "restaurant"
+                      ? "Hot Kitchen Delivery"
+                      : "Local Store Delivery"}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {isHeavyItem
-                    ? "Delivered safely across Balurghat via SwiftMart heavy vehicle fleet."
+                  {etaInfo.isMall
+                    ? "Shipped via express courier partner. Delivered safely in 7 days to your doorstep."
+                    : isHeavyItem
+                    ? "Delivered safely across city via SwiftMart heavy vehicle fleet."
                     : product.category === "bakery" || product.category === "sweets"
                     ? "Handcrafted fresh upon confirmation. Same-day or scheduled doorstep delivery."
                     : product.category === "food" || product.category === "restaurant"
                     ? "Freshly prepared and dispatched directly from restaurant kitchen."
-                    : product.category === "fashion" || product.category === "beauty" || product.category === "electronics"
-                    ? "Carefully inspected, packed, and delivered directly to your doorstep."
-                    : "Handpicked from verified neighborhood stores and delivered fast to your doorstep."}
+                    : "Handpicked from verified neighborhood store and delivered fast in 30–60 minutes."}
                 </p>
               </div>
             </div>

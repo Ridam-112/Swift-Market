@@ -11,7 +11,7 @@ import { CartSummary } from "@/components/CartSummary";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Wallet, Banknote, Loader2, AlertCircle, Tag, X, Zap, Clock, Store, MapPin, Bike, Package, Phone } from "lucide-react";
+import { Plus, Wallet, Banknote, Loader2, AlertCircle, Tag, X, Zap, Clock, Store, MapPin, Bike, Package, Phone, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -24,6 +24,7 @@ import {
   getSlotTimingLabel,
   isFoodCategory,
   isVegFruitCategory,
+  isSameCity,
   type DeliveryEta,
   type LatLng,
 } from "@/lib/deliveryEta";
@@ -118,6 +119,15 @@ export default function Checkout() {
     const shopPincodeForEta = shopForEta?.pincode ?? "";
     const shopEtaStr = shopForEta?.eta ?? "";
 
+    const customerCity = address?.city || selectedDeliveryAddress?.city || "Balurghat";
+    const shopCity = shopForEta?.city || "Balurghat";
+
+    if (!isSameCity(customerCity, shopCity)) {
+      setDeliveryEta({ kind: "inter-city", days: 7, label: "7 Days" });
+      setEtaLoading(false);
+      return;
+    }
+
     const run = async () => {
       // Reuse cached coords to avoid re-prompting GPS every render
       let coords = customerCoordsRef.current;
@@ -132,7 +142,7 @@ export default function Checkout() {
     };
     run();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMultiShop, shopId, items.length, shops.length]);
+  }, [isMultiShop, shopId, items.length, shops.length, address?.city]);
 
   // ─── Food & Vegetable Detection ──────────────────────────────────────────────
   const hasFood = useMemo(() => {
@@ -579,6 +589,23 @@ export default function Checkout() {
                   <p className="text-xs text-orange-700 dark:text-orange-400 leading-relaxed">
                     ⚡ Want faster? You can get items from a single shop delivered in ~30 minutes.
                   </p>
+                </div>
+              </div>
+            )}
+
+            {!etaLoading && deliveryEta?.kind === "inter-city" && (
+              <div className="rounded-2xl bg-card neu-card overflow-hidden border border-blue-500/20">
+                <div className="flex items-center justify-between p-4 bg-blue-500/10 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <Truck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <span className="font-bold text-sm">Pan-India Express Logistics</span>
+                  </div>
+                  <span className="font-extrabold text-blue-600 dark:text-blue-400 text-lg">
+                    {deliveryEta.label}
+                  </span>
+                </div>
+                <div className="p-4 text-xs text-muted-foreground leading-relaxed">
+                  📦 Dispatched via express courier partner. Expected delivery to your address in 7 business days.
                 </div>
               </div>
             )}

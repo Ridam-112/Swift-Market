@@ -5,6 +5,8 @@ import { QuantityStepper } from "./QuantityStepper";
 import { WeightStepper } from "./WeightStepper";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
+import { useShops } from "@/hooks/useShops";
+import { getDeliveryEtaForShop, isFoodCategory } from "@/lib/deliveryEta";
 import { Button } from "./ui/button";
 import { motion } from "framer-motion";
 import { categories } from "@/data/categories";
@@ -17,12 +19,19 @@ interface ProductCardProps {
   product: Product;
   index?: number;
   maxQtyPerCart?: number | null;
+  isMall?: boolean;
+  forceEta?: string;
 }
 
-export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardProps) {
-  const { user, openLoginModal } = useAuth();
+export function ProductCard({ product, index = 0, maxQtyPerCart, isMall = false, forceEta }: ProductCardProps) {
+  const { user, selectedDeliveryAddress, openLoginModal } = useAuth();
+  const { getShopById } = useShops();
   const { items, addToCart, updateQty, updateWeight, productLimits } = useCart();
   const [, navigate] = useLocation();
+
+  const shopObj = (product.shopId || product.vendorId) ? getShopById(product.shopId || product.vendorId) : undefined;
+  const customerCity = selectedDeliveryAddress?.city || "Balurghat";
+  const shopCity = (product as any).shopCity || (product as any).city || shopObj?.city || "Balurghat";
 
   const hasCustomVariants = Array.isArray(product.variants) && product.variants.length > 0;
   const hasVariants = (product.colors?.length ?? 0) > 0 || (product.sizes?.length ?? 0) > 0 || hasCustomVariants;
@@ -165,33 +174,19 @@ export function ProductCard({ product, index = 0, maxQtyPerCart }: ProductCardPr
             </span>
           )}
           {(() => {
-            const cat = (product.category || "").toLowerCase();
-            const shop = (product.shopName || "").toLowerCase();
-            let label = "30–60m";
-            let icon = "⚡";
-            let color = "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
-
-            if (isHeavyItem) {
-              label = "1–3 Days";
-              icon = "🚚";
-              color = "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20";
-            } else if (cat.includes("cake") || cat.includes("bakery") || shop.includes("cake") || shop.includes("bakery")) {
-              label = "Pre-order";
-              icon = "🎂";
-              color = "text-pink-600 dark:text-pink-400 bg-pink-500/10 border-pink-500/20";
-            } else if (cat.includes("restaurant") || cat.includes("fast-food") || cat.includes("food") || cat.includes("roll")) {
-              label = "30–45m";
-              icon = "⚡";
-              color = "text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20";
-            } else if (cat.includes("fashion") || cat.includes("clothing") || cat.includes("electronics") || cat.includes("beauty") || cat.includes("home")) {
-              label = "2–4 Days";
-              icon = "📦";
-              color = "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20";
-            }
+            const isFood = isFoodCategory(product.category, shopObj?.category);
+            const isBakery = (product.category || "").toLowerCase().includes("bakery") || (product.category || "").toLowerCase().includes("cake") || isCustomCake;
+            const eta = getDeliveryEtaForShop(customerCity, shopCity, {
+              isFood,
+              isBakery,
+              isHeavy: isHeavyItem,
+              isMall: isMall,
+              category: product.category,
+            });
 
             return (
-              <span className={`text-[9px] font-bold border px-1.5 py-0.5 rounded-md ${color}`}>
-                {icon} {label}
+              <span className={`text-[9px] font-bold border px-1.5 py-0.5 rounded-md ${eta.color}`}>
+                {eta.icon} {forceEta || eta.badge}
               </span>
             );
           })()}

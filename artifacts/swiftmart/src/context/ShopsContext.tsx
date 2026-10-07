@@ -211,10 +211,10 @@ function normalizeCity(str: string): string {
   const normalizedSelectedCity = useMemo(() => normalizeCity(selectedCityRaw), [selectedCityRaw]);
 
   const shops = useMemo(() => {
-    if (!normalizedSelectedCity || normalizedSelectedCity === "balurghat") return allShops;
+    const activeCity = normalizedSelectedCity || "balurghat";
     const filtered = allShops.filter(s => {
       const sc = normalizeCity(s.city || "balurghat");
-      return sc.includes(normalizedSelectedCity) || normalizedSelectedCity.includes(sc);
+      return sc === activeCity;
     });
     return filtered.length > 0 ? filtered : allShops;
   }, [allShops, normalizedSelectedCity]);

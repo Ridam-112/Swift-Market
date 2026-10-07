@@ -71,7 +71,13 @@ export interface SingleShopEta {
   rangeMax: number;   // totalMin + 5
 }
 
-export type DeliveryEta = MultiShopEta | SingleShopEta;
+export interface InterCityEta {
+  kind: "inter-city";
+  days: number;       // 7
+  label: string;      // "7 Days"
+}
+
+export type DeliveryEta = MultiShopEta | SingleShopEta | InterCityEta;
 
 /**
  * Get customer GPS coordinates via browser API.
@@ -284,4 +290,145 @@ export function getSlotTimingLabel(
     case "saver":
       return "Within 12 hours";
   }
+}
+
+// ─── City-Based ETA & Local vs SwiftMart Mall Logic ───────────────────────────
+
+/**
+ * Normalizes city name for comparison.
+ * Maps Balurghat variations and pincodes to 'balurghat'.
+ */
+export function normalizeCityName(city?: string | null): string {
+  if (!city) return "balurghat";
+  const lower = city.toLowerCase().trim();
+  if (
+    lower.includes("balurghat") ||
+    lower.includes("dinajpur") ||
+    lower.includes("733101") ||
+    lower.includes("733102") ||
+    lower.includes("733103")
+  ) {
+    return "balurghat";
+  }
+  return lower.split(/[,(\-\d]/)[0].trim();
+}
+
+/**
+ * Checks if customer city and shop city match (same city = local quick commerce).
+ */
+export function isSameCity(customerCity?: string | null, shopCity?: string | null): boolean {
+  const cCity = normalizeCityName(customerCity);
+  const sCity = normalizeCityName(shopCity);
+  if (!cCity || !sCity) return true; // Default to same city if unassigned
+  return cCity === sCity;
+}
+
+export interface ShopDeliveryEtaResult {
+  badge: string;      // e.g. "30–60m", "7 Days", "30–45m", "Pre-order"
+  label: string;      // e.g. "30 min to 1 hr", "7 Days Delivery"
+  days: number;       // 0 for same-day/instant, 7 for mall/inter-city
+  isSameCity: boolean;
+  isMall: boolean;
+  icon: string;
+  color: string;
+  description: string;
+}
+
+/**
+ * Resolves delivery time based on customer location and shop location:
+ * - Same City: Quick delivery (30 min to 1 hr / 30–60m)
+ * - Different City (or SwiftMart Mall): 7 Days delivery via courier
+ */
+export function getDeliveryEtaForShop(
+  customerCity?: string | null,
+  shopCity?: string | null,
+  options?: {
+    isFood?: boolean;
+    isBakery?: boolean;
+    isHeavy?: boolean;
+    isService?: boolean;
+    isMall?: boolean;
+    category?: string;
+  }
+): ShopDeliveryEtaResult {
+  const same = !options?.isMall && isSameCity(customerCity, shopCity);
+
+  if (options?.isService) {
+    return {
+      badge: "On-site",
+      label: "On-site visit & inspection",
+      days: 0,
+      isSameCity: true,
+      isMall: false,
+      icon: "🛠️",
+      color: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20",
+      description: "Doorstep technician visit and inspection",
+    };
+  }
+
+  // Inter-city or Mall: 7 Days delivery
+  if (!same) {
+    return {
+      badge: "7 Days",
+      label: "7 Days Delivery",
+      days: 7,
+      isSameCity: false,
+      isMall: true,
+      icon: "🚚",
+      color: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20",
+      description: "Inter-city courier delivery. Arrives in 7 days.",
+    };
+  }
+
+  // Same City: Local quick commerce
+  if (options?.isHeavy) {
+    return {
+      badge: "1–3 Days",
+      label: "1–3 Days Delivery",
+      days: 2,
+      isSameCity: true,
+      isMall: false,
+      icon: "🚚",
+      color: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20",
+      description: "Delivered safely across city via heavy vehicle fleet",
+    };
+  }
+
+  if (options?.isBakery) {
+    return {
+      badge: "Pre-order",
+      label: "Fresh Pre-order / Same Day",
+      days: 0,
+      isSameCity: true,
+      isMall: false,
+      icon: "🎂",
+      color: "text-pink-600 dark:text-pink-400 bg-pink-500/10 border-pink-500/20",
+      description: "Handcrafted fresh upon confirmation, same-day delivery",
+    };
+  }
+
+  if (options?.isFood) {
+    return {
+      badge: "30–45m",
+      label: "30–45 min Delivery",
+      days: 0,
+      isSameCity: true,
+      isMall: false,
+      icon: "⚡",
+      color: "text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20",
+      description: "Freshly prepared and dispatched directly from kitchen",
+    };
+  }
+
+  // Standard local shop products (grocery, electronics, clothing, stationary, etc.)
+  return {
+    badge: "30–60m",
+    label: "30 min to 1 hr",
+    days: 0,
+    isSameCity: true,
+    isMall: false,
+    icon: "⚡",
+    color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    description: "Handpicked from verified neighborhood store and delivered in 30–60 minutes",
+  };
 }

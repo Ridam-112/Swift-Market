@@ -5,6 +5,8 @@ import { SEO } from "@/components/SEO";
 import { ShopListing, mapApiShop } from "@/context/ShopsContext";
 import { useShops } from "@/hooks/useShops";
 import { useProducts } from "@/hooks/useProducts";
+import { useAuth } from "@/hooks/useAuth";
+import { isSameCity } from "@/lib/deliveryEta";
 import { ProductGrid } from "@/components/ProductGrid";
 import { EmptyState } from "@/components/EmptyState";
 import {
@@ -85,7 +87,7 @@ function getMerchantSchemaType(category: string, shopType: string, name: string)
   if (text.includes("book") || text.includes("stationery") || text.includes("khatapatra")) {
     return ["BookStore", "Store", "LocalBusiness"];
   }
-  if (text.includes("service") || text.includes("repair") || text.includes("centre") || text.includes("lab")) {
+  if (text.includes("uphar") || text.includes("upahar") || text.includes("appliance repair") || text.includes("electronics lab") || category.toLowerCase() === "service" || category.toLowerCase() === "services") {
     return ["LocalBusiness", "Service"];
   }
   return ["Store", "LocalBusiness"];
@@ -107,6 +109,8 @@ export default function ShopDetail() {
 
   const { shops, allShops, isLoading: shopsLoading } = useShops();
   const { products } = useProducts();
+  const { selectedDeliveryAddress } = useAuth();
+  const customerCity = selectedDeliveryAddress?.city || "Balurghat";
 
   const [shop, setShop] = useState<ShopListing | null>(null);
   const [fetchLoading, setFetchLoading] = useState(false);
@@ -326,20 +330,37 @@ export default function ShopDetail() {
   const catSlug = toShopSlug(category);
 
   const text = `${category} ${shopType} ${storeName}`.toLowerCase();
+  const catLower = category.toLowerCase().trim();
+  const typeLower = shopType.toLowerCase().trim();
   const isBakery = text.includes("bakery") || text.includes("cake");
   const isRestaurant = !isBakery && (text.includes("restaurant") || text.includes("fast-food") || text.includes("food") || text.includes("shawarma") || text.includes("roll") || text.includes("cafe"));
-  const isService = text.includes("service") || text.includes("repair") || text.includes("centre") || text.includes("lab") || text.includes("uphar") || text.includes("upahar");
+  // A shop is ONLY a service shop if its category/type is service, or it is explicitly Uphar / electronics repair lab
+  // Do NOT treat shops with 'centre' or 'center' (e.g., Maa Laxmi Online Centre) as service shops
+  const isService =
+    catLower === "services" ||
+    catLower === "service" ||
+    typeLower === "services" ||
+    typeLower === "service" ||
+    text.includes("uphar") ||
+    text.includes("upahar") ||
+    text.includes("appliance repair") ||
+    text.includes("electronics lab") ||
+    (text.includes("repair") && !text.includes("online centre") && !text.includes("online center") && !text.includes("khatapatra"));
 
   const schemaTypes = getMerchantSchemaType(category, shopType, storeName);
+
+  const isSameCityDelivery = isSameCity(customerCity, city);
 
   // Dynamic ETA
   const dynamicEta = isService
     ? "On-site visit & inspection"
-    : isBakery
-      ? "Same-day delivery & pre-order"
-      : isRestaurant
-        ? "20–30 min"
-        : shop.eta || "30–60m";
+    : !isSameCityDelivery
+      ? "7 Days Delivery"
+      : isBakery
+        ? "Same-day delivery & pre-order"
+        : isRestaurant
+          ? "20–30 min"
+          : shop.eta || "30–60 min";
 
   const isVerified = (shop.verificationStatus || "verified").toLowerCase() === "verified";
   const isClaimed = (shop.claimStatus || "claimed").toLowerCase() === "claimed";

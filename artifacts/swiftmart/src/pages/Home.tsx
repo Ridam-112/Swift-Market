@@ -604,7 +604,7 @@ export default function Home() {
                       <span className="hidden sm:inline">SwiftMart Mall</span>
                     </p>
                     <span className="text-[8px] sm:text-xs font-bold text-indigo-600 dark:text-indigo-400 block truncate w-full text-center sm:text-left">
-                      2–4 Days
+                      7 Days
                     </span>
                   </div>
                 </div>
