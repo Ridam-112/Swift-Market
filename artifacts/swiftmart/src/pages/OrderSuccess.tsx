@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRoute, Link } from "wouter";
-import { CheckCircle2, Package, Clock, ShoppingBag, QrCode, Copy, Check } from "lucide-react";
+import { CheckCircle2, Package, Clock, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LiveOrderTracker } from "@/components/LiveOrderTracker";
 import { api } from "@/lib/api";
@@ -11,8 +11,6 @@ interface ApiOrder {
   _id: string;
   status: string;
   createdAt: string;
-  paymentMethod?: string;
-  netAmount?: number;
 }
 
 import { SEO } from "@/components/SEO";
@@ -24,13 +22,6 @@ export default function OrderSuccess() {
   const [order, setOrder] = useState<ApiOrder | null>(null);
   const [status, setStatus] = useState("placed");
   const [splashDone, setSplashDone] = useState(false);
-  const [copiedUpi, setCopiedUpi] = useState(false);
-
-  const handleCopyUpi = () => {
-    navigator.clipboard.writeText("6296118949@fam");
-    setCopiedUpi(true);
-    setTimeout(() => setCopiedUpi(false), 2000);
-  };
 
   useEffect(() => {
     const t = setTimeout(() => setSplashDone(true), 2000);
@@ -53,7 +44,7 @@ export default function OrderSuccess() {
   const shortId = id ? id.slice(-8).toUpperCase() : "—";
 
   return (
-    <div className="min-h-[calc(100vh-140px)] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-[calc(100vh-80px)] w-full flex flex-col items-center justify-start sm:justify-center p-4 pt-4 pb-28 md:pb-12 relative overflow-y-auto">
       <SEO noIndex />
 
       {/* Green animated splash overlay — portalled to body to escape motion.main transform */}
@@ -120,7 +111,7 @@ export default function OrderSuccess() {
 
       {/* Main card — fades in after splash */}
       <motion.div
-        className="w-full max-w-md"
+        className="w-full max-w-md my-auto"
         initial={{ opacity: 0, y: 24 }}
         animate={splashDone ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
         transition={{ duration: 0.45, ease: "easeOut" }}
@@ -155,52 +146,6 @@ export default function OrderSuccess() {
                 </div>
               </div>
             </div>
-
-            {/* UPI Payment Card (If ordered via UPI) */}
-            {order?.paymentMethod?.toUpperCase().includes("UPI") && (
-              <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-2xl p-4 text-center space-y-3">
-                <div className="flex items-center justify-center gap-2 text-amber-600 dark:text-amber-400 font-extrabold text-sm">
-                  <QrCode className="w-4 h-4" />
-                  <span>Scan to Pay via UPI ({order.netAmount ? `₹${order.netAmount}` : "Order Total"})</span>
-                </div>
-                <div className="flex justify-center">
-                  <img
-                    src="/assets/upi_qr.png"
-                    alt="SwiftMart UPI QR Code"
-                    className="w-44 h-auto rounded-xl shadow-md border border-amber-500/30 bg-white p-1"
-                  />
-                </div>
-                <div className="bg-background/80 rounded-xl p-2.5 text-xs text-muted-foreground space-y-2">
-                  <div className="flex items-center justify-between bg-card px-3 py-1.5 rounded-lg border border-border">
-                    <span className="font-semibold text-foreground text-xs">
-                      UPI ID: <span className="font-mono text-primary font-bold">6296118949@fam</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleCopyUpi}
-                      className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
-                    >
-                      {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copiedUpi ? "Copied" : "Copy"}
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium leading-relaxed">
-                    ⚠️ QR কোড আপনার WhatsApp নম্বরেও পাঠানো হয়েছে। পেমেন্ট করার পর অনুগ্রহ করে স্ক্রিনশট (Screenshot) পাঠিয়ে দিন।
-                  </p>
-                </div>
-                <a
-                  href={`https://wa.me/916296118949?text=${encodeURIComponent(`Hi SwiftMart, here is the payment screenshot for Order #${shortId} (Amount: ₹${order.netAmount || ""})`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs shadow-md transition-transform active:scale-95"
-                >
-                  <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-                    <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.299.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.087-.179.182-.077.357.101.174.451.744.968 1.205.666.594 1.228.778 1.402.865.174.087.275.072.376-.043.101-.116.433-.506.549-.68.116-.173.231-.144.39-.087s1.011.477 1.184.564.289.13.332.202c.043.073.043.419-.101.824z" />
-                  </svg>
-                  Send Payment Screenshot on WhatsApp
-                </a>
-              </div>
-            )}
 
             {/* Live tracker */}
             {order && (

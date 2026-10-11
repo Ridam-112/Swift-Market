@@ -860,7 +860,7 @@ export default function Checkout() {
                 <div>
                   <span className="font-bold">{option.label}</span>
                   {option.id === 'UPI' && (
-                    <p className="text-xs text-muted-foreground mt-0.5">Pay via QR code sent to WhatsApp · Send screenshot to confirm</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Pay via UPI / QR code</p>
                   )}
                   {option.id === 'COD' && (
                     <p className="text-xs text-muted-foreground mt-0.5">Pay cash when order arrives</p>
