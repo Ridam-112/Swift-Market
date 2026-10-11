@@ -181,8 +181,13 @@ export default function SearchPage() {
     return shops.filter((s) => {
       const sName = (s.storeName || (s as any).name || "").toLowerCase();
       const sCat = (s.category || "").toLowerCase();
-      const sAddress = (s.address || "").toLowerCase();
-      const sCity = (s.city || "").toLowerCase();
+      const rawAddr = s.address as any;
+      const sAddress = typeof rawAddr === "string"
+        ? rawAddr.toLowerCase()
+        : typeof rawAddr === "object" && rawAddr
+          ? `${rawAddr.line1 || ""} ${rawAddr.line2 || ""} ${rawAddr.area || ""} ${rawAddr.city || ""}`.toLowerCase()
+          : "";
+      const sCity = (typeof s.city === "string" ? s.city : "").toLowerCase();
       const haystack = `${sName} ${sCat} ${sAddress} ${sCity}`;
       return queryTerms.every((term) => haystack.includes(term));
     });

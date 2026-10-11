@@ -269,7 +269,7 @@ export default function ShopsMapTab() {
       const matchesSearch =
         s.shopName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.ownerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (s.address.line1 || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (typeof s.address === "object" && s.address?.line1 ? s.address.line1 : typeof s.address === "string" ? s.address : "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.phone.includes(searchQuery);
 
       const hasGps = s.lat != null && s.lng != null;

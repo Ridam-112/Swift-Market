@@ -819,19 +819,23 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
   }
 
   // Durable DB check against database-level idempotency key
-  const [existingOrder] = await db
-    .select()
-    .from(orders)
-    .where(and(
-      eq(orders.idempotencyKey, idempotencyKey),
-      ne(orders.status, "cancelled"),
-      ne(orders.status, "refunded")
-    ))
-    .limit(1);
+  try {
+    const [existingOrder] = await db
+      .select()
+      .from(orders)
+      .where(and(
+        eq(orders.idempotencyKey, idempotencyKey),
+        ne(orders.status, "cancelled"),
+        ne(orders.status, "refunded")
+      ))
+      .limit(1);
 
-  if (existingOrder) {
-    res.json({ success: true, order: mi(existingOrder), message: "Order already processed" });
-    return;
+    if (existingOrder) {
+      res.json({ success: true, order: mi(existingOrder), message: "Order already processed" });
+      return;
+    }
+  } catch (err) {
+    logger.warn({ err }, "[orders] DB idempotency check non-fatal fallback");
   }
 
   // Pre-transaction read: fetch shop (needed for commission resolution + payout + packaging/GST + deliveryFee)

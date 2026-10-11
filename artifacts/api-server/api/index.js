@@ -269354,14 +269354,18 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
     res.json({ success: true, order: cachedRecent.order, message: "Order already processed" });
     return;
   }
-  const [existingOrder] = await db.select().from(orders).where(and7(
-    eq13(orders.idempotencyKey, idempotencyKey),
-    ne(orders.status, "cancelled"),
-    ne(orders.status, "refunded")
-  )).limit(1);
-  if (existingOrder) {
-    res.json({ success: true, order: mi(existingOrder), message: "Order already processed" });
-    return;
+  try {
+    const [existingOrder] = await db.select().from(orders).where(and7(
+      eq13(orders.idempotencyKey, idempotencyKey),
+      ne(orders.status, "cancelled"),
+      ne(orders.status, "refunded")
+    )).limit(1);
+    if (existingOrder) {
+      res.json({ success: true, order: mi(existingOrder), message: "Order already processed" });
+      return;
+    }
+  } catch (err) {
+    logger.warn({ err }, "[orders] DB idempotency check non-fatal fallback");
   }
   const [shop] = await db.select({
     id: shops.id,
@@ -269629,10 +269633,10 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
     const errorObj = err;
     if (errorObj?.code === "23505" || errorObj?.cause?.code === "23505" || String(errorObj?.message || "").includes("orders_idempotency_key") || String(errorObj?.detail || "").includes("idempotency_key")) {
       logger.info({ idempotencyKey }, "Concurrent duplicate order creation caught by UNIQUE constraint. Fetching original order.");
-      const [existingOrder2] = await db.select().from(orders).where(eq13(orders.idempotencyKey, idempotencyKey)).limit(1);
-      if (existingOrder2) {
-        recentOrderDeduplication.set(idempotencyKey, { order: mi(existingOrder2), expires: Date.now() + 15e3 });
-        res.status(200).json({ success: true, order: mi(existingOrder2), message: "Order already processed" });
+      const [existingOrder] = await db.select().from(orders).where(eq13(orders.idempotencyKey, idempotencyKey)).limit(1);
+      if (existingOrder) {
+        recentOrderDeduplication.set(idempotencyKey, { order: mi(existingOrder), expires: Date.now() + 15e3 });
+        res.status(200).json({ success: true, order: mi(existingOrder), message: "Order already processed" });
         return;
       }
     }
