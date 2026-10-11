@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 import {
   MapPin,
   Phone,
@@ -78,12 +81,18 @@ export const FAQ_ITEMS = [
 ];
 
 export function SiteFooter() {
+  const [location] = useLocation();
+  const { role } = useAuth();
+  const { totalItems } = useCart();
   const [email, setEmail] = useState("");
   const [faqOpen, setFaqOpen] = useState(false);
   const [coverageOpen, setCoverageOpen] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [faqFilter, setFaqFilter] = useState("");
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const isCustomer = role !== "vendor";
+  const hasStickyCart = isCustomer && totalItems > 0 && !location.startsWith("/cart") && !location.startsWith("/checkout");
 
   // Monitor scroll for back-to-top button
   useEffect(() => {
@@ -504,7 +513,10 @@ export function SiteFooter() {
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           aria-label="Scroll back to top"
-          className="fixed bottom-36 right-4 md:bottom-24 md:right-7 z-40 w-11 h-11 rounded-full bg-[#0A0E17] border-2 border-sky-500 text-sky-400 hover:bg-sky-500 hover:text-white shadow-xl transition-all flex items-center justify-center group active:scale-95"
+          className={cn(
+            "fixed right-4 md:right-7 z-40 w-11 h-11 rounded-full bg-[#0A0E17] border-2 border-sky-500 text-sky-400 hover:bg-sky-500 hover:text-white shadow-xl transition-all duration-300 flex items-center justify-center group active:scale-95",
+            hasStickyCart ? "bottom-52 md:bottom-22" : "bottom-36 md:bottom-22"
+          )}
         >
           <ChevronUp className="w-5 h-5 stroke-[2.5] group-hover:-translate-y-0.5 transition-transform" />
         </button>

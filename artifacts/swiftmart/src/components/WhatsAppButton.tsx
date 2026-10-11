@@ -2,8 +2,12 @@
  * WhatsAppButton — sticky floating WhatsApp chat button.
  * Critical for Indian market: customers expect instant WhatsApp support.
  * Hidden on admin/vendor/delivery routes so it only shows for customers and guests.
+ * Dynamically shifts upwards when sticky cart bar is active to avoid overlapping "View Cart".
  */
 import { useLocation } from "wouter";
+import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 
 const WA_NUMBER = "916296118949";
 const WA_MESSAGE = encodeURIComponent("Hi SwiftMart! I need help with my order.");
@@ -13,7 +17,13 @@ const HIDDEN_PREFIXES = ["/admin", "/vendor", "/delivery", "/auth", "/complete-p
 
 export function WhatsAppButton() {
   const [location] = useLocation();
+  const { role } = useAuth();
+  const { totalItems } = useCart();
+
   if (HIDDEN_PREFIXES.some(p => location.startsWith(p))) return null;
+
+  const isCustomer = role !== "vendor";
+  const hasStickyCart = isCustomer && totalItems > 0 && !location.startsWith("/cart") && !location.startsWith("/checkout");
 
   return (
     <a
@@ -21,7 +31,10 @@ export function WhatsAppButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with SwiftMart support on WhatsApp"
-      className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 w-13 h-13 flex items-center justify-center rounded-full shadow-lg transition-transform hover:scale-110 active:scale-95"
+      className={cn(
+        "fixed right-4 md:right-6 z-50 flex items-center justify-center rounded-full shadow-lg transition-all duration-300 hover:scale-110 active:scale-95",
+        hasStickyCart ? "bottom-36 md:bottom-6" : "bottom-20 md:bottom-6"
+      )}
       style={{ width: 52, height: 52, backgroundColor: "#25D366" }}
     >
       {/* WhatsApp SVG — inline so no extra asset fetch */}
