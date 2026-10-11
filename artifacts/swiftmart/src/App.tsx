@@ -82,7 +82,17 @@ const ServiceCorner   = lazy(() => import("@/pages/ServiceCorner"));
 const SendParcel      = lazy(() => import("@/pages/SendParcel"));
 const SuperMall       = lazy(() => import("@/pages/SuperMall"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 3, // 3 minutes cache for instant page switches
+      gcTime: 1000 * 60 * 15,   // Keep inactive data for 15 minutes
+      refetchOnWindowFocus: false, // Don't re-fetch on window focus
+      refetchOnReconnect: false,
+      retry: 1,
+    },
+  },
+});
 
 import { CategoryBubble, type DisplayCategory } from "@/components/CategoryBubble";
 import { SectionHeader } from "@/components/SectionHeader";

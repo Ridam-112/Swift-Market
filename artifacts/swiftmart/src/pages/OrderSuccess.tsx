@@ -24,7 +24,7 @@ export default function OrderSuccess() {
   const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setSplashDone(true), 2000);
+    const t = setTimeout(() => setSplashDone(true), 750);
     return () => clearTimeout(t);
   }, []);
 
@@ -55,20 +55,20 @@ export default function OrderSuccess() {
               key="splash"
               className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-emerald-500"
               initial={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: { duration: 0.5, ease: "easeOut" } }}
+              exit={{ opacity: 0, transition: { duration: 0.25, ease: "easeOut" } }}
             >
               {/* Expanding ring */}
               <motion.div
                 className="absolute w-32 h-32 rounded-full border-4 border-white/40"
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: 4, opacity: 0 }}
-                transition={{ duration: 1.4, ease: "easeOut", delay: 0.2 }}
+                transition={{ duration: 0.7, ease: "easeOut", delay: 0.05 }}
               />
               <motion.div
                 className="absolute w-32 h-32 rounded-full border-4 border-white/25"
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: 5.5, opacity: 0 }}
-                transition={{ duration: 1.6, ease: "easeOut", delay: 0.4 }}
+                transition={{ duration: 0.8, ease: "easeOut", delay: 0.15 }}
               />
 
               {/* Check icon */}
@@ -76,12 +76,12 @@ export default function OrderSuccess() {
                 className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-6"
                 initial={{ scale: 0, rotate: -30 }}
                 animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.1 }}
+                transition={{ type: "spring", stiffness: 350, damping: 20, delay: 0.05 }}
               >
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.3 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 22, delay: 0.15 }}
                 >
                   <CheckCircle2 className="w-14 h-14 text-white" />
                 </motion.div>
@@ -89,17 +89,17 @@ export default function OrderSuccess() {
 
               <motion.h1
                 className="text-3xl font-extrabold text-white tracking-tight"
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.4 }}
+                transition={{ delay: 0.2, duration: 0.25 }}
               >
                 Order Placed!
               </motion.h1>
               <motion.p
                 className="text-white/80 mt-2 text-base font-medium"
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7, duration: 0.4 }}
+                transition={{ delay: 0.3, duration: 0.25 }}
               >
                 On its way in ~10 minutes
               </motion.p>
@@ -112,9 +112,9 @@ export default function OrderSuccess() {
       {/* Main card — fades in after splash */}
       <motion.div
         className="w-full max-w-md my-auto"
-        initial={{ opacity: 0, y: 24 }}
-        animate={splashDone ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
-        transition={{ duration: 0.45, ease: "easeOut" }}
+        initial={{ opacity: 0, y: 16 }}
+        animate={splashDone ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
       >
         <div className="bg-card rounded-3xl neu-card overflow-hidden">
           {/* Hero */}

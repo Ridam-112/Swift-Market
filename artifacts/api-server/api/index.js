@@ -269787,105 +269787,111 @@ router9.post("/", authenticate, orderLimiter, async (req, res) => {
     res.status(500).json({ success: false, message: errMsg });
     return;
   }
-  createNotificationLimited(req.user.userId, {
-    type: "order_update",
-    title: "Order Placed Successfully",
-    message: `Your order #${createdOrder.id.slice(-6).toUpperCase()} has been placed. We'll keep you updated!`,
-    data: { orderId: createdOrder.id }
-  }).catch(() => {
-  });
-  if (createdOrder.customerPhone) {
-    whatsappService.sendOrderPlacedToCustomer({
-      customerPhone: createdOrder.customerPhone,
-      customerName: createdOrder.customerName || "Customer",
-      shopName: shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop",
-      orderNumber: createdOrder.id.slice(-6).toUpperCase(),
-      orderId: createdOrder.id,
-      netAmount: createdOrder.netAmount,
-      paymentMethod: createdOrder.paymentMethod || "COD",
-      items: createdOrder.items || []
-    }).catch((err) => {
-      logger.warn({ err }, "[WhatsApp] Background customer alert error on order placement");
-    });
-  }
-  try {
-    let targetPhone = shop?.phone;
-    let vendorName = shop?.ownerName ?? shop?.shopName ?? "Partner";
-    let vendorUserId = shop?.ownerId;
-    if (shop?.ownerId) {
-      const [vendor] = await db.select({ id: users.id, phone: users.phone, name: users.name }).from(users).where(eq13(users.id, shop.ownerId)).limit(1);
-      if (vendor) {
-        vendorUserId = vendor.id;
-        if (vendor.phone) targetPhone = vendor.phone;
-        if (vendor.name) vendorName = vendor.name;
-      }
-    }
-    if (vendorUserId) {
-      createNotificationLimited(vendorUserId, {
+  recentOrderDeduplication.set(idempotencyKey, { order: mi(createdOrder), expires: Date.now() + 15e3 });
+  res.status(201).json({ success: true, order: mi(createdOrder) });
+  setImmediate(async () => {
+    try {
+      createNotificationLimited(req.user.userId, {
         type: "order_update",
-        title: "New Order Received",
-        message: `You have a new order #${createdOrder.id.slice(-6).toUpperCase()} worth \u20B9${createdOrder.netAmount}.`,
+        title: "Order Placed Successfully",
+        message: `Your order #${createdOrder.id.slice(-6).toUpperCase()} has been placed. We'll keep you updated!`,
         data: { orderId: createdOrder.id }
       }).catch(() => {
       });
+      if (createdOrder.customerPhone) {
+        whatsappService.sendOrderPlacedToCustomer({
+          customerPhone: createdOrder.customerPhone,
+          customerName: createdOrder.customerName || "Customer",
+          shopName: shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop",
+          orderNumber: createdOrder.id.slice(-6).toUpperCase(),
+          orderId: createdOrder.id,
+          netAmount: createdOrder.netAmount,
+          paymentMethod: createdOrder.paymentMethod || "COD",
+          items: createdOrder.items || []
+        }).catch((err) => {
+          logger.warn({ err }, "[WhatsApp] Background customer alert error on order placement");
+        });
+      }
+      try {
+        let targetPhone = shop?.phone;
+        let vendorName = shop?.ownerName ?? shop?.shopName ?? "Partner";
+        let vendorUserId = shop?.ownerId;
+        if (shop?.ownerId) {
+          const [vendor] = await db.select({ id: users.id, phone: users.phone, name: users.name }).from(users).where(eq13(users.id, shop.ownerId)).limit(1);
+          if (vendor) {
+            vendorUserId = vendor.id;
+            if (vendor.phone) targetPhone = vendor.phone;
+            if (vendor.name) vendorName = vendor.name;
+          }
+        }
+        if (vendorUserId) {
+          createNotificationLimited(vendorUserId, {
+            type: "order_update",
+            title: "New Order Received",
+            message: `You have a new order #${createdOrder.id.slice(-6).toUpperCase()} worth \u20B9${createdOrder.netAmount}.`,
+            data: { orderId: createdOrder.id }
+          }).catch(() => {
+          });
+        }
+        if (targetPhone) {
+          whatsappService.sendOrderAlertToVendor({
+            vendorPhone: targetPhone,
+            vendorName,
+            shopName: shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop",
+            orderNumber: createdOrder.id.slice(-6).toUpperCase(),
+            orderId: createdOrder.id,
+            customerName: createdOrder.customerName || "Customer",
+            customerPhone: createdOrder.customerPhone || "N/A",
+            deliveryAddress: [
+              createdOrder.address?.line1,
+              createdOrder.address?.line2,
+              createdOrder.address?.city
+            ].filter(Boolean).join(", "),
+            items: createdOrder.items || [],
+            netAmount: createdOrder.netAmount,
+            paymentMethod: createdOrder.paymentMethod || "COD"
+          }).catch((err) => {
+            logger.warn({ err }, "[WhatsApp] Background vendor alert error");
+          });
+        }
+      } catch (err) {
+        logger.warn({ err }, "[WhatsApp] Error sending vendor order notification");
+      }
+      try {
+        const adminUsers = await db.select({ id: users.id, phone: users.phone }).from(users).where(or7(eq13(users.role, "admin"), eq13(users.role, "super_admin")));
+        const shortId = createdOrder.id.slice(-6).toUpperCase();
+        const shopName = shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop";
+        await Promise.all(
+          adminUsers.map(
+            (admin) => createNotificationLimited(admin.id, {
+              type: "order_update",
+              title: "\u{1F6F5} New Order \u2014 Assign Rider",
+              message: `Order #${shortId} from ${shopName} needs a delivery partner. Tap to assign.`,
+              data: { orderId: createdOrder.id, url: "/admin?tab=orders" }
+            }).catch(() => {
+            })
+          )
+        );
+        const adminPhone = adminUsers.find((a) => Boolean(a.phone))?.phone ?? null;
+        whatsappService.sendAdminNewOrderAlert({
+          adminPhone,
+          shopName,
+          orderNumber: shortId,
+          orderId: createdOrder.id,
+          customerName: createdOrder.customerName || "Customer",
+          customerPhone: createdOrder.customerPhone || "N/A",
+          netAmount: createdOrder.netAmount,
+          paymentMethod: createdOrder.paymentMethod || "COD",
+          items: createdOrder.items || []
+        }).catch((err) => {
+          logger.warn({ err }, "[WhatsApp] Background admin alert error");
+        });
+      } catch {
+      }
+    } catch (bgErr) {
+      logger.warn({ bgErr }, "[Orders] Background post-order processing failed");
     }
-    if (targetPhone) {
-      whatsappService.sendOrderAlertToVendor({
-        vendorPhone: targetPhone,
-        vendorName,
-        shopName: shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop",
-        orderNumber: createdOrder.id.slice(-6).toUpperCase(),
-        orderId: createdOrder.id,
-        customerName: createdOrder.customerName || "Customer",
-        customerPhone: createdOrder.customerPhone || "N/A",
-        deliveryAddress: [
-          createdOrder.address?.line1,
-          createdOrder.address?.line2,
-          createdOrder.address?.city
-        ].filter(Boolean).join(", "),
-        items: createdOrder.items || [],
-        netAmount: createdOrder.netAmount,
-        paymentMethod: createdOrder.paymentMethod || "COD"
-      }).catch((err) => {
-        logger.warn({ err }, "[WhatsApp] Background vendor alert error");
-      });
-    }
-  } catch (err) {
-    logger.warn({ err }, "[WhatsApp] Error sending vendor order notification");
-  }
-  try {
-    const adminUsers = await db.select({ id: users.id, phone: users.phone }).from(users).where(or7(eq13(users.role, "admin"), eq13(users.role, "super_admin")));
-    const shortId = createdOrder.id.slice(-6).toUpperCase();
-    const shopName = shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop";
-    await Promise.all(
-      adminUsers.map(
-        (admin) => createNotificationLimited(admin.id, {
-          type: "order_update",
-          title: "\u{1F6F5} New Order \u2014 Assign Rider",
-          message: `Order #${shortId} from ${shopName} needs a delivery partner. Tap to assign.`,
-          data: { orderId: createdOrder.id, url: "/admin?tab=orders" }
-        }).catch(() => {
-        })
-      )
-    );
-    const adminPhone = adminUsers.find((a) => Boolean(a.phone))?.phone ?? null;
-    whatsappService.sendAdminNewOrderAlert({
-      adminPhone,
-      shopName,
-      orderNumber: shortId,
-      orderId: createdOrder.id,
-      customerName: createdOrder.customerName || "Customer",
-      customerPhone: createdOrder.customerPhone || "N/A",
-      netAmount: createdOrder.netAmount,
-      paymentMethod: createdOrder.paymentMethod || "COD",
-      items: createdOrder.items || []
-    }).catch((err) => {
-      logger.warn({ err }, "[WhatsApp] Background admin alert error");
-    });
-  } catch {
-  }
-  recentOrderDeduplication.set(idempotencyKey, { order: mi(createdOrder), expires: Date.now() + 15e3 });
-  res.status(201).json({ success: true, order: mi(createdOrder) });
+  });
 });
 router9.patch("/:id/status", authenticate, validateUuidParams("id"), async (req, res) => {
   const orderId = req.params["id"];

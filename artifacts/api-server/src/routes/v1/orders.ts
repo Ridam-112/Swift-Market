@@ -1240,124 +1240,133 @@ router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Respo
     return;
   }
 
-  // Post-transaction: fire-and-forget notifications — failures never affect the 201 response
-  createNotificationLimited(req.user!.userId, {
-    type: "order_update",
-    title: "Order Placed Successfully",
-    message: `Your order #${createdOrder.id.slice(-6).toUpperCase()} has been placed. We'll keep you updated!`,
-    data: { orderId: createdOrder.id },
-  }).catch(() => {});
+  recentOrderDeduplication.set(idempotencyKey, { order: mi(createdOrder), expires: Date.now() + 15000 });
 
-  // 1. Instant WhatsApp confirmation to Customer
-  if (createdOrder.customerPhone) {
-    whatsappService.sendOrderPlacedToCustomer({
-      customerPhone: createdOrder.customerPhone,
-      customerName: createdOrder.customerName || "Customer",
-      shopName: shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop",
-      orderNumber: createdOrder.id.slice(-6).toUpperCase(),
-      orderId: createdOrder.id,
-      netAmount: createdOrder.netAmount,
-      paymentMethod: createdOrder.paymentMethod || "COD",
-      items: (createdOrder.items as any[]) || [],
-    }).catch((err) => {
-      logger.warn({ err }, "[WhatsApp] Background customer alert error on order placement");
-    });
-  }
+  // ─── 1. Instant HTTP Response: Return 201 Created immediately so user UI feels instant ───
+  res.status(201).json({ success: true, order: mi(createdOrder) });
 
-  // 2. Instant WhatsApp & In-App notification to Vendor (with robust phone fallback)
-  try {
-    let targetPhone = shop?.phone;
-    let vendorName = shop?.ownerName ?? shop?.shopName ?? "Partner";
-    let vendorUserId = shop?.ownerId;
-
-    if (shop?.ownerId) {
-      const [vendor] = await db
-        .select({ id: users.id, phone: users.phone, name: users.name })
-        .from(users)
-        .where(eq(users.id, shop.ownerId))
-        .limit(1);
-      if (vendor) {
-        vendorUserId = vendor.id;
-        if (vendor.phone) targetPhone = vendor.phone;
-        if (vendor.name) vendorName = vendor.name;
-      }
-    }
-
-    if (vendorUserId) {
-      createNotificationLimited(vendorUserId, {
+  // ─── 2. Asynchronous Background Notifications Worker ───
+  // All secondary tasks (customer WhatsApp, vendor alerts, admin notifications) run asynchronously
+  // without blocking the user or adding latency to the order placement experience.
+  setImmediate(async () => {
+    try {
+      // In-app notification to Customer
+      createNotificationLimited(req.user!.userId, {
         type: "order_update",
-        title: "New Order Received",
-        message: `You have a new order #${createdOrder.id.slice(-6).toUpperCase()} worth ₹${createdOrder.netAmount}.`,
+        title: "Order Placed Successfully",
+        message: `Your order #${createdOrder.id.slice(-6).toUpperCase()} has been placed. We'll keep you updated!`,
         data: { orderId: createdOrder.id },
       }).catch(() => {});
+
+      // WhatsApp confirmation to Customer
+      if (createdOrder.customerPhone) {
+        whatsappService.sendOrderPlacedToCustomer({
+          customerPhone: createdOrder.customerPhone,
+          customerName: createdOrder.customerName || "Customer",
+          shopName: shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop",
+          orderNumber: createdOrder.id.slice(-6).toUpperCase(),
+          orderId: createdOrder.id,
+          netAmount: createdOrder.netAmount,
+          paymentMethod: createdOrder.paymentMethod || "COD",
+          items: (createdOrder.items as any[]) || [],
+        }).catch((err) => {
+          logger.warn({ err }, "[WhatsApp] Background customer alert error on order placement");
+        });
+      }
+
+      // WhatsApp & In-App notification to Vendor (with robust phone fallback)
+      try {
+        let targetPhone = shop?.phone;
+        let vendorName = shop?.ownerName ?? shop?.shopName ?? "Partner";
+        let vendorUserId = shop?.ownerId;
+
+        if (shop?.ownerId) {
+          const [vendor] = await db
+            .select({ id: users.id, phone: users.phone, name: users.name })
+            .from(users)
+            .where(eq(users.id, shop.ownerId))
+            .limit(1);
+          if (vendor) {
+            vendorUserId = vendor.id;
+            if (vendor.phone) targetPhone = vendor.phone;
+            if (vendor.name) vendorName = vendor.name;
+          }
+        }
+
+        if (vendorUserId) {
+          createNotificationLimited(vendorUserId, {
+            type: "order_update",
+            title: "New Order Received",
+            message: `You have a new order #${createdOrder.id.slice(-6).toUpperCase()} worth ₹${createdOrder.netAmount}.`,
+            data: { orderId: createdOrder.id },
+          }).catch(() => {});
+        }
+
+        if (targetPhone) {
+          whatsappService.sendOrderAlertToVendor({
+            vendorPhone: targetPhone,
+            vendorName,
+            shopName: shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop",
+            orderNumber: createdOrder.id.slice(-6).toUpperCase(),
+            orderId: createdOrder.id,
+            customerName: createdOrder.customerName || "Customer",
+            customerPhone: createdOrder.customerPhone || "N/A",
+            deliveryAddress: [
+              (createdOrder.address as any)?.line1,
+              (createdOrder.address as any)?.line2,
+              (createdOrder.address as any)?.city,
+            ].filter(Boolean).join(", "),
+            items: (createdOrder.items as any[]) || [],
+            netAmount: createdOrder.netAmount,
+            paymentMethod: createdOrder.paymentMethod || "COD",
+          }).catch((err) => {
+            logger.warn({ err }, "[WhatsApp] Background vendor alert error");
+          });
+        }
+      } catch (err) {
+        logger.warn({ err }, "[WhatsApp] Error sending vendor order notification");
+      }
+
+      // Notify all admins (In-App + WhatsApp) so they can assign a delivery partner
+      try {
+        const adminUsers = await db
+          .select({ id: users.id, phone: users.phone })
+          .from(users)
+          .where(or(eq(users.role, "admin"), eq(users.role, "super_admin")));
+
+        const shortId = createdOrder.id.slice(-6).toUpperCase();
+        const shopName = shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop";
+
+        await Promise.all(
+          adminUsers.map(admin =>
+            createNotificationLimited(admin.id, {
+              type: "order_update",
+              title: "🛵 New Order — Assign Rider",
+              message: `Order #${shortId} from ${shopName} needs a delivery partner. Tap to assign.`,
+              data: { orderId: createdOrder.id, url: "/admin?tab=orders" },
+            }).catch(() => {})
+          )
+        );
+
+        const adminPhone = adminUsers.find(a => Boolean(a.phone))?.phone ?? null;
+        whatsappService.sendAdminNewOrderAlert({
+          adminPhone,
+          shopName,
+          orderNumber: shortId,
+          orderId: createdOrder.id,
+          customerName: createdOrder.customerName || "Customer",
+          customerPhone: createdOrder.customerPhone || "N/A",
+          netAmount: createdOrder.netAmount,
+          paymentMethod: createdOrder.paymentMethod || "COD",
+          items: (createdOrder.items as any[]) || [],
+        }).catch((err) => {
+          logger.warn({ err }, "[WhatsApp] Background admin alert error");
+        });
+      } catch { /* ignore admin notification errors */ }
+    } catch (bgErr) {
+      logger.warn({ bgErr }, "[Orders] Background post-order processing failed");
     }
-
-    // Instant WhatsApp order notification to vendor
-    if (targetPhone) {
-      whatsappService.sendOrderAlertToVendor({
-        vendorPhone: targetPhone,
-        vendorName,
-        shopName: shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop",
-        orderNumber: createdOrder.id.slice(-6).toUpperCase(),
-        orderId: createdOrder.id,
-        customerName: createdOrder.customerName || "Customer",
-        customerPhone: createdOrder.customerPhone || "N/A",
-        deliveryAddress: [
-          (createdOrder.address as any)?.line1,
-          (createdOrder.address as any)?.line2,
-          (createdOrder.address as any)?.city,
-        ].filter(Boolean).join(", "),
-        items: (createdOrder.items as any[]) || [],
-        netAmount: createdOrder.netAmount,
-        paymentMethod: createdOrder.paymentMethod || "COD",
-      }).catch((err) => {
-        logger.warn({ err }, "[WhatsApp] Background vendor alert error");
-      });
-    }
-  } catch (err) {
-    logger.warn({ err }, "[WhatsApp] Error sending vendor order notification");
-  }
-
-  // 3. Notify all admins (In-App + WhatsApp) so they can assign a delivery partner
-  try {
-    const adminUsers = await db
-      .select({ id: users.id, phone: users.phone })
-      .from(users)
-      .where(or(eq(users.role, "admin"), eq(users.role, "super_admin")));
-
-    const shortId = createdOrder.id.slice(-6).toUpperCase();
-    const shopName = shop?.shopName ?? createdOrder.shopName ?? "SwiftMart Shop";
-
-    await Promise.all(
-      adminUsers.map(admin =>
-        createNotificationLimited(admin.id, {
-          type: "order_update",
-          title: "🛵 New Order — Assign Rider",
-          message: `Order #${shortId} from ${shopName} needs a delivery partner. Tap to assign.`,
-          data: { orderId: createdOrder.id, url: "/admin?tab=orders" },
-        }).catch(() => {})
-      )
-    );
-
-    // Instant WhatsApp alert to platform admin
-    const adminPhone = adminUsers.find(a => Boolean(a.phone))?.phone ?? null;
-    whatsappService.sendAdminNewOrderAlert({
-      adminPhone,
-      shopName,
-      orderNumber: shortId,
-      orderId: createdOrder.id,
-      customerName: createdOrder.customerName || "Customer",
-      customerPhone: createdOrder.customerPhone || "N/A",
-      netAmount: createdOrder.netAmount,
-      paymentMethod: createdOrder.paymentMethod || "COD",
-      items: (createdOrder.items as any[]) || [],
-    }).catch((err) => {
-      logger.warn({ err }, "[WhatsApp] Background admin alert error");
-    });
-  } catch { /* ignore admin notification errors */ }
-
-  recentOrderDeduplication.set(idempotencyKey, { order: mi(createdOrder), expires: Date.now() + 15000 });
-  res.status(201).json({ success: true, order: mi(createdOrder) });
+  });
 });
 
 // PATCH /api/orders/:id/status

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +13,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Wallet, Banknote, Loader2, AlertCircle, Tag, X, Zap, Clock, Store, MapPin, Bike, Package, Phone, Truck } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -930,6 +932,60 @@ export default function Checkout() {
           </div>
         </section>
       </div>
+
+      {/* Instant Animated Placing Feedback Modal */}
+      {createPortal(
+        <AnimatePresence>
+          {placing && (
+            <motion.div
+              key="placing-modal"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[99999] bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center select-none"
+            >
+              <motion.div
+                initial={{ scale: 0.85, y: 15 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                className="bg-card border border-border/80 rounded-3xl p-7 max-w-xs w-full shadow-2xl flex flex-col items-center gap-4 text-card-foreground"
+              >
+                <div className="relative w-20 h-20 flex items-center justify-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1.1, ease: "linear" }}
+                    className="absolute inset-0 rounded-full border-4 border-primary/20 border-t-primary"
+                  />
+                  <motion.div
+                    animate={{ scale: [0.92, 1.08, 0.92] }}
+                    transition={{ repeat: Infinity, duration: 1.4, ease: "easeInOut" }}
+                    className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary"
+                  >
+                    <Package className="w-6 h-6" />
+                  </motion.div>
+                </div>
+
+                <div>
+                  <h3 className="font-extrabold text-base tracking-tight text-foreground">Placing Your Order...</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Connecting with SwiftMart Express</p>
+                </div>
+
+                <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                  <motion.div
+                    initial={{ width: "15%" }}
+                    animate={{ width: "95%" }}
+                    transition={{ duration: 1.4, ease: "easeInOut" }}
+                    className="bg-primary h-full rounded-full"
+                  />
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
