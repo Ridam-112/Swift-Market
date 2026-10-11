@@ -2,6 +2,10 @@ import path from "node:path";
 import fs from "node:fs";
 import os from "node:os";
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const DEFAULT_WHATSAPP_TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -635,6 +639,70 @@ class WhatsAppService {
   }
 
   /**
+   * Send an image with an optional caption to any phone number.
+   */
+  public async sendImage(
+    phone: string,
+    imageSource: Buffer | { url: string },
+    caption?: string
+  ): Promise<boolean> {
+    if (this.state.status !== "connected" || !this.sock) {
+      const reconnected = await this.ensureConnected();
+      if (!reconnected || !this.sock) {
+        logger.warn("[WhatsApp] Cannot send image: WhatsApp is not connected");
+        return false;
+      }
+    }
+
+    const jid = this.formatJid(phone);
+    if (!jid) {
+      logger.warn({ phone }, "[WhatsApp] Invalid phone number provided for image");
+      return false;
+    }
+
+    try {
+      await this.sock.sendMessage(jid, {
+        image: imageSource,
+        caption: caption ?? undefined,
+      });
+      logger.info({ jid }, "[WhatsApp] Image dispatched successfully");
+      return true;
+    } catch (err) {
+      logger.error({ err, jid }, "[WhatsApp] Failed to send image");
+      return false;
+    }
+  }
+
+  /**
+   * Helper to retrieve the official SwiftMart UPI QR code image buffer or URL.
+   */
+  public getUpiQrImage(): Buffer | { url: string } | null {
+    const candidatePaths = [
+      path.resolve(process.cwd(), "artifacts/swiftmart/public/assets/upi_qr.png"),
+      path.resolve(process.cwd(), "artifacts/api-server/assets/upi_qr.png"),
+      path.resolve(process.cwd(), "artifacts/swiftmart/dist/public/assets/upi_qr.png"),
+      path.resolve(process.cwd(), "public/assets/upi_qr.png"),
+      path.resolve(__dirname, "../../swiftmart/public/assets/upi_qr.png"),
+      path.resolve(__dirname, "../../swiftmart/dist/public/assets/upi_qr.png"),
+      path.resolve(__dirname, "../assets/upi_qr.png"),
+      path.resolve(__dirname, "assets/upi_qr.png"),
+    ];
+
+    for (const p of candidatePaths) {
+      try {
+        if (fs.existsSync(p)) {
+          return fs.readFileSync(p);
+        }
+      } catch {
+        // continue checking
+      }
+    }
+
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    return { url: `${baseUrl}/assets/upi_qr.png` };
+  }
+
+  /**
    * Send a rich WhatsApp message with 1-tap action links.
    * Formats headers, body, action links and footer cleanly to ensure 100% reliable
    * delivery across all WhatsApp devices (iOS, Android, Desktop, Web).
@@ -1247,6 +1315,94 @@ class WhatsAppService {
 
     const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
     const trackUrl = `${baseUrl}/orders?track=${orderId}`;
+    const qrImageUrl = `${baseUrl}/assets/upi_qr.png`;
+
+    const isUpi = Boolean(paymentMethod && paymentMethod.toUpperCase().includes("UPI"));
+
+    if (isUpi) {
+      const upiCaption = [
+        `🛍️ *ORDER PLACED (UPI PAYMENT) — SWIFTMART*`,
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        `Thank you for your order, *${customerName || "Customer"}*! 🎉`,
+        `Your order with *${shopName}* has been placed.`,
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        `📦 *Order ID:* #${orderNumber}`,
+        `💰 *Payable Amount:* ₹${netAmount}`,
+        `💳 *Payment Mode:* UPI / QR Code`,
+        itemsPreview,
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        `📲 *HOW TO COMPLETE PAYMENT:*`,
+        `1️⃣ Scan the attached QR code picture with any UPI app (GPay / PhonePe / Paytm / FamPay / BHIM)`,
+        `   • Or pay directly to UPI ID: *6296118949@fam*`,
+        `   • Payee Name: *Ridam Mohanta*`,
+        `   • Exact Amount: *₹${netAmount}*`,
+        ``,
+        `📸 *⚠️ IMPORTANT (জরুরি নির্দেশ):*`,
+        `*পেমেন্ট সম্পন্ন করার পর অনুগ্রহ করে পেমেন্টের Screenshot এই WhatsApp চ্যাটে পাঠিয়ে দিন*, যাতে দোকানদার এবং ডেলিভারি পার্টনার আপনার অর্ডারটি দ্রুত ভেরিফাই করে ডেলিভারি শুরু করতে পারেন!`,
+        `_(Please reply to this WhatsApp chat with your Payment Screenshot once done)_`,
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        `👉 *Track Live Order:*`,
+        `${trackUrl}`,
+        ``,
+        `_SwiftMart Hyperlocal Delivery_`,
+      ].filter(Boolean).join("\n");
+
+      // Attempt sending the actual QR code image with caption
+      const qrImage = this.getUpiQrImage();
+      if (qrImage) {
+        try {
+          const sent = await this.sendImage(customerPhone, qrImage, upiCaption);
+          if (sent) {
+            logger.info({ customerPhone, orderNumber }, "[WhatsApp] Dispatched UPI QR image & instructions to customer");
+            return true;
+          }
+        } catch (mediaErr) {
+          logger.warn({ mediaErr }, "[WhatsApp] Media send failed, falling back to text message with QR URL");
+        }
+      }
+
+      // Fallback: If media upload encounters an issue
+      const fallbackBody = [
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        `Thank you for your order, *${customerName || "Customer"}*! 🎉`,
+        `Your order with *${shopName}* has been placed.`,
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        `📦 *Order ID:* #${orderNumber}`,
+        `💰 *Payable Amount:* ₹${netAmount}`,
+        `💳 *Payment Mode:* UPI`,
+        itemsPreview,
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        `📲 *UPI PAYMENT DETAILS:*`,
+        `• *UPI ID:* 6296118949@fam`,
+        `• *Payee Name:* Ridam Mohanta`,
+        `• *Amount to Pay:* ₹${netAmount}`,
+        `• 📷 *QR Code Link:* ${qrImageUrl}`,
+        ``,
+        `📸 *⚠️ IMPORTANT (জরুরি নির্দেশ):*`,
+        `*পেমেন্ট সম্পন্ন করার পর অনুগ্রহ করে পেমেন্টের Screenshot এই WhatsApp চ্যাটে পাঠিয়ে দিন*, যাতে দোকানদার এবং ডেলিভারি পার্টনার আপনার অর্ডারটি দ্রুত ভেরিফাই করে ডেলিভারি শুরু করতে পারেন!`,
+        `_(Please reply to this WhatsApp chat with your Payment Screenshot once done)_`,
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        `The store is reviewing your order. We'll send you an update as soon as preparation starts!`,
+      ].filter(Boolean).join("\n");
+
+      return this.sendInteractiveButtonsMessage(customerPhone, {
+        header: `🛍️ *ORDER PLACED (UPI PAYMENT) — SWIFTMART*`,
+        body: fallbackBody,
+        footer: `SwiftMart Hyperlocal Delivery`,
+        buttons: [
+          {
+            type: "url",
+            text: "📍 Track Live Order",
+            url: trackUrl,
+          },
+          {
+            type: "url",
+            text: "📷 View UPI QR Code",
+            url: qrImageUrl,
+          },
+        ],
+      });
+    }
 
     const body = [
       `━━━━━━━━━━━━━━━━━━━━━━`,

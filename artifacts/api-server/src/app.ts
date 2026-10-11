@@ -766,6 +766,14 @@ app.use("/api", (_req: Request, res: Response, next: NextFunction): void => {
 });
 
 app.use("/api/uploads", express.static(path.join(__dirname, "..", "uploads")));
+const apiAssetsDir = path.join(__dirname, "..", "assets");
+if (fs.existsSync(apiAssetsDir)) {
+  app.use("/assets", express.static(apiAssetsDir));
+}
+const publicAssetsDir = path.join(__dirname, "..", "..", "swiftmart", "public", "assets");
+if (fs.existsSync(publicAssetsDir)) {
+  app.use("/assets", express.static(publicAssetsDir));
+}
 app.use("/api", globalApiLimiter, router);
 
 // ─── Production: dynamic sitemap + React SPA ─────────────────────────────────

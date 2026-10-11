@@ -146212,7 +146212,7 @@ var compressionModule = __toESM(require_compression(), 1);
 var pinoHttpModule = __toESM(require_logger(), 1);
 import path4 from "path";
 import fs6 from "fs";
-import { fileURLToPath } from "url";
+import { fileURLToPath as fileURLToPath2 } from "url";
 
 // src/routes/index.ts
 var import_express38 = __toESM(require_express2(), 1);
@@ -156741,6 +156741,7 @@ import path2 from "node:path";
 import fs5 from "node:fs";
 import os from "node:os";
 import crypto3 from "node:crypto";
+import { fileURLToPath } from "node:url";
 
 // ../../node_modules/.pnpm/@whiskeysockets+baileys@7.0.0-rc14/node_modules/@whiskeysockets/baileys/WAProto/index.js
 var import_minimal = __toESM(require_minimal2(), 1);
@@ -267684,6 +267685,8 @@ var lib_default = Socket_default;
 var import_qrcode = __toESM(require_lib9(), 1);
 var import_pino3 = __toESM(require_pino(), 1);
 import { sql as sql3 } from "drizzle-orm";
+var __filename = fileURLToPath(import.meta.url);
+var __dirname2 = path2.dirname(__filename);
 var DEFAULT_WHATSAPP_TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
 function generateWhatsAppActionToken(orderId, action, timestamp39) {
   const secret = process.env.JWT_SECRET || "swiftmart-wa-action-token-secret";
@@ -268210,6 +268213,59 @@ var WhatsAppService = class {
     }
   }
   /**
+   * Send an image with an optional caption to any phone number.
+   */
+  async sendImage(phone, imageSource, caption) {
+    if (this.state.status !== "connected" || !this.sock) {
+      const reconnected = await this.ensureConnected();
+      if (!reconnected || !this.sock) {
+        logger.warn("[WhatsApp] Cannot send image: WhatsApp is not connected");
+        return false;
+      }
+    }
+    const jid = this.formatJid(phone);
+    if (!jid) {
+      logger.warn({ phone }, "[WhatsApp] Invalid phone number provided for image");
+      return false;
+    }
+    try {
+      await this.sock.sendMessage(jid, {
+        image: imageSource,
+        caption: caption ?? void 0
+      });
+      logger.info({ jid }, "[WhatsApp] Image dispatched successfully");
+      return true;
+    } catch (err) {
+      logger.error({ err, jid }, "[WhatsApp] Failed to send image");
+      return false;
+    }
+  }
+  /**
+   * Helper to retrieve the official SwiftMart UPI QR code image buffer or URL.
+   */
+  getUpiQrImage() {
+    const candidatePaths = [
+      path2.resolve(process.cwd(), "artifacts/swiftmart/public/assets/upi_qr.png"),
+      path2.resolve(process.cwd(), "artifacts/api-server/assets/upi_qr.png"),
+      path2.resolve(process.cwd(), "artifacts/swiftmart/dist/public/assets/upi_qr.png"),
+      path2.resolve(process.cwd(), "public/assets/upi_qr.png"),
+      path2.resolve(__dirname2, "../../swiftmart/public/assets/upi_qr.png"),
+      path2.resolve(__dirname2, "../../swiftmart/dist/public/assets/upi_qr.png"),
+      path2.resolve(__dirname2, "../assets/upi_qr.png"),
+      path2.resolve(__dirname2, "assets/upi_qr.png")
+    ];
+    for (const p of candidatePaths) {
+      try {
+        if (fs5.existsSync(p)) {
+          return fs5.readFileSync(p);
+        }
+      } catch {
+      }
+    }
+    const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
+    return { url: `${baseUrl}/assets/upi_qr.png` };
+  }
+  /**
    * Send a rich WhatsApp message with 1-tap action links.
    * Formats headers, body, action links and footer cleanly to ensure 100% reliable
    * delivery across all WhatsApp devices (iOS, Android, Desktop, Web).
@@ -268666,6 +268722,87 @@ ${names}${extra}`;
     }
     const baseUrl = process.env.PUBLIC_APP_URL || "https://swiftmart.space";
     const trackUrl = `${baseUrl}/orders?track=${orderId}`;
+    const qrImageUrl = `${baseUrl}/assets/upi_qr.png`;
+    const isUpi = Boolean(paymentMethod && paymentMethod.toUpperCase().includes("UPI"));
+    if (isUpi) {
+      const upiCaption = [
+        `\u{1F6CD}\uFE0F *ORDER PLACED (UPI PAYMENT) \u2014 SWIFTMART*`,
+        `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+        `Thank you for your order, *${customerName || "Customer"}*! \u{1F389}`,
+        `Your order with *${shopName}* has been placed.`,
+        `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+        `\u{1F4E6} *Order ID:* #${orderNumber}`,
+        `\u{1F4B0} *Payable Amount:* \u20B9${netAmount}`,
+        `\u{1F4B3} *Payment Mode:* UPI / QR Code`,
+        itemsPreview,
+        `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+        `\u{1F4F2} *HOW TO COMPLETE PAYMENT:*`,
+        `1\uFE0F\u20E3 Scan the attached QR code picture with any UPI app (GPay / PhonePe / Paytm / FamPay / BHIM)`,
+        `   \u2022 Or pay directly to UPI ID: *6296118949@fam*`,
+        `   \u2022 Payee Name: *Ridam Mohanta*`,
+        `   \u2022 Exact Amount: *\u20B9${netAmount}*`,
+        ``,
+        `\u{1F4F8} *\u26A0\uFE0F IMPORTANT (\u099C\u09B0\u09C1\u09B0\u09BF \u09A8\u09BF\u09B0\u09CD\u09A6\u09C7\u09B6):*`,
+        `*\u09AA\u09C7\u09AE\u09C7\u09A8\u09CD\u099F \u09B8\u09AE\u09CD\u09AA\u09A8\u09CD\u09A8 \u0995\u09B0\u09BE\u09B0 \u09AA\u09B0 \u0985\u09A8\u09C1\u0997\u09CD\u09B0\u09B9 \u0995\u09B0\u09C7 \u09AA\u09C7\u09AE\u09C7\u09A8\u09CD\u099F\u09C7\u09B0 Screenshot \u098F\u0987 WhatsApp \u099A\u09CD\u09AF\u09BE\u099F\u09C7 \u09AA\u09BE\u09A0\u09BF\u09DF\u09C7 \u09A6\u09BF\u09A8*, \u09AF\u09BE\u09A4\u09C7 \u09A6\u09CB\u0995\u09BE\u09A8\u09A6\u09BE\u09B0 \u098F\u09AC\u0982 \u09A1\u09C7\u09B2\u09BF\u09AD\u09BE\u09B0\u09BF \u09AA\u09BE\u09B0\u09CD\u099F\u09A8\u09BE\u09B0 \u0986\u09AA\u09A8\u09BE\u09B0 \u0985\u09B0\u09CD\u09A1\u09BE\u09B0\u099F\u09BF \u09A6\u09CD\u09B0\u09C1\u09A4 \u09AD\u09C7\u09B0\u09BF\u09AB\u09BE\u0987 \u0995\u09B0\u09C7 \u09A1\u09C7\u09B2\u09BF\u09AD\u09BE\u09B0\u09BF \u09B6\u09C1\u09B0\u09C1 \u0995\u09B0\u09A4\u09C7 \u09AA\u09BE\u09B0\u09C7\u09A8!`,
+        `_(Please reply to this WhatsApp chat with your Payment Screenshot once done)_`,
+        `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+        `\u{1F449} *Track Live Order:*`,
+        `${trackUrl}`,
+        ``,
+        `_SwiftMart Hyperlocal Delivery_`
+      ].filter(Boolean).join("\n");
+      const qrImage = this.getUpiQrImage();
+      if (qrImage) {
+        try {
+          const sent = await this.sendImage(customerPhone, qrImage, upiCaption);
+          if (sent) {
+            logger.info({ customerPhone, orderNumber }, "[WhatsApp] Dispatched UPI QR image & instructions to customer");
+            return true;
+          }
+        } catch (mediaErr) {
+          logger.warn({ mediaErr }, "[WhatsApp] Media send failed, falling back to text message with QR URL");
+        }
+      }
+      const fallbackBody = [
+        `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+        `Thank you for your order, *${customerName || "Customer"}*! \u{1F389}`,
+        `Your order with *${shopName}* has been placed.`,
+        `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+        `\u{1F4E6} *Order ID:* #${orderNumber}`,
+        `\u{1F4B0} *Payable Amount:* \u20B9${netAmount}`,
+        `\u{1F4B3} *Payment Mode:* UPI`,
+        itemsPreview,
+        `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+        `\u{1F4F2} *UPI PAYMENT DETAILS:*`,
+        `\u2022 *UPI ID:* 6296118949@fam`,
+        `\u2022 *Payee Name:* Ridam Mohanta`,
+        `\u2022 *Amount to Pay:* \u20B9${netAmount}`,
+        `\u2022 \u{1F4F7} *QR Code Link:* ${qrImageUrl}`,
+        ``,
+        `\u{1F4F8} *\u26A0\uFE0F IMPORTANT (\u099C\u09B0\u09C1\u09B0\u09BF \u09A8\u09BF\u09B0\u09CD\u09A6\u09C7\u09B6):*`,
+        `*\u09AA\u09C7\u09AE\u09C7\u09A8\u09CD\u099F \u09B8\u09AE\u09CD\u09AA\u09A8\u09CD\u09A8 \u0995\u09B0\u09BE\u09B0 \u09AA\u09B0 \u0985\u09A8\u09C1\u0997\u09CD\u09B0\u09B9 \u0995\u09B0\u09C7 \u09AA\u09C7\u09AE\u09C7\u09A8\u09CD\u099F\u09C7\u09B0 Screenshot \u098F\u0987 WhatsApp \u099A\u09CD\u09AF\u09BE\u099F\u09C7 \u09AA\u09BE\u09A0\u09BF\u09DF\u09C7 \u09A6\u09BF\u09A8*, \u09AF\u09BE\u09A4\u09C7 \u09A6\u09CB\u0995\u09BE\u09A8\u09A6\u09BE\u09B0 \u098F\u09AC\u0982 \u09A1\u09C7\u09B2\u09BF\u09AD\u09BE\u09B0\u09BF \u09AA\u09BE\u09B0\u09CD\u099F\u09A8\u09BE\u09B0 \u0986\u09AA\u09A8\u09BE\u09B0 \u0985\u09B0\u09CD\u09A1\u09BE\u09B0\u099F\u09BF \u09A6\u09CD\u09B0\u09C1\u09A4 \u09AD\u09C7\u09B0\u09BF\u09AB\u09BE\u0987 \u0995\u09B0\u09C7 \u09A1\u09C7\u09B2\u09BF\u09AD\u09BE\u09B0\u09BF \u09B6\u09C1\u09B0\u09C1 \u0995\u09B0\u09A4\u09C7 \u09AA\u09BE\u09B0\u09C7\u09A8!`,
+        `_(Please reply to this WhatsApp chat with your Payment Screenshot once done)_`,
+        `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+        `The store is reviewing your order. We'll send you an update as soon as preparation starts!`
+      ].filter(Boolean).join("\n");
+      return this.sendInteractiveButtonsMessage(customerPhone, {
+        header: `\u{1F6CD}\uFE0F *ORDER PLACED (UPI PAYMENT) \u2014 SWIFTMART*`,
+        body: fallbackBody,
+        footer: `SwiftMart Hyperlocal Delivery`,
+        buttons: [
+          {
+            type: "url",
+            text: "\u{1F4CD} Track Live Order",
+            url: trackUrl
+          },
+          {
+            type: "url",
+            text: "\u{1F4F7} View UPI QR Code",
+            url: qrImageUrl
+          }
+        ]
+      });
+    }
     const body = [
       `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
       `Thank you for your order, *${customerName || "Customer"}*! \u{1F389}`,
@@ -277262,7 +277399,7 @@ import { eq as eq41, or as or15 } from "drizzle-orm";
 var helmet3 = helmet || helmet_exports;
 var compression = compressionModule.default || compressionModule;
 var pinoHttp = pinoHttpModule.default || pinoHttpModule;
-var __dirname2 = path4.dirname(fileURLToPath(import.meta.url));
+var __dirname3 = path4.dirname(fileURLToPath2(import.meta.url));
 var BASE_URL = "https://swiftmart.space";
 var sitemapIndexCache = null;
 var sitemapPagesCache = null;
@@ -277827,10 +277964,18 @@ app.use("/api", (_req, res, next) => {
   res.setHeader("X-Robots-Tag", "noindex, nofollow");
   next();
 });
-app.use("/api/uploads", import_express39.default.static(path4.join(__dirname2, "..", "uploads")));
+app.use("/api/uploads", import_express39.default.static(path4.join(__dirname3, "..", "uploads")));
+var apiAssetsDir = path4.join(__dirname3, "..", "assets");
+if (fs6.existsSync(apiAssetsDir)) {
+  app.use("/assets", import_express39.default.static(apiAssetsDir));
+}
+var publicAssetsDir = path4.join(__dirname3, "..", "..", "swiftmart", "public", "assets");
+if (fs6.existsSync(publicAssetsDir)) {
+  app.use("/assets", import_express39.default.static(publicAssetsDir));
+}
 app.use("/api", globalApiLimiter, routes_default);
 if (process.env.NODE_ENV === "production") {
-  const frontendDist = path4.join(__dirname2, "..", "..", "swiftmart", "dist", "public");
+  const frontendDist = path4.join(__dirname3, "..", "..", "swiftmart", "dist", "public");
   const ROBOTS_TXT = [
     "User-agent: *",
     "Allow: /",
