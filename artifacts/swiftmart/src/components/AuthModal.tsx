@@ -39,6 +39,8 @@ export function AuthModal() {
     signInWithEmail,
     signUpWithEmail,
     refreshUser,
+    loginWithPhone,
+    verifyOtp,
   } = useAuth();
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -46,14 +48,21 @@ export function AuthModal() {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showOtpMode, setShowOtpMode] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [truecallerAppKey, setTruecallerAppKey] = useState("");
 
   const isAndroidPhone = typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
+  const isPhone = /^[6-9]\d{9}$/.test(email.trim().replace(/\D/g, "").slice(-10));
 
   useEffect(() => {
-    if (!isLoginModalOpen) return;
+    if (!isLoginModalOpen) {
+      setShowOtpMode(false);
+      setOtpCode("");
+      return;
+    }
     fetch(`${api.BASE}/auth/config`)
       .then(r => r.json())
       .then((d: { authMode?: string; googleClientId?: string; truecallerAppKey?: string }) => {
@@ -63,12 +72,56 @@ export function AuthModal() {
       .catch(() => {});
   }, [isLoginModalOpen]);
 
+  const handleSendWhatsAppOtp = async () => {
+    const cleanPhone = email.trim().replace(/\D/g, "").slice(-10);
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    setLoading(true);
+    try {
+      await loginWithPhone(cleanPhone);
+      toast.success("6-digit verification code sent to your WhatsApp!");
+      setShowOtpMode(true);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to send code to WhatsApp");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPhone = email.trim().replace(/\D/g, "").slice(-10);
+    const code = otpCode.trim();
+    if (!code || code.length < 4) {
+      toast.error("Please enter the 6-digit code received on WhatsApp");
+      return;
+    }
+    setLoading(true);
+    try {
+      await verifyOtp(code, cleanPhone);
+      toast.success("Logged in successfully via WhatsApp!");
+      await refreshUser();
+      closeLoginModal();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Incorrect or expired code");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanEmail = email.trim().toLowerCase();
-    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail);
-    if (!cleanEmail || !isEmail) {
-      toast.error("Please enter a valid email address");
+    if (showOtpMode) {
+      return handleVerifyOtp(e);
+    }
+    const cleanRaw = email.trim();
+    const cleanPhone = cleanRaw.replace(/\D/g, "").slice(-10);
+    const validPhone = /^[6-9]\d{9}$/.test(cleanPhone);
+    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanRaw.toLowerCase());
+    if (!cleanRaw || (!validEmail && !validPhone)) {
+      toast.error("Please enter a valid email or 10-digit mobile number");
       return;
     }
     if (mode === "signup" && !name.trim()) {
@@ -83,10 +136,10 @@ export function AuthModal() {
     setLoading(true);
     try {
       if (mode === "signin") {
-        await signInWithEmail(cleanEmail, password);
+        await signInWithEmail(validPhone ? cleanPhone : cleanRaw.toLowerCase(), password);
         toast.success("Logged in successfully! Welcome back.");
       } else {
-        await signUpWithEmail(name.trim(), cleanEmail, password);
+        await signUpWithEmail(name.trim(), validPhone ? cleanPhone : cleanRaw.toLowerCase(), password);
         toast.success("Account created successfully! Welcome to SwiftMart.");
       }
       await refreshUser();
@@ -210,53 +263,116 @@ export function AuthModal() {
             )}
 
             <div className="space-y-1">
-              <Label className="text-xs font-bold text-foreground">Email Address</Label>
+              <Label className="text-xs font-bold text-foreground">Email or Mobile Number</Label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                 <Input
-                  type="email"
-                  placeholder="name@example.com"
+                  type="text"
+                  placeholder="name@example.com or 9876543210"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-9 h-10 rounded-xl text-sm"
+                  disabled={showOtpMode}
                 />
               </div>
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-foreground">Password</Label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder={mode === "signup" ? "At least 8 characters" : "Enter password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-9 pr-10 h-10 rounded-xl text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            {showOtpMode ? (
+              <div className="space-y-3 pt-1">
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-foreground flex items-center justify-between">
+                    <span>6-digit WhatsApp Code</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowOtpMode(false)}
+                      className="text-[11px] text-primary hover:underline font-normal"
+                    >
+                      Use Password instead
+                    </button>
+                  </Label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Input
+                      type="text"
+                      maxLength={6}
+                      placeholder="123456"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                      className="pl-9 h-10 rounded-xl text-center text-lg tracking-widest font-mono font-bold"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading || otpCode.length < 4}
+                  className="w-full h-11 rounded-2xl font-black text-sm bg-emerald-600 hover:bg-emerald-700 text-white active:scale-[0.98] transition-all shadow-md"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify & Sign In"}
+                </Button>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full h-11 rounded-2xl font-black text-sm bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98] transition-all shadow-md mt-2"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : mode === "signin" ? (
-                "Sign In"
-              ) : (
-                "Create Account"
-              )}
-            </Button>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleSendWhatsAppOtp}
+                    disabled={loading}
+                    className="text-xs text-primary hover:underline font-medium"
+                  >
+                    Resend code via WhatsApp
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-foreground">Password</Label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder={mode === "signup" ? "At least 8 characters" : "Enter password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-9 pr-10 h-10 rounded-xl text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-11 rounded-2xl font-black text-sm bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98] transition-all shadow-md mt-2"
+                >
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : mode === "signin" ? (
+                    "Sign In"
+                  ) : (
+                    "Create Account"
+                  )}
+                </Button>
+
+                {mode === "signin" && isPhone && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSendWhatsAppOtp}
+                    disabled={loading}
+                    className="w-full h-10 rounded-xl text-xs font-bold border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 flex items-center justify-center gap-1.5"
+                  >
+                    💬 Send Login Code to WhatsApp
+                  </Button>
+                )}
+              </>
+            )}
           </form>
 
           {/* Toggle between Sign In and Sign Up */}

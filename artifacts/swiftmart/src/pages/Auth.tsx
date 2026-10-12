@@ -56,6 +56,7 @@ type Step =
   | "email"
   | "signin"
   | "signup"
+  | "otp"
   | "forgot"
   | "forgot-sent"
   | "reset"
@@ -136,7 +137,7 @@ function PasswordInput({
 import { SEO } from "@/components/SEO";
 
 export default function Auth() {
-  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, signInWithTruecaller, forgotPassword, resetPassword, refreshUser } = useAuth();
+  const { user, isLoading: authLoading, signInWithEmail, signUpWithEmail, signInWithTruecaller, forgotPassword, resetPassword, refreshUser, loginWithPhone, verifyOtp } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
 
@@ -144,6 +145,7 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [name, setName]   = useState("");
   const [password, setPassword]       = useState("");
+  const [otpCode, setOtpCode]         = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetToken, setResetToken] = useState("");
@@ -292,23 +294,69 @@ export default function Auth() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading, setLocation]);
 
-  // ─── Email step ──────────────────────────────────────────────────────────
+  const isPhone = /^[6-9]\d{9}$/.test(email.trim().replace(/\D/g, "").slice(-10));
+
+  // ─── Email / Phone step ──────────────────────────────────────────────────────────
   const handleEmailContinue = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = email.trim().toLowerCase();
-    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
-    if (!trimmed || !isEmail) {
-      toast.error("Please enter a valid email address");
+    const raw = email.trim();
+    const phoneDigits = raw.replace(/\D/g, "").slice(-10);
+    const validPhone = /^[6-9]\d{9}$/.test(phoneDigits);
+    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw.toLowerCase());
+    if (!raw || (!validEmail && !validPhone)) {
+      toast.error("Please enter a valid email or 10-digit mobile number");
       return;
     }
     setLoading(true);
     try {
       console.log("[Auth] Checking user via", `${api.BASE}/auth/check-email`);
-      const data = await api.post<{ exists?: boolean }>("/auth/check-email", { email: trimmed });
+      const payload = validPhone ? { email: phoneDigits } : { email: raw.toLowerCase() };
+      const data = await api.post<{ exists?: boolean }>("/auth/check-email", payload);
       setStep(data.exists ? "signin" : "signup");
     } catch {
       // On error, proceed to signin
       setStep("signin");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── WhatsApp OTP flow ────────────────────────────────────────────────────────
+  const handleSendWhatsAppOtp = async () => {
+    const raw = email.trim();
+    const cleanPhone = raw.replace(/\D/g, "").slice(-10);
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    setLoading(true);
+    try {
+      await loginWithPhone(cleanPhone);
+      toast.success("6-digit verification code sent to your WhatsApp!");
+      setStep("otp");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to send code to WhatsApp");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPhone = email.trim().replace(/\D/g, "").slice(-10);
+    const code = otpCode.trim();
+    if (!code || code.length < 4) {
+      toast.error("Please enter the 6-digit code received on WhatsApp");
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await verifyOtp(code, cleanPhone);
+      toast.success("Welcome! Logged in successfully.");
+      await refreshUser();
+      setLocation(result.isNewUser ? "/complete-profile" : getNextPath());
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Incorrect or expired code. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -482,17 +530,25 @@ export default function Auth() {
   // ─── Forgot password ─────────────────────────────────────────────────────────
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = email.toLowerCase().trim();
-    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      toast.error("Enter a valid email address");
+    const raw = email.trim();
+    const cleanPhone = raw.replace(/\D/g, "").slice(-10);
+    const validPhone = /^[6-9]\d{9}$/.test(cleanPhone);
+    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw.toLowerCase());
+    if (!raw || (!validEmail && !validPhone)) {
+      toast.error("Enter a valid email address or 10-digit mobile number");
       return;
     }
     setLoading(true);
     try {
-      await forgotPassword(trimmed);
-      setStep("forgot-sent");
+      await forgotPassword(validPhone ? cleanPhone : raw.toLowerCase());
+      if (validPhone) {
+        toast.success("6-digit verification code sent to your WhatsApp!");
+        setStep("reset");
+      } else {
+        setStep("forgot-sent");
+      }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to send reset email";
+      const msg = err instanceof Error ? err.message : "Failed to send reset code";
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -502,10 +558,13 @@ export default function Auth() {
   // ─── Reset password ──────────────────────────────────────────────────────────
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!resetToken.trim()) { toast.error("Please enter the verification code"); return; }
     if (newPassword.length < 8) { toast.error("Password must be at least 8 characters"); return; }
+    const cleanPhone = email.trim().replace(/\D/g, "").slice(-10);
+    const validPhone = /^[6-9]\d{9}$/.test(cleanPhone);
     setLoading(true);
     try {
-      await resetPassword(newPassword, resetToken);
+      await resetPassword(newPassword, resetToken.trim(), validPhone ? cleanPhone : undefined);
       setStep("reset-done");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to reset password";
@@ -564,22 +623,22 @@ export default function Auth() {
       <div className="relative z-10 w-full max-w-sm mx-auto px-8 pb-6">
         <AnimatePresence mode="wait">
 
-            {/* ── EMAIL ── */}
+            {/* ── EMAIL / PHONE ── */}
             {step === "email" && (
               <motion.form key="email" {...slide} onSubmit={handleEmailContinue} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email" className="flex items-center gap-2 text-sm font-medium">
                     <Mail className="w-4 h-4 text-muted-foreground" />
-                    Email address
+                    Email or Mobile Number
                   </Label>
                   <Input
                     id="email"
-                    type="email"
-                    placeholder="you@example.com"
+                    type="text"
+                    placeholder="name@example.com or 9876543210"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoFocus
-                    autoComplete="email"
+                    autoComplete="username"
                     className="h-12 rounded-xl text-base"
                   />
                 </div>
@@ -667,21 +726,47 @@ export default function Auth() {
                   />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => { setStep("forgot"); }}
-                  className="text-sm text-primary hover:underline"
-                >
-                  Forgot password?
-                </button>
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => { setStep("forgot"); }}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                  {isPhone && (
+                    <button
+                      type="button"
+                      onClick={handleSendWhatsAppOtp}
+                      disabled={loading}
+                      className="text-sm font-semibold text-emerald-400 hover:underline flex items-center gap-1"
+                    >
+                      💬 WhatsApp OTP
+                    </button>
+                  )}
+                </div>
 
                 <Button
                   type="submit"
                   disabled={loading || !password}
                   className="w-full h-12 rounded-xl text-base font-semibold"
                 >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign in"}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign in with password"}
                 </Button>
+
+                {isPhone && (
+                  <div className="pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleSendWhatsAppOtp}
+                      disabled={loading}
+                      className="w-full h-12 rounded-xl text-sm font-semibold border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 flex items-center justify-center gap-2"
+                    >
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "💬 Send Login Code to WhatsApp"}
+                    </Button>
+                  </div>
+                )}
 
                 <p className="text-center text-sm text-muted-foreground">
                   New to SwiftMart?{" "}
@@ -693,6 +778,61 @@ export default function Auth() {
                     Create account
                   </button>
                 </p>
+              </motion.form>
+            )}
+
+            {/* ── OTP STEP (WHATSAPP VERIFICATION) ── */}
+            {step === "otp" && (
+              <motion.form key="otp" {...slide} onSubmit={handleVerifyOtp} className="space-y-4">
+                <button
+                  type="button"
+                  onClick={() => { setStep("signin"); setOtpCode(""); }}
+                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  {email}
+                </button>
+
+                <p className="text-lg font-semibold text-foreground">WhatsApp Verification</p>
+                <p className="text-sm text-muted-foreground -mt-2">
+                  Enter the 6-digit code sent to your WhatsApp
+                </p>
+
+                <div className="space-y-2">
+                  <Label htmlFor="otpCode" className="flex items-center gap-2 text-sm font-medium">
+                    <Lock className="w-4 h-4 text-emerald-400" />
+                    6-digit Verification Code
+                  </Label>
+                  <Input
+                    id="otpCode"
+                    type="text"
+                    maxLength={6}
+                    placeholder="123456"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                    autoFocus
+                    className="h-12 rounded-xl text-center text-2xl tracking-widest font-mono font-bold"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading || otpCode.length < 4}
+                  className="w-full h-12 rounded-xl text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verify & Sign In"}
+                </Button>
+
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={handleSendWhatsAppOtp}
+                    disabled={loading}
+                    className="text-xs text-primary hover:underline font-medium"
+                  >
+                    Resend code via WhatsApp
+                  </button>
+                </div>
               </motion.form>
             )}
 
@@ -777,18 +917,20 @@ export default function Auth() {
 
                 <p className="text-lg font-semibold text-foreground">Reset your password</p>
                 <p className="text-sm text-muted-foreground -mt-2">
-                  We'll send a reset link to your email
+                  {isPhone
+                    ? "We'll send a 6-digit verification code to your WhatsApp"
+                    : "We'll send a reset link to your email"}
                 </p>
 
                 <div className="space-y-2">
                   <Label htmlFor="forgot-email" className="flex items-center gap-2 text-sm font-medium">
                     <Mail className="w-4 h-4 text-muted-foreground" />
-                    Email address
+                    Email address or Mobile Number
                   </Label>
                   <Input
                     id="forgot-email"
-                    type="email"
-                    placeholder="you@example.com"
+                    type="text"
+                    placeholder="you@example.com or 9876543210"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoFocus
@@ -801,7 +943,7 @@ export default function Auth() {
                   disabled={loading || !email.trim()}
                   className="w-full h-12 rounded-xl text-base font-semibold"
                 >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Send reset link"}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isPhone ? "Send code via WhatsApp" : "Send reset link")}
                 </Button>
               </motion.form>
             )}
@@ -828,10 +970,40 @@ export default function Auth() {
             {/* ── RESET PASSWORD ── */}
             {step === "reset" && (
               <motion.form key="reset" {...slide} onSubmit={handleResetPassword} className="space-y-4">
+                <button
+                  type="button"
+                  onClick={() => setStep("signin")}
+                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to sign in
+                </button>
+
                 <p className="text-lg font-semibold text-foreground">Choose a new password</p>
                 <p className="text-sm text-muted-foreground -mt-2">
-                  Enter your new password below
+                  {isPhone
+                    ? "Enter the 6-digit WhatsApp code and your new password"
+                    : "Enter your new password below"}
                 </p>
+
+                {(!new URLSearchParams(search).get("token")) && (
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-token" className="flex items-center gap-2 text-sm font-medium">
+                      <Lock className="w-4 h-4 text-emerald-400" />
+                      6-digit Verification Code
+                    </Label>
+                    <Input
+                      id="reset-token"
+                      type="text"
+                      maxLength={6}
+                      placeholder="123456"
+                      value={resetToken}
+                      onChange={(e) => setResetToken(e.target.value.replace(/\D/g, ""))}
+                      className="h-12 rounded-xl text-center text-xl tracking-widest font-mono font-bold"
+                      autoFocus
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="reset-password" className="flex items-center gap-2 text-sm font-medium">
@@ -843,16 +1015,16 @@ export default function Auth() {
                     value={newPassword}
                     onChange={setNewPassword}
                     placeholder="At least 8 characters"
-                    autoFocus
+                    autoFocus={!!new URLSearchParams(search).get("token")}
                   />
                 </div>
 
                 <Button
                   type="submit"
-                  disabled={loading || newPassword.length < 8}
+                  disabled={loading || newPassword.length < 8 || (!new URLSearchParams(search).get("token") && !resetToken.trim())}
                   className="w-full h-12 rounded-xl text-base font-semibold"
                 >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Reset password"}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Reset password & Sign in"}
                 </Button>
               </motion.form>
             )}

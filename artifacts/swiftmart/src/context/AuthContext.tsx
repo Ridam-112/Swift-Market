@@ -28,8 +28,8 @@ interface AuthContextType {
   signUpWithEmail: (name: string, email: string, password: string) => Promise<{ needsProfile: boolean; user?: User }>;
   signInWithGoogle: (sessionToken: string) => Promise<{ needsProfile: boolean; user?: User }>;
   signInWithTruecaller: (accessToken: string) => Promise<{ needsProfile: boolean; user?: User }>;
-  forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (newPassword: string, token: string) => Promise<void>;
+  forgotPassword: (emailOrPhone: string) => Promise<void>;
+  resetPassword: (newPassword: string, token: string, phone?: string) => Promise<void>;
 
   completeOnboarding: (name: string, phone: string, address: Address, email?: string) => Promise<void>;
 
@@ -456,15 +456,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const forgotPassword = async (email: string): Promise<void> => {
-    await api.post("/auth/email-forgot-password", { email });
+  const forgotPassword = async (emailOrPhone: string): Promise<void> => {
+    const raw = emailOrPhone.trim();
+    const isPhone = /^[6-9]\d{9}$/.test(raw.replace(/\D/g, "").slice(-10));
+    if (isPhone) {
+      await api.post("/auth/forgot-password", { phone: raw.replace(/\D/g, "").slice(-10) });
+    } else {
+      await api.post("/auth/email-forgot-password", { email: raw.toLowerCase() });
+    }
   };
 
-  const resetPassword = async (newPassword: string, token: string): Promise<void> => {
-    const data = await api.post<{ success: boolean; accessToken?: string; refreshToken?: string; user?: ApiUser }>("/auth/email-reset-password", { token, newPassword });
-    if (data.accessToken && data.refreshToken && data.user) {
-      setTokens(data.accessToken, data.refreshToken);
-      applyAuthResult(data.user);
+  const resetPassword = async (newPassword: string, token: string, phone?: string): Promise<void> => {
+    if (phone) {
+      const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+      const data = await api.post<{ success: boolean; accessToken?: string; refreshToken?: string; user?: ApiUser }>("/auth/reset-password", { phone: cleanPhone, token, newPassword });
+      if (data.accessToken && data.refreshToken && data.user) {
+        setTokens(data.accessToken, data.refreshToken);
+        applyAuthResult(data.user);
+      }
+    } else {
+      const data = await api.post<{ success: boolean; accessToken?: string; refreshToken?: string; user?: ApiUser }>("/auth/email-reset-password", { token, newPassword });
+      if (data.accessToken && data.refreshToken && data.user) {
+        setTokens(data.accessToken, data.refreshToken);
+        applyAuthResult(data.user);
+      }
     }
   };
 
@@ -509,11 +524,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const u = applyAuthResult(data.user);
     return { isNewUser: data.isNewUser, needsProfile: data.needsProfile, user: u };
   };
-  const loginWithPhone = async (_phone: string): Promise<void> => {
-    throw new Error("OTP login has been removed. Please use email.");
+  const loginWithPhone = async (phone: string): Promise<void> => {
+    const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+    await api.post("/auth/send-otp", { phone: cleanPhone });
   };
-  const verifyOtp = async (_otp: string, _phone: string): Promise<{ isNewUser: boolean; user?: User }> => {
-    throw new Error("OTP login has been removed. Please use email.");
+  const verifyOtp = async (otp: string, phone: string): Promise<{ isNewUser: boolean; user?: User }> => {
+    const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+    const data = await api.post<{
+      success: boolean;
+      isNewUser: boolean;
+      accessToken: string;
+      refreshToken: string;
+      user: ApiUser;
+    }>("/auth/verify-otp", { phone: cleanPhone, otp: otp.trim() });
+    if (data.accessToken && data.refreshToken) {
+      setTokens(data.accessToken, data.refreshToken);
+    }
+    const u = applyAuthResult(data.user);
+    return { isNewUser: data.isNewUser, user: u };
   };
 
   // ─── Vendor & admin helpers ───────────────────────────────────────────────
