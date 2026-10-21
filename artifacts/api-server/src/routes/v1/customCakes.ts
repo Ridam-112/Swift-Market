@@ -5,6 +5,7 @@ import { authenticate, optionalAuth, requireRole, type AuthRequest } from "../..
 import { mi, miArr } from "../../utils/mapId.js";
 import { createNotificationLimited } from "../../utils/notification.js";
 import { logger } from "../../lib/logger.js";
+import { isOrdersPaused, ORDERS_PAUSED_MESSAGE } from "../../utils/orderPause.js";
 
 const router = Router();
 
@@ -82,6 +83,10 @@ function formatCustomCake(req: any) {
 // ─── 2. Customer: Submit Custom Cake Request ─────────────────────────────────
 // POST /api/custom-cakes/request
 router.post("/request", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  if (isOrdersPaused()) {
+    res.status(403).json({ success: false, message: ORDERS_PAUSED_MESSAGE });
+    return;
+  }
   try {
     const userId = req.user?.userId;
     if (!userId) {

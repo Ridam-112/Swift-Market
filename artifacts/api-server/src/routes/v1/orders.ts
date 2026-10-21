@@ -12,6 +12,7 @@ import { logger } from "../../lib/logger.js";
 import { mi, miArr } from "../../utils/mapId.js";
 import { whatsappService } from "../../services/whatsapp.js";
 import { getMessagingInstance } from "../../lib/firebase-admin.js";
+import { isOrdersPaused, ORDERS_PAUSED_MESSAGE } from "../../utils/orderPause.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin");
@@ -667,6 +668,10 @@ router.get("/:id/rider-location", authenticate, validateUuidParams("id"), async 
 
 // POST /api/orders/parcel — on-demand intra-city parcel / courier delivery booking
 router.post("/parcel", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  if (isOrdersPaused()) {
+    res.status(403).json({ success: false, message: ORDERS_PAUSED_MESSAGE });
+    return;
+  }
   try {
     const userId = req.user!.userId;
     const body = req.body as Record<string, any>;
@@ -778,6 +783,10 @@ router.post("/parcel", authenticate, async (req: AuthRequest, res: Response): Pr
 //        under the same DB lock, closing the race window where two parallel requests could
 //        both pass the validate endpoint and then both land here simultaneously.
 router.post("/", authenticate, orderLimiter, async (req: AuthRequest, res: Response): Promise<void> => {
+  if (isOrdersPaused()) {
+    res.status(403).json({ success: false, message: ORDERS_PAUSED_MESSAGE });
+    return;
+  }
   const parsed = CreateOrderSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ success: false, message: "Invalid order data", errors: parsed.error.flatten().fieldErrors });

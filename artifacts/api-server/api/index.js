@@ -269011,6 +269011,15 @@ function calculateCommissionAmount(netAmount, resolved) {
   return +(netAmount * resolved.rate / 100).toFixed(2);
 }
 
+// src/utils/orderPause.ts
+var ORDERS_PAUSED_UNTIL = /* @__PURE__ */ new Date("2026-10-26T00:00:00+05:30");
+var ORDERS_PAUSED_MESSAGE = "Orders are currently paused due to Durga Puja celebrations. Deliveries will resume on 26th October.";
+function isOrdersPaused() {
+  if (process.env.ORDERS_PAUSED === "false") return false;
+  if (process.env.ORDERS_PAUSED === "true") return true;
+  return Date.now() < ORDERS_PAUSED_UNTIL.getTime();
+}
+
 // src/routes/v1/orders.ts
 var router9 = (0, import_express9.Router)();
 var A8 = requireRole("admin", "super_admin");
@@ -269499,6 +269508,10 @@ router9.get("/:id/rider-location", authenticate, validateUuidParams("id"), async
   });
 });
 router9.post("/parcel", authenticate, async (req, res) => {
+  if (isOrdersPaused()) {
+    res.status(403).json({ success: false, message: ORDERS_PAUSED_MESSAGE });
+    return;
+  }
   try {
     const userId = req.user.userId;
     const body = req.body;
@@ -269593,6 +269606,10 @@ router9.post("/parcel", authenticate, async (req, res) => {
   }
 });
 router9.post("/", authenticate, orderLimiter, async (req, res) => {
+  if (isOrdersPaused()) {
+    res.status(403).json({ success: false, message: ORDERS_PAUSED_MESSAGE });
+    return;
+  }
   const parsed = CreateOrderSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ success: false, message: "Invalid order data", errors: parsed.error.flatten().fieldErrors });
@@ -275367,6 +275384,10 @@ function formatCustomCake(req) {
   };
 }
 router33.post("/request", authenticate, async (req, res) => {
+  if (isOrdersPaused()) {
+    res.status(403).json({ success: false, message: ORDERS_PAUSED_MESSAGE });
+    return;
+  }
   try {
     const userId = req.user?.userId;
     if (!userId) {
@@ -276045,6 +276066,10 @@ router34.get("/catalog", async (_req, res) => {
   });
 });
 router34.post("/book", authenticate, async (req, res) => {
+  if (isOrdersPaused()) {
+    res.status(403).json({ success: false, message: ORDERS_PAUSED_MESSAGE });
+    return;
+  }
   try {
     await ensureTableExists();
     const userId = req.user?.userId;

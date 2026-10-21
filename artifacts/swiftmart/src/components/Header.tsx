@@ -13,6 +13,7 @@ import { AddressCard } from "./AddressCard";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { isOrdersPaused } from "@/lib/orderPause";
 
 export function Header() {
   const { user, role, isAdmin, selectedDeliveryAddress, setSelectedDeliveryAddress, addAddress, openLoginModal } = useAuth();
@@ -117,6 +118,13 @@ export function Header() {
 
   return (
     <>
+      {isOrdersPaused() && (
+        <div className="w-full bg-gradient-to-r from-amber-600 via-rose-600 to-amber-700 text-white text-[11px] sm:text-xs font-bold py-1.5 px-3 text-center shadow-md flex items-center justify-center gap-1.5 z-[51] relative">
+          <span className="text-sm">🪔</span>
+          <span>Orders paused due to Durga Puja celebrations. Deliveries will resume on <strong>26th October</strong>.</span>
+          <span className="hidden sm:inline text-sm">🌸</span>
+        </div>
+      )}
       <header className="sticky top-0 z-50 glass w-full px-3 py-2.5 md:px-6">
         <div className="max-w-7xl mx-auto flex items-center gap-2 md:gap-4">
           {/* Logo — always visible */}

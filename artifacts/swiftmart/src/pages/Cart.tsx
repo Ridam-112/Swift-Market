@@ -15,6 +15,7 @@ const MINIMUM_ORDER_AMOUNT = 40;
 
 import { SEO } from "@/components/SEO";
 import { isFoodCategory, calculateDeliveryFee } from "@/lib/deliveryEta";
+import { isOrdersPaused } from "@/lib/orderPause";
 
 export default function Cart() {
   const [, setLocation] = useLocation();
@@ -65,6 +66,20 @@ export default function Cart() {
       <SEO noIndex />
       <SectionHeader title="Your Cart" />
       
+      {isOrdersPaused() && (
+        <div className="flex items-start gap-3 bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 rounded-2xl p-4 shadow-sm">
+          <span className="text-2xl shrink-0">🪔</span>
+          <div>
+            <p className="font-bold text-sm text-amber-800 dark:text-amber-300">
+              Orders Paused for Durga Puja
+            </p>
+            <p className="text-xs mt-1 text-muted-foreground leading-relaxed">
+              Order placement is temporarily paused due to Durga Puja celebrations. Deliveries will resume on <strong>26th October</strong>. You can keep items in your cart to order when services resume!
+            </p>
+          </div>
+        </div>
+      )}
+
       {shopClosed && (
         <div className="flex items-start gap-3 bg-red-500/10 border border-red-300/40 text-red-700 dark:text-red-400 rounded-2xl p-4">
           <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
@@ -108,7 +123,11 @@ export default function Cart() {
             deliveryTimingLabel={hasFood ? "30–40 min" : "30 min–1 hr"}
           />
           
-          {shopClosed ? (
+          {isOrdersPaused() ? (
+            <Button disabled className="w-full rounded-full h-12 text-sm font-bold shadow-none opacity-60 cursor-not-allowed bg-amber-600/80 text-white">
+              Orders Paused (Resumes 26th Oct)
+            </Button>
+          ) : shopClosed ? (
             <Button disabled className="w-full rounded-full h-12 text-base font-bold shadow-none opacity-50 cursor-not-allowed">
               Shop Closed — Cannot Checkout
             </Button>

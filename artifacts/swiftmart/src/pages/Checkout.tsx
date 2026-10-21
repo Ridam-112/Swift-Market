@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { isServicePincode } from "@/lib/serviceArea";
+import { isOrdersPaused } from "@/lib/orderPause";
 import { formatINR } from "@/lib/currency";
 import {
   getCustomerCoords,
@@ -344,6 +345,14 @@ export default function Checkout() {
   const MINIMUM_ORDER_AMOUNT = 40;
 
   const handlePlaceOrder = async () => {
+    if (isOrdersPaused()) {
+      toast.error("Orders Paused for Durga Puja", {
+        description: "Orders are currently paused due to Durga Puja celebrations. Deliveries will resume on 26th October.",
+        duration: 6000,
+      });
+      return;
+    }
+
     if (subtotal < MINIMUM_ORDER_AMOUNT) {
       toast.error(`Minimum order amount is ₹${MINIMUM_ORDER_AMOUNT}`, {
         description: `Your cart total is ₹${subtotal}. Add ₹${+(MINIMUM_ORDER_AMOUNT - subtotal).toFixed(2)} more to place an order.`,
@@ -465,6 +474,20 @@ export default function Checkout() {
     <div className="pb-24 pt-4 px-4 max-w-3xl mx-auto space-y-8">
       <SEO noIndex />
       <SectionHeader title="Checkout" />
+
+      {isOrdersPaused() && (
+        <div className="flex items-start gap-3 bg-gradient-to-r from-amber-500/15 via-rose-500/15 to-orange-500/15 border border-amber-500/30 text-amber-950 dark:text-amber-100 rounded-2xl p-4 shadow-sm">
+          <span className="text-2xl shrink-0">🪔</span>
+          <div>
+            <h3 className="font-bold text-sm text-amber-800 dark:text-amber-300">
+              Orders Currently Paused — Durga Puja Notice
+            </h3>
+            <p className="text-xs mt-1 text-muted-foreground leading-relaxed">
+              Ordering is temporarily paused due to Durga Puja celebrations. All delivery services will resume on <strong>26th October</strong>.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-8">
         <section>
@@ -891,11 +914,16 @@ export default function Checkout() {
           />
 
           <Button
-            className="w-full mt-6 rounded-full h-14 text-lg font-bold shadow-none neu-card"
+            className={cn(
+              "w-full mt-6 rounded-full h-14 text-lg font-bold shadow-none neu-card",
+              isOrdersPaused() && "bg-amber-600/80 text-white cursor-not-allowed opacity-75 hover:bg-amber-600/80"
+            )}
             onClick={handlePlaceOrder}
-            disabled={placing || !!addressPincodeInvalid}
+            disabled={placing || !!addressPincodeInvalid || isOrdersPaused()}
           >
-            {placing ? (
+            {isOrdersPaused() ? (
+              "Orders Paused (Resumes 26th Oct)"
+            ) : placing ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 Placing Order…

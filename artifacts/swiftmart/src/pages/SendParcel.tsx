@@ -28,6 +28,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/currency";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { isOrdersPaused } from "@/lib/orderPause";
 
 type PackageCategory = "documents" | "food" | "clothes" | "electronics" | "box";
 type VehicleType = "two_wheeler" | "three_wheeler";
@@ -77,6 +78,14 @@ export default function SendParcel() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isOrdersPaused()) {
+      toast.error("Parcel Courier Paused for Durga Puja", {
+        description: "Intra-city parcel delivery is temporarily paused due to Durga Puja celebrations. Services will resume on 26th October.",
+        duration: 6000,
+      });
+      return;
+    }
 
     if (!user) {
       openLoginModal("Please login to book a delivery rider");
@@ -133,6 +142,20 @@ export default function SendParcel() {
         description="Send packages, parcels, documents, home food, or merchandise point-to-point anywhere across Balurghat in 30-45 minutes with verified SwiftMart riders."
         canonical="/send-parcel"
       />
+
+      {isOrdersPaused() && (
+        <div className="flex items-start gap-3 bg-amber-500/15 border border-amber-500/30 text-amber-950 dark:text-amber-100 rounded-2xl p-4 shadow-sm">
+          <span className="text-2xl shrink-0">🪔</span>
+          <div>
+            <h3 className="font-bold text-sm text-amber-800 dark:text-amber-300">
+              Parcel Services Paused for Durga Puja
+            </h3>
+            <p className="text-xs mt-1 text-muted-foreground leading-relaxed">
+              Intra-city parcel and courier deliveries are temporarily paused due to Durga Puja celebrations. Deliveries will resume on <strong>26th October</strong>.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Hero Header */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-700 to-slate-900 text-white p-6 sm:p-8 shadow-xl">
@@ -403,10 +426,10 @@ export default function SendParcel() {
 
             <Button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || isOrdersPaused()}
               className="w-full sm:w-auto px-8 rounded-2xl bg-primary text-primary-foreground font-bold text-sm h-12 shadow-lg hover:opacity-90 transition-opacity gap-2"
             >
-              {submitting ? "Assigning Rider..." : "Book Parcel Delivery"}
+              {isOrdersPaused() ? "Deliveries Paused (Resumes 26th Oct)" : submitting ? "Assigning Rider..." : "Book Parcel Delivery"}
               <ArrowRight className="w-4 h-4" />
             </Button>
           </div>

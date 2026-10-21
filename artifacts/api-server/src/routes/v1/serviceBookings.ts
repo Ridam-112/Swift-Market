@@ -5,6 +5,7 @@ import { authenticate, optionalAuth, requireRole, type AuthRequest } from "../..
 import { mi, miArr } from "../../utils/mapId.js";
 import { createNotificationLimited } from "../../utils/notification.js";
 import { logger } from "../../lib/logger.js";
+import { isOrdersPaused, ORDERS_PAUSED_MESSAGE } from "../../utils/orderPause.js";
 
 const router = Router();
 const A = requireRole("admin", "super_admin", "city_manager");
@@ -180,6 +181,10 @@ router.get("/catalog", async (_req, res: Response): Promise<void> => {
 // ── 2. Customer: Book a Service ───────────────────────────────────────────────
 // POST /api/services/book
 router.post("/book", authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  if (isOrdersPaused()) {
+    res.status(403).json({ success: false, message: ORDERS_PAUSED_MESSAGE });
+    return;
+  }
   try {
     await ensureTableExists();
     const userId = req.user?.userId;
